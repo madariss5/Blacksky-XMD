@@ -21,6 +21,20 @@ async function messageHandler(sock, msg) {
             msg.message.conversation : 
             msg.message.extendedTextMessage.text;
 
+        // Add XP for message activity (1-5 XP randomly)
+        if (msg.key.participant) {
+            const xpGain = Math.floor(Math.random() * 5) + 1;
+            const leveledUp = await store.addXP(msg.key.participant, xpGain);
+
+            if (leveledUp) {
+                const stats = store.getUserStats(msg.key.participant);
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `🎉 Congratulations @${msg.key.participant.split('@')[0]}!\nYou've reached level ${stats.level}!`,
+                    mentions: [msg.key.participant]
+                });
+            }
+        }
+
         // Check if message starts with prefix
         if (!text.startsWith(config.prefix)) return;
 

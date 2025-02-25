@@ -21,6 +21,80 @@ const funCommands = {
         ];
         const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
         await sock.sendMessage(msg.key.remoteJid, { text: `📜 Random Quote:\n\n*${randomQuote}*` });
+    },
+
+    // Interactive anime-style commands
+    slap: async (sock, msg, args) => {
+        const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+        const sticker = { url: 'https://example.com/stickers/slap.webp' }; // Replace with actual sticker URL
+        await sock.sendMessage(msg.key.remoteJid, {
+            sticker: sticker,
+            caption: `*${msg.pushName}* slapped ${target}! 👋`,
+            mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+        });
+    },
+
+    hug: async (sock, msg, args) => {
+        const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+        const sticker = { url: 'https://example.com/stickers/hug.webp' }; // Replace with actual sticker URL
+        await sock.sendMessage(msg.key.remoteJid, {
+            sticker: sticker,
+            caption: `*${msg.pushName}* hugged ${target}! 🤗`,
+            mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+        });
+    },
+
+    cuddle: async (sock, msg, args) => {
+        const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+        const sticker = { url: 'https://example.com/stickers/cuddle.webp' }; // Replace with actual sticker URL
+        await sock.sendMessage(msg.key.remoteJid, {
+            sticker: sticker,
+            caption: `*${msg.pushName}* cuddled ${target}! 🥰`,
+            mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+        });
+    },
+
+    kiss: async (sock, msg, args) => {
+        const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+        const sticker = { url: 'https://example.com/stickers/kiss.webp' }; // Replace with actual sticker URL
+        await sock.sendMessage(msg.key.remoteJid, {
+            sticker: sticker,
+            caption: `*${msg.pushName}* kissed ${target}! 💋`,
+            mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+        });
+    },
+
+    kill: async (sock, msg, args) => {
+        const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+        const sticker = { url: 'https://example.com/stickers/kill.webp' }; // Replace with actual sticker URL
+        await sock.sendMessage(msg.key.remoteJid, {
+            sticker: sticker,
+            caption: `*${msg.pushName}* killed ${target}! 💀`,
+            mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+        });
+    },
+
+    dance: async (sock, msg) => {
+        const sticker = { url: 'https://example.com/stickers/dance.webp' }; // Replace with actual sticker URL
+        await sock.sendMessage(msg.key.remoteJid, {
+            sticker: sticker,
+            caption: `*${msg.pushName}* is dancing! 💃`
+        });
+    },
+
+    insult: async (sock, msg, args) => {
+        const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+        const insults = [
+            "You're as useful as a screen door on a submarine!",
+            "I'd agree with you but then we'd both be wrong.",
+            "You're not the sharpest knife in the drawer, are you?",
+            "I'd explain it to you but I ran out of crayons."
+        ];
+        const randomInsult = insults[Math.floor(Math.random() * insults.length)];
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: `*${msg.pushName}* insults ${target}:\n\n"${randomInsult}" 😈`,
+            mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+        });
     }
 };
 
