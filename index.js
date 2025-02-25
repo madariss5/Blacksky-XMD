@@ -1,3 +1,5 @@
+const chalk = require('chalk');
+
 const { default: makeWASocket, DisconnectReason, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const path = require('path');
@@ -22,16 +24,17 @@ async function connectToWhatsApp() {
     const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
 
     const sock = makeWASocket({
-        printQRInTerminal: true,
+        printQRInTerminal: false, // We'll handle QR ourselves
         auth: state,
         logger: logger,
-        // Use stable browser identification
-        browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Safari', '10.0.0'],
-        connectTimeoutMs: 60000,
-        defaultQueryTimeoutMs: 60000,
-        keepAliveIntervalMs: 25000,
+        browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '116.0.0'], // More stable browser ID
+        connectTimeoutMs: 120000, // Increased timeout
+        defaultQueryTimeoutMs: 120000, // Increased query timeout
+        keepAliveIntervalMs: 10000, // More frequent keepalive
         emitOwnEvents: true,
-        retryRequestDelayMs: 2500
+        retryRequestDelayMs: 5000, // Increased retry delay
+        maxRetries: 5, // Added max retries
+        version: [2, 2323, 4] // Stable WhatsApp version
     });
 
     // Handle connection updates
@@ -39,10 +42,23 @@ async function connectToWhatsApp() {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
-            qrcode.generate(qr, { small: true });
-            console.log('\n=== SCAN QR CODE ===');
-            console.log('Scan the QR code above with WhatsApp to start the bot');
-            console.log('=====================\n');
+            try {
+                // Clear terminal and show header
+                process.stdout.write('\x1Bc');
+                console.log('\n=== 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 QR CODE ===\n');
+
+                // Generate QR code synchronously
+                qrcode.generate(qr, { small: true }, (qrcode) => {
+                    console.log(qrcode);
+                    console.log('\nScan QR Code above with WhatsApp to start the bot');
+                    console.log('1. Open WhatsApp on your phone');
+                    console.log('2. Tap Menu or Settings and select Linked Devices');
+                    console.log('3. Point your phone camera to this QR code to scan\n');
+                });
+            } catch (error) {
+                logger.error('Failed to generate QR:', error);
+                console.log('\nQR Code data:', qr); // Fallback to raw QR
+            }
         }
 
         if (connection === 'close') {
