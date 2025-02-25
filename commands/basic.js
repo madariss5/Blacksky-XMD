@@ -6,87 +6,89 @@ const commands = {
         const page = parseInt(args[0]) || 1;
         const itemsPerPage = 20;
 
-        let menuText = `*Welcome to ${config.botName}*\n`;
-        menuText += '╔══════════════════╗\n';
-        menuText += '║   Command Menu    ║\n';
-        menuText += '╚══════════════════╝\n\n';
+        let menuText = `*${config.botName}*\n\n`;
+        menuText += '╭═══〘 *MENU* 〙═══⊷❍\n';
+        menuText += `├ *Owner*: @${config.ownerNumber.split('@')[0]}\n`;
+        menuText += `├ *Prefix*: ${config.prefix}\n`;
+        menuText += '╰═══════════════⊷❍\n\n';
 
-        const sections = {
-            'Basic Commands': Object.entries(config.commands)
-                .filter(([_, info]) => info.description.toLowerCase().includes('basic')),
-            'Owner Commands': Object.entries(config.commands)
-                .filter(([_, info]) => info.description.toLowerCase().includes('owner')),
-            'Group Commands': Object.entries(config.commands)
-                .filter(([_, info]) => info.description.toLowerCase().includes('group')),
-            'User Commands': Object.entries(config.commands)
-                .filter(([_, info]) => info.description.toLowerCase().includes('user')),
-            'Fun Commands': Object.entries(config.commands)
-                .filter(([_, info]) => info.description.toLowerCase().includes('fun'))
+        // Define command categories
+        const categories = {
+            '⚡ Basic Commands': ['menu', 'help', 'ping', 'info'],
+            '👑 Owner Commands': ['broadcast', 'ban', 'unban', 'banlist', 'bangroup', 'unbangroup', 'restart', 'setprefix', 'setbotname', 'stats', 'clearcache'],
+            '👥 Group Commands': ['kick', 'promote', 'demote', 'mute', 'unmute', 'everyone', 'setwelcome', 'setbye', 'del', 'antilink', 'groupinfo', 'poll'],
+            '👤 User Commands': ['register', 'me', 'level', 'profile', 'status', 'owner'],
+            '🎮 Fun Commands': ['coinflip', 'dice', 'quote', 'slap', 'hug', 'cuddle', 'kiss', 'kill', 'dance', 'insult', 'meme', 'ship', 'fight']
         };
 
-        for (const [title, commands] of Object.entries(sections)) {
-            // Calculate pages
-            const totalPages = Math.ceil(commands.length / itemsPerPage);
-            const start = (page - 1) * itemsPerPage;
-            const end = start + itemsPerPage;
-            const pageCommands = commands.slice(start, end);
+        // Calculate total pages across all categories
+        const totalCommands = Object.values(categories).reduce((sum, cmds) => sum + cmds.length, 0);
+        const totalPages = Math.ceil(totalCommands / itemsPerPage);
 
-            if (pageCommands.length > 0) {
-                menuText += `\n*${title}*\n`;
-                menuText += '┌──────────────\n';
-                pageCommands.forEach(([cmd, info]) => {
-                    menuText += `│ • ${config.prefix}${cmd}\n`;
-                    menuText += `│   ${info.description}\n`;
-                });
-                menuText += '└──────────────\n';
+        // Validate page number
+        if (page < 1 || page > totalPages) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: `❌ Invalid page number. Please use a number between 1 and ${totalPages}.`
+            });
+        }
 
-                if (totalPages > 1) {
-                    menuText += `Page ${page}/${totalPages}\n`;
-                    menuText += `Use ${config.prefix}menu <page> to view more commands\n`;
+        // Display commands for current page
+        let commandsDisplayed = 0;
+        for (const [category, commandList] of Object.entries(categories)) {
+            if (commandsDisplayed >= itemsPerPage * (page - 1) && 
+                commandsDisplayed < itemsPerPage * page) {
+                menuText += `\n*${category}*\n`;
+                for (const cmd of commandList) {
+                    if (commandsDisplayed >= itemsPerPage * (page - 1) && 
+                        commandsDisplayed < itemsPerPage * page) {
+                        menuText += `⭔ ${config.prefix}${cmd}\n`;
+                    }
+                    commandsDisplayed++;
                 }
+            } else {
+                commandsDisplayed += commandList.length;
             }
         }
 
-        menuText += `\n*Bot Info*\n`;
-        menuText += `• Name: ${config.botName}\n`;
-        menuText += `• Owner: @${config.ownerNumber.split('@')[0]}\n`;
-        menuText += `• Prefix: ${config.prefix}\n`;
+        if (totalPages > 1) {
+            menuText += `\n📖 Page *${page}* of *${totalPages}*\n`;
+            menuText += `💡 Use *${config.prefix}menu <page>* to view other pages\n`;
+        }
 
-        // Send menu with the configured menu image
         await sock.sendMessage(msg.key.remoteJid, {
-            image: { url: config.menuImage },
-            caption: menuText,
+            text: menuText,
             mentions: [config.ownerNumber]
         });
     },
 
     help: async (sock, msg) => {
-        let helpText = '*Available Commands*\n\n';
-        helpText += '📝 *Basic Commands*\n';
-        helpText += `• ${config.prefix}menu [page] - Show command menu\n`;
-        helpText += `• ${config.prefix}help - Show this help message\n`;
-        helpText += `• ${config.prefix}ping - Check bot response\n\n`;
+        let helpText = `*${config.botName} - Help*\n\n`;
+        helpText += '╭═══〘 *COMMANDS* 〙═══⊷❍\n\n';
 
-        helpText += '👤 *User Commands*\n';
-        helpText += `• ${config.prefix}register <name> <age> - Register your profile\n`;
-        helpText += `• ${config.prefix}profile - View your or someone's profile\n`;
-        helpText += `• ${config.prefix}me - View your stats and session ID\n`;
-        helpText += `• ${config.prefix}level - View your current level\n\n`;
+        helpText += '*⚡ Basic Commands*\n';
+        helpText += `⭔ ${config.prefix}menu [page] - Show command menu\n`;
+        helpText += `⭔ ${config.prefix}help - Show this help message\n`;
+        helpText += `⭔ ${config.prefix}ping - Check bot response\n\n`;
 
-        helpText += '👥 *Group Management*\n';
-        helpText += `• ${config.prefix}kick @user - Kick user (Admin)\n`;
-        helpText += `• ${config.prefix}promote @user - Promote to admin\n`;
-        helpText += `• ${config.prefix}demote @user - Demote from admin\n`;
-        helpText += `• ${config.prefix}everyone - Tag all members\n\n`;
+        helpText += '*👤 User Commands*\n';
+        helpText += `⭔ ${config.prefix}register <name> <age> - Register your profile\n`;
+        helpText += `⭔ ${config.prefix}profile [@user] - View profile\n`;
+        helpText += `⭔ ${config.prefix}me - View your stats\n`;
+        helpText += `⭔ ${config.prefix}level - View your level\n\n`;
 
-        helpText += '👑 *Owner Commands*\n';
-        helpText += `• ${config.prefix}broadcast - Send message to all chats\n`;
-        helpText += `• ${config.prefix}ban/unban - Manage user bans\n`;
-        helpText += `• ${config.prefix}bangroup/unbangroup - Manage group bans\n`;
-        helpText += `• ${config.prefix}setprefix - Change bot prefix\n`;
-        helpText += `• ${config.prefix}setbotname - Change bot name\n\n`;
+        helpText += '*👥 Group Management*\n';
+        helpText += `⭔ ${config.prefix}kick @user - Kick user (Admin)\n`;
+        helpText += `⭔ ${config.prefix}promote @user - Promote to admin\n`;
+        helpText += `⭔ ${config.prefix}demote @user - Demote from admin\n`;
+        helpText += `⭔ ${config.prefix}everyone - Tag all members\n\n`;
 
-        helpText += `\nUse ${config.prefix}menu to see all commands (${Object.keys(config.commands).length} total)`;
+        helpText += '*👑 Owner Commands*\n';
+        helpText += `⭔ ${config.prefix}broadcast - Send to all chats\n`;
+        helpText += `⭔ ${config.prefix}ban/unban - Manage user bans\n`;
+        helpText += `⭔ ${config.prefix}setprefix - Change bot prefix\n\n`;
+
+        helpText += '╰═══════════════⊷❍\n';
+        helpText += `\n💡 Use *${config.prefix}menu* to see all commands`;
 
         await sock.sendMessage(msg.key.remoteJid, { text: helpText });
     },

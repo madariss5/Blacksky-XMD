@@ -9,8 +9,10 @@ const config = require('./config');
 const SessionManager = require('./utils/session');
 
 // Create sessions directory if it doesn't exist
-const SESSION_DIR = './sessions/flash-md';
+const SESSION_DIR = './sessions/blacksky-md';
 const sessionManager = new SessionManager(SESSION_DIR);
+
+let isConnected = false; // Track connection status
 
 async function connectToWhatsApp() {
     // Initialize session directory
@@ -26,8 +28,8 @@ async function connectToWhatsApp() {
         printQRInTerminal: true,
         auth: state,
         logger: logger,
-        // Update browser identification to match latest WhatsApp Web
-        browser: ['WhatsApp Desktop', 'Desktop', '1.0.0'],
+        // Use stable browser identification
+        browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Safari', '10.0.0'],
         connectTimeoutMs: 60000,
         defaultQueryTimeoutMs: 60000,
         keepAliveIntervalMs: 25000,
@@ -58,38 +60,41 @@ async function connectToWhatsApp() {
                 setTimeout(connectToWhatsApp, 3000);
             }
         } else if (connection === 'open') {
-            console.log('Connected to WhatsApp');
+            if (!isConnected) { // Only send session info on first successful connection
+                isConnected = true;
+                console.log('Connected to WhatsApp');
 
-            // Save session data for Heroku deployment
-            const sessionData = JSON.stringify({
-                creds: sock.authState.creds,
-                keys: sock.authState.keys
-            });
-
-            // Save session info
-            await sessionManager.saveSessionInfo(
-                sock.authState.creds.me?.id || 'Not available',
-                sessionData
-            );
-
-            console.log('\n=== HEROKU DEPLOYMENT INFO ===');
-            console.log('Add these to your Heroku config vars:');
-            console.log(`SESSION_ID=${sock.authState.creds.me?.id || 'Not available'}`);
-            console.log(`SESSION_DATA=${sessionData}`);
-            console.log('==============================\n');
-
-            // Send success message to owner
-            try {
-                await sock.sendMessage(config.ownerNumber, {
-                    text: `*🚀 Flash-MD Connected Successfully!*\n\n` +
-                          `• Bot Name: ${config.botName}\n` +
-                          `• Owner: ${config.ownerName}\n` +
-                          `• Session ID: ${sock.authState.creds.me?.id || 'Not available'}\n` +
-                          `• Time: ${new Date().toLocaleString()}\n\n` +
-                          `Bot is ready! Use ${config.prefix}menu to see commands.`
+                // Save session data for Heroku deployment
+                const sessionData = JSON.stringify({
+                    creds: sock.authState.creds,
+                    keys: sock.authState.keys
                 });
-            } catch (error) {
-                console.log('Failed to send owner message:', error);
+
+                // Save session info
+                await sessionManager.saveSessionInfo(
+                    sock.authState.creds.me?.id || 'Not available',
+                    sessionData
+                );
+
+                console.log('\n=== HEROKU DEPLOYMENT INFO ===');
+                console.log('Add these to your Heroku config vars:');
+                console.log(`SESSION_ID=${sock.authState.creds.me?.id || 'Not available'}`);
+                console.log(`SESSION_DATA=${sessionData}`);
+                console.log('==============================\n');
+
+                // Send success message to owner
+                try {
+                    await sock.sendMessage(config.ownerNumber, {
+                        text: `*🚀 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 Connected Successfully!*\n\n` +
+                              `• Bot Name: ${config.botName}\n` +
+                              `• Owner: ${config.ownerName}\n` +
+                              `• Session ID: ${sock.authState.creds.me?.id || 'Not available'}\n` +
+                              `• Time: ${new Date().toLocaleString()}\n\n` +
+                              `Bot is ready! Use ${config.prefix}menu to see commands.`
+                    });
+                } catch (error) {
+                    console.log('Failed to send owner message:', error);
+                }
             }
         }
     });

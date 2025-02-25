@@ -41,26 +41,6 @@ async function messageHandler(sock, msg) {
         // Extract command and arguments
         const [command, ...args] = text.slice(config.prefix.length).trim().split(' ');
 
-        // Check if user is banned
-        const banned = store.get('banned') || [];
-        if (banned.includes(msg.key.participant) && command !== 'help') {
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: 'You are banned from using the bot!' 
-            });
-            return;
-        }
-
-        // Check if group is banned
-        if (msg.key.remoteJid.endsWith('@g.us')) {
-            const bannedGroups = store.get('bannedGroups') || [];
-            if (bannedGroups.includes(msg.key.remoteJid)) {
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    text: 'This group is banned from using the bot!' 
-                });
-                return;
-            }
-        }
-
         // Combine all commands
         const allCommands = {
             ...basicCommands,
@@ -70,8 +50,28 @@ async function messageHandler(sock, msg) {
             ...funCommands
         };
 
-        // Execute command if it exists
-        if (allCommands[command]) {
+        // Check if command exists and execute it
+        if (command in allCommands) {
+            // Check if user is banned
+            const banned = store.get('banned') || [];
+            if (banned.includes(msg.key.participant) && command !== 'help') {
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    text: 'You are banned from using the bot!' 
+                });
+                return;
+            }
+
+            // Check if group is banned
+            if (msg.key.remoteJid.endsWith('@g.us')) {
+                const bannedGroups = store.get('bannedGroups') || [];
+                if (bannedGroups.includes(msg.key.remoteJid)) {
+                    await sock.sendMessage(msg.key.remoteJid, { 
+                        text: 'This group is banned from using the bot!' 
+                    });
+                    return;
+                }
+            }
+
             try {
                 await allCommands[command](sock, msg, args);
                 logger.info(`Command ${command} executed by ${msg.key.remoteJid}`);
@@ -81,11 +81,8 @@ async function messageHandler(sock, msg) {
                     text: 'An error occurred while executing the command.' 
                 });
             }
-        } else {
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: `Unknown command. Use ${config.prefix}help to see available commands.` 
-            });
         }
+        // No response for invalid commands
     }
 }
 
