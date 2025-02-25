@@ -3,7 +3,7 @@ const { default: makeWASocket, DisconnectReason, useMultiFileAuthState, usePairi
 const { Boom } = require('@hapi/boom');
 const path = require('path');
 const fs = require('fs').promises;
-const qrcode = require('qrcode-terminal'); 
+const qrcode = require('qrcode-terminal');
 const messageHandler = require('./handlers/message');
 const logger = require('./utils/logger');
 const config = require('./config');
@@ -14,6 +14,81 @@ const SESSION_DIR = './sessions/blacksky-md';
 const sessionManager = new SessionManager(SESSION_DIR);
 
 let isConnected = false; // Track connection status
+
+async function askPhoneNumber() {
+    console.log(chalk.cyan('\n╔═══════════════════════════════════════════╗'));
+    console.log(chalk.cyan('║       ') + chalk.yellow('ENTER YOUR PHONE NUMBER') + chalk.cyan('         ║'));
+    console.log(chalk.cyan('╚═══════════════════════════════════════════╝\n'));
+    console.log(chalk.gray('• Enter your phone number:'));
+    console.log(chalk.gray('• Use this format: 1234567890'));
+    console.log(chalk.gray('• No spaces or special characters'));
+    console.log(chalk.gray('• Must include country code\n'));
+
+    // Read phone number from environment
+    const phone = process.env.BOT_NUMBER || '1234567890';
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+
+    // Validate phone number format
+    if (!cleanPhone.match(/^\d{10,14}$/)) {
+        throw new Error('Invalid phone number format');
+    }
+
+    return cleanPhone;
+}
+
+async function showConnectionMenu() {
+    console.log(chalk.cyan('\n╔═══════════════════════════════════════════╗'));
+    console.log(chalk.cyan('║          ') + chalk.yellow('𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 CONNECTION') + chalk.cyan('         ║'));
+    console.log(chalk.cyan('╚═══════════════════════════════════════════╝\n'));
+
+    console.log(chalk.cyan('╔═══════════════════════════════════════════╗'));
+    console.log(chalk.cyan('║         ') + chalk.yellow('CONNECTION METHOD') + chalk.cyan('            ║'));
+    console.log(chalk.cyan('╚═══════════════════════════════════════════╝\n'));
+
+    console.log(chalk.white('1. ') + chalk.yellow('Pairing Code (Recommended)'));
+    console.log(chalk.white('2. ') + chalk.yellow('QR Code (Alternative)\n'));
+
+    console.log(chalk.gray('• Choose your preferred connection method'));
+    console.log(chalk.gray('• Pairing code is faster and more reliable'));
+    console.log(chalk.gray('• QR code is available as backup\n'));
+
+    // Footer
+    console.log(chalk.cyan('═══════════════════════════════════════════\n'));
+
+    // Return selection based on environment or default to QR
+    return process.env.USE_PAIRING !== 'false' ? '1' : '2';
+}
+
+async function showQRCode(qr) {
+    console.log(chalk.cyan('\n╔═══════════════════════════════════════════╗'));
+    console.log(chalk.cyan('║         ') + chalk.yellow('QR CODE SCANNER') + chalk.cyan('             ║'));
+    console.log(chalk.cyan('╚═══════════════════════════════════════════╝\n'));
+
+    qrcode.generate(qr, { small: true }, (qrcode) => {
+        console.log(qrcode);
+    });
+
+    console.log(chalk.gray('\n1. Open WhatsApp on your phone'));
+    console.log(chalk.gray('2. Tap Menu or Settings and select Linked Devices'));
+    console.log(chalk.gray('3. Point your phone camera to scan the QR code\n'));
+}
+
+async function showPairingCode(phoneNumber) {
+    console.log(chalk.cyan('\n╔═══════════════════════════════════════════╗'));
+    console.log(chalk.cyan('║         ') + chalk.yellow('PAIRING CODE') + chalk.cyan('                ║'));
+    console.log(chalk.cyan('╚═══════════════════════════════════════════╝\n'));
+
+    try {
+        const code = await sock.requestPairingCode(phoneNumber);
+        console.log(chalk.white('Your pairing code: ') + chalk.green.bold(code));
+        console.log(chalk.gray('\n1. Open WhatsApp on your phone'));
+        console.log(chalk.gray('2. Go to Linked Devices > Link a Device'));
+        console.log(chalk.gray('3. Enter the pairing code shown above\n'));
+    } catch (error) {
+        logger.error('Failed to generate pairing code:', error);
+        throw error;
+    }
+}
 
 async function connectToWhatsApp() {
     // Initialize session directory
@@ -27,7 +102,7 @@ async function connectToWhatsApp() {
         printQRInTerminal: false,
         auth: state,
         logger: logger,
-        browser: ["FLASH-MD", "Firefox", "1.0.0"], // Flash-MD browser config
+        browser: ["FLASH-MD", "Firefox", "1.0.0"],
         connectTimeoutMs: 60000,
         qrTimeout: 60000,
         defaultQueryTimeoutMs: 60000,
@@ -60,49 +135,35 @@ async function connectToWhatsApp() {
         }
     });
 
-    // Enable pairing code
-    const phoneNumber = process.env.BOT_NUMBER || '1234567890';
-    const usePairing = process.env.USE_PAIRING === 'true';
-
     // Handle connection updates
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
             try {
-                // Clear terminal and show header
+                // Clear terminal and show the menu first
                 process.stdout.write('\x1Bc');
-                console.log('\n=== 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 CONNECTION ===\n');
+                const method = await showConnectionMenu();
 
-                if (usePairing) {
-                    console.log('🔄 Generating pairing code...');
+                if (method === '1') {
                     try {
-                        // Get pairing code
-                        const code = await sock.requestPairingCode(phoneNumber);
-                        console.log('\n╔═══════════════════════════╗');
-                        console.log('║   PAIRING CODE GENERATED   ║');
-                        console.log('╚═══════════════════════════╝\n');
-                        console.log(`Your pairing code: ${chalk.bold.white(code)}\n`);
-                        console.log('1. Open WhatsApp on your phone');
-                        console.log('2. Go to Linked Devices > Link a Device');
-                        console.log('3. Enter the pairing code shown above\n');
+                        const phoneNumber = await askPhoneNumber();
+                        await showPairingCode(phoneNumber);
                     } catch (error) {
-                        logger.error('Failed to generate pairing code:', error);
-                        console.log('\nFalling back to QR code...\n');
+                        console.log(chalk.red('\nPairing code setup failed. Falling back to QR code...\n'));
+                        await showQRCode(qr);
                     }
+                } else {
+                    await showQRCode(qr);
                 }
 
-                // Always show QR code as fallback
-                console.log('Or scan this QR code:\n');
-                qrcode.generate(qr, { small: true }, (qrcode) => {
-                    console.log(qrcode);
-                    console.log('\n1. Open WhatsApp on your phone');
-                    console.log('2. Tap Menu or Settings and select Linked Devices');
-                    console.log('3. Point your phone camera to this QR code to scan\n');
-                });
+                // Footer
+                console.log(chalk.cyan('═══════════════════════════════════════════\n'));
+                console.log(chalk.yellow('Waiting for connection...'));
+
             } catch (error) {
-                logger.error('Failed to generate QR:', error);
-                console.log('\nQR Code data:', qr); // Fallback to raw QR
+                logger.error('Failed to handle connection update:', error);
+                console.log('\nConnection data:', qr);
             }
         }
 
@@ -118,7 +179,7 @@ async function connectToWhatsApp() {
                 setTimeout(connectToWhatsApp, 3000);
             }
         } else if (connection === 'open') {
-            if (!isConnected) { // Only send session info on first successful connection
+            if (!isConnected) {
                 isConnected = true;
                 console.log('Connected to WhatsApp');
 
@@ -128,7 +189,6 @@ async function connectToWhatsApp() {
                     keys: sock.authState.keys
                 };
 
-                // Save credentials to creds.json file
                 try {
                     await fs.writeFile(
                         path.join(__dirname, 'creds.json'),
@@ -136,13 +196,11 @@ async function connectToWhatsApp() {
                     );
                     console.log('Credentials saved to creds.json');
 
-                    // Save session info
                     await sessionManager.saveSessionInfo(
                         sock.authState.creds.me?.id || 'Not available',
                         JSON.stringify(sessionData)
                     );
 
-                    // Send success message to owner
                     await sock.sendMessage(config.ownerNumber, {
                         text: `*🚀 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 Connected Successfully!*\n\n` +
                               `• Bot Name: ${config.botName}\n` +

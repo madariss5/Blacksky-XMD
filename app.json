@@ -28,7 +28,7 @@
     "USE_PAIRING": {
       "description": "Enable pairing code authentication (true/false)",
       "required": false,
-      "value": "false"
+      "value": "true"
     }
   },
   "buildpacks": [
