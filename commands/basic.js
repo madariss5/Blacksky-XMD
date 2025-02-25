@@ -2,53 +2,61 @@ const config = require('../config');
 
 const commands = {
     menu: async (sock, msg, args) => {
-        const sections = {
-            owner: '👑 *Owner Commands*',
-            group: '👥 *Group Commands*',
-            user: '👤 *User Commands*',
-            fun: '🎮 *Fun Commands*'
-        };
+        // Get page number from args or default to 1
+        const page = parseInt(args[0]) || 1;
+        const itemsPerPage = 20;
 
         let menuText = `*Welcome to ${config.botName}*\n`;
         menuText += '╔══════════════════╗\n';
         menuText += '║   Command Menu    ║\n';
         menuText += '╚══════════════════╝\n\n';
 
-        // Get page number from args or default to 1
-        const page = parseInt(args[0]) || 1;
-        const itemsPerPage = 20;
+        const sections = {
+            'Basic Commands': Object.entries(config.commands)
+                .filter(([_, info]) => info.description.toLowerCase().includes('basic')),
+            'Owner Commands': Object.entries(config.commands)
+                .filter(([_, info]) => info.description.toLowerCase().includes('owner')),
+            'Group Commands': Object.entries(config.commands)
+                .filter(([_, info]) => info.description.toLowerCase().includes('group')),
+            'User Commands': Object.entries(config.commands)
+                .filter(([_, info]) => info.description.toLowerCase().includes('user')),
+            'Fun Commands': Object.entries(config.commands)
+                .filter(([_, info]) => info.description.toLowerCase().includes('fun'))
+        };
 
-        for (const [category, title] of Object.entries(sections)) {
-            const categoryCommands = Object.entries(config.commands)
-                .filter(([_, info]) => info.description.toLowerCase().includes(category));
-
+        for (const [title, commands] of Object.entries(sections)) {
             // Calculate pages
-            const totalPages = Math.ceil(categoryCommands.length / itemsPerPage);
+            const totalPages = Math.ceil(commands.length / itemsPerPage);
             const start = (page - 1) * itemsPerPage;
             const end = start + itemsPerPage;
-            const pageCommands = categoryCommands.slice(start, end);
+            const pageCommands = commands.slice(start, end);
 
-            menuText += `${title}\n`;
-            menuText += '┌──────────────\n';
-            pageCommands.forEach(([cmd, info]) => {
-                menuText += `│ • ${config.prefix}${cmd}\n`;
-                menuText += `│   ${info.description}\n`;
-            });
-            menuText += '└──────────────\n\n';
+            if (pageCommands.length > 0) {
+                menuText += `\n*${title}*\n`;
+                menuText += '┌──────────────\n';
+                pageCommands.forEach(([cmd, info]) => {
+                    menuText += `│ • ${config.prefix}${cmd}\n`;
+                    menuText += `│   ${info.description}\n`;
+                });
+                menuText += '└──────────────\n';
 
-            if (totalPages > 1) {
-                menuText += `Page ${page}/${totalPages}\n`;
-                menuText += `Use ${config.prefix}menu <page> to view more commands\n\n`;
+                if (totalPages > 1) {
+                    menuText += `Page ${page}/${totalPages}\n`;
+                    menuText += `Use ${config.prefix}menu <page> to view more commands\n`;
+                }
             }
         }
 
-        menuText += `\n*Bot Session:* ${sock.authState.creds.me?.id || 'Not available'}\n`;
-        menuText += `*Made with ❤️ by ${config.botName}*`;
+        menuText += `\n*Bot Info*\n`;
+        menuText += `• Name: ${config.botName}\n`;
+        menuText += `• Owner: @${config.ownerNumber.split('@')[0]}\n`;
+        menuText += `• Prefix: ${config.prefix}\n`;
 
-        // Send menu with Fast & Furious themed image
+        // Send menu with the configured menu image
         await sock.sendMessage(msg.key.remoteJid, {
             image: { url: config.menuImage },
-            caption: menuText
+            caption: menuText,
+            mentions: [config.ownerNumber]
         });
     },
 
