@@ -40,6 +40,71 @@ class Store {
         await this.saveStore();
     }
 
+    // Ban management methods
+    async banUser(userId) {
+        const banned = this.data.banned || [];
+        if (!banned.includes(userId)) {
+            banned.push(userId);
+            this.data.banned = banned;
+            await this.saveStore();
+            return true;
+        }
+        return false;
+    }
+
+    async unbanUser(userId) {
+        const banned = this.data.banned || [];
+        const index = banned.indexOf(userId);
+        if (index > -1) {
+            banned.splice(index, 1);
+            this.data.banned = banned;
+            await this.saveStore();
+            return true;
+        }
+        return false;
+    }
+
+    isUserBanned(userId) {
+        const banned = this.data.banned || [];
+        return banned.includes(userId);
+    }
+
+    async banGroup(groupId) {
+        const bannedGroups = this.data.bannedGroups || [];
+        if (!bannedGroups.includes(groupId)) {
+            bannedGroups.push(groupId);
+            this.data.bannedGroups = bannedGroups;
+            await this.saveStore();
+            return true;
+        }
+        return false;
+    }
+
+    async unbanGroup(groupId) {
+        const bannedGroups = this.data.bannedGroups || [];
+        const index = bannedGroups.indexOf(groupId);
+        if (index > -1) {
+            bannedGroups.splice(index, 1);
+            this.data.bannedGroups = bannedGroups;
+            await this.saveStore();
+            return true;
+        }
+        return false;
+    }
+
+    isGroupBanned(groupId) {
+        const bannedGroups = this.data.bannedGroups || [];
+        return bannedGroups.includes(groupId);
+    }
+
+    getBannedUsers() {
+        return this.data.banned || [];
+    }
+
+    getBannedGroups() {
+        return this.data.bannedGroups || [];
+    }
+
     // User registration methods
     async registerUser(userId, name, age) {
         const users = this.data.users || {};

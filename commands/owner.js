@@ -38,10 +38,8 @@ const ownerCommands = {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a number to ban!' });
         }
 
-        const banned = store.get('banned') || [];
-        if (!banned.includes(number)) {
-            banned.push(number);
-            await store.set('banned', banned);
+        const success = await store.banUser(number);
+        if (success) {
             await sock.sendMessage(msg.key.remoteJid, { text: `Banned @${number.split('@')[0]}`, mentions: [number] });
         } else {
             await sock.sendMessage(msg.key.remoteJid, { text: 'Number already banned!' });
@@ -58,11 +56,8 @@ const ownerCommands = {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a number to unban!' });
         }
 
-        const banned = store.get('banned') || [];
-        const index = banned.indexOf(number);
-        if (index > -1) {
-            banned.splice(index, 1);
-            await store.set('banned', banned);
+        const success = await store.unbanUser(number);
+        if (success) {
             await sock.sendMessage(msg.key.remoteJid, { text: `Unbanned @${number.split('@')[0]}`, mentions: [number] });
         } else {
             await sock.sendMessage(msg.key.remoteJid, { text: 'Number is not banned!' });
@@ -74,8 +69,8 @@ const ownerCommands = {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
         }
 
-        const banned = store.get('banned') || [];
-        const bannedGroups = store.get('bannedGroups') || [];
+        const banned = store.getBannedUsers();
+        const bannedGroups = store.getBannedGroups();
 
         let message = '*Banned Users*\n\n';
         if (banned.length > 0) {
@@ -111,10 +106,8 @@ const ownerCommands = {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a valid group ID!' });
         }
 
-        const bannedGroups = store.get('bannedGroups') || [];
-        if (!bannedGroups.includes(groupId)) {
-            bannedGroups.push(groupId);
-            await store.set('bannedGroups', bannedGroups);
+        const success = await store.banGroup(groupId);
+        if (success) {
             await sock.sendMessage(msg.key.remoteJid, { text: 'Group banned successfully!' });
         } else {
             await sock.sendMessage(msg.key.remoteJid, { text: 'Group is already banned!' });
@@ -131,11 +124,8 @@ const ownerCommands = {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a valid group ID!' });
         }
 
-        const bannedGroups = store.get('bannedGroups') || [];
-        const index = bannedGroups.indexOf(groupId);
-        if (index > -1) {
-            bannedGroups.splice(index, 1);
-            await store.set('bannedGroups', bannedGroups);
+        const success = await store.unbanGroup(groupId);
+        if (success) {
             await sock.sendMessage(msg.key.remoteJid, { text: 'Group unbanned successfully!' });
         } else {
             await sock.sendMessage(msg.key.remoteJid, { text: 'Group is not banned!' });
@@ -180,8 +170,8 @@ const ownerCommands = {
         const stats = {
             users: Object.keys(store.get('users') || {}).length,
             groups: store.get('chats')?.filter(id => id.endsWith('@g.us')).length || 0,
-            banned: store.get('banned')?.length || 0,
-            bannedGroups: store.get('bannedGroups')?.length || 0
+            banned: store.getBannedUsers().length,
+            bannedGroups: store.getBannedGroups().length
         };
 
         const statsText = `*Bot Statistics*\n\n` +

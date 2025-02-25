@@ -1,0 +1,22 @@
+# Node modules
+node_modules/
+
+# Authentication files
+auth_info_baileys/
+
+# Environment variables
+.env
+
+# Logs
+*.log
+
+# Database files
+database/store.json
+
+# Editor files
+.vscode/
+.idea/
+
+# System files
+.DS_Store
+Thumbs.db
