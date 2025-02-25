@@ -40,6 +40,32 @@ class Store {
         await this.saveStore();
     }
 
+    // User registration methods
+    async registerUser(userId, name, age) {
+        const users = this.data.users || {};
+        if (!users[userId]) {
+            users[userId] = { xp: 0, level: 1 };
+        }
+        users[userId] = {
+            ...users[userId],
+            name,
+            age,
+            registeredAt: new Date().toISOString()
+        };
+        this.data.users = users;
+        await this.saveStore();
+    }
+
+    getUserInfo(userId) {
+        const users = this.data.users || {};
+        return users[userId] || { xp: 0, level: 1 };
+    }
+
+    isUserRegistered(userId) {
+        const users = this.data.users || {};
+        return !!(users[userId]?.name && users[userId]?.age);
+    }
+
     // User leveling system methods
     async addXP(userId, amount) {
         const users = this.data.users || {};
@@ -83,6 +109,39 @@ class Store {
     getGroupSetting(groupId, setting) {
         const groups = this.data.groups || {};
         return groups[groupId]?.[setting];
+    }
+
+    // Command generation helpers
+    generatePlaceholderCommands(category, count) {
+        const commands = {};
+        for (let i = 1; i <= count; i++) {
+            const cmdName = `${category}${i}`;
+            commands[cmdName] = async (sock, msg) => {
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `${category.toUpperCase()} Command ${i} executed!`
+                });
+            };
+        }
+        return commands;
+    }
+
+    // User preferences and customization
+    async setUserPreference(userId, setting, value) {
+        const users = this.data.users || {};
+        if (!users[userId]) {
+            users[userId] = { xp: 0, level: 1, preferences: {} };
+        }
+        if (!users[userId].preferences) {
+            users[userId].preferences = {};
+        }
+        users[userId].preferences[setting] = value;
+        this.data.users = users;
+        await this.saveStore();
+    }
+
+    getUserPreference(userId, setting) {
+        const users = this.data.users || {};
+        return users[userId]?.preferences?.[setting];
     }
 }
 

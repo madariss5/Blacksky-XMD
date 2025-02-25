@@ -50,6 +50,17 @@ async function messageHandler(sock, msg) {
             return;
         }
 
+        // Check if group is banned
+        if (msg.key.remoteJid.endsWith('@g.us')) {
+            const bannedGroups = store.get('bannedGroups') || [];
+            if (bannedGroups.includes(msg.key.remoteJid)) {
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    text: 'This group is banned from using the bot!' 
+                });
+                return;
+            }
+        }
+
         // Combine all commands
         const allCommands = {
             ...basicCommands,

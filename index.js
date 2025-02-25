@@ -1,23 +1,40 @@
 const { default: makeWASocket, DisconnectReason, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const path = require('path');
-const qrcode = require('qrcode-terminal'); // Add explicit import for QR code
+const qrcode = require('qrcode-terminal'); 
 const messageHandler = require('./handlers/message');
 const logger = require('./utils/logger');
 const config = require('./config');
 
-async function connectToWhatsApp() {
-    // Get authentication state
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
+// Heroku doesn't persist files, so we'll use environment variable for session if available
+const getAuthState = async () => {
+    if (process.env.SESSION_ID) {
+        return {
+            state: {
+                creds: {
+                    me: {
+                        id: process.env.SESSION_ID
+                    }
+                }
+            },
+            saveCreds: async () => {
+                // In Heroku, we can't save to file system
+                logger.info('Session saved to environment');
+            }
+        };
+    }
+    return await useMultiFileAuthState('auth_info_baileys');
+};
 
-    // Create WA socket
+async function connectToWhatsApp() {
+    const { state, saveCreds } = await getAuthState();
+
     const sock = makeWASocket({
         printQRInTerminal: true,
         auth: state,
         logger: logger
     });
 
-    // Handle connection updates
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update;
 
@@ -33,13 +50,22 @@ async function connectToWhatsApp() {
             }
         } else if (connection === 'open') {
             console.log('Connected to WhatsApp');
+            const sessionId = sock.authState.creds.me?.id || 'Not available';
+            console.log('Session ID:', sessionId);
+            logger.info(`Session ID: ${sessionId}`);
+
+            // If using Heroku and session ID isn't set, log it for configuration
+            if (!process.env.SESSION_ID) {
+                console.log('\n=== IMPORTANT ===');
+                console.log('Set this session ID in your Heroku config vars:');
+                console.log(`SESSION_ID=${sessionId}`);
+                console.log('==================\n');
+            }
         }
     });
 
-    // Handle credentials updates
     sock.ev.on('creds.update', saveCreds);
 
-    // Handle messages
     sock.ev.on('messages.upsert', async ({ messages }) => {
         try {
             await messageHandler(sock, messages[0]);

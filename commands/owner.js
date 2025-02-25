@@ -140,6 +140,72 @@ const ownerCommands = {
         } else {
             await sock.sendMessage(msg.key.remoteJid, { text: 'Group is not banned!' });
         }
+    },
+    restart: async (sock, msg) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        await sock.sendMessage(msg.key.remoteJid, { text: 'Restarting bot...' });
+        process.exit(0); // PM2 or similar will restart the bot
+    },
+
+    setprefix: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        const newPrefix = args[0];
+        if (!newPrefix) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a new prefix!' });
+        }
+        config.prefix = newPrefix;
+        await sock.sendMessage(msg.key.remoteJid, { text: `Prefix updated to: ${newPrefix}` });
+    },
+
+    setbotname: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        const newName = args.join(' ');
+        if (!newName) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a new name!' });
+        }
+        config.botName = newName;
+        await sock.sendMessage(msg.key.remoteJid, { text: `Bot name updated to: ${newName}` });
+    },
+
+    stats: async (sock, msg) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        const stats = {
+            users: Object.keys(store.get('users') || {}).length,
+            groups: store.get('chats')?.filter(id => id.endsWith('@g.us')).length || 0,
+            banned: store.get('banned')?.length || 0,
+            bannedGroups: store.get('bannedGroups')?.length || 0
+        };
+
+        const statsText = `*Bot Statistics*\n\n` +
+                         `• Total Users: ${stats.users}\n` +
+                         `• Total Groups: ${stats.groups}\n` +
+                         `• Banned Users: ${stats.banned}\n` +
+                         `• Banned Groups: ${stats.bannedGroups}\n`;
+
+        await sock.sendMessage(msg.key.remoteJid, { text: statsText });
+    },
+
+    clearcache: async (sock, msg) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        try {
+            await sock.sendMessage(msg.key.remoteJid, { text: 'Clearing cache...' });
+            // Clear various caches
+            store.data = {};
+            await store.saveStore();
+            await sock.sendMessage(msg.key.remoteJid, { text: 'Cache cleared successfully!' });
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { text: 'Error clearing cache: ' + error.message });
+        }
     }
 };
 

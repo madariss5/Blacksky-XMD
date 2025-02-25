@@ -185,6 +185,78 @@ const groupCommands = {
         } else {
             await sock.sendMessage(msg.key.remoteJid, { text: 'Please reply to a message to delete it!' });
         }
+    },
+
+    antilink: async (sock, msg, args) => {
+        if (!msg.key.remoteJid.endsWith('@g.us')) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'This command can only be used in groups!' });
+        }
+
+        const groupMetadata = await sock.groupMetadata(msg.key.remoteJid);
+        const isAdmin = groupMetadata.participants.find(p => p.id === msg.key.participant)?.admin;
+
+        if (!isAdmin) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only admins can use this command!' });
+        }
+
+        const status = args[0]?.toLowerCase() === 'on' ? true : false;
+        await store.setGroupSetting(msg.key.remoteJid, 'antilink', status);
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: `Antilink has been ${status ? 'enabled' : 'disabled'}`
+        });
+    },
+
+    groupinfo: async (sock, msg) => {
+        if (!msg.key.remoteJid.endsWith('@g.us')) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'This command can only be used in groups!' });
+        }
+
+        const groupMetadata = await sock.groupMetadata(msg.key.remoteJid);
+        const admins = groupMetadata.participants
+            .filter(p => p.admin)
+            .map(p => p.id);
+
+        let info = `*Group Information*\n\n`;
+        info += `• Name: ${groupMetadata.subject}\n`;
+        info += `• Description: ${groupMetadata.desc || 'No description'}\n`;
+        info += `• Members: ${groupMetadata.participants.length}\n`;
+        info += `• Admins: ${admins.length}\n`;
+        info += `• Created: ${new Date(groupMetadata.creation * 1000).toLocaleDateString()}\n`;
+
+        try {
+            const ppUrl = await sock.profilePictureUrl(msg.key.remoteJid, 'image');
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: ppUrl },
+                caption: info,
+                mentions: admins
+            });
+        } catch {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: info,
+                mentions: admins
+            });
+        }
+    },
+
+    poll: async (sock, msg, args) => {
+        if (!msg.key.remoteJid.endsWith('@g.us')) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'This command can only be used in groups!' });
+        }
+
+        const [question, ...options] = args;
+        if (!question || options.length < 2) {
+            return await sock.sendMessage(msg.key.remoteJid, { 
+                text: 'Please provide a question and at least 2 options!\nFormat: !poll "Question" "Option1" "Option2"' 
+            });
+        }
+
+        await sock.sendMessage(msg.key.remoteJid, {
+            poll: {
+                name: question,
+                values: options,
+                selectableCount: 1
+            }
+        });
     }
 };
 

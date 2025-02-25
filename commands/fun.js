@@ -95,6 +95,59 @@ const funCommands = {
             text: `*${msg.pushName}* insults ${target}:\n\n"${randomInsult}" 😈`,
             mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
         });
+    },
+
+    meme: async (sock, msg) => {
+        // Fetch random meme from an API
+        const memeUrl = 'https://example.com/meme.jpg'; // Replace with actual meme API
+        await sock.sendMessage(msg.key.remoteJid, {
+            image: { url: memeUrl },
+            caption: '😂 Here\'s your meme!'
+        });
+    },
+
+    ship: async (sock, msg, args) => {
+        if (args.length !== 2) {
+            return await sock.sendMessage(msg.key.remoteJid, { 
+                text: 'Tag two people to ship!\nFormat: !ship @user1 @user2' 
+            });
+        }
+
+        const percent = Math.floor(Math.random() * 101);
+        const heart = percent > 75 ? '❤️' : percent > 50 ? '💕' : percent > 25 ? '💖' : '💔';
+
+        const message = `*Love Calculator* ${heart}\n\n` +
+                       `${args[0]} + ${args[1]}\n` +
+                       `= ${percent}% Compatibility\n\n` +
+                       `${percent > 75 ? 'Perfect match!' : 
+                         percent > 50 ? 'Good match!' :
+                         percent > 25 ? 'Could work...' : 
+                         'Better stay friends 😅'}`;
+
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: message,
+            mentions: args.map(arg => arg + '@s.whatsapp.net')
+        });
+    },
+
+    fight: async (sock, msg, args) => {
+        const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+        const moves = [
+            'used Hadouken!',
+            'performed a Fatality!',
+            'used Ultra Combo!',
+            'landed a Critical Hit!'
+        ];
+        const damages = [100, 150, 200, 250];
+        const move = moves[Math.floor(Math.random() * moves.length)];
+        const damage = damages[Math.floor(Math.random() * damages.length)];
+
+        const sticker = { url: 'https://example.com/stickers/fight.webp' }; // Replace with actual sticker
+        await sock.sendMessage(msg.key.remoteJid, {
+            sticker: sticker,
+            caption: `*${msg.pushName}* ${move}\nDealt ${damage} damage to ${target}! 👊💥`,
+            mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+        });
     }
 };
 
