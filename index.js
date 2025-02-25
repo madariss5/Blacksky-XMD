@@ -18,9 +18,6 @@ async function connectToWhatsApp() {
     // Initialize session directory
     await sessionManager.initialize();
 
-    // Clean up old sessions
-    await sessionManager.cleanupOldSessions();
-
     // Use file-based auth state
     const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
 

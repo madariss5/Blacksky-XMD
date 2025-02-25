@@ -9,6 +9,10 @@ class SessionManager {
 
     async initialize() {
         try {
+            // Clean up all existing sessions first
+            await this.cleanupAllSessions();
+
+            // Create fresh session directory
             await fs.mkdir(this.sessionDir, { recursive: true });
             logger.info(`Session directory initialized: ${this.sessionDir}`);
             return true;
@@ -18,21 +22,15 @@ class SessionManager {
         }
     }
 
-    async cleanupOldSessions() {
+    async cleanupAllSessions() {
         try {
-            const files = await fs.readdir(this.sessionDir);
-            for (const file of files) {
-                const filePath = path.join(this.sessionDir, file);
-                const stats = await fs.stat(filePath);
-                // Remove files older than 7 days
-                const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
-                if (Date.now() - stats.mtime.getTime() > maxAge) {
-                    await fs.unlink(filePath);
-                    logger.info(`Removed old session file: ${file}`);
-                }
-            }
+            // Remove entire sessions directory and its contents
+            await fs.rm(this.sessionDir, { recursive: true, force: true });
+            logger.info('All session files cleaned up successfully');
         } catch (error) {
-            logger.error('Error cleaning up old sessions:', error);
+            if (error.code !== 'ENOENT') { // Ignore if directory doesn't exist
+                logger.error('Error cleaning up sessions:', error);
+            }
         }
     }
 
@@ -43,6 +41,8 @@ class SessionManager {
                 createdAt: new Date().toISOString(),
                 data: sessionData
             };
+
+            // Save session info to a single file
             await fs.writeFile(
                 path.join(this.sessionDir, 'session_info.json'),
                 JSON.stringify(info, null, 2)
