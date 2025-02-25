@@ -20,6 +20,15 @@
     "OWNER_NUMBER": {
       "description": "WhatsApp number of the bot owner (with country code)",
       "required": true
+    },
+    "BOT_NUMBER": {
+      "description": "WhatsApp number for pairing code (with country code, no '+' or spaces)",
+      "required": false
+    },
+    "USE_PAIRING": {
+      "description": "Enable pairing code authentication (true/false)",
+      "required": false,
+      "value": "false"
     }
   },
   "buildpacks": [

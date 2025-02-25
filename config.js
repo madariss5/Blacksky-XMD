@@ -1,8 +1,8 @@
 module.exports = {
     prefix: '!',  // Command prefix
-    ownerNumber: process.env.OWNER_NUMBER,  // Owner number from environment variable
+    ownerNumber: process.env.OWNER_NUMBER || '1234567890@s.whatsapp.net',  // Default owner number
     ownerName: process.env.OWNER_NAME || 'Bot Owner',
-    botName: '𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻',  // Changed back to original name
+    botName: '𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻',
     menuImage: 'https://raw.githubusercontent.com/your-repo/assets/main/f9.jpg',
     commands: {
         // Basic commands

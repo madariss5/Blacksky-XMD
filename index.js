@@ -1,6 +1,5 @@
 const chalk = require('chalk');
-
-const { default: makeWASocket, DisconnectReason, useMultiFileAuthState } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, DisconnectReason, useMultiFileAuthState, usePairingCode } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const path = require('path');
 const fs = require('fs').promises;
@@ -23,19 +22,47 @@ async function connectToWhatsApp() {
     // Use file-based auth state
     const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
 
+    // FLASH-MD Connection Configuration
     const sock = makeWASocket({
-        printQRInTerminal: false, // We'll handle QR ourselves
+        printQRInTerminal: false,
         auth: state,
         logger: logger,
-        browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '116.0.0'], // More stable browser ID
-        connectTimeoutMs: 120000, // Increased timeout
-        defaultQueryTimeoutMs: 120000, // Increased query timeout
-        keepAliveIntervalMs: 10000, // More frequent keepalive
-        emitOwnEvents: true,
-        retryRequestDelayMs: 5000, // Increased retry delay
-        maxRetries: 5, // Added max retries
-        version: [2, 2323, 4] // Stable WhatsApp version
+        browser: ["FLASH-MD", "Firefox", "1.0.0"], // Flash-MD browser config
+        connectTimeoutMs: 60000,
+        qrTimeout: 60000,
+        defaultQueryTimeoutMs: 60000,
+        generateHighQualityLinkPreview: true,
+        syncFullHistory: true,
+        markOnlineOnConnect: true,
+        shouldIgnoreJid: jid => isJidBroadcast(jid),
+        downloadHistory: false,
+        getMessage: async (key) => { return { conversation: 'hello' } },
+        patchMessageBeforeSending: (message) => {
+            const requiresPatch = !!(
+                message.buttonsMessage ||
+                message.templateMessage ||
+                message.listMessage
+            );
+            if (requiresPatch) {
+                message = {
+                    viewOnceMessage: {
+                        message: {
+                            messageContextInfo: {
+                                deviceListMetadataVersion: 2,
+                                deviceListMetadata: {}
+                            },
+                            ...message
+                        }
+                    }
+                };
+            }
+            return message;
+        }
     });
+
+    // Enable pairing code
+    const phoneNumber = process.env.BOT_NUMBER || '1234567890';
+    const usePairing = process.env.USE_PAIRING === 'true';
 
     // Handle connection updates
     sock.ev.on('connection.update', async (update) => {
@@ -45,13 +72,31 @@ async function connectToWhatsApp() {
             try {
                 // Clear terminal and show header
                 process.stdout.write('\x1Bc');
-                console.log('\n=== 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 QR CODE ===\n');
+                console.log('\n=== 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 CONNECTION ===\n');
 
-                // Generate QR code synchronously
+                if (usePairing) {
+                    console.log('🔄 Generating pairing code...');
+                    try {
+                        // Get pairing code
+                        const code = await sock.requestPairingCode(phoneNumber);
+                        console.log('\n╔═══════════════════════════╗');
+                        console.log('║   PAIRING CODE GENERATED   ║');
+                        console.log('╚═══════════════════════════╝\n');
+                        console.log(`Your pairing code: ${chalk.bold.white(code)}\n`);
+                        console.log('1. Open WhatsApp on your phone');
+                        console.log('2. Go to Linked Devices > Link a Device');
+                        console.log('3. Enter the pairing code shown above\n');
+                    } catch (error) {
+                        logger.error('Failed to generate pairing code:', error);
+                        console.log('\nFalling back to QR code...\n');
+                    }
+                }
+
+                // Always show QR code as fallback
+                console.log('Or scan this QR code:\n');
                 qrcode.generate(qr, { small: true }, (qrcode) => {
                     console.log(qrcode);
-                    console.log('\nScan QR Code above with WhatsApp to start the bot');
-                    console.log('1. Open WhatsApp on your phone');
+                    console.log('\n1. Open WhatsApp on your phone');
                     console.log('2. Tap Menu or Settings and select Linked Devices');
                     console.log('3. Point your phone camera to this QR code to scan\n');
                 });
@@ -77,7 +122,7 @@ async function connectToWhatsApp() {
                 isConnected = true;
                 console.log('Connected to WhatsApp');
 
-                // Save session data for Heroku deployment
+                // Save session data for persistence
                 const sessionData = {
                     creds: sock.authState.creds,
                     keys: sock.authState.keys
@@ -97,12 +142,6 @@ async function connectToWhatsApp() {
                         JSON.stringify(sessionData)
                     );
 
-                    console.log('\n=== HEROKU DEPLOYMENT INFO ===');
-                    console.log('Add these to your Heroku config vars:');
-                    console.log(`SESSION_ID=${sock.authState.creds.me?.id || 'Not available'}`);
-                    console.log('SESSION_DATA=<Copy contents from creds.json>');
-                    console.log('==============================\n');
-
                     // Send success message to owner
                     await sock.sendMessage(config.ownerNumber, {
                         text: `*🚀 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 Connected Successfully!*\n\n` +
@@ -110,30 +149,11 @@ async function connectToWhatsApp() {
                               `• Owner: ${config.ownerName}\n` +
                               `• Session ID: ${sock.authState.creds.me?.id || 'Not available'}\n` +
                               `• Time: ${new Date().toLocaleString()}\n\n` +
-                              `Bot is ready! Use ${config.prefix}menu to see commands.\n\n` +
-                              `✅ Credentials have been saved to creds.json\n` +
-                              `📝 See next message for Heroku deployment data`
-                    });
-
-                    // Send creds.json content as a separate message
-                    const credsContent = JSON.stringify(sessionData, null, 2);
-                    await sock.sendMessage(config.ownerNumber, {
-                        text: `*📋 Heroku Deployment Data*\n\n` +
-                              `Add this data to your Heroku config vars as *SESSION_DATA*:\n\n` +
-                              '```json\n' + credsContent + '\n```\n\n' +
-                              `*Session ID:* ${sock.authState.creds.me?.id || 'Not available'}\n` +
-                              '✅ Your bot is ready for Heroku deployment!'
+                              `Bot is ready! Use ${config.prefix}menu to see commands.`
                     });
 
                 } catch (error) {
                     console.error('Failed to save credentials:', error);
-                    try {
-                        await sock.sendMessage(config.ownerNumber, {
-                            text: `⚠️ Warning: Failed to save credentials\nError: ${error.message}`
-                        });
-                    } catch (err) {
-                        console.error('Failed to send error message to owner:', err);
-                    }
                 }
             }
         }
@@ -158,6 +178,11 @@ async function connectToWhatsApp() {
             }
         }
     });
+}
+
+// Helper function for JID validation
+function isJidBroadcast(jid) {
+    return jid.includes('@broadcast');
 }
 
 // Start the bot with error handling

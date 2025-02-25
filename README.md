@@ -1,6 +1,23 @@
 # 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻
 A WhatsApp Multi-Device bot using Node.js and Baileys library.
 
+## 🚀 Quick Start (Replit)
+1. Click "Fork" or "Use Template" to create your own copy
+2. The bot will automatically start and show both connection options:
+   - Scan QR Code (Default)
+   - Use Pairing Code (Optional)
+3. Choose your preferred connection method:
+   - QR Code: Scan with WhatsApp (Linked Devices > Link a Device)
+   - Pairing Code: Enter the code shown in WhatsApp
+4. Bot is ready to use! Try `!menu` to see available commands
+
+## ⚙️ Optional Configuration
+Want to customize the bot? Add these in your Replit Secrets:
+- `OWNER_NAME`: Your name (default: "Bot Owner")
+- `OWNER_NUMBER`: Your WhatsApp number (format: number@s.whatsapp.net)
+- `BOT_NUMBER`: Bot's phone number for pairing code (no '+' or spaces)
+- `USE_PAIRING`: Set to "true" to enable pairing code (default: false)
+
 ## Features
 - 🚀 Multi-Device Support
 - 👥 Group Management
@@ -11,51 +28,7 @@ A WhatsApp Multi-Device bot using Node.js and Baileys library.
 - 👑 Owner Commands
 - 📝 User Registration
 - 💫 100+ Dynamic Commands
-
-## Setup
-1. Clone the repository
-```bash
-git clone https://github.com/your-username/blacksky-md
-cd blacksky-md
-```
-
-2. Install dependencies
-```bash
-npm install
-```
-
-3. Configure environment variables:
-Create a `.env` file with:
-```env
-OWNER_NAME=YourName
-OWNER_NUMBER=1234567890@s.whatsapp.net
-```
-
-4. Run the bot
-```bash
-npm start
-```
-
-5. Scan the QR code with WhatsApp to start
-
-## Heroku Deployment
-1. Run the bot locally first to get session data
-2. When the bot connects, copy the `SESSION_ID` and `SESSION_DATA` values from console
-3. Create a new Heroku app
-4. Add the following Config Vars in Heroku Settings:
-   - `SESSION_ID`: Your session ID from step 2
-   - `SESSION_DATA`: Your session data from step 2
-   - `OWNER_NAME`: Your name
-   - `OWNER_NUMBER`: Your WhatsApp number (format: number@s.whatsapp.net)
-
-5. Deploy to Heroku:
-   ```bash
-   heroku login
-   heroku git:remote -a your-app-name
-   git push heroku main
-   ```
-
-6. Enable the worker in Resources tab
+- 🔐 Dual Authentication (QR & Pairing)
 
 ## Commands
 Use `!help` to see all available commands.
@@ -85,9 +58,10 @@ Use `!help` to see all available commands.
 - `!setbotname` - Change bot name
 
 ## Troubleshooting
-- If the bot disconnects, restart it and scan the QR code again
-- For Heroku deployment issues, ensure all config vars are set correctly
-- Make sure your WhatsApp is updated to the latest version
+- If you see "Error: Invalid QR code", just wait - a new QR code will appear
+- If pairing code doesn't work, try scanning the QR code instead
+- If bot disconnects, it will automatically try to reconnect
+- For other issues, create an issue in this repository
 
 ## Support
 For support:
