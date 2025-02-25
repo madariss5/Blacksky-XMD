@@ -1,9 +1,9 @@
 module.exports = {
     prefix: '!',  // Command prefix
-    ownerNumber: process.env.OWNER_NUMBER || '1234567890@s.whatsapp.net',  // Replace with your number
+    ownerNumber: process.env.OWNER_NUMBER,  // Owner number from environment variable
     ownerName: process.env.OWNER_NAME || 'Bot Owner',
     botName: '𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻',
-    menuImage: 'https://raw.githubusercontent.com/your-repo/assets/main/f9.jpg', // Replace with actual Fast & Furious image URL
+    menuImage: 'https://raw.githubusercontent.com/your-repo/assets/main/f9.jpg',
     commands: {
         // Basic commands
         menu: {
