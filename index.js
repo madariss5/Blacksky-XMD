@@ -65,35 +65,62 @@ async function connectToWhatsApp() {
                 console.log('Connected to WhatsApp');
 
                 // Save session data for Heroku deployment
-                const sessionData = JSON.stringify({
+                const sessionData = {
                     creds: sock.authState.creds,
                     keys: sock.authState.keys
-                });
+                };
 
-                // Save session info
-                await sessionManager.saveSessionInfo(
-                    sock.authState.creds.me?.id || 'Not available',
-                    sessionData
-                );
-
-                console.log('\n=== HEROKU DEPLOYMENT INFO ===');
-                console.log('Add these to your Heroku config vars:');
-                console.log(`SESSION_ID=${sock.authState.creds.me?.id || 'Not available'}`);
-                console.log(`SESSION_DATA=${sessionData}`);
-                console.log('==============================\n');
-
-                // Send success message to owner
+                // Save credentials to creds.json file
                 try {
+                    await fs.writeFile(
+                        path.join(__dirname, 'creds.json'),
+                        JSON.stringify(sessionData, null, 2)
+                    );
+                    console.log('Credentials saved to creds.json');
+
+                    // Save session info
+                    await sessionManager.saveSessionInfo(
+                        sock.authState.creds.me?.id || 'Not available',
+                        JSON.stringify(sessionData)
+                    );
+
+                    console.log('\n=== HEROKU DEPLOYMENT INFO ===');
+                    console.log('Add these to your Heroku config vars:');
+                    console.log(`SESSION_ID=${sock.authState.creds.me?.id || 'Not available'}`);
+                    console.log('SESSION_DATA=<Copy contents from creds.json>');
+                    console.log('==============================\n');
+
+                    // Send success message to owner
                     await sock.sendMessage(config.ownerNumber, {
                         text: `*🚀 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 Connected Successfully!*\n\n` +
                               `• Bot Name: ${config.botName}\n` +
                               `• Owner: ${config.ownerName}\n` +
                               `• Session ID: ${sock.authState.creds.me?.id || 'Not available'}\n` +
                               `• Time: ${new Date().toLocaleString()}\n\n` +
-                              `Bot is ready! Use ${config.prefix}menu to see commands.`
+                              `Bot is ready! Use ${config.prefix}menu to see commands.\n\n` +
+                              `✅ Credentials have been saved to creds.json\n` +
+                              `📝 See next message for Heroku deployment data`
                     });
+
+                    // Send creds.json content as a separate message
+                    const credsContent = JSON.stringify(sessionData, null, 2);
+                    await sock.sendMessage(config.ownerNumber, {
+                        text: `*📋 Heroku Deployment Data*\n\n` +
+                              `Add this data to your Heroku config vars as *SESSION_DATA*:\n\n` +
+                              '```json\n' + credsContent + '\n```\n\n' +
+                              `*Session ID:* ${sock.authState.creds.me?.id || 'Not available'}\n` +
+                              '✅ Your bot is ready for Heroku deployment!'
+                    });
+
                 } catch (error) {
-                    console.log('Failed to send owner message:', error);
+                    console.error('Failed to save credentials:', error);
+                    try {
+                        await sock.sendMessage(config.ownerNumber, {
+                            text: `⚠️ Warning: Failed to save credentials\nError: ${error.message}`
+                        });
+                    } catch (err) {
+                        console.error('Failed to send error message to owner:', err);
+                    }
                 }
             }
         }
