@@ -2,7 +2,7 @@ module.exports = {
     prefix: '!',  // Command prefix
     ownerNumber: process.env.OWNER_NUMBER,  // Owner number from environment variable
     ownerName: process.env.OWNER_NAME || 'Bot Owner',
-    botName: '𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻',
+    botName: 'Flash-MD',  // Updated bot name
     menuImage: 'https://raw.githubusercontent.com/your-repo/assets/main/f9.jpg',
     commands: {
         // Basic commands

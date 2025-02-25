@@ -1,39 +1,38 @@
 const { default: makeWASocket, DisconnectReason, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const path = require('path');
+const fs = require('fs').promises;
 const qrcode = require('qrcode-terminal'); 
 const messageHandler = require('./handlers/message');
 const logger = require('./utils/logger');
 const config = require('./config');
+const SessionManager = require('./utils/session');
 
-// Heroku doesn't persist files, so we'll use environment variable for session if available
-const getAuthState = async () => {
-    if (process.env.SESSION_ID) {
-        return {
-            state: {
-                creds: {
-                    me: {
-                        id: process.env.SESSION_ID
-                    }
-                }
-            },
-            saveCreds: async () => {
-                // In Heroku, we can't save to file system
-                logger.info('Session saved to environment');
-            }
-        };
-    }
-    return await useMultiFileAuthState('auth_info_baileys');
-};
+// Create sessions directory if it doesn't exist
+const SESSION_DIR = './sessions/flash-md';
+const sessionManager = new SessionManager(SESSION_DIR);
 
 async function connectToWhatsApp() {
-    const { state, saveCreds } = await getAuthState();
+    // Initialize session directory
+    await sessionManager.initialize();
+
+    // Clean up old sessions
+    await sessionManager.cleanupOldSessions();
+
+    // Use file-based auth state
+    const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
 
     const sock = makeWASocket({
         printQRInTerminal: true,
         auth: state,
         logger: logger,
-        browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '1.0.0']
+        // Update browser identification to match latest WhatsApp Web
+        browser: ['WhatsApp Desktop', 'Desktop', '1.0.0'],
+        connectTimeoutMs: 60000,
+        defaultQueryTimeoutMs: 60000,
+        keepAliveIntervalMs: 25000,
+        emitOwnEvents: true,
+        retryRequestDelayMs: 2500
     });
 
     // Handle connection updates
@@ -41,9 +40,10 @@ async function connectToWhatsApp() {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
-            // Display QR code in terminal
             qrcode.generate(qr, { small: true });
-            console.log('\nScan the QR code above with WhatsApp to start the bot\n');
+            console.log('\n=== SCAN QR CODE ===');
+            console.log('Scan the QR code above with WhatsApp to start the bot');
+            console.log('=====================\n');
         }
 
         if (connection === 'close') {
@@ -55,61 +55,61 @@ async function connectToWhatsApp() {
             console.log('Reconnecting:', shouldReconnect);
 
             if (shouldReconnect) {
-                setTimeout(() => {
-                    console.log('Attempting to reconnect...');
-                    connectToWhatsApp();
-                }, 5000); // Wait 5 seconds before reconnecting
-            } else {
-                console.log('Connection closed permanently. Please restart the bot.');
+                setTimeout(connectToWhatsApp, 3000);
             }
         } else if (connection === 'open') {
             console.log('Connected to WhatsApp');
-            const sessionId = sock.authState.creds.me?.id || 'Not available';
-            console.log('Session ID:', sessionId);
-            logger.info(`Session ID: ${sessionId}`);
 
-            // If running on Heroku and session ID isn't set, log it for configuration
-            if (!process.env.SESSION_ID) {
-                console.log('\n=== IMPORTANT ===');
-                console.log('Set this session ID in your Heroku config vars:');
-                console.log(`SESSION_ID=${sessionId}`);
-                console.log('==================\n');
-            }
+            // Save session data for Heroku deployment
+            const sessionData = JSON.stringify({
+                creds: sock.authState.creds,
+                keys: sock.authState.keys
+            });
 
-            // Send startup message to owner
+            // Save session info
+            await sessionManager.saveSessionInfo(
+                sock.authState.creds.me?.id || 'Not available',
+                sessionData
+            );
+
+            console.log('\n=== HEROKU DEPLOYMENT INFO ===');
+            console.log('Add these to your Heroku config vars:');
+            console.log(`SESSION_ID=${sock.authState.creds.me?.id || 'Not available'}`);
+            console.log(`SESSION_DATA=${sessionData}`);
+            console.log('==============================\n');
+
+            // Send success message to owner
             try {
                 await sock.sendMessage(config.ownerNumber, {
-                    text: `*🚀 Bot Successfully Connected!*\n\n` +
+                    text: `*🚀 Flash-MD Connected Successfully!*\n\n` +
                           `• Bot Name: ${config.botName}\n` +
                           `• Owner: ${config.ownerName}\n` +
-                          `• Session ID: ${sessionId}\n` +
-                          `• Connection Time: ${new Date().toLocaleString()}\n\n` +
-                          `Bot is now online and ready to use! 🎉\n` +
-                          `Use ${config.prefix}menu to see available commands.`
+                          `• Session ID: ${sock.authState.creds.me?.id || 'Not available'}\n` +
+                          `• Time: ${new Date().toLocaleString()}\n\n` +
+                          `Bot is ready! Use ${config.prefix}menu to see commands.`
                 });
-                logger.info('Startup message sent to owner');
             } catch (error) {
-                logger.error('Failed to send startup message:', error);
+                console.log('Failed to send owner message:', error);
             }
         }
     });
 
-    // Handle credentials update
+    // Save credentials when updated
     sock.ev.on('creds.update', saveCreds);
 
-    // Handle incoming messages
+    // Handle messages
     sock.ev.on('messages.upsert', async ({ messages }) => {
+        if (!messages[0]) return;
         try {
             await messageHandler(sock, messages[0]);
         } catch (error) {
-            logger.error('Error in message handling:', error);
-            // Try to notify owner about the error
+            console.error('Error handling message:', error);
             try {
                 await sock.sendMessage(config.ownerNumber, {
-                    text: `*⚠️ Bot Error*\n\n${error.message}\n\nCheck the logs for more details.`
+                    text: `*⚠️ Error*\n\n${error.message}`
                 });
-            } catch (notifyError) {
-                logger.error('Failed to notify owner about error:', notifyError);
+            } catch (err) {
+                console.error('Failed to send error notification:', err);
             }
         }
     });
@@ -121,8 +121,6 @@ async function connectToWhatsApp() {
         await connectToWhatsApp();
     } catch (err) {
         console.error('Fatal error:', err);
-        logger.error('Fatal error:', err);
-        // Exit with error code to trigger restart if using PM2
         process.exit(1);
     }
 })();

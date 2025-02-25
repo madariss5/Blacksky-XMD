@@ -24,23 +24,38 @@ cd blacksky-md
 npm install
 ```
 
-3. Run the bot
+3. Configure environment variables:
+Create a `.env` file with:
+```env
+OWNER_NAME=YourName
+OWNER_NUMBER=1234567890@s.whatsapp.net
+```
+
+4. Run the bot
 ```bash
 npm start
 ```
 
-4. Scan the QR code with WhatsApp
+5. Scan the QR code with WhatsApp to start
 
 ## Heroku Deployment
-1. Fork this repository
-2. Create a new Heroku app
-3. Connect your GitHub repository
+1. Run the bot locally first to get session data
+2. When the bot connects, copy the `SESSION_ID` and `SESSION_DATA` values from console
+3. Create a new Heroku app
 4. Add the following Config Vars in Heroku Settings:
-   - `SESSION_ID`: Your WhatsApp session ID (get this after scanning QR locally)
+   - `SESSION_ID`: Your session ID from step 2
+   - `SESSION_DATA`: Your session data from step 2
    - `OWNER_NAME`: Your name
    - `OWNER_NUMBER`: Your WhatsApp number (format: number@s.whatsapp.net)
 
-5. Deploy the app and enable the worker in Resources tab
+5. Deploy to Heroku:
+   ```bash
+   heroku login
+   heroku git:remote -a your-app-name
+   git push heroku main
+   ```
+
+6. Enable the worker in Resources tab
 
 ## Commands
 Use `!help` to see all available commands.
@@ -69,11 +84,15 @@ Use `!help` to see all available commands.
 - `!setprefix` - Change bot prefix
 - `!setbotname` - Change bot name
 
-## Contributing
-Contributions are welcome! Please feel free to submit a Pull Request.
+## Troubleshooting
+- If the bot disconnects, restart it and scan the QR code again
+- For Heroku deployment issues, ensure all config vars are set correctly
+- Make sure your WhatsApp is updated to the latest version
+
+## Support
+For support:
+1. Open an issue in this repository
+2. Join our WhatsApp group [here](https://chat.whatsapp.com/your-group-link)
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Support
-For support, join our WhatsApp group [here](https://chat.whatsapp.com/your-group-link).

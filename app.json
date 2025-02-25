@@ -9,14 +9,17 @@
       "description": "Session ID for WhatsApp connection",
       "required": false
     },
+    "SESSION_DATA": {
+      "description": "Full session data for WhatsApp connection (will be provided after first local run)",
+      "required": false
+    },
     "OWNER_NAME": {
       "description": "Name of the bot owner",
       "required": true
     },
     "OWNER_NUMBER": {
       "description": "WhatsApp number of the bot owner (with country code)",
-      "required": true,
-      "value": "1234567890@s.whatsapp.net"
+      "required": true
     }
   },
   "buildpacks": [
