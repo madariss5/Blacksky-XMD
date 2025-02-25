@@ -1,44 +1,30 @@
-const chalk = require('chalk');
-const { default: makeWASocket, DisconnectReason, useMultiFileAuthState, usePairingCode } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, delay, DisconnectReason, fetchLatestBaileysVersion, makeInMemoryStore, jidDecode, proto } = require("@whiskeysockets/baileys");
 const { Boom } = require('@hapi/boom');
-const path = require('path');
-const fs = require('fs').promises;
+const pino = require("pino");
+const chalk = require('chalk');
+const fs = require("fs-extra");
+const path = require("path");
 const qrcode = require('qrcode-terminal');
-const messageHandler = require('./handlers/message');
-const logger = require('./utils/logger');
-const config = require('./config');
-const SessionManager = require('./utils/session');
+const conf = require("./config");
+const logger = require("./utils/logger");
 
-// Create sessions directory if it doesn't exist
-const SESSION_DIR = './sessions/blacksky-md';
-const sessionManager = new SessionManager(SESSION_DIR);
+let isConnected = false;
+let session = conf.session;
+let connectionChoice = null;
 
-let isConnected = false; // Track connection status
-
-async function askPhoneNumber() {
-    console.log(chalk.cyan('\n╔═══════════════════════════════════════════╗'));
-    console.log(chalk.cyan('║       ') + chalk.yellow('ENTER YOUR PHONE NUMBER') + chalk.cyan('         ║'));
-    console.log(chalk.cyan('╚═══════════════════════════════════════════╝\n'));
-    console.log(chalk.gray('• Enter your phone number:'));
-    console.log(chalk.gray('• Use this format: 1234567890'));
-    console.log(chalk.gray('• No spaces or special characters'));
-    console.log(chalk.gray('• Must include country code\n'));
-
-    // Read phone number from environment
-    const phone = process.env.BOT_NUMBER || '1234567890';
-    const cleanPhone = phone.replace(/[^0-9]/g, '');
-
-    // Validate phone number format
-    if (!cleanPhone.match(/^\d{10,14}$/)) {
-        throw new Error('Invalid phone number format');
-    }
-
-    return cleanPhone;
-}
+const store = makeInMemoryStore({
+    logger: pino().child({
+        level: "silent",
+        stream: "store"
+    })
+});
 
 async function showConnectionMenu() {
+    // Clear terminal first
+    process.stdout.write('\x1Bc');
+
     console.log(chalk.cyan('\n╔═══════════════════════════════════════════╗'));
-    console.log(chalk.cyan('║          ') + chalk.yellow('𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 CONNECTION') + chalk.cyan('         ║'));
+    console.log(chalk.cyan('║          ') + chalk.yellow('𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻') + chalk.cyan('              ║'));
     console.log(chalk.cyan('╚═══════════════════════════════════════════╝\n'));
 
     console.log(chalk.cyan('╔═══════════════════════════════════════════╗'));
@@ -55,200 +41,145 @@ async function showConnectionMenu() {
     // Footer
     console.log(chalk.cyan('═══════════════════════════════════════════\n'));
 
-    // Return selection based on environment or default to QR
-    return process.env.USE_PAIRING !== 'false' ? '1' : '2';
+    // Store choice and return
+    connectionChoice = process.env.USE_PAIRING === 'true' ? '1' : '2';
+    return connectionChoice;
 }
 
-async function showQRCode(qr) {
+async function askPhoneNumber() {
     console.log(chalk.cyan('\n╔═══════════════════════════════════════════╗'));
-    console.log(chalk.cyan('║         ') + chalk.yellow('QR CODE SCANNER') + chalk.cyan('             ║'));
+    console.log(chalk.cyan('║         ') + chalk.yellow('ENTER PHONE NUMBER') + chalk.cyan('            ║'));
     console.log(chalk.cyan('╚═══════════════════════════════════════════╝\n'));
 
-    qrcode.generate(qr, { small: true }, (qrcode) => {
-        console.log(qrcode);
-    });
+    console.log(chalk.gray('• Format: Country Code + Number'));
+    console.log(chalk.gray('• Example: 254712345678'));
+    console.log(chalk.gray('• Do not include + or spaces\n'));
 
-    console.log(chalk.gray('\n1. Open WhatsApp on your phone'));
-    console.log(chalk.gray('2. Tap Menu or Settings and select Linked Devices'));
-    console.log(chalk.gray('3. Point your phone camera to scan the QR code\n'));
-}
-
-async function showPairingCode(phoneNumber) {
-    console.log(chalk.cyan('\n╔═══════════════════════════════════════════╗'));
-    console.log(chalk.cyan('║         ') + chalk.yellow('PAIRING CODE') + chalk.cyan('                ║'));
-    console.log(chalk.cyan('╚═══════════════════════════════════════════╝\n'));
-
-    try {
-        const code = await sock.requestPairingCode(phoneNumber);
-        console.log(chalk.white('Your pairing code: ') + chalk.green.bold(code));
-        console.log(chalk.gray('\n1. Open WhatsApp on your phone'));
-        console.log(chalk.gray('2. Go to Linked Devices > Link a Device'));
-        console.log(chalk.gray('3. Enter the pairing code shown above\n'));
-    } catch (error) {
-        logger.error('Failed to generate pairing code:', error);
-        throw error;
+    const phone = process.env.BOT_NUMBER || '';
+    if (!phone.match(/^\d{10,14}$/)) {
+        throw new Error('Invalid phone number format');
     }
+    return phone;
 }
 
-async function connectToWhatsApp() {
-    // Initialize session directory
-    await sessionManager.initialize();
+async function startWhatsAppConnection() {
+    const { version } = await fetchLatestBaileysVersion();
+    const { state, saveCreds } = await useMultiFileAuthState(__dirname + "/scan");
 
-    // Use file-based auth state
-    const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
-
-    // FLASH-MD Connection Configuration
     const sock = makeWASocket({
+        version,
+        logger: pino({ level: "silent" }),
         printQRInTerminal: false,
-        auth: state,
-        logger: logger,
-        browser: ["FLASH-MD", "Firefox", "1.0.0"],
-        connectTimeoutMs: 60000,
-        qrTimeout: 60000,
-        defaultQueryTimeoutMs: 60000,
-        generateHighQualityLinkPreview: true,
-        syncFullHistory: true,
-        markOnlineOnConnect: true,
-        shouldIgnoreJid: jid => isJidBroadcast(jid),
-        downloadHistory: false,
-        getMessage: async (key) => { return { conversation: 'hello' } },
-        patchMessageBeforeSending: (message) => {
-            const requiresPatch = !!(
-                message.buttonsMessage ||
-                message.templateMessage ||
-                message.listMessage
-            );
-            if (requiresPatch) {
-                message = {
-                    viewOnceMessage: {
-                        message: {
-                            messageContextInfo: {
-                                deviceListMetadataVersion: 2,
-                                deviceListMetadata: {}
-                            },
-                            ...message
-                        }
-                    }
-                };
+        auth: {
+            creds: state.creds,
+            keys: state.keys
+        },
+        browser: ["𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻", "safari", "1.0.0"],
+        getMessage: async (key) => {
+            if (store) {
+                const msg = await store.loadMessage(key.remoteJid, key.id);
+                return msg?.message || undefined;
             }
-            return message;
+            return { conversation: "An Error Occurred, Repeat Command!" };
         }
     });
 
-    // Handle connection updates
+    store.bind(sock.ev);
+
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
             try {
-                // Clear terminal and show the menu first
-                process.stdout.write('\x1Bc');
-                const method = await showConnectionMenu();
-
-                if (method === '1') {
+                if (connectionChoice === '1') {
                     try {
                         const phoneNumber = await askPhoneNumber();
-                        await showPairingCode(phoneNumber);
+                        console.log(chalk.yellow('\nGenerating pairing code...\n'));
+                        const code = await sock.requestPairingCode(phoneNumber);
+                        console.log(chalk.white('Your pairing code: ') + chalk.green.bold(code));
+                        console.log(chalk.gray('\n1. Open WhatsApp on your phone'));
+                        console.log(chalk.gray('2. Go to Linked Devices > Link a Device'));
+                        console.log(chalk.gray('3. Enter the pairing code shown above\n'));
                     } catch (error) {
-                        console.log(chalk.red('\nPairing code setup failed. Falling back to QR code...\n'));
-                        await showQRCode(qr);
+                        console.log(chalk.red('\nPairing code generation failed. Using QR code instead.\n'));
+                        qrcode.generate(qr, { small: true });
                     }
                 } else {
-                    await showQRCode(qr);
+                    console.log(chalk.cyan('\n╔═══════════════════════════════════════════╗'));
+                    console.log(chalk.cyan('║         ') + chalk.yellow('SCAN QR CODE') + chalk.cyan('                ║'));
+                    console.log(chalk.cyan('╚═══════════════════════════════════════════╝\n'));
+                    qrcode.generate(qr, { small: true });
+                    console.log(chalk.gray('\n1. Open WhatsApp on your phone'));
+                    console.log(chalk.gray('2. Go to Linked Devices > Link a Device'));
+                    console.log(chalk.gray('3. Point your camera at the QR code\n'));
                 }
-
-                // Footer
-                console.log(chalk.cyan('═══════════════════════════════════════════\n'));
-                console.log(chalk.yellow('Waiting for connection...'));
-
             } catch (error) {
-                logger.error('Failed to handle connection update:', error);
-                console.log('\nConnection data:', qr);
+                logger.error('Connection error:', error);
             }
         }
 
-        if (connection === 'close') {
-            const shouldReconnect = (lastDisconnect?.error instanceof Boom)
-                ? lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut
-                : true;
-
-            console.log('Connection closed due to:', lastDisconnect?.error?.output?.payload?.message || 'unknown error');
-            console.log('Reconnecting:', shouldReconnect);
-
-            if (shouldReconnect) {
-                setTimeout(connectToWhatsApp, 3000);
+        if (connection === "close") {
+            let reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
+            if (reason === DisconnectReason.badSession) {
+                console.log(`Bad Session File, Please Delete ${session} and Scan Again`);
+                sock.logout();
+            } else if (reason === DisconnectReason.connectionClosed) {
+                console.log("Connection closed, reconnecting....");
+                connectToWhatsApp();
+            } else if (reason === DisconnectReason.connectionLost) {
+                console.log("Connection Lost from Server, reconnecting...");
+                connectToWhatsApp();
+            } else if (reason === DisconnectReason.connectionReplaced) {
+                console.log("Connection Replaced, Another New Session Opened, Please Close Current Session First");
+                sock.logout();
+            } else if (reason === DisconnectReason.loggedOut) {
+                console.log(`Device Logged Out, Please Delete ${session} and Scan Again.`);
+                sock.logout();
+            } else if (reason === DisconnectReason.restartRequired) {
+                console.log("Restart Required, Restarting...");
+                connectToWhatsApp();
+            } else if (reason === DisconnectReason.timedOut) {
+                console.log("Connection TimedOut, Reconnecting...");
+                connectToWhatsApp();
+            } else {
+                sock.end(`Unknown DisconnectReason: ${reason}|${lastDisconnect.error}`);
             }
-        } else if (connection === 'open') {
-            if (!isConnected) {
-                isConnected = true;
-                console.log('Connected to WhatsApp');
+        }
 
-                // Save session data for persistence
-                const sessionData = {
-                    creds: sock.authState.creds,
-                    keys: sock.authState.keys
-                };
-
-                try {
-                    await fs.writeFile(
-                        path.join(__dirname, 'creds.json'),
-                        JSON.stringify(sessionData, null, 2)
-                    );
-                    console.log('Credentials saved to creds.json');
-
-                    await sessionManager.saveSessionInfo(
-                        sock.authState.creds.me?.id || 'Not available',
-                        JSON.stringify(sessionData)
-                    );
-
-                    await sock.sendMessage(config.ownerNumber, {
-                        text: `*🚀 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 Connected Successfully!*\n\n` +
-                              `• Bot Name: ${config.botName}\n` +
-                              `• Owner: ${config.ownerName}\n` +
-                              `• Session ID: ${sock.authState.creds.me?.id || 'Not available'}\n` +
-                              `• Time: ${new Date().toLocaleString()}\n\n` +
-                              `Bot is ready! Use ${config.prefix}menu to see commands.`
-                    });
-
-                } catch (error) {
-                    console.error('Failed to save credentials:', error);
-                }
-            }
+        if (connection === 'open') {
+            console.log('Connected to WhatsApp');
+            isConnected = true;
         }
     });
 
-    // Save credentials when updated
-    sock.ev.on('creds.update', saveCreds);
-
-    // Handle messages
-    sock.ev.on('messages.upsert', async ({ messages }) => {
-        if (!messages[0]) return;
-        try {
-            await messageHandler(sock, messages[0]);
-        } catch (error) {
-            console.error('Error handling message:', error);
-            try {
-                await sock.sendMessage(config.ownerNumber, {
-                    text: `*⚠️ Error*\n\n${error.message}`
-                });
-            } catch (err) {
-                console.error('Failed to send error notification:', err);
-            }
-        }
+    // Your existing event handlers here
+    sock.ev.on("messages.upsert", async (messages) => {
+        // Your existing message handling code
     });
 }
 
-// Helper function for JID validation
-function isJidBroadcast(jid) {
-    return jid.includes('@broadcast');
-}
-
-// Start the bot with error handling
-(async () => {
+async function connectToWhatsApp() {
     try {
-        await connectToWhatsApp();
-    } catch (err) {
-        console.error('Fatal error:', err);
-        process.exit(1);
+        // Initialize session
+        if (!fs.existsSync(__dirname + "/scan/creds.json")) {
+            console.log("connexion en cour ...");
+            await fs.writeFileSync(__dirname + "/scan/creds.json", atob(session), "utf8");
+        } else if (fs.existsSync(__dirname + "/scan/creds.json") && session != "zokk") {
+            await fs.writeFileSync(__dirname + "/scan/creds.json", atob(session), "utf8");
+        }
+    } catch (error) {
+        console.log("Session Invalid " + error);
+        return;
     }
-})();
+
+    // Show connection menu first
+    await showConnectionMenu();
+
+    // Start connection after menu selection
+    setTimeout(() => {
+        startWhatsAppConnection();
+    }, 0);
+}
+
+// Start the connection
+connectToWhatsApp();
