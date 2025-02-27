@@ -84,19 +84,30 @@ const commands = {
             // Send menu with anime picture
             try {
                 await sock.sendMessage(msg.key.remoteJid, {
-                    image: { url: 'https://i.imgur.com/XqQXVVE.jpg' }, // Anime menu banner
+                    image: { url: 'https://raw.githubusercontent.com/WhiskeySockets/Baileys/master/Media/logo.png' }, // More reliable URL
                     caption: menuText,
                     mentions: [config.ownerNumber]
                 });
                 logger.info('Menu sent successfully with image');
             } catch (imageError) {
-                logger.warn('Failed to send menu with image:', imageError);
-                // Fallback to text-only menu
-                await sock.sendMessage(msg.key.remoteJid, {
-                    text: menuText,
-                    mentions: [config.ownerNumber]
-                });
-                logger.info('Menu sent successfully as text-only');
+                logger.warn('Failed to send menu with first image, trying backup:', imageError);
+                try {
+                    // Try backup image
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        image: { url: 'https://i.ibb.co/4Fgt31L/anime-menu.jpg' },
+                        caption: menuText,
+                        mentions: [config.ownerNumber]
+                    });
+                    logger.info('Menu sent successfully with backup image');
+                } catch (backupError) {
+                    logger.warn('Failed to send menu with backup image, falling back to text:', backupError);
+                    // Fallback to text-only menu
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        text: menuText,
+                        mentions: [config.ownerNumber]
+                    });
+                    logger.info('Menu sent successfully as text-only');
+                }
             }
 
         } catch (error) {
