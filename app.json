@@ -5,6 +5,10 @@
   "logo": "https://node-js-sample.herokuapp.com/node.png",
   "keywords": ["node", "whatsapp", "bot", "baileys", "multi-device"],
   "env": {
+    "SESSION_ID": {
+      "description": "Session ID for WhatsApp authentication (required for Heroku deployment)",
+      "required": true
+    },
     "OWNER_NAME": {
       "description": "Name of the bot owner",
       "required": true
@@ -12,11 +16,6 @@
     "OWNER_NUMBER": {
       "description": "WhatsApp number of the bot owner (with country code)",
       "required": true
-    },
-    "USE_PAIRING": {
-      "description": "Enable pairing code authentication (true/false)",
-      "required": false,
-      "value": "true"
     },
     "BOT_NAME": {
       "description": "Name of your WhatsApp bot",
@@ -27,6 +26,11 @@
       "description": "Command prefix for the bot",
       "required": false,
       "value": "!"
+    },
+    "USE_PAIRING": {
+      "description": "Enable pairing code authentication (true/false)",
+      "required": false,
+      "value": "true"
     },
     "NODE_ENV": {
       "description": "Environment mode (production/development)",
