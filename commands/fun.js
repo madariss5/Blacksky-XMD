@@ -109,20 +109,20 @@ const funCommands = {
 8. *!bonk* [@user] - Bonk someone on the head
 9. *!wave* [@user] - Wave at someone
 10. *!kiss* [@user] - Kiss someone
-11. *!punch* [@user] - Punch someone
-12. *!wink* [@user] - Wink at someone
-13. *!yeet* [@user] - Yeet someone into space
-14. *!kill* [@user] - Dramatically eliminate someone
-15. *!insult* [@user] - Playfully insult someone
+11. *!wink* [@user] - Wink at someone
+12. *!punch* [@user] - Punch someone
 
 🎭 *Emote Actions:*
-16. *!dance* - Show off your dance moves
-17. *!facepalm* - Express your disappointment
+13. *!dance* - Show off your dance moves
+14. *!facepalm* - Express your disappointment
 
 🎬 *Special Effects:*
-18. *!wasted* [@user] - Apply a wasted effect
-19. *!jail* [@user] - Put someone behind bars
-20. *!rip* [@user] - Create a memorial
+15. *!wasted* [@user] - Apply a wasted effect
+16. *!jail* [@user] - Put someone behind bars
+17. *!rip* [@user] - Create a memorial
+18. *!kill* [@user] - Dramatically eliminate someone
+19. *!yeet* [@user] - Yeet someone into space
+20. *!insult* [@user] - Playfully insult someone
 
 🎲 *Games & Challenges:*
 21. *!coinflip* - Flip a coin
