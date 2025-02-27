@@ -1,7 +1,7 @@
 const config = require('../config');
 const store = require('../database/store');
+const os = require('os');
 
-// Owner command implementations
 const ownerCommands = {
     broadcast: async (sock, msg, args) => {
         if (msg.key.remoteJid !== config.ownerNumber) {
@@ -220,16 +220,137 @@ const ownerCommands = {
             mentions: [number]
         });
     },
-    ...Array.from({ length: 46 }, (_, i) => ({
-        [`ownerCmd${i + 1}`]: async (sock, msg, args) => {
-            if (msg.key.remoteJid !== config.ownerNumber) {
-                return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
-            }
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: `Executing owner command ${i + 1} with args: ${args.join(' ')}`
-            });
+
+    system: async (sock, msg) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
         }
-    })).reduce((acc, curr) => ({ ...acc, ...curr }), {})
+
+        const uptime = process.uptime();
+        const memory = process.memoryUsage();
+        const system = {
+            platform: os.platform(),
+            arch: os.arch(),
+            cpus: os.cpus().length,
+            totalMem: (os.totalmem() / (1024 * 1024 * 1024)).toFixed(2) + ' GB',
+            freeMem: (os.freemem() / (1024 * 1024 * 1024)).toFixed(2) + ' GB',
+            uptime: Math.floor(uptime / 3600) + 'h ' + Math.floor((uptime % 3600) / 60) + 'm',
+            heapUsed: (memory.heapUsed / (1024 * 1024)).toFixed(2) + ' MB',
+            heapTotal: (memory.heapTotal / (1024 * 1024)).toFixed(2) + ' MB'
+        };
+
+        const systemInfo = `*System Information*\n\n` +
+                          `• Platform: ${system.platform}\n` +
+                          `• Architecture: ${system.arch}\n` +
+                          `• CPUs: ${system.cpus}\n` +
+                          `• Total Memory: ${system.totalMem}\n` +
+                          `• Free Memory: ${system.freeMem}\n` +
+                          `• Uptime: ${system.uptime}\n` +
+                          `• Heap Used: ${system.heapUsed}\n` +
+                          `• Heap Total: ${system.heapTotal}`;
+
+        await sock.sendMessage(msg.key.remoteJid, { text: systemInfo });
+    },
+
+    maintenance: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+
+        const mode = args[0]?.toLowerCase();
+        if (!['on', 'off'].includes(mode)) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please specify on/off for maintenance mode!' });
+        }
+
+        store.setMaintenanceMode(mode === 'on');
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: `Maintenance mode ${mode === 'on' ? 'enabled' : 'disabled'}`
+        });
+    },
+
+    setmaxwarn: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+
+        const maxWarns = parseInt(args[0]);
+        if (isNaN(maxWarns) || maxWarns < 1) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a valid number of warnings!' });
+        }
+
+        store.setMaxWarnings(maxWarns);
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: `Maximum warnings set to ${maxWarns}`
+        });
+    },
+
+    gcjoin: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+
+        if (!args[0]) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a group link!' });
+        }
+
+        const [code] = args[0].split('whatsapp.com/')[1];
+        try {
+            await sock.groupAcceptInvite(code);
+            await sock.sendMessage(msg.key.remoteJid, { text: 'Successfully joined the group!' });
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { text: 'Failed to join group: ' + error.message });
+        }
+    },
+
+    block: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+
+        const number = args[0]?.replace('@', '') + '@s.whatsapp.net';
+        if (!number) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a number to block!' });
+        }
+
+        await sock.updateBlockStatus(number, "block");
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: `Blocked @${number.split('@')[0]}`,
+            mentions: [number]
+        });
+    },
+
+    unblock: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+
+        const number = args[0]?.replace('@', '') + '@s.whatsapp.net';
+        if (!number) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a number to unblock!' });
+        }
+
+        await sock.updateBlockStatus(number, "unblock");
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: `Unblocked @${number.split('@')[0]}`,
+            mentions: [number]
+        });
+    },
+
+    setbotmode: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+
+        const mode = args[0]?.toLowerCase();
+        if (!['public', 'private'].includes(mode)) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please specify public/private mode!' });
+        }
+
+        store.setBotMode(mode);
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: `Bot mode set to ${mode}`
+        });
+    }
 };
 
 module.exports = ownerCommands;

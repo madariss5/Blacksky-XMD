@@ -6,6 +6,118 @@ const funCommands = {
         await sock.sendMessage(msg.key.remoteJid, { text: `🎲 Coin flip result: *${result}*` });
     },
 
+    slap: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            await sock.sendMessage(msg.key.remoteJid, {
+                video: { url: 'https://media.tenor.com/DwM7wjOsFE0AAAAM/slap.mp4' },
+                caption: `*${msg.pushName}* slapped ${target}! 👋`,
+                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : [],
+                gifPlayback: true
+            });
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `*${msg.pushName}* slapped ${target}! 👋`
+            });
+        }
+    },
+
+    magic8ball: async (sock, msg, args) => {
+        const responses = [
+            "It is certain! ✨",
+            "Without a doubt! 💫",
+            "Most likely! 🌟",
+            "Better not tell you now... 🤫",
+            "Cannot predict now... 🤔",
+            "Don't count on it! 🚫",
+            "My sources say no! ❌",
+            "Outlook not so good! 😕"
+        ];
+
+        if (!args.length) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: "Please ask a question! 🎱"
+            });
+        }
+
+        const response = responses[Math.floor(Math.random() * responses.length)];
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: `🎱 *Magic 8 Ball*\n\nQ: ${args.join(' ')}\nA: ${response}`
+        });
+    },
+
+    dare: async (sock, msg) => {
+        const dares = [
+            "Send your latest selfie! 📸",
+            "Tell us your most embarrassing story! 😳",
+            "Do your best dance move! 💃",
+            "Sing a part of your favorite song! 🎤",
+            "Tell us your worst joke! 😆",
+            "Share your phone's battery percentage! 🔋",
+            "Tell us the last thing you googled! 🔍",
+            "Share your most used emoji! 😊"
+        ];
+
+        const dare = dares[Math.floor(Math.random() * dares.length)];
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: `🎯 *Dare*\n\n${dare}`
+        });
+    },
+
+    truth: async (sock, msg) => {
+        const truths = [
+            "What's your biggest fear? 😱",
+            "What's the last lie you told? 🤥",
+            "What's your most embarrassing moment? 😳",
+            "What's your biggest secret? 🤫",
+            "Who's your crush? 💕",
+            "What's the worst thing you've ever done? 😈",
+            "What's your biggest regret? 😔",
+            "What's the most childish thing you still do? 👶"
+        ];
+
+        const truth = truths[Math.floor(Math.random() * truths.length)];
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: `🎯 *Truth*\n\n${truth}`
+        });
+    },
+
+    joke: async (sock, msg) => {
+        const jokes = [
+            "Why don't scientists trust atoms? Because they make up everything! 😄",
+            "What did the grape say when it got stepped on? Nothing, it just let out a little wine! 🍷",
+            "Why don't eggs tell jokes? They'd crack up! 🥚",
+            "What do you call a bear with no teeth? A gummy bear! 🐻",
+            "Why did the scarecrow win an award? Because he was outstanding in his field! 🌾",
+            "What do you call a fish wearing a crown? King salmon! 🐟👑",
+            "Why did the cookie go to the doctor? Because it was feeling crumbly! 🍪",
+            "What do you call a sleeping bull? A bulldozer! 🐂"
+        ];
+
+        const joke = jokes[Math.floor(Math.random() * jokes.length)];
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: `😂 *Here's a joke:*\n\n${joke}`
+        });
+    },
+
+    fact: async (sock, msg) => {
+        const facts = [
+            "Honey never spoils! 🍯",
+            "Bananas are berries, but strawberries aren't! 🍌",
+            "A day on Venus is longer than its year! 🌟",
+            "Octopuses have three hearts! 🐙",
+            "Sloths can hold their breath for up to 40 minutes underwater! 🦥",
+            "The shortest war in history lasted 38 minutes! ⚔️",
+            "Cows have best friends! 🐮",
+            "Space smells like seared steak! 🌠"
+        ];
+
+        const fact = facts[Math.floor(Math.random() * facts.length)];
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: `🤓 *Random Fact:*\n\n${fact}`
+        });
+    },
+
     dice: async (sock, msg) => {
         const result = Math.floor(Math.random() * 6) + 1;
         await sock.sendMessage(msg.key.remoteJid, { text: `🎲 Dice roll result: *${result}*` });
@@ -21,23 +133,6 @@ const funCommands = {
         ];
         const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
         await sock.sendMessage(msg.key.remoteJid, { text: `📜 Random Quote:\n\n*${randomQuote}*` });
-    },
-
-    slap: async (sock, msg, args) => {
-        try {
-            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
-            await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: 'https://c.tenor.com/CvBTA0GyrogAAAPo/anime-slap.gif' },
-                caption: `*${msg.pushName}* slapped ${target}! 👋`,
-                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : [],
-                gifPlayback: true
-            });
-        } catch (error) {
-            console.error('Error sending slap:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: `*${msg.pushName}* slapped ${target}! 👋`
-            });
-        }
     },
 
     hug: async (sock, msg, args) => {
