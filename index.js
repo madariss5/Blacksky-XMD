@@ -1,105 +1,140 @@
+const { default: makeWASocket, useMultiFileAuthState, makeInMemoryStore, DisconnectReason } = require("@whiskeysockets/baileys");
 const pino = require("pino");
-let qrcode = require("qrcode-terminal");
-const PastebinAPI = require("pastebin-js");
-const path = require('path');
-pastebin = new PastebinAPI("EMWTMkQAVfJa9kM-MRUrxd5Oku1U7pgL");
+const { Boom } = require("@hapi/boom");
+const config = require("./config");
 const fs = require("fs-extra");
-if (fs.existsSync('./auth_info_baileys')) {
-  fs.emptyDirSync(__dirname + '/auth_info_baileys');
-  require('child_process').exec('rm -rf auth_info_baileys')
-  console.log('Run The Script Again');
-  setTimeout(() => {
-    console.log(' ')
-  }, 100);
-  setTimeout(() => {
-    console.log('P')
-  }, 300);
-  setTimeout(() => {
-    console.log('a')
-  }, 500);
-  setTimeout(() => {
-    console.log('s')
-  }, 700);
-  setTimeout(() => {
-    console.log('i')
-  }, 900);
-  setTimeout(() => {
-    console.log('n')
-  }, 1100);
-  setTimeout(() => {
-    console.log('d')
-  }, 1300);
-  setTimeout(() => {
-    console.log('u')
-  }, 1500);
-  setTimeout(() => {
-    console.log(' ')
-  }, 1700);
-  setTimeout(() => {
-    console.log('L')
-  }, 1900);
-  setTimeout(() => {
-    console.log('k')
-  }, 2100);
-  setTimeout(() => {
-    console.log('')
-  }, 2300);
-  setTimeout(() => {
-    console.log('')
-  }, 2500);
-  setTimeout(() => {
-    console.log('')
-  }, 2700);
-  setTimeout(() => {
-    console.log('')
-  }, 2900);
-  setTimeout(() => {
-    process.exit()
-  }, 3000)
-};
-setTimeout(() => {
-  const { default: makeWASocket, useMultiFileAuthState, Browsers, delay, makeInMemoryStore, } = require("@adiwajshing/baileys");
-  const store = makeInMemoryStore({ logger: pino().child({ level: 'silent', stream: 'store' }) })
-  async function Secktor() {
-    const { state, saveCreds } = await useMultiFileAuthState(__dirname + '/auth_info_baileys')
-    try {
-      let session = makeWASocket({
+const path = require("path");
+
+// Create store to save chats
+const store = makeInMemoryStore({ 
+    logger: pino().child({ level: "silent", stream: "store" }) 
+});
+
+// Start WhatsApp connection
+async function connectToWhatsApp() {
+    // Ensure auth directory exists
+    await fs.ensureDir("./auth_info_baileys");
+
+    const { state, saveCreds } = await useMultiFileAuthState("./auth_info_baileys");
+    console.log("Loaded session:", state.creds.registered ? "Registered" : "Waiting for QR");
+
+    // Create socket connection
+    const sock = makeWASocket({
         printQRInTerminal: true,
+        auth: state,
         logger: pino({ level: "silent" }),
-        browser: Browsers.macOS("Desktop"),
-        auth: state
-      });
-      session.ev.on("connection.update", async (s) => {
-        const { connection, lastDisconnect, qr } = s;
-        if (connection == "open") {
-          await delay(500);
-          let unique = fs.readFileSync(__dirname + '/auth_info_baileys/creds.json')
-          var c = Buffer.from(unique).toString('base64')
-
-          console.log('SESSION-ID=> ' + c)
-          console.log('\nDon\'t provide your SESSION_ID to anyone otherwise that user can access your account.\nThanks')
-          let cc = `*💃- 𝚀𝚄𝙴𝙴𝙽 𝙽𝙸𝙻𝚄 -💃*\n\n_Hey , Welcome To Queen Nilu Whatsapp Bot Md_\n\n◍ Github-https://github.com/janithsadanuwan/QueenNilu\n◍Youtube - www.youtube.com/c/janithsadanuwan\n\n⚠️ Don'T send session Vode To anyone⚠️`
-
-          await session.sendMessage(session.user.id, { text: c });
-          await session.sendMessage(session.user.id, { text: cc });
-          await require('child_process').exec('rm -rf auth_info_baileys')
-          process.exit(1)
+        browser: ["BLACKSKY-MD", "Safari", "1.0.0"],
+        getMessage: async (key) => {
+            if(store) {
+                const msg = await store.loadMessage(key.remoteJid, key.id)
+                return msg?.message || undefined
+            }
+            return {
+                conversation: "Bot Message"
+            }
         }
-        session.ev.on('creds.update', saveCreds)
-        if (
-          connection === "close" &&
-          lastDisconnect &&
-          lastDisconnect.error &&
-          lastDisconnect.error.output.statusCode != 401
-        ) {
-          Secktor();
+    });
+
+    store.bind(sock.ev);
+
+    // Handle connection updates
+    sock.ev.on("connection.update", async (update) => {
+        const { connection, lastDisconnect, qr } = update;
+
+        if(qr) {
+            console.log('\n🤖 Scan this QR code to connect:');
+            // QR code will be printed in terminal
         }
-      });
-    } catch (err) {
-      // console.log(err);
-      await require('child_process').exec('rm -rf auth_info_baileys')
-      process.exit(1)
-    }
-  }
-  Secktor();
-}, 3000)
+
+        if(connection === "close") {
+            let reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
+            if(reason === DisconnectReason.badSession) {
+                console.log("❌ Bad Session File, Please Delete Session and Scan Again");
+                await fs.remove("./auth_info_baileys");
+                process.exit();
+            } else if(reason === DisconnectReason.connectionClosed) {
+                console.log("⚠️ Connection closed, reconnecting....");
+                connectToWhatsApp();
+            } else if(reason === DisconnectReason.connectionLost) {
+                console.log("⚠️ Connection Lost from Server, reconnecting...");
+                connectToWhatsApp();
+            } else if(reason === DisconnectReason.connectionReplaced) {
+                console.log("❌ Connection Replaced, Another New Session Opened, Please Close Current Session First");
+                process.exit();
+            } else if(reason === DisconnectReason.loggedOut) {
+                console.log("❌ Device Logged Out, Please Delete Session and Scan Again.");
+                await fs.remove("./auth_info_baileys");
+                process.exit();
+            } else if(reason === DisconnectReason.restartRequired) {
+                console.log("🔄 Restart Required, Restarting...");
+                connectToWhatsApp();
+            } else if(reason === DisconnectReason.timedOut) {
+                console.log("⚠️ Connection TimedOut, Reconnecting...");
+                connectToWhatsApp();
+            } else {
+                console.log(`❌ Unknown DisconnectReason: ${reason}|${lastDisconnect.error}`);
+                connectToWhatsApp();
+            }
+        } else if(connection === "open") {
+            console.log("✅ Bot is now connected!");
+
+            // Send initial status message
+            const statusMessage = `🤖 ${config.botName} is now active!\n\n` +
+                                `Type ${config.prefix}menu to see available commands.`;
+
+            try {
+                await sock.sendMessage(config.ownerNumber, { text: statusMessage });
+            } catch (err) {
+                console.log("Could not send initial status message:", err);
+            }
+        }
+    });
+
+    // Save credentials whenever updated
+    sock.ev.on("creds.update", saveCreds);
+
+    // Handle messages
+    sock.ev.on("messages.upsert", async ({ messages, type }) => {
+        if(type !== "notify") return;
+
+        const msg = messages[0];
+        if(!msg.message) return;
+
+        const messageType = Object.keys(msg.message)[0];
+        const messageContent = msg.message[messageType];
+
+        // Check if message starts with prefix
+        if(messageContent?.startsWith(config.prefix)) {
+            const cmd = messageContent.slice(config.prefix.length).trim().split(/ +/).shift().toLowerCase();
+            const args = messageContent.slice(config.prefix.length).trim().split(/ +/).slice(1);
+
+            try {
+                if(cmd in require('./commands/basic')) {
+                    // Handle basic commands
+                    await require('./commands/basic')[cmd](sock, msg, args);
+                } else {
+                    // Try loading command from separate file
+                    try {
+                        const commandHandler = require(`./commands/${cmd}.js`);
+                        await commandHandler(sock, msg, args);
+                    } catch(err) {
+                        console.error(`Error loading command ${cmd}:`, err);
+                        await sock.sendMessage(msg.key.remoteJid, { 
+                            text: "Command not found or error in execution."
+                        });
+                    }
+                }
+            } catch(err) {
+                console.error(`Error executing command ${cmd}:`, err);
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    text: "Error executing command. Please try again later."
+                });
+            }
+        }
+    });
+
+    return sock;
+}
+
+// Start the bot
+connectToWhatsApp().catch(err => console.log("Unexpected error: " + err));
