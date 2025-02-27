@@ -1,84 +1,96 @@
 const config = require('../config');
-const basicCommands = require('../commands/basic');
-const ownerCommands = require('../commands/owner');
-const groupCommands = require('../commands/group');
-const userCommands = require('../commands/user');
-const funCommands = require('../commands/fun');
-const animeCommands = require('../commands/anime');
-const musicCommands = require('../commands/music');
+const logger = require('pino')();
 const store = require('../database/store');
-const logger = require('../utils/logger');
 
 // Command modules mapping
 const commandModules = {
-    basic: basicCommands,
-    owner: ownerCommands,
-    group: groupCommands,
-    user: userCommands,
-    fun: funCommands,
-    anime: animeCommands,
-    music: musicCommands
+    basic: require('../commands/basic'),
+    owner: require('../commands/owner'),
+    group: require('../commands/group'),
+    user: require('../commands/user'),
+    fun: require('../commands/fun'),
+    anime: require('../commands/anime'),
+    music: require('../commands/music')
 };
 
 async function executeCommand(sock, msg, command, args, moduleName) {
     try {
-        logger.info(`Executing command: ${command} from module: ${moduleName}`, {
-            user: msg.key.participant,
+        // Enhanced logging for debugging
+        logger.info('Command execution attempt:', {
+            command,
+            module: moduleName,
             chat: msg.key.remoteJid,
-            args: args
+            isGroup: msg.key.remoteJid.endsWith('@g.us'),
+            participant: msg.key.participant || msg.key.remoteJid
         });
 
-        // Validate message and participant
-        if (!msg.key?.remoteJid || (!msg.key?.participant && !msg.key.remoteJid.endsWith('@s.whatsapp.net'))) {
-            logger.warn('Invalid message format or missing participant');
+        // Validate message context
+        if (!msg.key?.remoteJid) {
+            logger.warn('Invalid message: Missing remoteJid');
             return false;
         }
 
-        // For private chats, set participant as remoteJid
-        if (!msg.key.participant && msg.key.remoteJid.endsWith('@s.whatsapp.net')) {
+        // Handle group participant identification
+        if (msg.key.remoteJid.endsWith('@g.us')) {
+            if (!msg.key.participant) {
+                logger.warn('Group message missing participant ID');
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    text: 'Error: Could not identify message sender' 
+                });
+                return false;
+            }
+        } else {
+            // For private chats, participant is the remoteJid
             msg.key.participant = msg.key.remoteJid;
         }
 
-        // Check if command exists in module
+        // Verify command exists
         if (!commandModules[moduleName]?.[command]) {
-            logger.warn(`Command ${command} not found in module ${moduleName}`);
+            logger.warn(`Command not found: ${command} in module ${moduleName}`);
             return false;
         }
 
         // Execute command with enhanced error handling
         try {
             await commandModules[moduleName][command](sock, msg, args);
-            logger.info(`Command ${command} executed successfully`, {
-                user: msg.key.participant,
-                chat: msg.key.remoteJid
+            logger.info('Command executed successfully:', {
+                command,
+                module: moduleName,
+                participant: msg.key.participant
             });
 
-            // Award XP for command usage if available
+            // Handle XP rewards
             try {
-                const xpResult = await store.addXP(msg.key.participant, store.XP_REWARDS.command);
+                const xpResult = await store.addXP(msg.key.participant, store.XP_REWARDS?.command || 10);
                 if (xpResult?.levelUp) {
-                    await sock.sendMessage(msg.key.remoteJid, { 
+                    await sock.sendMessage(msg.key.remoteJid, {
                         text: `🎉 Congratulations @${msg.key.participant.split('@')[0]}!\nYou've reached level ${xpResult.newLevel}!`,
                         mentions: [msg.key.participant]
                     });
                 }
             } catch (xpError) {
-                logger.error('Error handling XP reward:', xpError);
-                // Don't fail the command if XP handling fails
+                logger.error('XP reward error:', xpError);
             }
 
             return true;
         } catch (cmdError) {
-            logger.error(`Error executing command ${command}:`, cmdError);
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: 'An error occurred while executing the command. Please try again.' 
+            logger.error('Command execution failed:', {
+                command,
+                error: cmdError.message,
+                stack: cmdError.stack
+            });
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `Error executing command: ${cmdError.message}`
             });
             return false;
         }
     } catch (error) {
-        logger.error(`Fatal error in command execution:`, error);
-        await sock.sendMessage(msg.key.remoteJid, { 
-            text: 'A critical error occurred. Please try again later.' 
+        logger.error('Fatal command execution error:', {
+            error: error.message,
+            stack: error.stack
+        });
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: 'A critical error occurred. Please try again later.'
         });
         return false;
     }
@@ -96,19 +108,10 @@ async function messageHandler(sock, msg) {
 
         logger.info('Message received:', {
             type: messageType,
-            remoteJid: msg.key.remoteJid,
-            participant: msg.key.participant,
-            pushName: msg.pushName
+            chat: msg.key.remoteJid,
+            isGroup: msg.key.remoteJid.endsWith('@g.us'),
+            participant: msg.key.participant || msg.key.remoteJid
         });
-
-        // Handle XP for messages
-        try {
-            if (msg.key.participant) {
-                await store.addXP(msg.key.participant, store.XP_REWARDS.message);
-            }
-        } catch (xpError) {
-            logger.error('Error handling message XP:', xpError);
-        }
 
         // Extract text content from different message types
         let textContent = '';
@@ -131,31 +134,34 @@ async function messageHandler(sock, msg) {
         // Handle commands
         if (textContent.startsWith(config.prefix)) {
             const [command, ...args] = textContent.slice(config.prefix.length).trim().split(/\s+/);
-            logger.info(`Command received: ${command}, Arguments:`, args);
+            const lowercaseCommand = command.toLowerCase();
 
-            // Set participant for group messages
-            if (msg.key.remoteJid.endsWith('@g.us') && !msg.key.participant) {
-                msg.key.participant = msg.key.remoteJid;
-            }
+            logger.info('Command detected:', {
+                command: lowercaseCommand,
+                args,
+                chat: msg.key.remoteJid
+            });
 
             // Find and execute command
             let commandExecuted = false;
             for (const [moduleName, module] of Object.entries(commandModules)) {
-                if (command.toLowerCase() in module) {
-                    commandExecuted = await executeCommand(sock, msg, command.toLowerCase(), args, moduleName);
+                if (lowercaseCommand in module) {
+                    commandExecuted = await executeCommand(sock, msg, lowercaseCommand, args, moduleName);
                     break;
                 }
             }
 
-            // Command not found
             if (!commandExecuted) {
-                await sock.sendMessage(msg.key.remoteJid, { 
+                await sock.sendMessage(msg.key.remoteJid, {
                     text: `Command *${command}* not found. Use ${config.prefix}menu to see available commands.`
                 });
             }
         }
     } catch (error) {
-        logger.error('Error in message handler:', error);
+        logger.error('Message handler error:', {
+            error: error.message,
+            stack: error.stack
+        });
     }
 }
 
