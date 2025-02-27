@@ -14,7 +14,7 @@
       "required": true
     },
     "OWNER_NUMBER": {
-      "description": "WhatsApp number of the bot owner (with country code)",
+      "description": "WhatsApp number (country code + number, e.g., 1234567890)",
       "required": true
     },
     "BOT_NAME": {

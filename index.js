@@ -16,14 +16,25 @@ const validateEnv = () => {
         process.exit(1);
     }
 
-    // Validate number format
-    if (!process.env.OWNER_NUMBER.endsWith('@s.whatsapp.net')) {
-        console.error('❌ OWNER_NUMBER must end with @s.whatsapp.net');
+    // Validate number format (should be country code + number, e.g., 1234567890)
+    if (!/^\d+$/.test(process.env.OWNER_NUMBER)) {
+        console.error('❌ OWNER_NUMBER must contain only numbers (country code + number)');
+        console.error('Example: 1234567890 (no special characters)');
         process.exit(1);
     }
 
     console.log('✅ Environment variables validated successfully');
 };
+
+// Helper function to format phone number
+const formatPhoneNumber = (number) => {
+    // Remove any non-digits and add suffix
+    const cleanNumber = number.replace(/\D/g, '');
+    return `${cleanNumber}@s.whatsapp.net`;
+};
+
+// Update config with formatted number
+config.ownerNumber = formatPhoneNumber(process.env.OWNER_NUMBER);
 
 // Add the validation call before WhatsApp connection
 validateEnv();
