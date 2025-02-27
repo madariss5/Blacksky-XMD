@@ -47,38 +47,21 @@ const commandModules = {
 async function sendCredsFile(sock) {
     try {
         if (!sock.user?.id) {
-            console.log('❌ Bot number not available yet');
+            console.error('❌ Bot number not available yet');
             return false;
         }
 
-        // Read the creds file from auth_info_baileys
-        const creds = await fs.readFile('./auth_info_baileys/creds.json');
-        const credsData = JSON.parse(creds);
+        const creds = await fs.readFile('./creds.json', 'utf8');
 
-        // Create simplified creds.json content
-        const simplifiedCreds = {
-            creds: credsData
-        };
-
-        // Write the simplified creds
-        await fs.writeFile('./creds.json', JSON.stringify(simplifiedCreds, null, 2));
-
-        const credFile = await fs.readFile('./creds.json');
         await sock.sendMessage(sock.user.id, {
-            document: credFile,
-            mimetype: 'application/json',
-            fileName: 'creds.json',
-            caption: '🔐 *Heroku Deployment Credentials*\n\n' +
-                     '1. Save this file as `creds.json` in your Heroku project root\n' +
-                     '2. This file contains your session data\n' +
-                     '3. Required for maintaining your bot session on Heroku\n' +
-                     '4. Keep this file secure and do not share it\n\n' +
-                     '⚠️ Note: Update this file whenever you relogin to the bot'
+            text: `🔐 *Your Session ID*\n\n${creds}\n\n` +
+                 `Add this as SESSION_ID in your Heroku config vars`
         });
-        console.log('✅ Sent creds.json to bot chat');
+
+        console.log('✅ Sent session ID to bot chat');
         return true;
     } catch (err) {
-        console.error('❌ Error sending creds file:', err);
+        console.error('❌ Error sending session ID:', err);
         return false;
     }
 }
@@ -87,11 +70,20 @@ async function sendCredsFile(sock) {
 async function saveCredsToFile(creds) {
     try {
         // Create simplified creds format
-        const simplifiedCreds = {
-            creds: creds
-        };
-        await fs.writeJSON('./creds.json', simplifiedCreds, { spaces: 2 });
+        const botName = config.botName.replace(/[^a-zA-Z0-9]/g, '');
+        const sessionData = Buffer.from(JSON.stringify(creds)).toString('base64');
+        const credsContent = `${botName}:${sessionData}`;
+
+        await fs.writeFile('./creds.json', credsContent);
         console.log('✅ Credentials saved to creds.json');
+
+        // Send the credentials to the owner
+        if (config.ownerNumber) {
+            await sock.sendMessage(config.ownerNumber, {
+                text: `🔐 *Your Session ID*\n\n${credsContent}\n\n` +
+                     `Save this ID in your Heroku config vars as SESSION_ID`
+            });
+        }
         return true;
     } catch (err) {
         console.error('❌ Error saving credentials:', err);
