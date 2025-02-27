@@ -10,14 +10,14 @@ const funCommands = {
 2. *!hug* [@user] - Give someone a warm hug
 3. *!pat* [@user] - Pat someone gently
 4. *!dance* - Show off your dance moves
-5. *!highfive* [@user] - Give someone a high-five
-6. *!facepalm* - Express your disappointment
-7. *!poke* [@user] - Poke someone playfully
-8. *!cuddle* [@user] - Cuddle with someone sweetly
-9. *!yeet* [@user] - Yeet someone into space
-10. *!boop* [@user] - Boop someone's nose
-11. *!bonk* [@user] - Bonk someone on the head
-12. *!kill* [@user] - Dramatically eliminate someone
+5. *!kill* [@user] - Dramatically eliminate someone
+6. *!highfive* [@user] - Give someone a high-five
+7. *!facepalm* - Express your disappointment
+8. *!poke* [@user] - Poke someone playfully
+9. *!cuddle* [@user] - Cuddle with someone sweetly
+10. *!yeet* [@user] - Yeet someone into space
+11. *!boop* [@user] - Boop someone's nose
+12. *!bonk* [@user] - Bonk someone on the head
 
 🎲 *Games & Fun:*
 13. *!joke* - Get a random funny joke
