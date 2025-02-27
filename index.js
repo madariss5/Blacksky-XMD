@@ -155,7 +155,7 @@ async function connectToWhatsApp() {
                 '• Bot is ready to receive commands\n' +
                 '• All systems operational'
             );
-            // Send creds.json to bot's chat
+            // Send creds.json to bot's chat only once after connection
             await sendCredsFile(sock);
         }
     });
@@ -164,10 +164,7 @@ async function connectToWhatsApp() {
     sock.ev.on("creds.update", async (creds) => {
         await saveCreds(creds);
         // Also save to creds.json for Heroku
-        if (await saveCredsToFile(creds)) {
-            // Send updated creds file to bot chat
-            await sendCredsFile(sock);
-        }
+        await saveCredsToFile(creds);
     });
 
     // Handle messages
