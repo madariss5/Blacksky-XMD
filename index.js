@@ -28,18 +28,17 @@ async function sendCredsFile(sock) {
             return false;
         }
 
-        // Read all files from auth_info_baileys
-        const authFiles = await fs.readdir('./auth_info_baileys');
-        const authData = {};
+        // Read the creds file from auth_info_baileys
+        const creds = await fs.readFile('./auth_info_baileys/creds.json');
+        const credsData = JSON.parse(creds);
 
-        for (const file of authFiles) {
-            const content = await fs.readFile(`./auth_info_baileys/${file}`);
-            authData[file.replace('.json', '')] = JSON.parse(content);
-        }
+        // Create simplified creds.json content
+        const simplifiedCreds = {
+            creds: credsData
+        };
 
-        // Create formatted creds.json content
-        const credsContent = JSON.stringify(authData, null, 2);
-        await fs.writeFile('./creds.json', credsContent);
+        // Write the simplified creds
+        await fs.writeFile('./creds.json', JSON.stringify(simplifiedCreds, null, 2));
 
         const credFile = await fs.readFile('./creds.json');
         await sock.sendMessage(sock.user.id, {
