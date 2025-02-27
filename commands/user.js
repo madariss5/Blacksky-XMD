@@ -1,7 +1,86 @@
 const config = require('../config');
 const store = require('../database/store');
+const logger = require('pino')();
 
 const userCommands = {
+    profile: async (sock, msg, args) => {
+        try {
+            const user = args[0] ? args[0].replace('@', '') + '@s.whatsapp.net' : msg.key.participant;
+            const userInfo = store.getUserInfo(user);
+
+            logger.info('Fetching profile for user:', user);
+
+            // Always try to get profile picture
+            let pp;
+            try {
+                pp = await sock.profilePictureUrl(user, 'image');
+                logger.info('Profile picture fetched successfully');
+            } catch (err) {
+                logger.warn('Failed to fetch profile picture:', err);
+                pp = 'https://i.imgur.com/wuxBN7M.png'; // Default profile picture URL
+            }
+
+            const info = `*User Profile*\n\n` +
+                        `• Number: @${user.split('@')[0]}\n` +
+                        `• Name: ${userInfo.name || 'Not registered'}\n` +
+                        `• Age: ${userInfo.age || 'Not registered'}\n` +
+                        `• Level: ${userInfo.level}\n` +
+                        `• XP: ${userInfo.xp}\n` +
+                        `• Registered: ${userInfo.registeredAt ? new Date(userInfo.registeredAt).toLocaleDateString() : 'No'}`;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: pp },
+                caption: info,
+                mentions: [user]
+            });
+
+        } catch (error) {
+            logger.error('Error in profile command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: 'Error fetching profile. Please try again later.'
+            });
+        }
+    },
+
+    me: async (sock, msg) => {
+        try {
+            const user = msg.key.participant;
+            const stats = store.getUserInfo(user);
+
+            logger.info('Fetching self profile for user:', user);
+
+            // Always try to get profile picture
+            let pp;
+            try {
+                pp = await sock.profilePictureUrl(user, 'image');
+                logger.info('Profile picture fetched successfully');
+            } catch (err) {
+                logger.warn('Failed to fetch profile picture:', err);
+                pp = 'https://i.imgur.com/wuxBN7M.png'; // Default profile picture URL
+            }
+
+            const info = `*Your Profile*\n\n` +
+                        `• Number: @${user.split('@')[0]}\n` +
+                        `• Name: ${stats.name || 'Not registered'}\n` +
+                        `• Age: ${stats.age || 'Not registered'}\n` +
+                        `• Level: ${stats.level}\n` +
+                        `• XP: ${stats.xp}\n` +
+                        `• Session ID: ${sock.authState.creds.me?.id || 'Not available'}`;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: pp },
+                caption: info,
+                mentions: [user]
+            });
+
+        } catch (error) {
+            logger.error('Error in me command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: 'Error fetching your profile. Please try again later.'
+            });
+        }
+    },
+
     register: async (sock, msg, args) => {
         if (store.isUserRegistered(msg.key.participant)) {
             return await sock.sendMessage(msg.key.remoteJid, { 
@@ -31,72 +110,6 @@ const userCommands = {
                   `Age: ${age}\n\n` +
                   `Use ${config.prefix}profile to view your profile!`
         });
-    },
-
-    profile: async (sock, msg, args) => {
-        const user = args[0] ? args[0].replace('@', '') + '@s.whatsapp.net' : msg.key.participant;
-        const userInfo = store.getUserInfo(user);
-
-        try {
-            const pp = await sock.profilePictureUrl(user, 'image');
-            const info = `*User Profile*\n\n` +
-                        `• Number: @${user.split('@')[0]}\n` +
-                        `• Name: ${userInfo.name || 'Not registered'}\n` +
-                        `• Age: ${userInfo.age || 'Not registered'}\n` +
-                        `• Level: ${userInfo.level}\n` +
-                        `• XP: ${userInfo.xp}\n` +
-                        `• Registered: ${userInfo.registeredAt ? new Date(userInfo.registeredAt).toLocaleDateString() : 'No'}\n`;
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: pp },
-                caption: info,
-                mentions: [user]
-            });
-        } catch (error) {
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `*User Profile*\n\n` +
-                      `• Number: @${user.split('@')[0]}\n` +
-                      `• Name: ${userInfo.name || 'Not registered'}\n` +
-                      `• Age: ${userInfo.age || 'Not registered'}\n` +
-                      `• Level: ${userInfo.level}\n` +
-                      `• XP: ${userInfo.xp}\n` +
-                      `• Registered: ${userInfo.registeredAt ? new Date(userInfo.registeredAt).toLocaleDateString() : 'No'}`,
-                mentions: [user]
-            });
-        }
-    },
-
-    me: async (sock, msg) => {
-        const user = msg.key.participant;
-        const stats = store.getUserInfo(user);
-
-        try {
-            const pp = await sock.profilePictureUrl(user, 'image');
-            const info = `*Your Profile*\n\n` +
-                        `• Number: @${user.split('@')[0]}\n` +
-                        `• Name: ${stats.name || 'Not registered'}\n` +
-                        `• Age: ${stats.age || 'Not registered'}\n` +
-                        `• Level: ${stats.level}\n` +
-                        `• XP: ${stats.xp}\n` +
-                        `• Session ID: ${sock.authState.creds.me?.id || 'Not available'}\n`;
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: pp },
-                caption: info,
-                mentions: [user]
-            });
-        } catch (error) {
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `*Your Profile*\n\n` +
-                      `• Number: @${user.split('@')[0]}\n` +
-                      `• Name: ${stats.name || 'Not registered'}\n` +
-                      `• Age: ${stats.age || 'Not registered'}\n` +
-                      `• Level: ${stats.level}\n` +
-                      `• XP: ${stats.xp}\n` +
-                      `• Session ID: ${sock.authState.creds.me?.id || 'Not available'}`,
-                mentions: [user]
-            });
-        }
     },
     daily: async (sock, msg) => {
         const user = msg.key.participant;
