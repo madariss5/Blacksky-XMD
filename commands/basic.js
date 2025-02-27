@@ -19,7 +19,7 @@ const basicCommands = {
                         cmd.description.includes('📥') ||
                         cmd.description.includes('🎵') ||
                         cmd.description.includes('📱'))
-                    .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
+                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
                 '💰 *ECONOMY*': Object.entries(config.commands)
                     .filter(([_, cmd]) => 
@@ -28,14 +28,14 @@ const basicCommands = {
                         cmd.description.includes('🎲') ||
                         cmd.description.includes('🏦') ||
                         cmd.description.includes('💼'))
-                    .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
+                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
                 '👥 *GROUP*': Object.entries(config.commands)
                     .filter(([_, cmd]) => 
                         cmd.description.toLowerCase().includes('group') || 
                         cmd.description.toLowerCase().includes('admin') ||
                         cmd.description.includes('👥'))
-                    .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
+                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
                 '🎨 *FUN & MEDIA*': Object.entries(config.commands)
                     .filter(([_, cmd]) => 
@@ -43,47 +43,47 @@ const basicCommands = {
                         cmd.description.includes('effect') || 
                         cmd.description.includes('sticker') ||
                         cmd.description.includes('🎨'))
-                    .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
+                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
                 '🎮 *GAMES*': Object.entries(config.commands)
                     .filter(([_, cmd]) => 
                         cmd.description.includes('🎮') ||
                         cmd.description.includes('game') ||
                         cmd.description.includes('Play'))
-                    .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
+                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
                 '🤖 *AI & TOOLS*': Object.entries(config.commands)
                     .filter(([_, cmd]) => 
                         cmd.description.includes('🤖') ||
                         cmd.description.includes('AI') || 
                         cmd.description.includes('Generate'))
-                    .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
+                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
                 '👑 *OWNER*': Object.entries(config.commands)
                     .filter(([_, cmd]) => 
                         cmd.description.includes('👑') ||
                         cmd.description.toLowerCase().includes('owner') || 
                         cmd.description.toLowerCase().includes('bot'))
-                    .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
+                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
                 '⚙️ *UTILITY*': Object.entries(config.commands)
                     .filter(([_, cmd]) => 
                         cmd.description.includes('⚙️') ||
                         cmd.description.includes('Toggle') || 
                         cmd.description.includes('Set'))
-                    .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
+                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
                 '🔞 *NSFW*': Object.entries(config.commands)
                     .filter(([_, cmd]) => 
                         cmd.description.includes('🔞') ||
                         cmd.nsfw === true)
-                    .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
+                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
                 '🐛 *DEBUG*': Object.entries(config.commands)
                     .filter(([_, cmd]) => 
                         cmd.description.includes('🐛') ||
                         cmd.description.toLowerCase().includes('debug'))
-                    .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`)
+                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`)
             };
 
             let menuContent = menuHeader;
@@ -92,8 +92,8 @@ const basicCommands = {
             Object.entries(categories).forEach(([category, commands]) => {
                 if (commands.length > 0) {  // Only show categories with commands
                     menuContent += `${category}\n${'-'.repeat(40)}\n`;
-                    commands.forEach((cmd, i) => {
-                        menuContent += `${i + 1}. ${cmd}\n`;
+                    commands.forEach(cmd => {
+                        menuContent += `◈ ${cmd}\n`;
                     });
                     menuContent += '\n';
                 }
@@ -105,7 +105,7 @@ const basicCommands = {
 ┃ Version: 1.0.0
 ╰━━━━━━━━━━━━⊷❍\n\n`;
 
-            menuContent += `Note: Use ${config.prefix}help <command> for detailed info\n`;
+            menuContent += `Note: Add ${config.prefix} before any command\n`;
             menuContent += `Example: ${config.prefix}help ytmp3`;
 
             // Send as a single message
