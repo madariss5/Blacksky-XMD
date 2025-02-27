@@ -18,6 +18,23 @@ Welcome to the Ultimate Anime Bot! (◕‿◕)♡\n\n`;
 
             // Define command categories with emojis and all available commands
             const categories = {
+                '👥 Group Commands': [
+                    { cmd: 'kick', desc: 'Kick a user from group (Admin only)' },
+                    { cmd: 'promote', desc: 'Promote a user to admin (Admin only)' },
+                    { cmd: 'demote', desc: 'Demote a user from admin (Admin only)' },
+                    { cmd: 'mute', desc: 'Mute group (only admins can write)' },
+                    { cmd: 'unmute', desc: 'Unmute group (everyone can write)' },
+                    { cmd: 'everyone', desc: 'Tag everyone in the group' },
+                    { cmd: 'setwelcome', desc: 'Set welcome message for group' },
+                    { cmd: 'setbye', desc: 'Set goodbye message for group' },
+                    { cmd: 'del', desc: 'Delete a message (Admin only)' },
+                    { cmd: 'antilink', desc: 'Enable/disable anti-link protection' },
+                    { cmd: 'groupinfo', desc: 'Show group information' },
+                    { cmd: 'poll', desc: 'Create a poll in the group' },
+                    { cmd: 'setrules', desc: 'Set group rules (Admin only)' },
+                    { cmd: 'viewrules', desc: 'View group rules' }
+                ],
+
                 '🎭 Fun & Reactions': [
                     { cmd: 'slap', desc: 'Slap someone with a sticker' },
                     { cmd: 'hug', desc: 'Give someone a warm hug' },
@@ -271,7 +288,22 @@ Welcome to the Ultimate Anime Bot! (◕‿◕)♡\n\n`;
                 shell: `[Owner] Execute shell command.\nUsage: ${config.prefix}shell <command>`,
                 setprefix: `[Owner] Change command prefix.\nUsage: ${config.prefix}setprefix <prefix>`,
                 addmod: `[Owner] Add a moderator.\nUsage: ${config.prefix}addmod [@user]`,
-                removemod: `[Owner] Remove a moderator.\nUsage: ${config.prefix}removemod [@user]`
+                removemod: `[Owner] Remove a moderator.\nUsage: ${config.prefix}removemod [@user]`,
+                kick: `Kick a user from the group (Admin only).\nUsage: ${config.prefix}kick [@user]`,
+                promote: `Promote a user to admin (Admin only).\nUsage: ${config.prefix}promote [@user]`,
+                demote: `Demote a user from admin (Admin only).\nUsage: ${config.prefix}demote [@user]`,
+                mute: `Mute the group (only admins can write).\nUsage: ${config.prefix}mute`,
+                unmute: `Unmute the group (everyone can write).\nUsage: ${config.prefix}unmute`,
+                everyone: `Tag everyone in the group.\nUsage: ${config.prefix}everyone`,
+                setwelcome: `Set a welcome message for the group.\nUsage: ${config.prefix}setwelcome <message>`,
+                setbye: `Set a goodbye message for the group.\nUsage: ${config.prefix}setbye <message>`,
+                del: `Delete a message (Admin only).\nUsage: ${config.prefix}del <messageID>`,
+                antilink: `Enable/disable anti-link protection.\nUsage: ${config.prefix}antilink <on/off>`,
+                groupinfo: `Show group information.\nUsage: ${config.prefix}groupinfo`,
+                poll: `Create a poll in the group.\nUsage: ${config.prefix}poll <question> <option1> <option2>...`,
+                setrules: `Set group rules (Admin only).\nUsage: ${config.prefix}setrules <rules>`,
+                viewrules: `View group rules.\nUsage: ${config.prefix}viewrules`
+
             };
 
             const cmdHelp = helpText[command];
