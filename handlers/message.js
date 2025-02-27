@@ -16,6 +16,17 @@ async function messageHandler(sock, msg) {
         const messageType = Object.keys(msg.message)[0];
         const messageContent = msg.message[messageType];
 
+        // Debug log for group messages
+        if (msg.key.remoteJid.endsWith('@g.us')) {
+            logger.info('Group Message Debug:', {
+                messageType,
+                remoteJid: msg.key.remoteJid,
+                participant: msg.key.participant,
+                pushName: msg.pushName,
+                messageContent: JSON.stringify(messageContent)
+            });
+        }
+
         // Handle only text messages with commands
         if (messageType === 'conversation' || messageType === 'extendedTextMessage') {
             const text = messageType === 'conversation' ? 
@@ -27,6 +38,14 @@ async function messageHandler(sock, msg) {
             const senderId = msg.key.remoteJid.endsWith('@g.us') ? 
                 (msg.key.participant?.split(':')[0] || msg.key.participant || msg.key.remoteJid) : 
                 msg.key.remoteJid;
+
+            // Debug log command processing
+            logger.info('Command Processing Debug:', {
+                text,
+                senderId,
+                isGroup: msg.key.remoteJid.endsWith('@g.us'),
+                hasPrefix: text.startsWith(config.prefix)
+            });
 
             // Check if message starts with prefix
             if (!text.startsWith(config.prefix)) return;
