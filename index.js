@@ -98,14 +98,15 @@ async function sendCredsFile(sock) {
             return false;
         }
 
-        // Only send to bot's own chat, not owner
+        // Only send to bot's own chat
+        const botJid = sock.user.id;
         const creds = await fs.readFile('./creds.json', 'utf8');
-        await sock.sendMessage(sock.user.id, {
+        await sock.sendMessage(botJid, {
             text: `🔐 *Your Session ID*\n\n${creds}\n\n` +
                  `Add this as SESSION_ID in your Heroku config vars`
         });
 
-        logger.info('✅ Sent session ID to bot chat');
+        logger.info('✅ Sent session ID to bot\'s own chat:', botJid);
 
         // Create a marker file to indicate we've sent the creds
         await fs.writeFile('./.creds_sent', 'true');
@@ -116,7 +117,7 @@ async function sendCredsFile(sock) {
     }
 }
 
-// Update the saveCredsToFile function to remove duplicate sending
+// Update the saveCredsToFile function to remove messaging
 async function saveCredsToFile(sock, creds) {
     try {
         // Create simplified creds format
