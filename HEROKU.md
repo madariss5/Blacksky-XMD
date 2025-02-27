@@ -10,7 +10,7 @@
 ### Required Variables
 - `SESSION_ID`: Your WhatsApp session ID (will be provided after first local run)
 - `OWNER_NAME`: Your name as the bot owner
-- `OWNER_NUMBER`: Your WhatsApp number with country code (format: 1234567890@s.whatsapp.net)
+- `OWNER_NUMBER`: Your WhatsApp number (format: country code + number, e.g., 1234567890)
 
 ### Optional Variables
 - `BOT_NAME`: Name for your bot (default: BlackSky-MD)
