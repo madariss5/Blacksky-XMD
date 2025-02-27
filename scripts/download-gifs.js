@@ -1,70 +1,111 @@
 const fs = require('fs-extra');
 const https = require('https');
 const path = require('path');
+const axios = require('axios');
+const logger = require('pino')();
 
-// Update with stable CDN URLs from GIPHY and other reliable sources
+// Using waifu.pics API for anime reactions
 const gifs = {
-    'anime-slap.gif': 'https://media4.giphy.com/media/Zau0yrl17uzdK/giphy.gif',
-    'anime-hug.gif': 'https://media4.giphy.com/media/od5H3PmEG5EVq/giphy.gif',
-    'anime-pat.gif': 'https://media2.giphy.com/media/ARSp9T7wwxNcs/giphy.gif',
-    'anime-dance.gif': 'https://media3.giphy.com/media/mJIa7rg9VPEhzU1dyQ/giphy.gif',
-    'anime-kill.gif': 'https://media2.giphy.com/media/HZboJ5Pkti9k4/giphy.gif',
-    'anime-highfive.gif': 'https://media1.giphy.com/media/838dLMDnxfWzS/giphy.gif',
-    'anime-facepalm.gif': 'https://media3.giphy.com/media/pPhyAv5t9V8djyRFJH/giphy.gif',
-    'anime-poke.gif': 'https://media3.giphy.com/media/pWd3gD577gOqs/giphy.gif',
-    'anime-cuddle.gif': 'https://media1.giphy.com/media/143v0Z4767T15e/giphy.gif',
-    'anime-yeet.gif': 'https://media4.giphy.com/media/11s7Ke7jcNxCHS/giphy.gif',
-    'anime-boop.gif': 'https://media2.giphy.com/media/HeaBmucBGiwdW/giphy.gif',
-    'anime-bonk.gif': 'https://media4.giphy.com/media/30lxTuJueXE7C/giphy.gif',
-    'anime-wave.gif': 'https://media2.giphy.com/media/xTiIzJSKB4l7xTouE8/giphy.gif',
-    'anime-kiss.gif': 'https://media1.giphy.com/media/FqBTvSNjNzeZG/giphy.gif',
-    'anime-punch.gif': 'https://media2.giphy.com/media/arbHBoiUWUgmc/giphy.gif',
-    'anime-wink.gif': 'https://media2.giphy.com/media/yoJC2El7xJkYCadlWE/giphy.gif',
-    // Special effect GIFs - using stable CDN URLs
-    'wasted.gif': 'https://media2.giphy.com/media/Rl9Yqavfj2Ula/giphy.gif',
-    'triggered.gif': 'https://media0.giphy.com/media/ZdrUuSEC0LygaFXtNT/giphy.gif',
-    'jail.gif': 'https://media4.giphy.com/media/3o6wNPIj7WBQcJCReE/giphy.gif',
-    'rip.gif': 'https://media1.giphy.com/media/3oz8xQQP4ahKiyuxHy/giphy.gif'
+    'anime-slap.gif': 'https://waifu.pics/api/sfw/slap',
+    'anime-hug.gif': 'https://waifu.pics/api/sfw/hug',
+    'anime-pat.gif': 'https://waifu.pics/api/sfw/pat',
+    'anime-dance.gif': 'https://waifu.pics/api/sfw/dance',
+    'anime-kill.gif': 'https://waifu.pics/api/sfw/kill',
+    'anime-highfive.gif': 'https://waifu.pics/api/sfw/highfive',
+    'anime-facepalm.gif': 'https://waifu.pics/api/sfw/cringe',
+    'anime-poke.gif': 'https://waifu.pics/api/sfw/poke',
+    'anime-cuddle.gif': 'https://waifu.pics/api/sfw/cuddle',
+    'anime-yeet.gif': 'https://waifu.pics/api/sfw/yeet',
+    'anime-boop.gif': 'https://waifu.pics/api/sfw/poke', // Using poke as alternative
+    'anime-bonk.gif': 'https://waifu.pics/api/sfw/bonk',
+    'anime-wave.gif': 'https://waifu.pics/api/sfw/wave',
+    'anime-kiss.gif': 'https://waifu.pics/api/sfw/kiss',
+    'anime-punch.gif': 'https://waifu.pics/api/sfw/kick',
+    'anime-wink.gif': 'https://waifu.pics/api/sfw/wink',
+    // Special effect GIFs using alternative emotional reactions
+    'wasted.gif': 'https://waifu.pics/api/sfw/cry',
+    'triggered.gif': 'https://waifu.pics/api/sfw/angry', // Using angry as alternative for triggered
+    'jail.gif': 'https://waifu.pics/api/sfw/handhold',
+    'rip.gif': 'https://waifu.pics/api/sfw/cry'
 };
 
-const downloadGif = (url, filename) => {
-    return new Promise((resolve, reject) => {
-        const mediaPath = path.join(__dirname, '..', 'media', filename);
-        https.get(url, (response) => {
-            if (response.statusCode === 200) {
-                const file = fs.createWriteStream(mediaPath);
-                response.pipe(file);
-                file.on('finish', () => {
-                    file.close();
-                    console.log(`✅ Downloaded ${filename}`);
-                    resolve();
+const downloadGif = async (endpoint, filename) => {
+    try {
+        let url = endpoint;
+        let maxRetries = 3;
+        let retryCount = 0;
+        let success = false;
+
+        while (!success && retryCount < maxRetries) {
+            try {
+                // If it's a waifu.pics API endpoint, get the actual URL
+                if (endpoint.includes('waifu.pics/api')) {
+                    const response = await axios.get(endpoint);
+                    url = response.data.url;
+                    logger.info(`Resolved waifu.pics URL for ${filename}: ${url}`);
+                }
+
+                // Download the actual GIF
+                const response = await axios.get(url, {
+                    responseType: 'arraybuffer',
+                    maxRedirects: 5,
+                    validateStatus: null,
+                    timeout: 5000
                 });
-            } else {
-                reject(`Failed to download ${filename}: Status ${response.statusCode}`);
+
+                if (response.status === 200) {
+                    const buffer = Buffer.from(response.data);
+                    const mediaPath = path.join(__dirname, '..', 'media', filename);
+
+                    // Basic GIF validation
+                    if (buffer.toString('ascii', 0, 3) === 'GIF') {
+                        await fs.writeFile(mediaPath, buffer);
+                        logger.info(`✅ Successfully downloaded: ${filename}`);
+                        success = true;
+                        return true;
+                    } else {
+                        throw new Error('Not a valid GIF file');
+                    }
+                } else {
+                    throw new Error(`Failed with status ${response.status}`);
+                }
+            } catch (error) {
+                retryCount++;
+                if (retryCount < maxRetries) {
+                    logger.warn(`Retry ${retryCount}/${maxRetries} for ${filename}`);
+                    await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+                } else {
+                    throw error;
+                }
             }
-        }).on('error', (err) => {
-            reject(`Error downloading ${filename}: ${err.message}`);
-        });
-    });
+        }
+    } catch (error) {
+        logger.error(`❌ Failed to download ${filename}: ${error.message}`);
+        return false;
+    }
 };
 
 const downloadAllGifs = async () => {
     try {
-        // Create media directory if it doesn't exist
+        // Ensure media directory exists
         await fs.ensureDir(path.join(__dirname, '..', 'media'));
 
         // Download all GIFs
-        for (const [filename, url] of Object.entries(gifs)) {
-            try {
-                await downloadGif(url, filename);
-            } catch (error) {
-                console.error(`❌ ${error}`);
-            }
-        }
+        const results = await Promise.all(
+            Object.entries(gifs).map(([filename, url]) => 
+                downloadGif(url, filename)
+            )
+        );
 
-        console.log('✨ All GIFs downloaded successfully!');
+        const successful = results.filter(Boolean).length;
+        const failed = results.length - successful;
+
+        console.log('\n📊 Download Summary:');
+        console.log(`✅ Successfully downloaded: ${successful} GIFs`);
+        console.log(`❌ Failed to download: ${failed} GIFs`);
+        console.log('✨ Download process completed!');
     } catch (error) {
-        console.error('❌ Error:', error);
+        logger.error('❌ Error:', error);
     }
 };
 
