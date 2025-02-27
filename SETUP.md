@@ -32,7 +32,18 @@ git push -u origin main
    - Environment variables should be set up separately on deployment
 
 4. For Heroku Deployment:
+   - Follow the detailed instructions in HEROKU.md
    - The creds.json file should be added manually after successful QR scan
-   - Set up environment variables in Heroku dashboard:
-     - OWNER_NAME
-     - OWNER_NUMBER
+   - Set up environment variables in Heroku dashboard
+
+
+5. Updating Existing Repository:
+```bash
+# Add all changed files
+git add .
+
+# Create a commit with a descriptive message
+git commit -m "Fix: Heroku deployment issues and update documentation"
+
+# Push changes to GitHub
+git push origin main
