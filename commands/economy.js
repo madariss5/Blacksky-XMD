@@ -1,21 +1,56 @@
 const config = require('../config');
 const logger = require('pino')();
 
-// Import economy modules
-const balance = require('../attached_assets/economy-balance');
-const bank = require('../attached_assets/economy-bank');
-const bet = require('../attached_assets/economy-bet');
-const buy = require('../attached_assets/economy-buy');
-const daily = require('../attached_assets/economy-daily');
-const depo = require('../attached_assets/economy-depo');
-const flip = require('../attached_assets/economy-flip');
+// Safe module import function
+const safeRequire = (path) => {
+    try {
+        return require(path);
+    } catch (error) {
+        logger.warn(`Failed to load module ${path}: ${error.message}`);
+        return {
+            getBalance: () => Promise.reject(new Error(`Module ${path} not available`)),
+            claim: () => Promise.reject(new Error(`Module ${path} not available`)),
+            transfer: () => Promise.reject(new Error(`Module ${path} not available`)),
+            deposit: () => Promise.reject(new Error(`Module ${path} not available`)),
+            withdraw: () => Promise.reject(new Error(`Module ${path} not available`)),
+            getInfo: () => Promise.reject(new Error(`Module ${path} not available`)),
+            gamble: () => Promise.reject(new Error(`Module ${path} not available`)),
+            coinFlip: () => Promise.reject(new Error(`Module ${path} not available`))
+        };
+    }
+};
+
+// Import economy modules safely
+const modules = {
+    balance: '../attached_assets/economy-balance',
+    bank: '../attached_assets/economy-bank',
+    bet: '../attached_assets/economy-bet',
+    buy: '../attached_assets/economy-buy',
+    daily: '../attached_assets/economy-daily',
+    depo: '../attached_assets/economy-depo',
+    flip: '../attached_assets/economy-flip'
+};
+
+// Import modules with fallback
+const {
+    balance,
+    bank,
+    bet,
+    buy,
+    daily,
+    depo,
+    flip
+} = Object.entries(modules).reduce((acc, [key, path]) => {
+    acc[key] = safeRequire(path);
+    return acc;
+}, {});
 
 const economyCommands = {
     balance: async (sock, msg) => {
         try {
-            const balance = await balance.getBalance(msg.key.participant);
+            const userBalance = await balance.getBalance(msg.key.participant);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `💰 *Your Balance*\n\nWallet: $${balance.wallet}\nBank: $${balance.bank}`
+                text: `💰 *Your Balance*\n\nWallet: $${userBalance.wallet}\nBank: $${userBalance.bank}`
             });
         } catch (error) {
             logger.error('Error in balance command:', error);
@@ -61,7 +96,12 @@ const economyCommands = {
                 });
             }
             const amount = parseInt(args[0]);
-            const result = await depo.deposit(msg.key.participant, amount);
+            if (isNaN(amount) || amount <= 0) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please enter a valid amount greater than 0!'
+                });
+            }
+            await depo.deposit(msg.key.participant, amount);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `💳 Successfully deposited $${amount} to your bank account!`
             });
@@ -81,7 +121,12 @@ const economyCommands = {
                 });
             }
             const amount = parseInt(args[0]);
-            const result = await bank.withdraw(msg.key.participant, amount);
+            if (isNaN(amount) || amount <= 0) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please enter a valid amount greater than 0!'
+                });
+            }
+            await bank.withdraw(msg.key.participant, amount);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `💵 Successfully withdrawn $${amount} from your bank account!`
             });
@@ -100,11 +145,19 @@ const economyCommands = {
                     text: `Please specify recipient and amount!\nUsage: ${config.prefix}transfer @user <amount>`
                 });
             }
-            const recipient = args[0];
+
+            const recipient = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
             const amount = parseInt(args[1]);
-            const result = await bank.transfer(msg.key.participant, recipient, amount);
+
+            if (isNaN(amount) || amount <= 0) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please enter a valid amount greater than 0!'
+                });
+            }
+
+            await bank.transfer(msg.key.participant, recipient, amount);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `💸 Successfully transferred $${amount} to ${recipient}!`
+                text: `💸 Successfully transferred $${amount} to ${args[0]}!`
             });
         } catch (error) {
             logger.error('Error in transfer command:', error);
@@ -122,6 +175,11 @@ const economyCommands = {
                 });
             }
             const amount = parseInt(args[0]);
+            if (isNaN(amount) || amount <= 0) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please enter a valid amount greater than 0!'
+                });
+            }
             const result = await bet.gamble(msg.key.participant, amount);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: result.message
@@ -142,7 +200,17 @@ const economyCommands = {
                 });
             }
             const choice = args[0].toLowerCase();
+            if (choice !== 'heads' && choice !== 'tails') {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please choose either heads or tails!'
+                });
+            }
             const amount = parseInt(args[1]);
+            if (isNaN(amount) || amount <= 0) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please enter a valid amount greater than 0!'
+                });
+            }
             const result = await flip.coinFlip(msg.key.participant, choice, amount);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: result.message

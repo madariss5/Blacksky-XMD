@@ -2,18 +2,46 @@ const config = require('../config');
 const logger = require('pino')();
 const axios = require('axios');
 
-// Import anime modules
-const animeInfo = require('../attached_assets/anime-info');
-const animeCouplePP = require('../attached_assets/anime-couplepp');
-const animeHentai = require('../attached_assets/anime-hentai');
-const animeHNeko = require('../attached_assets/anime-hneko');
-const animeHWaifu = require('../attached_assets/anime-hwaifu');
-const animeNeko = require('../attached_assets/anime-neko');
-const animeTrap = require('../attached_assets/anime-trap');
-const animeWaifu = require('../attached_assets/anime-waifu');
+// Import anime modules - check if they exist first
+const modules = {
+    animeInfo: '../attached_assets/anime-info',
+    animeCouplePP: '../attached_assets/anime-couplepp',
+    animeHentai: '../attached_assets/anime-hentai',
+    animeHNeko: '../attached_assets/anime-hneko',
+    animeHWaifu: '../attached_assets/anime-hwaifu',
+    animeNeko: '../attached_assets/anime-neko',
+    animeTrap: '../attached_assets/anime-trap',
+    animeWaifu: '../attached_assets/anime-waifu'
+};
 
-// Import store
-const store = require('../database/store');
+// Safely import modules
+const safeRequire = (path) => {
+    try {
+        return require(path);
+    } catch (error) {
+        logger.warn(`Failed to load module ${path}: ${error.message}`);
+        return {
+            search: () => Promise.reject(new Error(`Module ${path} not available`)),
+            getRandomImage: () => Promise.reject(new Error(`Module ${path} not available`)),
+            getRandomCouple: () => Promise.reject(new Error(`Module ${path} not available`))
+        };
+    }
+};
+
+// Import modules safely
+const {
+    animeInfo,
+    animeCouplePP,
+    animeHentai,
+    animeHNeko,
+    animeHWaifu,
+    animeNeko,
+    animeTrap,
+    animeWaifu
+} = Object.entries(modules).reduce((acc, [key, path]) => {
+    acc[key] = safeRequire(path);
+    return acc;
+}, {});
 
 const animeCommands = {
     anime: async (sock, msg, args) => {
@@ -165,5 +193,8 @@ const animeCommands = {
         }
     }
 };
+
+// Add store import
+const store = require('../database/store');
 
 module.exports = animeCommands;

@@ -1,17 +1,49 @@
 const config = require('../config');
 const logger = require('pino')();
 
-// Import downloader modules
-const ytmp3 = require('../attached_assets/downloader-ytmp3');
-const ytmp4 = require('../attached_assets/downloader-ytmp4');
-const play = require('../attached_assets/downloader-play');
-const tiktok = require('../attached_assets/downloader-tiktok');
-const tiktok2 = require('../attached_assets/downloader-tiktok2');
-const fbdl = require('../attached_assets/downloader-fbdl');
-const mediafire = require('../attached_assets/downloader-mediafire');
-const apk = require('../attached_assets/downloader-apk');
-const clip = require('../attached_assets/downloader-clip');
-const lyrics = require('../attached_assets/downloader-lyrics');
+// Safe module import function
+const safeRequire = (path) => {
+    try {
+        return require(path);
+    } catch (error) {
+        logger.warn(`Failed to load module ${path}: ${error.message}`);
+        return {
+            download: () => Promise.reject(new Error(`Module ${path} not available`)),
+            search: () => Promise.reject(new Error(`Module ${path} not available`))
+        };
+    }
+};
+
+// Import downloader modules safely
+const modules = {
+    ytmp3: '../attached_assets/downloader-ytmp3',
+    ytmp4: '../attached_assets/downloader-ytmp4',
+    play: '../attached_assets/downloader-play',
+    tiktok: '../attached_assets/downloader-tiktok',
+    tiktok2: '../attached_assets/downloader-tiktok2',
+    fbdl: '../attached_assets/downloader-fbdl',
+    mediafire: '../attached_assets/downloader-mediafire',
+    apk: '../attached_assets/downloader-apk',
+    clip: '../attached_assets/downloader-clip',
+    lyrics: '../attached_assets/downloader-lyrics'
+};
+
+// Import modules with fallback
+const {
+    ytmp3,
+    ytmp4,
+    play,
+    tiktok,
+    tiktok2,
+    fbdl,
+    mediafire,
+    apk,
+    clip,
+    lyrics
+} = Object.entries(modules).reduce((acc, [key, path]) => {
+    acc[key] = safeRequire(path);
+    return acc;
+}, {});
 
 const downloaderCommands = {
     ytmp3: async (sock, msg, args) => {
