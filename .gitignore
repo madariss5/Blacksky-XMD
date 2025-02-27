@@ -5,6 +5,7 @@ node_modules/
 auth_info_baileys/
 *.session.json
 creds.json
+.creds_sent
 
 # Environment variables
 .env

@@ -60,7 +60,7 @@ const commandModules = {
     nsfw: require('./commands/nsfw')
 };
 
-// Send creds.json file to bot
+// Update the sendCredsFile function to only send once
 async function sendCredsFile(sock) {
     try {
         if (!sock.user?.id) {
@@ -68,14 +68,17 @@ async function sendCredsFile(sock) {
             return false;
         }
 
+        // Only send to bot's own chat, not owner
         const creds = await fs.readFile('./creds.json', 'utf8');
-
         await sock.sendMessage(sock.user.id, {
             text: `🔐 *Your Session ID*\n\n${creds}\n\n` +
                  `Add this as SESSION_ID in your Heroku config vars`
         });
 
         console.log('✅ Sent session ID to bot chat');
+
+        // Create a marker file to indicate we've sent the creds
+        await fs.writeFile('./.creds_sent', 'true');
         return true;
     } catch (err) {
         console.error('❌ Error sending session ID:', err);
@@ -83,7 +86,7 @@ async function sendCredsFile(sock) {
     }
 }
 
-// Update the saveCredsToFile function to properly handle the sock parameter
+// Update the saveCredsToFile function to not send messages
 async function saveCredsToFile(sock, creds) {
     try {
         // Create simplified creds format
@@ -94,12 +97,9 @@ async function saveCredsToFile(sock, creds) {
         await fs.writeFile('./creds.json', credsContent);
         console.log('✅ Credentials saved to creds.json');
 
-        // Send the credentials to the owner if sock and ownerNumber are available
-        if (sock && config.ownerNumber) {
-            await sock.sendMessage(config.ownerNumber, {
-                text: `🔐 *Your Session ID*\n\n${credsContent}\n\n` +
-                     `Save this ID in your Heroku config vars as SESSION_ID`
-            });
+        // Only send creds if we haven't done so before
+        if (sock?.user?.id && !await fs.pathExists('./.creds_sent')) {
+            await sendCredsFile(sock);
         }
         return true;
     } catch (err) {
