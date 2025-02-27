@@ -12,25 +12,32 @@ const funCommands = {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
 
-            // Send text message first
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: `*${msg.pushName}* slapped ${target}! 👋`,
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
-            // Send anime slap gif
-            await sock.sendMessage(msg.key.remoteJid, {
-                video: { url: 'https://i.imgur.com/fm49srQ.gif' },
-                caption: '🎭 Slap!',
-                gifPlayback: true,
-                mimetype: 'video/gif',
-                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-            });
+            try {
+                let sticker = new Sticker("./media/anime-slap.gif", {
+                    pack: config.NOM_OWNER,
+                    author: config.OWNER_NAME,
+                    type: StickerTypes.FULL,
+                    categories: ['🤩', '🎉'],
+                    id: "12345",
+                    quality: 70,
+                    background: "transparent"
+                });
+
+                const buffer = await sticker.toBuffer();
+                await sock.sendMessage(msg.key.remoteJid, { sticker: buffer });
+            } catch (stickerError) {
+                console.error('Sticker creation error:', stickerError);
+            }
 
         } catch (error) {
             console.error('Error in slap command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: '😅 Failed to send slap animation, but *SLAP* anyway!' 
+                text: '😅 Failed to send slap animation!' 
             });
         }
     },
@@ -44,17 +51,26 @@ const funCommands = {
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
-            await sock.sendMessage(msg.key.remoteJid, {
-                video: { url: 'https://i.imgur.com/cvqoK8b.gif' },
-                caption: '🎭 Hug!',
-                gifPlayback: true,
-                mimetype: 'video/gif',
-                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-            });
+            try {
+                let sticker = new Sticker("./media/anime-hug.gif", {
+                    pack: config.NOM_OWNER,
+                    author: config.OWNER_NAME,
+                    type: StickerTypes.FULL,
+                    categories: ['🤩', '🎉'],
+                    id: "12345",
+                    quality: 70,
+                    background: "transparent"
+                });
+
+                const buffer = await sticker.toBuffer();
+                await sock.sendMessage(msg.key.remoteJid, { sticker: buffer });
+            } catch (stickerError) {
+                console.error('Sticker creation error:', stickerError);
+            }
         } catch (error) {
             console.error('Error in hug command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: '😅 Failed to send hug animation, but *HUG* anyway!' 
+                text: '😅 Failed to send hug animation!' 
             });
         }
     },
@@ -68,17 +84,26 @@ const funCommands = {
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
-            await sock.sendMessage(msg.key.remoteJid, {
-                video: { url: 'https://i.imgur.com/Y9qTqxZ.gif' },
-                caption: '🎭 Pat pat!',
-                gifPlayback: true,
-                mimetype: 'video/gif',
-                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-            });
+            try {
+                let sticker = new Sticker("./media/anime-pat.gif", {
+                    pack: config.NOM_OWNER,
+                    author: config.OWNER_NAME,
+                    type: StickerTypes.FULL,
+                    categories: ['🤩', '🎉'],
+                    id: "12345",
+                    quality: 70,
+                    background: "transparent"
+                });
+
+                const buffer = await sticker.toBuffer();
+                await sock.sendMessage(msg.key.remoteJid, { sticker: buffer });
+            } catch (stickerError) {
+                console.error('Sticker creation error:', stickerError);
+            }
         } catch (error) {
             console.error('Error in pat command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: '😅 Failed to send pat animation, but *PAT PAT* anyway!' 
+                text: '😅 Failed to send pat animation!' 
             });
         }
     },
@@ -89,20 +114,29 @@ const funCommands = {
                 text: `*${msg.pushName}* is dancing! 💃`
             });
 
-            await sock.sendMessage(msg.key.remoteJid, {
-                video: { url: 'https://i.imgur.com/71cPxZn.gif' },
-                caption: '🎭 Dance!',
-                gifPlayback: true,
-                mimetype: 'video/gif'
-            });
+            try {
+                let sticker = new Sticker("./media/anime-dance.gif", {
+                    pack: config.NOM_OWNER,
+                    author: config.OWNER_NAME,
+                    type: StickerTypes.FULL,
+                    categories: ['🤩', '🎉'],
+                    id: "12345",
+                    quality: 70,
+                    background: "transparent"
+                });
+
+                const buffer = await sticker.toBuffer();
+                await sock.sendMessage(msg.key.remoteJid, { sticker: buffer });
+            } catch (stickerError) {
+                console.error('Sticker creation error:', stickerError);
+            }
         } catch (error) {
             console.error('Error in dance command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: '😅 Failed to send dance animation, but *DANCE* anyway!' 
+                text: '😅 Failed to send dance animation!' 
             });
         }
     },
-
     joke: async (sock, msg) => {
         const jokes = [
             "Why don't scientists trust atoms? Because they make up everything! 😄",
@@ -211,12 +245,18 @@ const funCommands = {
     },
     meme: async (sock, msg) => {
         try {
-            await sock.sendMessage(msg.key.remoteJid, {
-                video: { url: 'https://c.tenor.com/ZATOxNglZlwAAAPo/anime-meme.gif' },
-                caption: '😂 Here\'s your meme!',
-                gifPlayback: true,
-                mimetype: 'video/gif'
+            let sticker = new Sticker("./media/anime-meme.gif", {
+                pack: config.NOM_OWNER,
+                author: config.OWNER_NAME,
+                type: StickerTypes.FULL,
+                categories: ['😂'],
+                id: 'meme',
+                quality: 50,
+                background: 'transparent'
             });
+
+            const buffer = await sticker.toBuffer();
+            await sock.sendMessage(msg.key.remoteJid, { sticker: buffer });
         } catch (error) {
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: '😅 Oops! Failed to fetch a meme. Try again later!'
