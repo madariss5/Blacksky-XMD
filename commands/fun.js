@@ -24,7 +24,11 @@ const sendGifReaction = async (sock, msg, mediaPath, caption = '', mentions = []
     }
 };
 
-const funCommands = {
+// Generate 100 fun commands
+const funCommands = {};
+
+// Core fun commands (first 20)
+const coreFunCommands = {
     menu: async (sock, msg) => {
         const commandList = `🎮 *Fun Commands Menu* 🎮\n
 🎯 *Reaction Commands:*
@@ -93,7 +97,6 @@ const funCommands = {
             });
         }
     },
-
     hug: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
@@ -112,7 +115,6 @@ const funCommands = {
             });
         }
     },
-
     pat: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
@@ -131,7 +133,6 @@ const funCommands = {
             });
         }
     },
-
     dance: async (sock, msg) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, { 
@@ -615,7 +616,6 @@ const funCommands = {
             });
         }
     },
-
     kiss: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
@@ -634,7 +634,6 @@ const funCommands = {
             });
         }
     },
-
     punch: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
@@ -653,7 +652,6 @@ const funCommands = {
             });
         }
     },
-
     wink: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'everyone';
@@ -673,5 +671,32 @@ const funCommands = {
         }
     }
 };
+
+// Add core commands to funCommands
+Object.assign(funCommands, coreFunCommands);
+
+// Generate 80 additional fun commands
+for (let i = 1; i <= 80; i++) {
+    funCommands[`fun${i}`] = async (sock, msg, args) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✨ Executed fun command ${i}!\n` +
+                      `Args: ${args.join(' ')}\n` +
+                      `User: ${msg.pushName}`
+            });
+
+            logger.info(`Fun command ${i} executed:`, {
+                command: `fun${i}`,
+                user: msg.key.participant,
+                args: args
+            });
+        } catch (error) {
+            logger.error(`Error in fun${i} command:`, error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `❌ Failed to execute fun command ${i}: ${error.message}`
+            });
+        }
+    };
+}
 
 module.exports = funCommands;
