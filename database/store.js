@@ -235,18 +235,67 @@ class Store {
 
     // Group settings methods
     async setGroupSetting(groupId, setting, value) {
-        const groups = this.data.groups || {};
-        if (!groups[groupId]) {
-            groups[groupId] = {};
+        try {
+            const groups = this.data.groups || {};
+            if (!groups[groupId]) {
+                groups[groupId] = {};
+            }
+            groups[groupId][setting] = value;
+            this.data.groups = groups;
+            await this.saveStore();
+            logger.info('Group setting updated:', { groupId, setting, value });
+            return true;
+        } catch (error) {
+            logger.error('Error setting group setting:', error);
+            return false;
         }
-        groups[groupId][setting] = value;
-        this.data.groups = groups;
-        await this.saveStore();
     }
 
     getGroupSetting(groupId, setting) {
-        const groups = this.data.groups || {};
-        return groups[groupId]?.[setting];
+        try {
+            const groups = this.data.groups || {};
+            return groups[groupId]?.[setting];
+        } catch (error) {
+            logger.error('Error getting group setting:', error);
+            return null;
+        }
+    }
+
+    getGroupSettings(groupId) {
+        try {
+            const groups = this.data.groups || {};
+            return groups[groupId] || {};
+        } catch (error) {
+            logger.error('Error getting group settings:', error);
+            return {};
+        }
+    }
+
+    async setGroupRules(groupId, rules) {
+        try {
+            const groups = this.data.groups || {};
+            if (!groups[groupId]) {
+                groups[groupId] = {};
+            }
+            groups[groupId].rules = rules;
+            this.data.groups = groups;
+            await this.saveStore();
+            logger.info('Group rules updated:', { groupId });
+            return true;
+        } catch (error) {
+            logger.error('Error setting group rules:', error);
+            return false;
+        }
+    }
+
+    getGroupRules(groupId) {
+        try {
+            const groups = this.data.groups || {};
+            return groups[groupId]?.rules || null;
+        } catch (error) {
+            logger.error('Error getting group rules:', error);
+            return null;
+        }
     }
 
     // Command generation helpers
