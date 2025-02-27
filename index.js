@@ -5,6 +5,29 @@ const config = require("./config");
 const fs = require("fs-extra");
 const path = require("path");
 
+// Add environment variable validation at the top of the file
+const validateEnv = () => {
+    const required = ['OWNER_NAME', 'OWNER_NUMBER'];
+    const missing = required.filter(key => !process.env[key]);
+
+    if (missing.length > 0) {
+        console.error('❌ Missing required environment variables:', missing.join(', '));
+        console.error('Please set these variables in your Heroku dashboard or .env file');
+        process.exit(1);
+    }
+
+    // Validate number format
+    if (!process.env.OWNER_NUMBER.endsWith('@s.whatsapp.net')) {
+        console.error('❌ OWNER_NUMBER must end with @s.whatsapp.net');
+        process.exit(1);
+    }
+
+    console.log('✅ Environment variables validated successfully');
+};
+
+// Add the validation call before WhatsApp connection
+validateEnv();
+
 // Create store to save chats
 const store = makeInMemoryStore({ 
     logger: pino().child({ level: "silent", stream: "store" }) 

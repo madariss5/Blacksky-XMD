@@ -18,6 +18,16 @@
       "required": false,
       "value": "true"
     },
+    "BOT_NAME": {
+      "description": "Name of your WhatsApp bot",
+      "required": false,
+      "value": "BlackSky-MD"
+    },
+    "PREFIX": {
+      "description": "Command prefix for the bot",
+      "required": false,
+      "value": "!"
+    },
     "NODE_ENV": {
       "description": "Environment mode (production/development)",
       "value": "production"
