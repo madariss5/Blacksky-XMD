@@ -1,20 +1,20 @@
 const config = require('../config');
 const logger = require('pino')();
-const fs = require('fs-extra');
-const path = require('path');
 
 const commands = {
     menu: async (sock, msg) => {
         try {
             const menuHeader = `
 ╭━━━━━━━━━━━━━━━━━━━━━⊱
-┃ ≡ *${config.botName}* ≡
-┃ Creator: @${config.ownerNumber.split('@')[0]}
-┃ Prefix: ${config.prefix}
-┃ Version: 3.0.0
+┃    ⚔️ *${config.botName}* ⚔️
+┃    アニメボット v3.0.0
+┃ 
+┃ 👑 Creator: @${config.ownerNumber.split('@')[0]}
+┃ 🎯 Prefix: ${config.prefix}
+┃ 🌟 Status: Active
 ╰━━━━━━━━━━━━━━━━━━━━━⊱
 
-🌟 Welcome to the Ultimate Anime Bot! 🌟\n\n`;
+Welcome to the Ultimate Anime Bot! (◕‿◕)♡\n\n`;
 
             // Define command categories with emojis and expanded commands
             const categories = {
@@ -23,24 +23,14 @@ const commands = {
                     { cmd: 'battle', desc: 'Battle other players' },
                     { cmd: 'inventory', desc: 'Check your items' },
                     { cmd: 'shop', desc: 'Browse available items' },
-                    { cmd: 'craft', desc: 'Craft new items' },
-                    { cmd: 'dungeon', desc: 'Enter a dungeon' },
-                    { cmd: 'quest', desc: 'Accept quests' },
-                    { cmd: 'fish', desc: 'Go fishing' },
-                    { cmd: 'mine', desc: 'Go mining' },
-                    { cmd: 'hunt', desc: 'Go hunting' }
+                    { cmd: 'craft', desc: 'Craft new items' }
                 ],
                 '🎨 Anime Commands': [
                     { cmd: 'anime', desc: 'Search for anime info' },
                     { cmd: 'manga', desc: 'Search for manga info' },
                     { cmd: 'character', desc: 'Search anime characters' },
                     { cmd: 'schedule', desc: 'View anime schedules' },
-                    { cmd: 'seasonal', desc: 'View seasonal anime' },
-                    { cmd: 'wallpaper', desc: 'Get anime wallpapers' },
-                    { cmd: 'quote', desc: 'Random anime quotes' },
-                    { cmd: 'waifu', desc: 'Random waifu pics' },
-                    { cmd: 'neko', desc: 'Random neko pics' },
-                    { cmd: 'cosplay', desc: 'Random cosplay pics' }
+                    { cmd: 'seasonal', desc: 'View seasonal anime' }
                 ],
                 '🎵 Music Commands': [
                     { cmd: 'play', desc: 'Play anime music' },
@@ -82,24 +72,12 @@ const commands = {
 ┃ ⌯ All commands start with: ${config.prefix}
 ╰━━━━━━━━━━━━⊷❍`;
 
-            try {
-                // Use local image file
-                const menuImage = fs.readFileSync(path.join(__dirname, '../media/menu-banner.jpg'));
-                await sock.sendMessage(msg.key.remoteJid, {
-                    image: menuImage,
-                    caption: menuText,
-                    mentions: [config.ownerNumber]
-                });
-                logger.info('Menu sent successfully with local image');
-            } catch (error) {
-                logger.warn('Failed to send menu with image, falling back to text:', error);
-                // Fallback to text-only menu
-                await sock.sendMessage(msg.key.remoteJid, {
-                    text: menuText,
-                    mentions: [config.ownerNumber]
-                });
-                logger.info('Menu sent successfully as text-only');
-            }
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: menuText,
+                mentions: [config.ownerNumber]
+            });
+            logger.info('Menu sent successfully');
+
         } catch (error) {
             logger.error('Error in menu command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
