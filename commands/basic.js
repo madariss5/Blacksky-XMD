@@ -28,39 +28,57 @@ const basicCommands = {
             let pageContent = '';
             let pageTitle = '';
 
-            const generateCommands = (start, category, baseNames) => {
+            const getCommandName = (category, index) => {
+                const basicNames = ['menu', 'help', 'ping', 'info', 'rules', 'about', 'owner', 'donate', 'stats', 'uptime',
+                    'speed', 'rank', 'level', 'profile', 'settings', 'language', 'timezone', 'restart', 'update', 'status'];
+                const funNames = ['slap', 'hug', 'pat', 'dance', 'joke', 'meme', 'quote', '8ball', 'roll', 'flip',
+                    'rps', 'tictactoe', 'hangman', 'trivia', 'riddle', 'dare', 'truth', 'snake', 'puzzle', 'memory'];
+                const userNames = ['profile', 'level', 'daily', 'inventory', 'register', 'nickname', 'bio', 'avatar',
+                    'balance', 'transfer', 'shop', 'buy', 'sell', 'gift', 'marry', 'divorce', 'quest', 'achievement', 'pet', 'collection'];
+                const groupNames = ['kick', 'promote', 'demote', 'add', 'remove', 'link', 'revoke', 'announce', 'poll',
+                    'settings', 'welcome', 'leave', 'rules', 'antilink', 'antispam', 'warning', 'ban', 'unban', 'mute', 'unmute'];
+                const animeNames = ['anime', 'manga', 'character', 'waifu', 'neko', 'schedule', 'airing', 'upcoming',
+                    'genre', 'studio', 'recommend', 'quote', 'wallpaper', 'news', 'watch', 'seasonal', 'top', 'random', 'search', 'info'];
+                const musicNames = ['play', 'skip', 'stop', 'queue', 'pause', 'resume', 'volume', 'lyrics', 'playlist',
+                    'nowplaying', 'search', 'loop', 'shuffle', 'radio', 'spotify', 'youtube', 'download', 'favorite', 'history', 'trending'];
+                const gameNames = ['truth', 'dare', 'rps', 'quiz', 'blackjack', 'poker', 'slots', 'dice', 'fish', 'mine',
+                    'hunt', 'duel', 'battle', 'adventure', 'quest', 'lottery', 'coinflip', 'jackpot', 'bet', 'gamble'];
+
+                const baseNames = {
+                    'basic': basicNames,
+                    'fun': funNames,
+                    'user': userNames,
+                    'group': groupNames,
+                    'anime': animeNames,
+                    'music': musicNames,
+                    'game': gameNames
+                };
+
+                if (index < baseNames[category].length) {
+                    return baseNames[category][index];
+                }
+
+                // Generate descriptive names for remaining commands
+                const themes = {
+                    'basic': ['config', 'system', 'utility', 'tool', 'option'],
+                    'fun': ['game', 'play', 'enjoy', 'mini', 'action'],
+                    'user': ['account', 'profile', 'social', 'stats', 'perk'],
+                    'group': ['admin', 'manage', 'control', 'mod', 'chat'],
+                    'anime': ['weeb', 'otaku', 'japan', 'watch', 'series'],
+                    'music': ['song', 'audio', 'sound', 'track', 'tune'],
+                    'game': ['play', 'challenge', 'compete', 'battle', 'mission']
+                };
+
+                const theme = themes[category][Math.floor((index - baseNames[category].length) % themes[category].length)];
+                const num = Math.floor((index - baseNames[category].length) / themes[category].length) + 1;
+                return `${theme}${num}`;
+            };
+
+            const generateCommands = (start, category) => {
                 let content = '';
                 for (let i = 0; i < 100; i++) {
                     const cmdNum = start + i;
-                    let cmdName;
-                    if (i < baseNames.length) {
-                        cmdName = baseNames[i];
-                    } else {
-                        // Generate descriptive names for additional commands
-                        switch(category) {
-                            case 'basic':
-                                cmdName = `utility${i+1}`;
-                                break;
-                            case 'fun':
-                                cmdName = `minigame${i+1}`;
-                                break;
-                            case 'user':
-                                cmdName = `profile${i+1}`;
-                                break;
-                            case 'group':
-                                cmdName = `manage${i+1}`;
-                                break;
-                            case 'anime':
-                                cmdName = `weeb${i+1}`;
-                                break;
-                            case 'music':
-                                cmdName = `song${i+1}`;
-                                break;
-                            case 'game':
-                                cmdName = `play${i+1}`;
-                                break;
-                        }
-                    }
+                    const cmdName = getCommandName(category, i);
                     content += `${cmdNum}. ${config.prefix}${cmdName}\n`;
                 }
                 return content;
@@ -69,72 +87,31 @@ const basicCommands = {
             switch(currentPage) {
                 case 1:
                     pageTitle = '⚙️ *Basic Commands* [100]';
-                    pageContent = generateCommands(1, 'basic', [
-                        'menu', 'help', 'ping', 'info', 'rules', 'about',
-                        'owner', 'donate', 'report', 'feedback', 'uptime',
-                        'stats', 'speed', 'restart', 'update', 'status',
-                        'settings', 'prefix', 'language', 'timezone'
-                    ]);
+                    pageContent = generateCommands(1, 'basic');
                     break;
-
                 case 2:
                     pageTitle = '🎮 *Fun Commands* [100]';
-                    pageContent = generateCommands(101, 'fun', [
-                        'slap', 'hug', 'pat', 'dance', 'joke', 'meme',
-                        'quote', '8ball', 'roll', 'flip', 'rps',
-                        'tictactoe', 'hangman', 'trivia', 'riddle',
-                        'dare', 'truth', 'minesweeper', 'snake', 'puzzle'
-                    ]);
+                    pageContent = generateCommands(101, 'fun');
                     break;
-
                 case 3:
                     pageTitle = '👤 *User Commands* [100]';
-                    pageContent = generateCommands(201, 'user', [
-                        'profile', 'level', 'daily', 'inventory', 'register',
-                        'nickname', 'bio', 'avatar', 'rank', 'balance',
-                        'transfer', 'shop', 'buy', 'sell', 'gift',
-                        'marry', 'divorce', 'reputation', 'achievement', 'quest'
-                    ]);
+                    pageContent = generateCommands(201, 'user');
                     break;
-
                 case 4:
                     pageTitle = '👥 *Group Commands* [100]';
-                    pageContent = generateCommands(301, 'group', [
-                        'kick', 'promote', 'mute', 'unmute', 'add',
-                        'remove', 'link', 'revoke', 'announce', 'poll',
-                        'settings', 'welcome', 'leave', 'rules', 'antilink',
-                        'antispam', 'antiraid', 'warning', 'ban', 'unban'
-                    ]);
+                    pageContent = generateCommands(301, 'group');
                     break;
-
                 case 5:
                     pageTitle = '🎨 *Anime Commands* [100]';
-                    pageContent = generateCommands(401, 'anime', [
-                        'anime', 'manga', 'character', 'waifu', 'schedule',
-                        'season', 'upcoming', 'airing', 'genre', 'studio',
-                        'recommend', 'quote', 'wallpaper', 'news', 'watch',
-                        'neko', 'sauce', 'cosplay', 'fanart', 'seasonal'
-                    ]);
+                    pageContent = generateCommands(401, 'anime');
                     break;
-
                 case 6:
                     pageTitle = '🎵 *Music Commands* [100]';
-                    pageContent = generateCommands(501, 'music', [
-                        'play', 'skip', 'stop', 'queue', 'pause',
-                        'resume', 'volume', 'lyrics', 'playlist', 'nowplaying',
-                        'search', 'loop', 'shuffle', 'radio', 'spotify',
-                        'youtube', 'soundcloud', 'download', 'favorite', 'history'
-                    ]);
+                    pageContent = generateCommands(501, 'music');
                     break;
-
                 case 7:
                     pageTitle = '🎲 *Game Commands* [100]';
-                    pageContent = generateCommands(601, 'game', [
-                        'truth', 'dare', 'rps', 'quiz', 'blackjack',
-                        'poker', 'slots', 'dice', 'fish', 'mine',
-                        'hunt', 'duel', 'battle', 'adventure', 'quest',
-                        'lottery', 'coinflip', 'jackpot', 'bet', 'gamble'
-                    ]);
+                    pageContent = generateCommands(601, 'game');
                     break;
             }
 
