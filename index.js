@@ -5,6 +5,14 @@ const config = require("./config");
 const fs = require("fs-extra");
 const path = require("path");
 
+// Helper function to format phone number
+const formatPhoneNumber = (number) => {
+    if (!number) return null;
+    // Remove any non-digits and add suffix
+    const cleanNumber = number.replace(/\D/g, '');
+    return `${cleanNumber}@s.whatsapp.net`;
+};
+
 // Add environment variable validation at the top of the file
 const validateEnv = () => {
     const required = ['OWNER_NAME', 'OWNER_NUMBER'];
@@ -26,18 +34,11 @@ const validateEnv = () => {
     console.log('✅ Environment variables validated successfully');
 };
 
-// Helper function to format phone number
-const formatPhoneNumber = (number) => {
-    // Remove any non-digits and add suffix
-    const cleanNumber = number.replace(/\D/g, '');
-    return `${cleanNumber}@s.whatsapp.net`;
-};
+// Add the validation call before WhatsApp connection
+validateEnv();
 
 // Update config with formatted number
 config.ownerNumber = formatPhoneNumber(process.env.OWNER_NUMBER);
-
-// Add the validation call before WhatsApp connection
-validateEnv();
 
 // Create store to save chats
 const store = makeInMemoryStore({ 
