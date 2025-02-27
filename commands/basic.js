@@ -6,13 +6,71 @@ const basicCommands = {
     // Core basic commands
     menu: async (sock, msg) => {
         try {
-            const menuText = `╭━━━❰ *Commands Menu* ❱━━━⊷❍
-┃ Bot Name: ${config.botName}
+            const menuText = `╭━━━❰ *${config.botName}* ❱━━━⊷❍
+┃ Creator: @${config.ownerNumber.split('@')[0]}
 ┃ Prefix: ${config.prefix}
-┃ Owner: @${config.ownerNumber.split('@')[0]}
+┃ Status: Online
 ╰━━━━━━━━━━━━⊷❍
 
-Use ${config.prefix}help <command> for details on any command.`;
+🔰 *Command Categories*
+
+👤 *User Commands* [100]
+• register - Register your profile
+• profile - View user profile
+• me - View your stats
+• level - Check your level
+• daily - Claim daily rewards
+• bio - Set your bio
+[And 94 more user commands]
+
+👥 *Group Commands* [100]
+• kick - Kick a member
+• promote - Promote to admin
+• demote - Demote from admin
+• mute - Mute group chat
+• unmute - Unmute group chat
+• everyone - Tag all members
+• antilink - Toggle anti-link
+[And 93 more group commands]
+
+🎮 *Fun Commands* [100]
+• slap - Slap someone
+• hug - Hug someone
+• kiss - Kiss someone
+• pat - Pat someone
+• punch - Punch someone
+• dance - Show dance animation
+[And 94 more fun commands]
+
+🎨 *Anime Commands* [100]
+• anime - Search anime info
+• manga - Search manga info
+• character - Search characters
+• schedule - Anime schedule
+[And 96 more anime commands]
+
+🎵 *Music Commands* [100]
+• play - Play a song
+• queue - View song queue
+• skip - Skip current song
+• lyrics - Get song lyrics
+• playlist - Manage playlists
+[And 95 more music commands]
+
+🔞 *NSFW Commands* [100]
+• setnsfw - Toggle NSFW mode
+• nsfwcheck - Check NSFW status
+[And 98 more NSFW commands]
+
+⚙️ *Basic Commands* [100]
+• menu - Show this menu
+• help - Command help
+• ping - Check bot response
+• info - Bot information
+[And 96 more basic commands]
+
+Use ${config.prefix}help <command> for details
+Total Commands: 700`;
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: menuText,
