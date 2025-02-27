@@ -11,7 +11,7 @@ const basicCommands = {
             const page = args[0] ? parseInt(args[0]) : 1;
 
             // Set default page if not valid
-            if (isNaN(page) || page < 1 || page > 10) {  
+            if (isNaN(page) || page < 1 || page > 15) {  // Increased to 15 pages
                 global.menuPages[chatId] = 1;
             } else {
                 global.menuPages[chatId] = page;
@@ -30,152 +30,252 @@ const basicCommands = {
 
             switch(currentPage) {
                 case 1:
-                    pageTitle = '⚙️ *Basic Commands*';
-                    pageContent = `1. ${config.prefix}menu - Show all commands\n` +
-                                `2. ${config.prefix}help - Get command help\n` +
-                                `3. ${config.prefix}ping - Check bot response\n` +
-                                `4. ${config.prefix}info - View bot information\n` +
-                                `5. ${config.prefix}rules - Show bot rules\n` +
-                                `6. ${config.prefix}about - About this bot\n` +
-                                `7. ${config.prefix}owner - Contact owner\n` +
-                                `8. ${config.prefix}donate - Support development\n` +
-                                `9. ${config.prefix}stats - View statistics\n` +
-                                `10. ${config.prefix}uptime - Check uptime`;
+                    pageTitle = '📥 *Downloader Commands - Basic*';
+                    pageContent = generatePageContent(1, [
+                        'ytmp3 - YouTube audio',
+                        'ytmp4 - YouTube video',
+                        'play - Play YouTube audio',
+                        'video - Play YouTube video',
+                        'tiktok - TikTok video',
+                        'facebook - Facebook video',
+                        'instagram - Instagram media',
+                        'twitter - Twitter media',
+                        'pinterest - Pinterest media',
+                        'spotify - Spotify tracks'
+                    ]);
                     break;
 
                 case 2:
-                    pageTitle = '📥 *Downloader Commands*';
-                    pageContent = `201. ${config.prefix}ytmp3 - YouTube audio\n` +
-                                `202. ${config.prefix}ytmp4 - YouTube video\n` +
-                                `203. ${config.prefix}play - Play YouTube audio\n` +
-                                `204. ${config.prefix}video - Play YouTube video\n` +
-                                `205. ${config.prefix}tiktok - TikTok downloader\n` +
-                                `206. ${config.prefix}facebook - Facebook video\n` +
-                                `207. ${config.prefix}instagram - Instagram media\n` +
-                                `208. ${config.prefix}mediafire - MediaFire files\n` +
-                                `209. ${config.prefix}apk - Android apps\n` +
-                                `210. ${config.prefix}lyrics - Find song lyrics`;
+                    pageTitle = '📥 *Downloader Commands - Advanced*';
+                    pageContent = generatePageContent(11, [
+                        'soundcloud - SoundCloud tracks',
+                        'mediafire - MediaFire files',
+                        'gdrive - Google Drive files',
+                        'mega - MEGA files',
+                        'apk - Android apps',
+                        'ringtone - Download ringtones',
+                        'movie - Download movies',
+                        'anime - Download anime',
+                        'manga - Download manga',
+                        'lyrics - Find song lyrics'
+                    ]);
                     break;
 
                 case 3:
-                    pageTitle = '💰 *Economy Commands*';
-                    pageContent = `301. ${config.prefix}balance - Check balance\n` +
-                                `302. ${config.prefix}daily - Daily rewards\n` +
-                                `303. ${config.prefix}transfer - Send money\n` +
-                                `304. ${config.prefix}bank - Bank operations\n` +
-                                `305. ${config.prefix}deposit - Bank deposit\n` +
-                                `306. ${config.prefix}withdraw - Bank withdraw\n` +
-                                `307. ${config.prefix}rob - Rob users\n` +
-                                `308. ${config.prefix}work - Earn money\n` +
-                                `309. ${config.prefix}mine - Mine resources\n` +
-                                `310. ${config.prefix}shop - Buy items`;
+                    pageTitle = '💰 *Economy Commands - Basic*';
+                    pageContent = generatePageContent(21, [
+                        'balance - Check balance',
+                        'daily - Daily rewards',
+                        'weekly - Weekly rewards',
+                        'monthly - Monthly rewards',
+                        'transfer - Send money',
+                        'bank - Bank operations',
+                        'deposit - Bank deposit',
+                        'withdraw - Bank withdraw',
+                        'rob - Rob users',
+                        'heist - Bank heist'
+                    ]);
                     break;
 
                 case 4:
-                    pageTitle = '🎮 *Games & Gambling*';
-                    pageContent = `401. ${config.prefix}gamble - Gamble money\n` +
-                                `402. ${config.prefix}flip - Coin flip bet\n` +
-                                `403. ${config.prefix}slots - Slot machine\n` +
-                                `404. ${config.prefix}inventory - View items\n` +
-                                `405. ${config.prefix}use - Use items\n` +
-                                `406. ${config.prefix}give - Gift items\n` +
-                                `407. ${config.prefix}trade - Trade items\n` +
-                                `408. ${config.prefix}quest - Daily quests\n` +
-                                `409. ${config.prefix}challenge - Challenges\n` +
-                                `410. ${config.prefix}leaderboard - Rankings`;
+                    pageTitle = '💰 *Economy Commands - Jobs*';
+                    pageContent = generatePageContent(31, [
+                        'work - Work for money',
+                        'jobs - View jobs',
+                        'mine - Mine resources',
+                        'fish - Go fishing',
+                        'hunt - Go hunting',
+                        'farm - Manage farm',
+                        'shop - Buy items',
+                        'sell - Sell items',
+                        'inventory - View items',
+                        'craft - Craft items'
+                    ]);
                     break;
 
                 case 5:
-                    pageTitle = '👥 *Group Commands*';
-                    pageContent = `501. ${config.prefix}kick - Kick member\n` +
-                                `502. ${config.prefix}promote - Make admin\n` +
-                                `503. ${config.prefix}demote - Remove admin\n` +
-                                `504. ${config.prefix}add - Add member\n` +
-                                `505. ${config.prefix}remove - Remove member\n` +
-                                `506. ${config.prefix}link - Group link\n` +
-                                `507. ${config.prefix}revoke - Reset link\n` +
-                                `508. ${config.prefix}announce - Send announcement\n` +
-                                `509. ${config.prefix}poll - Create poll\n` +
-                                `510. ${config.prefix}settings - Group settings`;
+                    pageTitle = '🎮 *Economy Commands - Gambling*';
+                    pageContent = generatePageContent(41, [
+                        'gamble - Gamble money',
+                        'flip - Coin flip',
+                        'slots - Slot machine',
+                        'blackjack - Play blackjack',
+                        'poker - Play poker',
+                        'roulette - Play roulette',
+                        'dice - Roll dice',
+                        'lottery - Buy lottery',
+                        'investments - Invest money',
+                        'stocks - Trade stocks'
+                    ]);
                     break;
 
                 case 6:
-                    pageTitle = '🎨 *Anime Commands*';
-                    pageContent = `601. ${config.prefix}anime - Search anime\n` +
-                                `602. ${config.prefix}waifu - Random waifu\n` +
-                                `603. ${config.prefix}neko - Random neko\n` +
-                                `604. ${config.prefix}couplepp - Couple pfp\n` +
-                                `605. ${config.prefix}trap - Trap images\n` +
-                                `606. ${config.prefix}hentai - NSFW content\n` +
-                                `607. ${config.prefix}hneko - NSFW neko\n` +
-                                `608. ${config.prefix}hwaifu - NSFW waifu\n` +
-                                `609. ${config.prefix}schedule - Airing list\n` +
-                                `610. ${config.prefix}season - Current anime`;
+                    pageTitle = '👥 *Group Commands - Basic*';
+                    pageContent = generatePageContent(51, [
+                        'kick - Kick member',
+                        'add - Add member',
+                        'promote - Make admin',
+                        'demote - Remove admin',
+                        'setname - Set group name',
+                        'setdesc - Set description',
+                        'setppgc - Set group pic',
+                        'tagall - Tag everyone',
+                        'hidetag - Hidden tag',
+                        'totag - Convert to tag'
+                    ]);
                     break;
 
                 case 7:
-                    pageTitle = '🤖 *AI Commands*';
-                    pageContent = `701. ${config.prefix}gpt - Chat with GPT\n` +
-                                `702. ${config.prefix}imagine - Generate images\n` +
-                                `703. ${config.prefix}lisa - Chat with Lisa\n` +
-                                `704. ${config.prefix}rias - Chat with Rias\n` +
-                                `705. ${config.prefix}toxxic - Chat with Toxxic\n` +
-                                `706. ${config.prefix}txt2img - Text to image\n` +
-                                `707. ${config.prefix}aiuser - AI settings\n` +
-                                `708. ${config.prefix}bugandro - Report Android\n` +
-                                `709. ${config.prefix}bugios - Report iOS\n` +
-                                `710. ${config.prefix}help - AI commands help`;
+                    pageTitle = '👥 *Group Commands - Voting*';
+                    pageContent = generatePageContent(61, [
+                        'vote - Start vote',
+                        'upvote - Vote up',
+                        'devote - Vote down',
+                        'checkvote - Check votes',
+                        'delvote - Delete vote',
+                        'groupinfo - Group info',
+                        'grouplink - Get link',
+                        'resetlink - Reset link',
+                        'listonline - Online list',
+                        'listadmin - Admin list'
+                    ]);
                     break;
 
                 case 8:
-                    pageTitle = '🔧 *Owner Commands*';
-                    pageContent = `801. ${config.prefix}broadcast - Send to all\n` +
-                                `802. ${config.prefix}ban - Ban user\n` +
-                                `803. ${config.prefix}unban - Unban user\n` +
-                                `804. ${config.prefix}banlist - View bans\n` +
-                                `805. ${config.prefix}bangroup - Ban group\n` +
-                                `806. ${config.prefix}unbangroup - Unban group\n` +
-                                `807. ${config.prefix}restart - Restart bot\n` +
-                                `808. ${config.prefix}setprefix - Change prefix\n` +
-                                `809. ${config.prefix}setbotname - Change name\n` +
-                                `810. ${config.prefix}stats - View stats`;
+                    pageTitle = '👥 *Group Commands - Protection*';
+                    pageContent = generatePageContent(71, [
+                        'autosticker - Auto sticker',
+                        'antidelete - Anti delete',
+                        'antilink - Anti link',
+                        'antispam - Anti spam',
+                        'antitoxic - Anti toxic',
+                        'welcome - Welcome msg',
+                        'goodbye - Goodbye msg',
+                        'setwelcome - Set welcome',
+                        'setgoodbye - Set goodbye',
+                        'mute - Mute group'
+                    ]);
                     break;
 
                 case 9:
-                    pageTitle = '⚙️ *Config Commands*';
-                    pageContent = `901. ${config.prefix}setautoreply - Auto reply\n` +
-                                `902. ${config.prefix}setwelcome - Welcome msg\n` +
-                                `903. ${config.prefix}setgoodbye - Goodbye msg\n` +
-                                `904. ${config.prefix}addcommand - Add command\n` +
-                                `905. ${config.prefix}delcommand - Del command\n` +
-                                `906. ${config.prefix}setlanguage - Language\n` +
-                                `907. ${config.prefix}backup - Create backup\n` +
-                                `908. ${config.prefix}restore - Restore bot\n` +
-                                `909. ${config.prefix}update - Update bot\n` +
-                                `910. ${config.prefix}reset - Reset settings`;
+                    pageTitle = '👑 *Owner Commands - Basic*';
+                    pageContent = generatePageContent(81, [
+                        'broadcast - Send to all',
+                        'bc - Broadcast message',
+                        'bcgc - Group broadcast',
+                        'join - Join group',
+                        'leave - Leave group',
+                        'block - Block user',
+                        'unblock - Unblock user',
+                        'ban - Ban user',
+                        'unban - Unban user',
+                        'banlist - Banned users'
+                    ]);
                     break;
 
                 case 10:
-                    pageTitle = '🔞 *NSFW Commands*';
-                    pageContent = `1001. ${config.prefix}togglensfw - Toggle NSFW\n` +
-                                `1002. ${config.prefix}verifyage - Age verify\n` +
-                                `1003. ${config.prefix}nsfwart - View artwork\n` +
-                                `1004. ${config.prefix}nsfwstory - View stories\n` +
-                                `1005. ${config.prefix}nsfwmedia - View media\n` +
-                                `1006. ${config.prefix}hentai - View hentai\n` +
-                                `1007. ${config.prefix}hneko - Neko content\n` +
-                                `1008. ${config.prefix}hwaifu - Waifu content\n` +
-                                `1009. ${config.prefix}nsearch - NSFW search\n` +
-                                `1010. ${config.prefix}nrandom - Random NSFW`;
+                    pageTitle = '👑 *Owner Commands - System*';
+                    pageContent = generatePageContent(91, [
+                        'update - Update bot',
+                        'restart - Restart bot',
+                        'setbotbio - Set bot bio',
+                        'setbotname - Set bot name',
+                        'setbotpp - Set bot pic',
+                        'setstatus - Set status',
+                        'setprefix - Set prefix',
+                        'eval - Run JS code',
+                        'exec - Run terminal',
+                        'ipbot - Show bot IP'
+                    ]);
+                    break;
+
+                case 11:
+                    pageTitle = '🎨 *Fun Commands - Stickers*';
+                    pageContent = generatePageContent(101, [
+                        'sticker - Make sticker',
+                        'stickermeme - Meme sticker',
+                        'emojimix - Mix emojis',
+                        'toimg - Sticker to image',
+                        'tomp3 - Video to audio',
+                        'tovn - Audio to voice',
+                        'tts - Text to speech',
+                        'quote - Quote image',
+                        'quotely - Quote sticker',
+                        'triggered - Triggered effect'
+                    ]);
+                    break;
+
+                case 12:
+                    pageTitle = '🎨 *Fun Commands - Effects*';
+                    pageContent = generatePageContent(111, [
+                        'wasted - Wasted effect',
+                        'jail - Jail effect',
+                        'rip - RIP effect',
+                        'trash - Trash effect',
+                        'rainbow - Rainbow effect',
+                        'circle - Circle effect',
+                        'slap - Slap effect',
+                        'affect - Affect effect',
+                        'beautiful - Beautiful effect',
+                        'blur - Blur effect'
+                    ]);
+                    break;
+
+                case 13:
+                    pageTitle = '🤖 *AI Commands - Chat*';
+                    pageContent = generatePageContent(121, [
+                        'gpt - GPT chat',
+                        'gpt4 - GPT-4 chat',
+                        'dalle - DALL-E art',
+                        'imagine - Generate art',
+                        'lisa - Chat with Lisa',
+                        'rias - Chat with Rias',
+                        'toxxic - Chat with Toxxic',
+                        'translate - Translate text',
+                        'aivoice - AI voice',
+                        'aiuser - AI settings'
+                    ]);
+                    break;
+
+                case 14:
+                    pageTitle = '🤖 *AI Commands - Image*';
+                    pageContent = generatePageContent(131, [
+                        'remini - Enhance image',
+                        'recolor - Recolor image',
+                        'colorize - Colorize B&W',
+                        'upscale - Upscale image',
+                        'anime2d - Photo to anime',
+                        'cartoon - Photo to cartoon',
+                        'toonme - Toonify photo',
+                        'txt2img - Text to image',
+                        'img2txt - Image to text',
+                        'qrmaker - Create QR code'
+                    ]);
+                    break;
+
+                case 15:
+                    pageTitle = '🔧 *Debug Commands*';
+                    pageContent = generatePageContent(141, [
+                        'bugandro - Android bugs',
+                        'bugios - iOS bugs',
+                        'clearcache - Clear cache',
+                        'ping - Check speed',
+                        'status - Bot status',
+                        'runtime - Up time',
+                        'memory - Memory usage',
+                        'cpu - CPU usage',
+                        'debug - Debug mode',
+                        'test - Test features'
+                    ]);
                     break;
             }
 
             const navigation = `\n📖 *Page Navigation*\n` +
-                             `• Current: Page ${currentPage}/10\n` +  
+                             `• Current: Page ${currentPage}/15\n` +
                              `• Next page: ${config.prefix}menu ${currentPage + 1}\n` +
                              `• Previous: ${config.prefix}menu ${currentPage - 1}\n` +
-                             `• Go to page: ${config.prefix}menu [1-10]\n\n` +  
-                             `💡 Commands shown: 100 (10 per category)`;  
+                             `• Go to page: ${config.prefix}menu [1-15]\n\n` +
+                             `💡 Commands shown: 150 (10 per page)`;
 
             const fullMenu = menuHeader + pageTitle + '\n\n' + pageContent + navigation;
 
@@ -257,7 +357,7 @@ const basicCommands = {
                         `• Owner: @${config.ownerNumber.split('@')[0]}\n` +
                         `• Prefix: ${config.prefix}\n` +
                         `• Version: 1.0.0\n` +
-                        `• Commands: 100\n` + // Updated command count
+                        `• Commands: 150\n` + 
                         `• Status: Online`;
 
             await sock.sendMessage(msg.key.remoteJid, {
@@ -272,6 +372,13 @@ const basicCommands = {
         }
     }
 };
+
+// Helper function to generate formatted page content
+function generatePageContent(startNum, commands) {
+    return commands.map((cmd, index) => 
+        `${startNum + index}. ${config.prefix}${cmd}`
+    ).join('\n');
+}
 
 // Helper function to get command name from number
 function getCommandFromNumber(num) {
