@@ -7,116 +7,84 @@ const commands = {
         menuText += `┃ *Prefix:* ${config.prefix}\n`;
         menuText += '╰═══════════════⊷❍\n\n';
 
-        // Define command categories with emojis
+        // Define command categories with emojis and get descriptions from config
         const categories = {
             '⚡ Basic Commands': [
-                {cmd: 'menu', desc: 'Display this menu', usage: '!menu'},
-                {cmd: 'ping', desc: 'Check bot response time', usage: '!ping'},
-                {cmd: 'info', desc: 'Show bot information', usage: '!info'}
+                {cmd: 'menu', desc: config.commands.menu.description, usage: '!menu'},
+                {cmd: 'ping', desc: config.commands.ping.description, usage: '!ping'},
+                {cmd: 'info', desc: config.commands.info.description, usage: '!info'}
             ],
             '👑 Owner Commands': [
-                {cmd: 'broadcast', desc: 'Send message to all chats', usage: '!broadcast <message>'},
-                {cmd: 'ban', desc: 'Ban a user from using bot', usage: '!ban @user'},
-                {cmd: 'unban', desc: 'Unban a user', usage: '!unban @user'},
-                {cmd: 'banlist', desc: 'Show banned users & groups', usage: '!banlist'},
-                {cmd: 'bangroup', desc: 'Ban a group', usage: '!bangroup'},
-                {cmd: 'unbangroup', desc: 'Unban a group', usage: '!unbangroup'},
-                {cmd: 'restart', desc: 'Restart the bot', usage: '!restart'},
-                {cmd: 'setprefix', desc: 'Change command prefix', usage: '!setprefix <new_prefix>'},
-                {cmd: 'setbotname', desc: 'Change bot name', usage: '!setbotname <new_name>'},
-                {cmd: 'stats', desc: 'View bot statistics', usage: '!stats'},
-                {cmd: 'clearcache', desc: 'Clear bot cache', usage: '!clearcache'}
+                {cmd: 'broadcast', desc: config.commands.broadcast.description, usage: '!broadcast <message>'},
+                {cmd: 'ban', desc: config.commands.ban.description, usage: '!ban @user'},
+                {cmd: 'unban', desc: config.commands.unban.description, usage: '!unban @user'},
+                {cmd: 'banlist', desc: config.commands.banlist.description, usage: '!banlist'},
+                {cmd: 'bangroup', desc: config.commands.bangroup.description, usage: '!bangroup'},
+                {cmd: 'unbangroup', desc: config.commands.unbangroup.description, usage: '!unbangroup'},
+                {cmd: 'restart', desc: config.commands.restart.description, usage: '!restart'},
+                {cmd: 'setprefix', desc: config.commands.setprefix.description, usage: '!setprefix <new_prefix>'},
+                {cmd: 'setbotname', desc: config.commands.setbotname.description, usage: '!setbotname <new_name>'},
+                {cmd: 'stats', desc: config.commands.stats.description, usage: '!stats'},
+                {cmd: 'clearcache', desc: config.commands.clearcache.description, usage: '!clearcache'}
             ],
             '👥 Group Commands': [
-                {cmd: 'kick', desc: 'Kick a member', usage: '!kick @user'},
-                {cmd: 'promote', desc: 'Promote to admin', usage: '!promote @user'},
-                {cmd: 'demote', desc: 'Demote from admin', usage: '!demote @user'},
-                {cmd: 'mute', desc: 'Mute group chat', usage: '!mute'},
-                {cmd: 'unmute', desc: 'Unmute group chat', usage: '!unmute'},
-                {cmd: 'everyone', desc: 'Tag all members', usage: '!everyone [message]'},
-                {cmd: 'setwelcome', desc: 'Set welcome message', usage: '!setwelcome <message>'},
-                {cmd: 'setbye', desc: 'Set goodbye message', usage: '!setbye <message>'},
-                {cmd: 'del', desc: 'Delete bot message', usage: '!del <reply_to_message>'},
-                {cmd: 'antilink', desc: 'Toggle anti-link', usage: '!antilink on/off'},
-                {cmd: 'groupinfo', desc: 'Show group info', usage: '!groupinfo'},
-                {cmd: 'poll', desc: 'Create a poll', usage: '!poll "question" "option1" "option2"'}
+                {cmd: 'kick', desc: config.commands.kick.description, usage: '!kick @user'},
+                {cmd: 'promote', desc: config.commands.promote.description, usage: '!promote @user'},
+                {cmd: 'demote', desc: config.commands.demote.description, usage: '!demote @user'},
+                {cmd: 'mute', desc: config.commands.mute.description, usage: '!mute'},
+                {cmd: 'unmute', desc: config.commands.unmute.description, usage: '!unmute'},
+                {cmd: 'everyone', desc: config.commands.everyone.description, usage: '!everyone [message]'},
+                {cmd: 'setwelcome', desc: config.commands.setwelcome.description, usage: '!setwelcome <message>'},
+                {cmd: 'setbye', desc: config.commands.setbye.description, usage: '!setbye <message>'},
+                {cmd: 'del', desc: config.commands.del.description, usage: '!del <reply_to_message>'},
+                {cmd: 'antilink', desc: config.commands.antilink.description, usage: '!antilink on/off'},
+                {cmd: 'groupinfo', desc: config.commands.groupinfo.description, usage: '!groupinfo'},
+                {cmd: 'poll', desc: config.commands.poll.description, usage: '!poll "question" "option1" "option2"'}
             ],
             '👤 User Commands': [
-                {cmd: 'register', desc: 'Register user profile', usage: '!register <name> <age>'},
-                {cmd: 'profile', desc: 'View user profile', usage: '!profile [@user]'},
-                {cmd: 'me', desc: 'View your info', usage: '!me'},
-                {cmd: 'level', desc: 'Check your level', usage: '!level'},
-                {cmd: 'status', desc: 'View your status', usage: '!status'},
-                {cmd: 'owner', desc: 'View bot owner', usage: '!owner'}
+                {cmd: 'register', desc: config.commands.register.description, usage: '!register <name> <age>'},
+                {cmd: 'profile', desc: config.commands.profile.description, usage: '!profile [@user]'},
+                {cmd: 'me', desc: config.commands.me.description, usage: '!me'},
+                {cmd: 'level', desc: config.commands.level.description, usage: '!level'},
+                {cmd: 'status', desc: config.commands.status.description, usage: '!status'},
+                {cmd: 'owner', desc: config.commands.owner.description, usage: '!owner'}
             ],
             '🎮 Fun Commands': [
-                {cmd: 'coinflip', desc: 'Flip a coin', usage: '!coinflip'},
-                {cmd: 'dice', desc: 'Roll a dice', usage: '!dice'},
-                {cmd: 'quote', desc: 'Get random quote', usage: '!quote'},
-                {cmd: 'slap', desc: 'Slap someone', usage: '!slap @user'},
-                {cmd: 'hug', desc: 'Hug someone', usage: '!hug @user'},
-                {cmd: 'cuddle', desc: 'Cuddle someone', usage: '!cuddle @user'},
-                {cmd: 'kiss', desc: 'Kiss someone', usage: '!kiss @user'},
-                {cmd: 'kill', desc: 'Kill someone', usage: '!kill @user'},
-                {cmd: 'dance', desc: 'Show dance animation', usage: '!dance'},
-                {cmd: 'insult', desc: 'Insult someone', usage: '!insult @user'},
-                {cmd: 'meme', desc: 'Get random meme', usage: '!meme'},
-                {cmd: 'ship', desc: 'Ship two users', usage: '!ship @user1 @user2'},
-                {cmd: 'fight', desc: 'Start a fight', usage: '!fight @user'},
-                {cmd: 'rps', desc: 'Play rock paper scissors', usage: '!rps <choice>'},
-                {cmd: 'truthordare', desc: 'Play truth or dare', usage: '!truthordare <truth/dare>'}
-            ],
-            '🔞 NSFW Commands': [
-                {cmd: 'togglensfw', desc: 'Toggle NSFW in group', usage: '!togglensfw on/off'},
-                {cmd: 'verifyage', desc: 'Verify your age', usage: '!verifyage <age>'}
+                {cmd: 'coinflip', desc: config.commands.coinflip.description, usage: '!coinflip'},
+                {cmd: 'dice', desc: config.commands.dice.description, usage: '!dice'},
+                {cmd: 'quote', desc: config.commands.quote.description, usage: '!quote'},
+                {cmd: 'slap', desc: config.commands.slap.description, usage: '!slap @user'},
+                {cmd: 'hug', desc: config.commands.hug.description, usage: '!hug @user'},
+                {cmd: 'cuddle', desc: config.commands.cuddle.description, usage: '!cuddle @user'},
+                {cmd: 'kiss', desc: config.commands.kiss.description, usage: '!kiss @user'},
+                {cmd: 'kill', desc: config.commands.kill.description, usage: '!kill @user'},
+                {cmd: 'dance', desc: config.commands.dance.description, usage: '!dance'},
+                {cmd: 'insult', desc: config.commands.insult.description, usage: '!insult @user'},
+                {cmd: 'meme', desc: config.commands.meme.description, usage: '!meme'},
+                {cmd: 'fight', desc: config.commands.fight.description, usage: '!fight @user'}
             ]
         };
 
-        // Add auto-generated commands to categories
-        for (let i = 1; i <= 50; i++) {
-            if (i > 3) { 
-                categories['⚡ Basic Commands'].push({
-                    cmd: `basicCmd${i}`,
-                    desc: `Basic command ${i}`,
-                    usage: `!basicCmd${i}`
-                });
+        // Add auto-generated commands with meaningful descriptions
+        const addAutoGeneratedCommands = (category, prefix, start, count) => {
+            for (let i = start; i <= count; i++) {
+                const cmdKey = `${prefix}${i}`;
+                if (config.commands[cmdKey]) {
+                    categories[category].push({
+                        cmd: cmdKey,
+                        desc: config.commands[cmdKey].description,
+                        usage: `!${cmdKey}`
+                    });
+                }
             }
-            if (i > 11) { 
-                categories['👑 Owner Commands'].push({
-                    cmd: `ownerCmd${i}`,
-                    desc: `Owner command ${i}`,
-                    usage: `!ownerCmd${i}`
-                });
-            }
-            if (i > 12) { 
-                categories['👥 Group Commands'].push({
-                    cmd: `groupCmd${i}`,
-                    desc: `Group command ${i}`,
-                    usage: `!groupCmd${i}`
-                });
-            }
-            if (i > 6) { 
-                categories['👤 User Commands'].push({
-                    cmd: `userCmd${i}`,
-                    desc: `User command ${i}`,
-                    usage: `!userCmd${i}`
-                });
-            }
-            if (i > 15) { 
-                categories['🎮 Fun Commands'].push({
-                    cmd: `funCmd${i}`,
-                    desc: `Fun command ${i}`,
-                    usage: `!funCmd${i}`
-                });
-            }
-            if (i > 2) { 
-                categories['🔞 NSFW Commands'].push({
-                    cmd: `nsfwCmd${i}`,
-                    desc: `NSFW command ${i} (Age restricted)`,
-                    usage: `!nsfwCmd${i}`
-                });
-            }
-        }
+        };
+
+        // Add auto-generated commands for each category
+        addAutoGeneratedCommands('⚡ Basic Commands', 'basicCmd', 4, 50);
+        addAutoGeneratedCommands('👑 Owner Commands', 'ownerCmd', 12, 50);
+        addAutoGeneratedCommands('👥 Group Commands', 'groupCmd', 13, 50);
+        addAutoGeneratedCommands('👤 User Commands', 'userCmd', 7, 50);
+        addAutoGeneratedCommands('🎮 Fun Commands', 'funCmd', 16, 50);
 
         // Display commands by category with fancy formatting
         for (const [category, commandList] of Object.entries(categories)) {

@@ -34,7 +34,17 @@ module.exports = {
         // Auto-generated owner commands will be added here
         ...Array.from({length: 89}, (_, i) => ({
             [`ownerCmd${i + 1}`]: {
-                description: `Owner command ${i + 1}`
+                description: `⚙️ System Management ${i + 1}: ${[
+                    'Manage bot settings',
+                    'Configure auto-responses',
+                    'Set welcome messages',
+                    'Manage user permissions',
+                    'Configure spam filters',
+                    'Set command cooldowns',
+                    'Manage bot backups',
+                    'Configure auto-moderation',
+                    'Set content filters'
+                ][i % 9]}`
             }
         })).reduce((acc, curr) => ({...acc, ...curr}), {}),
 
@@ -54,7 +64,17 @@ module.exports = {
         // Auto-generated group commands will be added here
         ...Array.from({length: 88}, (_, i) => ({
             [`groupCmd${i + 1}`]: {
-                description: `Group command ${i + 1}`
+                description: `👥 Group Feature ${i + 1}: ${[
+                    'Schedule group events',
+                    'Create group announcements',
+                    'Manage group roles',
+                    'Set group rules',
+                    'Create group contests',
+                    'Manage group activities',
+                    'Set group challenges',
+                    'Create group polls',
+                    'Organize group games'
+                ][i % 9]}`
             }
         })).reduce((acc, curr) => ({...acc, ...curr}), {}),
 
@@ -68,7 +88,17 @@ module.exports = {
         // Auto-generated user commands will be added here
         ...Array.from({length: 96}, (_, i) => ({
             [`userCmd${i + 1}`]: {
-                description: `User command ${i + 1}`
+                description: `👤 User Feature ${i + 1}: ${[
+                    'Customize profile themes',
+                    'Set personal reminders',
+                    'Create custom bio',
+                    'Track achievements',
+                    'Set activity status',
+                    'Create friend lists',
+                    'Share contact cards',
+                    'Set notification preferences',
+                    'Create personal notes'
+                ][i % 9]}`
             }
         })).reduce((acc, curr) => ({...acc, ...curr}), {}),
 
@@ -89,7 +119,17 @@ module.exports = {
         // Auto-generated fun commands will be added here
         ...Array.from({length: 87}, (_, i) => ({
             [`funCmd${i + 1}`]: {
-                description: `Fun command ${i + 1}`
+                description: `🎮 Fun Activity ${i + 1}: ${[
+                    'Play word games',
+                    'Create emoji art',
+                    'Generate funny stories',
+                    'Play trivia games',
+                    'Create meme templates',
+                    'Play number games',
+                    'Share funny quotes',
+                    'Create funny polls',
+                    'Play guessing games'
+                ][i % 9]}`
             }
         })).reduce((acc, curr) => ({...acc, ...curr}), {}),
 
@@ -97,7 +137,17 @@ module.exports = {
         // Note: We'll implement these with proper age restrictions and group settings
         ...Array.from({length: 50}, (_, i) => ({
             [`nsfwCmd${i + 1}`]: {
-                description: `NSFW command ${i + 1} (Age restricted)`,
+                description: `🔞 NSFW command ${i + 1}: ${[
+                    'View age-restricted content',
+                    'Access mature themes',
+                    'Browse adult content',
+                    'View NSFW images',
+                    'Access mature stories',
+                    'View adult artwork',
+                    'Browse mature content',
+                    'Access age-restricted media',
+                    'View adult-only content'
+                ][i % 9]} (Age restricted)`,
                 nsfw: true
             }
         })).reduce((acc, curr) => ({...acc, ...curr}), {})
