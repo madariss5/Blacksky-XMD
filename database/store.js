@@ -139,26 +139,42 @@ class Store {
         }
         users[userId].xp += amount;
 
-        // Level up logic
+        // Level up logic: level = square root of (xp/100)
         const currentLevel = users[userId].level;
-        const newLevel = Math.floor(0.1 * Math.sqrt(users[userId].xp));
+        const newLevel = Math.floor(Math.sqrt(users[userId].xp / 100));
 
         if (newLevel > currentLevel) {
             users[userId].level = newLevel;
             this.data.users = users;
             await this.saveStore();
-            return true; // Indicates level up
+            return { levelUp: true, newLevel }; // Return level up info
         }
 
         this.data.users = users;
         await this.saveStore();
-        return false;
+        return { levelUp: false };
     }
 
     getUserStats(userId) {
         const users = this.data.users || {};
-        return users[userId] || { xp: 0, level: 1 };
+        const user = users[userId] || { xp: 0, level: 1 };
+        const nextLevelXP = Math.pow((user.level + 1), 2) * 100;
+        return {
+            ...user,
+            nextLevelXP,
+            progress: (user.xp / nextLevelXP) * 100
+        };
     }
+
+    getUserRank(userId) {
+        const users = this.data.users || {};
+        const usersList = Object.entries(users)
+            .map(([id, data]) => ({ id, xp: data.xp }))
+            .sort((a, b) => b.xp - a.xp);
+
+        return usersList.findIndex(user => user.id === userId) + 1;
+    }
+
 
     // Group settings methods
     async setGroupSetting(groupId, setting, value) {
@@ -209,5 +225,14 @@ class Store {
         return users[userId]?.preferences?.[setting];
     }
 }
+
+// Add XP reward amounts
+const XP_REWARDS = {
+    message: 5,         // Base XP for sending a message
+    command: 10,        // Base XP for using a command
+    reaction: 15,       // XP for using reaction commands
+    daily: 100,        // Daily reward XP
+    levelMultiplier: 1.5 // Multiplier for higher levels
+};
 
 module.exports = new Store();
