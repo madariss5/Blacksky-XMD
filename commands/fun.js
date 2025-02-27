@@ -472,29 +472,37 @@ const funCommands = {
 
             const randomMessage = killMessages[Math.floor(Math.random() * killMessages.length)];
 
+            // First send the message
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: randomMessage + "\n\n☠️ *K.O!* ⚰️",
+                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+            });
+
+            // Then send the GIF
             const mediaPath = './media/anime-kill.gif';
             if (fs.existsSync(mediaPath)) {
                 const stats = fs.statSync(mediaPath);
+                console.log("GIF file size:", stats.size, "bytes");
+
                 if (stats.size > 1000) { // Only send if file is larger than 1KB
-                    await sock.sendMessage(msg.key.remoteJid, { 
-                        video: fs.readFileSync(mediaPath),
-                        gifPlayback: true,
-                        caption: randomMessage + "\n\n☠️ *K.O!* ⚰️",
-                        mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-                    });
+                    try {
+                        await sock.sendMessage(msg.key.remoteJid, {
+                            sticker: fs.readFileSync(mediaPath),
+                            mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+                        });
+                    } catch (gifError) {
+                        console.error("Error sending sticker:", gifError.stack);
+                        // Fallback to simpler message
+                        await sock.sendMessage(msg.key.remoteJid, {
+                            text: '💀 *FATALITY!*',
+                            mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+                        });
+                    }
                 } else {
                     console.error("Kill animation GIF is too small:", stats.size, "bytes");
-                    await sock.sendMessage(msg.key.remoteJid, { 
-                        text: randomMessage + "\n\n☠️ *K.O!* ⚰️",
-                        mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-                    });
                 }
             } else {
                 console.error("Kill animation GIF not found");
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    text: randomMessage + "\n\n☠️ *K.O!* ⚰️",
-                    mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-                });
             }
         } catch (error) {
             console.error('Error in kill command:', error.stack);
