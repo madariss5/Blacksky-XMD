@@ -2,48 +2,78 @@ const config = require('../config');
 const fs = require('fs-extra');
 const path = require('path');
 const logger = require('pino')();
+const ffmpeg = require('fluent-ffmpeg');
+
+const mediaDir = path.join(__dirname, '../media');
+if (!fs.existsSync(mediaDir)) {
+    fs.mkdirpSync(mediaDir);
+    logger.info('Media directory created');
+}
+
+const convertGifToMp4 = async (inputPath) => {
+    try {
+        const outputPath = inputPath.replace('.gif', '.mp4');
+
+        // Check if converted file already exists
+        if (fs.existsSync(outputPath)) {
+            logger.info(`Using existing MP4: ${outputPath}`);
+            return outputPath;
+        }
+
+        return new Promise((resolve, reject) => {
+            ffmpeg(inputPath)
+                .toFormat('mp4')
+                .addOutputOptions([
+                    '-pix_fmt yuv420p',
+                    '-movflags +faststart',
+                    '-vf scale=trunc(iw/2)*2:trunc(ih/2)*2',
+                    '-c:v libx264',
+                    '-preset ultrafast',
+                    '-b:v 1M'
+                ])
+                .on('end', () => {
+                    logger.info(`Successfully converted GIF to MP4: ${outputPath}`);
+                    resolve(outputPath);
+                })
+                .on('error', (err) => {
+                    logger.error(`Error converting GIF to MP4: ${err.message}`);
+                    reject(err);
+                })
+                .save(outputPath);
+        });
+    } catch (error) {
+        logger.error('Error in convertGifToMp4:', error);
+        throw error;
+    }
+};
 
 const sendGifReaction = async (sock, msg, mediaPath, caption = '', mentions = []) => {
     try {
-        // Check if media directory exists
-        const mediaDir = path.join(__dirname, '../media');
-        if (!fs.existsSync(mediaDir)) {
-            await fs.mkdirp(mediaDir);
-            logger.info('Media directory created');
-        }
-
         // Check if the GIF exists
         if (fs.existsSync(mediaPath)) {
-            const buffer = await fs.readFile(mediaPath);
+            // Convert GIF to MP4
+            const mp4Path = await convertGifToMp4(mediaPath);
+            const buffer = await fs.readFile(mp4Path);
 
-            // Log file details for debugging
-            logger.info(`Processing GIF: ${mediaPath}, Size: ${buffer.length} bytes`);
-
-            // Verify it's a valid GIF file by checking magic numbers
-            if (buffer.length > 3 && buffer.toString('ascii', 0, 3) === 'GIF') {
-                try {
-                    await sock.sendMessage(msg.key.remoteJid, {
-                        video: buffer,
-                        caption: caption,
-                        mentions: mentions,
-                        gifPlayback: true,
-                        mimetype: 'video/mp4',
-                        messageType: 'videoMessage',
-                        jpegThumbnail: null,
-                        seconds: 1,
-                        contextInfo: {
-                            isGif: true
-                        }
-                    });
-                    logger.info(`Successfully sent GIF: ${mediaPath}`);
-                    return true;
-                } catch (sendError) {
-                    logger.error('Error sending GIF message:', sendError);
-                    throw sendError;
-                }
-            } else {
-                logger.error(`Invalid GIF format for: ${mediaPath}`);
-                throw new Error('Invalid GIF format');
+            try {
+                await sock.sendMessage(msg.key.remoteJid, {
+                    video: buffer,
+                    caption: caption,
+                    mentions: mentions,
+                    gifPlayback: true,
+                    mimetype: 'video/mp4',
+                    messageType: 'videoMessage',
+                    jpegThumbnail: null,
+                    seconds: 1,
+                    contextInfo: {
+                        isGif: true
+                    }
+                });
+                logger.info(`Successfully sent MP4: ${mp4Path}`);
+                return true;
+            } catch (sendError) {
+                logger.error('Error sending MP4 message:', sendError);
+                throw sendError;
             }
         } else {
             logger.error(`GIF not found: ${mediaPath}`);
@@ -124,7 +154,7 @@ const funCommands = {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `*${msg.pushName}* slapped ${target}! 👋`,
                 mentions: mentions
             });
@@ -132,7 +162,7 @@ const funCommands = {
             await sendGifReaction(sock, msg, './media/anime-slap.gif', '👋', mentions);
         } catch (error) {
             logger.error('Error in slap command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Failed to execute slap command!'
             });
         }
@@ -142,7 +172,7 @@ const funCommands = {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `*${msg.pushName}* hugged ${target}! 🤗`,
                 mentions: mentions
             });
@@ -150,7 +180,7 @@ const funCommands = {
             await sendGifReaction(sock, msg, './media/anime-hug.gif', '🤗', mentions);
         } catch (error) {
             logger.error('Error in hug command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Failed to execute hug command!'
             });
         }
@@ -160,7 +190,7 @@ const funCommands = {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `*${msg.pushName}* patted ${target}! 🥰`,
                 mentions: mentions
             });
@@ -168,21 +198,21 @@ const funCommands = {
             await sendGifReaction(sock, msg, './media/anime-pat.gif', '🥰', mentions);
         } catch (error) {
             logger.error('Error in pat command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Failed to execute pat command!'
             });
         }
     },
     dance: async (sock, msg) => {
         try {
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `*${msg.pushName}* is dancing! 💃`
             });
 
             await sendGifReaction(sock, msg, './media/anime-dance.gif', '💃');
         } catch (error) {
             logger.error('Error in dance command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Failed to execute dance command!'
             });
         }
@@ -215,7 +245,7 @@ const funCommands = {
             "Everything you've ever wanted is on the other side of fear. - George Addair"
         ];
         const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
-        await sock.sendMessage(msg.key.remoteJid, { 
+        await sock.sendMessage(msg.key.remoteJid, {
             text: `📜 *Inspirational Quote:*\n\n${randomQuote}`
         });
     },
@@ -302,14 +332,14 @@ const funCommands = {
         try {
             const mediaPath = './media/anime-meme.gif';
             if (fs.existsSync(mediaPath)) {
-                await sock.sendMessage(msg.key.remoteJid, { 
+                await sock.sendMessage(msg.key.remoteJid, {
                     video: fs.readFileSync(mediaPath),
                     gifPlayback: true,
                     caption: '😂 Here\'s your meme!'
                 });
             }
         } catch (error) {
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Oops! Failed to fetch a meme. Try again later!'
             });
         }
@@ -380,17 +410,17 @@ const funCommands = {
     trivia: async (sock, msg) => {
         try {
             const questions = [
-                { 
+                {
                     q: "What planet is known as the Red Planet?",
                     a: "Mars",
                     options: ["Venus", "Mars", "Jupiter", "Mercury"]
                 },
-                { 
+                {
                     q: "What is the largest planet in our solar system?",
                     a: "Jupiter",
                     options: ["Saturn", "Neptune", "Jupiter", "Uranus"]
                 },
-                { 
+                {
                     q: "What is the closest star to Earth?",
                     a: "The Sun",
                     options: ["Proxima Centauri", "The Sun", "Alpha Centauri", "Sirius"]
@@ -451,7 +481,7 @@ const funCommands = {
             const isCorrect = correctAnswer === userAnswer;
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: isCorrect 
+                text: isCorrect
                     ? `🎉 Correct! The answer was ${correctAnswer}`
                     : `❌ Wrong! The correct answer was ${correctAnswer}`
             });
@@ -503,7 +533,7 @@ const funCommands = {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `*${msg.pushName}* eliminated ${target}! ☠️`,
                 mentions: mentions
             });
@@ -511,7 +541,7 @@ const funCommands = {
             await sendGifReaction(sock, msg, './media/anime-kill.gif', '☠️', mentions);
         } catch (error) {
             logger.error('Error in kill command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Failed to execute kill command!'
             });
         }
@@ -521,7 +551,7 @@ const funCommands = {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `*${msg.pushName}* high-fived ${target}! 🙌`,
                 mentions: mentions
             });
@@ -529,21 +559,21 @@ const funCommands = {
             await sendGifReaction(sock, msg, './media/anime-highfive.gif', '🙌', mentions);
         } catch (error) {
             logger.error('Error in highfive command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Failed to execute highfive command!'
             });
         }
     },
     facepalm: async (sock, msg) => {
         try {
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `*${msg.pushName}* facepalmed! 🤦‍♂️`
             });
 
             await sendGifReaction(sock, msg, './media/anime-facepalm.gif', '🤦‍♂️');
         } catch (error) {
             logger.error('Error in facepalm command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Failed to execute facepalm command!'
             });
         }
@@ -553,7 +583,7 @@ const funCommands = {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `*${msg.pushName}* poked ${target}! 👉`,
                 mentions: mentions
             });
@@ -561,7 +591,7 @@ const funCommands = {
             await sendGifReaction(sock, msg, './media/anime-poke.gif', '👉', mentions);
         } catch (error) {
             logger.error('Error in poke command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Failed to execute poke command!'
             });
         }
@@ -571,7 +601,7 @@ const funCommands = {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `*${msg.pushName}* cuddles ${target}! 🤗`,
                 mentions: mentions
             });
@@ -579,7 +609,7 @@ const funCommands = {
             await sendGifReaction(sock, msg, './media/anime-cuddle.gif', '🤗', mentions);
         } catch (error) {
             logger.error('Error in cuddle command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Failed to execute cuddle command!'
             });
         }
@@ -589,7 +619,7 @@ const funCommands = {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `*${msg.pushName}* yeeted ${target}! 🚀`,
                 mentions: mentions
             });
@@ -597,7 +627,7 @@ const funCommands = {
             await sendGifReaction(sock, msg, './media/anime-yeet.gif', '🚀', mentions);
         } catch (error) {
             logger.error('Error in yeet command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Failed to execute yeet command!'
             });
         }
@@ -607,7 +637,7 @@ const funCommands = {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `*${msg.pushName}* boops ${target}'s nose! 👉👃`,
                 mentions: mentions
             });
@@ -615,7 +645,7 @@ const funCommands = {
             await sendGifReaction(sock, msg, './media/anime-boop.gif', '👉👃', mentions);
         } catch (error) {
             logger.error('Error in boop command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Failed to execute boop command!'
             });
         }
@@ -625,7 +655,7 @@ const funCommands = {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `*${msg.pushName}* bonked ${target}! 🔨`,
                 mentions: mentions
             });
@@ -633,7 +663,7 @@ const funCommands = {
             await sendGifReaction(sock, msg, './media/anime-bonk.gif', '🔨', mentions);
         } catch (error) {
             logger.error('Error in bonk command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Failed to execute bonk command!'
             });
         }
@@ -643,7 +673,7 @@ const funCommands = {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `*${msg.pushName}* waves at ${target}! 👋`,
                 mentions: mentions
             });
@@ -651,7 +681,7 @@ const funCommands = {
             await sendGifReaction(sock, msg, './media/anime-wave.gif', '👋', mentions);
         } catch (error) {
             logger.error('Error in wave command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Failed to execute wave command!'
             });
         }
@@ -661,7 +691,7 @@ const funCommands = {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `*${msg.pushName}* kisses ${target}! 💋`,
                 mentions: mentions
             });
@@ -669,7 +699,7 @@ const funCommands = {
             await sendGifReaction(sock, msg, './media/anime-kiss.gif', '💋', mentions);
         } catch (error) {
             logger.error('Error in kiss command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Failed to execute kiss command!'
             });
         }
@@ -679,7 +709,7 @@ const funCommands = {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `*${msg.pushName}* punches ${target}! 👊`,
                 mentions: mentions
             });
@@ -687,7 +717,7 @@ const funCommands = {
             await sendGifReaction(sock, msg, './media/anime-punch.gif', '👊', mentions);
         } catch (error) {
             logger.error('Error in punch command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Failed to execute punch command!'
             });
         }
@@ -697,7 +727,7 @@ const funCommands = {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'everyone';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `*${msg.pushName}* winks at ${target}! 😉`,
                 mentions: mentions
             });
@@ -705,7 +735,7 @@ const funCommands = {
             await sendGifReaction(sock, msg, './media/anime-wink.gif', '😉', mentions);
         } catch (error) {
             logger.error('Error in wink command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Failed to execute wink command!'
             });
         }
@@ -713,9 +743,9 @@ const funCommands = {
     wasted: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
-            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const mentions = args[0 ? [args[0] + '@s.whatsapp.net'] : [];
 
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `💀 *WASTED*\n${target} has been wasted!`,
                 mentions: mentions
             });
@@ -730,26 +760,28 @@ const funCommands = {
     },
     jail: async (sock, msg, args) => {
         try {
-            const target = args[0] ?`@${args[0].replace('@', '')}` : msg.pushName;
-            const mentions = args[0] ? [args[0] + '@swhatsapp.net'] : [];
+            const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `🏢 *JAIL*\n${target} is now behind bars!`,
                 mentions: mentions
             });
 
-            await sendGifReaction(sock, msg, './media/jail.gif', '🏢', mentions);        } catch (error) {
+            await sendGifReaction(sock, msg, './media/jail.gif', '🏢', mentions);
+        } catch (error) {
             logger.error('Error in jail command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Failed to execute jail command!'
-            });        }
+            });
+        }
     },
     rip: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `⚰️ *RIP*\nHere lies ${target}, they will be missed.`,
                 mentions: mentions
             });
