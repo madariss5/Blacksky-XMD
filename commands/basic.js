@@ -162,8 +162,15 @@ Welcome to the Ultimate Anime Bot! (◕‿◕)♡\n\n`;
             const start = Date.now();
             await sock.sendMessage(msg.key.remoteJid, { text: '📡 Testing ping...' });
             const end = Date.now();
+
+            // Calculate latency and format response
+            const latency = end - start;
+            const status = latency < 100 ? '🟢 Excellent' : latency < 200 ? '🟡 Good' : '🔴 High';
+
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `🚀 Response speed: ${end - start}ms`
+                text: `🚀 Bot Status\n\n` +
+                      `Response Time: ${latency}ms\n` +
+                      `Connection: ${status}`
             });
             logger.info('Ping command executed successfully');
         } catch (error) {
