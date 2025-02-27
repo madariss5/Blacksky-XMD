@@ -6,33 +6,42 @@ const config = require("./config");
 const fs = require("fs-extra");
 const path = require("path");
 
+// Add Heroku-specific logging
+const logger = pino({
+    level: process.env.LOG_LEVEL || "info",
+    transport: {
+        target: 'pino-pretty',
+        options: {
+            colorize: true
+        }
+    }
+});
+
 // Helper function to format phone number
 const formatPhoneNumber = (number) => {
     if (!number) return null;
-    // Remove any non-digits and add suffix
     const cleanNumber = number.replace(/\D/g, '');
     return `${cleanNumber}@s.whatsapp.net`;
 };
 
-// Add environment variable validation at the top of the file
+// Add environment variable validation with better error handling
 const validateEnv = () => {
     const required = ['OWNER_NAME', 'OWNER_NUMBER'];
     const missing = required.filter(key => !process.env[key]);
 
     if (missing.length > 0) {
-        console.error('❌ Missing required environment variables:', missing.join(', '));
-        console.error('Please set these variables in your Heroku dashboard or .env file');
+        logger.error('Missing required environment variables:', missing.join(', '));
+        logger.error('Please set these variables in your Heroku config vars');
         process.exit(1);
     }
 
-    // Validate number format (should be country code + number, e.g., 1234567890)
     if (!/^\d+$/.test(process.env.OWNER_NUMBER)) {
-        console.error('❌ OWNER_NUMBER must contain only numbers (country code + number)');
-        console.error('Example: 1234567890 (no special characters)');
+        logger.error('OWNER_NUMBER must contain only numbers (country code + number)');
+        logger.error('Example: 1234567890 (no special characters)');
         process.exit(1);
     }
 
-    console.log('✅ Environment variables validated successfully');
+    logger.info('Environment variables validated successfully');
     return true;
 };
 
@@ -45,26 +54,39 @@ config.ownerNumber = formatPhoneNumber(process.env.OWNER_NUMBER);
 config.botName = process.env.BOT_NAME || 'BlackSky-MD';
 config.prefix = process.env.PREFIX || '!';
 
-// Create store to save chats
+// Create store to save chats with better error handling
 const store = makeInMemoryStore({ 
-    logger: pino().child({ level: "silent", stream: "store" }) 
+    logger: pino().child({ level: process.env.STORE_LOG_LEVEL || "silent", stream: "store" }) 
 });
 
-// Load command modules
-const commandModules = {
-    basic: require('./commands/basic'),
-    user: require('./commands/user'),
-    group: require('./commands/group'),
-    owner: require('./commands/owner'),
-    fun: require('./commands/fun'),
-    nsfw: require('./commands/nsfw')
+// Load command modules with error handling
+const commandModules = {};
+try {
+    commandModules.basic = require('./commands/basic');
+    commandModules.user = require('./commands/user');
+    commandModules.group = require('./commands/group');
+    commandModules.owner = require('./commands/owner');
+    commandModules.fun = require('./commands/fun');
+    commandModules.nsfw = require('./commands/nsfw');
+} catch (err) {
+    logger.error('Error loading command modules:', err);
+    process.exit(1);
+}
+
+// Keep-alive mechanism for Heroku
+const keepAlive = () => {
+    logger.info('Keep-alive ping');
+    setTimeout(keepAlive, 1000 * 60 * 10); // Ping every 10 minutes
 };
+
+// Start keep-alive for Heroku
+keepAlive();
 
 // Update the sendCredsFile function to only send once
 async function sendCredsFile(sock) {
     try {
         if (!sock.user?.id) {
-            console.error('❌ Bot number not available yet');
+            logger.error('❌ Bot number not available yet');
             return false;
         }
 
@@ -75,13 +97,13 @@ async function sendCredsFile(sock) {
                  `Add this as SESSION_ID in your Heroku config vars`
         });
 
-        console.log('✅ Sent session ID to bot chat');
+        logger.log('✅ Sent session ID to bot chat');
 
         // Create a marker file to indicate we've sent the creds
         await fs.writeFile('./.creds_sent', 'true');
         return true;
     } catch (err) {
-        console.error('❌ Error sending session ID:', err);
+        logger.error('❌ Error sending session ID:', err);
         return false;
     }
 }
@@ -95,7 +117,7 @@ async function saveCredsToFile(sock, creds) {
         const credsContent = `${botName}:${sessionData}`;
 
         await fs.writeFile('./creds.json', credsContent);
-        console.log('✅ Credentials saved to creds.json');
+        logger.log('✅ Credentials saved to creds.json');
 
         // Only send creds if we haven't done so before
         if (sock?.user?.id && !await fs.pathExists('./.creds_sent')) {
@@ -103,7 +125,7 @@ async function saveCredsToFile(sock, creds) {
         }
         return true;
     } catch (err) {
-        console.error('❌ Error saving credentials:', err);
+        logger.error('❌ Error saving credentials:', err);
         return false;
     }
 }
@@ -131,146 +153,153 @@ async function sendStatusMessage(sock, status, details = '') {
             }
         }
     } catch (err) {
-        console.error('Error sending status message:', err);
+        logger.error('Error sending status message:', err);
     }
 }
 
-// Start WhatsApp connection
+// Update the connection function with better Heroku support
 async function connectToWhatsApp() {
-    // Ensure auth directory exists
-    await fs.ensureDir("./auth_info_baileys");
+    try {
+        // Ensure auth directory exists
+        await fs.ensureDir("./auth_info_baileys");
 
-    const { state, saveCreds } = await useMultiFileAuthState("./auth_info_baileys");
-    console.log("Loaded session:", state.creds.registered ? "Registered" : "Waiting for QR");
+        const { state, saveCreds } = await useMultiFileAuthState("./auth_info_baileys");
+        logger.info("Loaded session:", state.creds.registered ? "Registered" : "Waiting for QR");
 
-    // Create socket connection
-    const sock = makeWASocket({
-        printQRInTerminal: true,
-        auth: state,
-        logger: pino({ level: "silent" }),
-        browser: ["BLACKSKY-MD", "Safari", "1.0.0"],
-        getMessage: async (key) => {
-            if(store) {
-                const msg = await store.loadMessage(key.remoteJid, key.id)
-                return msg?.message || undefined
-            }
-            return {
-                conversation: "Bot Message"
-            }
-        }
-    });
-
-    store.bind(sock.ev);
-
-    // Handle connection updates
-    sock.ev.on("connection.update", async (update) => {
-        const { connection, lastDisconnect, qr } = update;
-
-        if(qr) {
-            console.log('\n🤖 Scan this QR code to connect:');
-            // QR code will be printed in terminal
-        }
-
-        if(connection === "close") {
-            let reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
-            if(reason === DisconnectReason.badSession) {
-                console.log("❌ Bad Session File, Please Delete Session and Scan Again");
-                await fs.remove("./auth_info_baileys");
-                process.exit();
-            } else if(reason === DisconnectReason.connectionClosed) {
-                console.log("⚠️ Connection closed, reconnecting....");
-                connectToWhatsApp();
-            } else if(reason === DisconnectReason.connectionLost) {
-                console.log("⚠️ Connection Lost from Server, reconnecting...");
-                connectToWhatsApp();
-            } else if(reason === DisconnectReason.connectionReplaced) {
-                console.log("❌ Connection Replaced, Another New Session Opened, Please Close Current Session First");
-                process.exit();
-            } else if(reason === DisconnectReason.loggedOut) {
-                console.log("❌ Device Logged Out, Please Delete Session and Scan Again.");
-                await fs.remove("./auth_info_baileys");
-                process.exit();
-            } else if(reason === DisconnectReason.restartRequired) {
-                console.log("🔄 Restart Required, Restarting...");
-                connectToWhatsApp();
-            } else if(reason === DisconnectReason.timedOut) {
-                console.log("⚠️ Connection TimedOut, Reconnecting...");
-                connectToWhatsApp();
-            } else {
-                console.log(`❌ Unknown DisconnectReason: ${reason}|${lastDisconnect.error}`);
-                connectToWhatsApp();
-            }
-        } else if(connection === "open") {
-            console.log("✅ Bot is now connected!");
-            // Send detailed status message
-            await sendStatusMessage(sock, 'Connected', 
-                '• Session authenticated successfully\n' +
-                '• Bot is ready to receive commands\n' +
-                '• All systems operational'
-            );
-            // Send creds.json to bot's chat only once after connection
-            await sendCredsFile(sock);
-        }
-    });
-
-    // Save credentials whenever updated
-    sock.ev.on("creds.update", async (creds) => {
-        await saveCreds(creds);
-        // Pass sock to saveCredsToFile
-        await saveCredsToFile(sock, creds);
-    });
-
-    // Handle messages
-    sock.ev.on("messages.upsert", async ({ messages, type }) => {
-        if(type !== "notify") return;
-
-        const msg = messages[0];
-        if(!msg.message) return;
-
-        const messageType = Object.keys(msg.message)[0];
-        const messageContent = msg.message[messageType];
-
-        // Extract the text content based on message type
-        let textContent = '';
-        if (messageType === 'conversation') {
-            textContent = messageContent;
-        } else if (messageType === 'extendedTextMessage') {
-            textContent = messageContent.text;
-        } else if (messageType === 'imageMessage' || messageType === 'videoMessage') {
-            textContent = messageContent.caption || '';
-        }
-
-        // Check if message starts with prefix
-        if(textContent.startsWith(config.prefix)) {
-            const cmd = textContent.slice(config.prefix.length).trim().split(/ +/).shift().toLowerCase();
-            const args = textContent.slice(config.prefix.length).trim().split(/ +/).slice(1);
-
-            try {
-                // Find the command in modules
-                for (const [moduleName, module] of Object.entries(commandModules)) {
-                    if (cmd in module) {
-                        await module[cmd](sock, msg, args);
-                        console.log(`Executed command ${cmd} from ${moduleName} module`);
-                        return;
+        // Create socket connection with Heroku-optimized settings
+        const sock = makeWASocket({
+            printQRInTerminal: true,
+            auth: state,
+            logger: pino({ level: process.env.SOCKET_LOG_LEVEL || "silent" }),
+            browser: [config.botName, "Safari", "1.0.0"],
+            connectTimeoutMs: 60_000, // Increased timeout for Heroku
+            keepAliveIntervalMs: 30_000, // More frequent keep-alive for Heroku
+            retryRequestDelayMs: 5000, // Added retry delay
+            getMessage: async (key) => {
+                try {
+                    if(store) {
+                        const msg = await store.loadMessage(key.remoteJid, key.id);
+                        return msg?.message || undefined;
                     }
+                } catch (err) {
+                    logger.error('Error getting message:', err);
                 }
-
-                // Command not found
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    text: `Command *${cmd}* not found. Use ${config.prefix}menu to see available commands.`
-                });
-
-            } catch(err) {
-                console.error(`Error executing command ${cmd}:`, err);
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    text: "Error executing command. Please try again later."
-                });
+                return { conversation: "Bot Message" };
             }
-        }
-    });
+        });
 
-    return sock;
+        store.bind(sock.ev);
+
+        // Enhanced connection handling for Heroku
+        sock.ev.on("connection.update", async (update) => {
+            const { connection, lastDisconnect, qr } = update;
+
+            if(qr) {
+                logger.info('QR Code available for scanning');
+            }
+
+            if(connection === "close") {
+                const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+                logger.info('Connection closed due to:', lastDisconnect?.error?.message);
+
+                if(shouldReconnect) {
+                    logger.info('Attempting to reconnect...');
+                    connectToWhatsApp();
+                } else {
+                    logger.error('Connection closed permanently, cleaning up...');
+                    await fs.remove("./auth_info_baileys");
+                    process.exit(1);
+                }
+            } else if(connection === "open") {
+                logger.info('Bot connected successfully!');
+
+                // Send detailed status message
+                await sendStatusMessage(sock, 'Connected', 
+                    '• WhatsApp connection established\n' +
+                    '• Running on Heroku platform\n' +
+                    '• Bot is ready to receive commands'
+                );
+                 // Send creds.json to bot's chat only once after connection
+                await sendCredsFile(sock);
+            }
+        });
+
+        // Save credentials whenever updated
+        sock.ev.on("creds.update", async (creds) => {
+            await saveCreds(creds);
+            // Pass sock to saveCredsToFile
+            await saveCredsToFile(sock, creds);
+        });
+
+        // Handle messages
+        sock.ev.on("messages.upsert", async ({ messages, type }) => {
+            if(type !== "notify") return;
+
+            const msg = messages[0];
+            if(!msg.message) return;
+
+            const messageType = Object.keys(msg.message)[0];
+            const messageContent = msg.message[messageType];
+
+            // Extract the text content based on message type
+            let textContent = '';
+            if (messageType === 'conversation') {
+                textContent = messageContent;
+            } else if (messageType === 'extendedTextMessage') {
+                textContent = messageContent.text;
+            } else if (messageType === 'imageMessage' || messageType === 'videoMessage') {
+                textContent = messageContent.caption || '';
+            }
+
+            // Check if message starts with prefix
+            if(textContent.startsWith(config.prefix)) {
+                const cmd = textContent.slice(config.prefix.length).trim().split(/ +/).shift().toLowerCase();
+                const args = textContent.slice(config.prefix.length).trim().split(/ +/).slice(1);
+
+                try {
+                    // Find the command in modules
+                    for (const [moduleName, module] of Object.entries(commandModules)) {
+                        if (cmd in module) {
+                            await module[cmd](sock, msg, args);
+                            logger.info(`Executed command ${cmd} from ${moduleName} module`);
+                            return;
+                        }
+                    }
+
+                    // Command not found
+                    await sock.sendMessage(msg.key.remoteJid, { 
+                        text: `Command *${cmd}* not found. Use ${config.prefix}menu to see available commands.`
+                    });
+
+                } catch(err) {
+                    logger.error(`Error executing command ${cmd}:`, err);
+                    await sock.sendMessage(msg.key.remoteJid, { 
+                        text: "Error executing command. Please try again later."
+                    });
+                }
+            }
+        });
+
+        return sock;
+    } catch (err) {
+        logger.error('Fatal error in connection:', err);
+        process.exit(1);
+    }
 }
 
-// Start the bot
-connectToWhatsApp().catch(err => console.log("Unexpected error: " + err));
+// Add error handlers for uncaught exceptions
+process.on('uncaughtException', (err) => {
+    logger.error('Uncaught Exception:', err);
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (err) => {
+    logger.error('Unhandled Rejection:', err);
+    process.exit(1);
+});
+
+// Start the bot with error handling
+connectToWhatsApp().catch(err => {
+    logger.error("Fatal error starting bot:", err);
+    process.exit(1);
+});

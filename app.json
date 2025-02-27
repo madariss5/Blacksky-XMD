@@ -4,9 +4,10 @@
   "repository": "https://github.com/madariss5/Blacksky-XMD",
   "logo": "https://node-js-sample.herokuapp.com/node.png",
   "keywords": ["node", "whatsapp", "bot", "baileys", "multi-device"],
+  "success_url": "/",
   "env": {
     "SESSION_ID": {
-      "description": "Session ID for WhatsApp authentication (required for Heroku deployment)",
+      "description": "Session ID for WhatsApp authentication",
       "required": true
     },
     "OWNER_NAME": {
@@ -27,13 +28,13 @@
       "required": false,
       "value": "!"
     },
-    "USE_PAIRING": {
-      "description": "Enable pairing code authentication (true/false)",
+    "LOG_LEVEL": {
+      "description": "Logging level (info/debug/error)",
       "required": false,
-      "value": "true"
+      "value": "info"
     },
     "NODE_ENV": {
-      "description": "Environment mode (production/development)",
+      "description": "Environment mode",
       "value": "production"
     }
   },
@@ -48,5 +49,6 @@
       "size": "basic"
     }
   },
-  "stack": "heroku-22"
+  "stack": "heroku-22",
+  "addons": []
 }
