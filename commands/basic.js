@@ -1,122 +1,55 @@
 const config = require('../config');
 const logger = require('pino')();
 
-// Generate 100 basic commands
 const basicCommands = {
-    // Core basic commands
     menu: async (sock, msg) => {
         try {
-            const menuHeader = `╭━━━❰ *${config.botName}* ❱━━━⊷❍
+            const menuText = `╭━━━❰ *${config.botName}* ❱━━━⊷❍
 ┃ Creator: @${config.ownerNumber.split('@')[0]}
 ┃ Prefix: ${config.prefix}
 ┃ Status: Online
 ╰━━━━━━━━━━━━⊷❍
 
-🔰 *Complete Command List*\n`;
+📜 *Command Categories*
 
-            // User Commands Section
-            let menuText = menuHeader + `\n👤 *User Commands* [100]\n`;
-            menuText += `• Core Commands:\n`;
-            menuText += `  - register: Register your profile\n`;
-            menuText += `  - profile: View user profile\n`;
-            menuText += `  - me: View your stats\n`;
-            menuText += `  - level: Check your level\n`;
-            menuText += `  - daily: Claim daily rewards\n`;
-            menuText += `  - bio: Set your bio\n`;
-            menuText += `• Additional Commands:\n`;
-            for (let i = 1; i <= 94; i++) {
-                menuText += `  - user${i}: Custom user command ${i}\n`;
-            }
+1. 👤 *User Commands*
+${config.prefix}profile - View profile
+${config.prefix}level - Check level
+${config.prefix}daily - Daily rewards
 
-            // Group Commands Section
-            menuText += `\n👥 *Group Commands* [100]\n`;
-            menuText += `• Core Commands:\n`;
-            menuText += `  - kick: Kick a member\n`;
-            menuText += `  - promote: Promote to admin\n`;
-            menuText += `  - demote: Demote from admin\n`;
-            menuText += `  - mute: Mute group chat\n`;
-            menuText += `  - unmute: Unmute group chat\n`;
-            menuText += `  - everyone: Tag all members\n`;
-            menuText += `  - antilink: Toggle anti-link\n`;
-            menuText += `• Additional Commands:\n`;
-            for (let i = 1; i <= 93; i++) {
-                menuText += `  - group${i}: Custom group command ${i}\n`;
-            }
+2. 👥 *Group Commands*
+${config.prefix}kick - Kick member
+${config.prefix}promote - Promote admin
+${config.prefix}mute - Mute group
 
-            // Fun Commands Section
-            menuText += `\n🎮 *Fun Commands* [100]\n`;
-            menuText += `• Core Commands:\n`;
-            menuText += `  - slap: Slap someone\n`;
-            menuText += `  - hug: Hug someone\n`;
-            menuText += `  - kiss: Kiss someone\n`;
-            menuText += `  - pat: Pat someone\n`;
-            menuText += `  - punch: Punch someone\n`;
-            menuText += `  - dance: Show dance animation\n`;
-            menuText += `• Additional Commands:\n`;
-            for (let i = 1; i <= 94; i++) {
-                menuText += `  - fun${i}: Custom fun command ${i}\n`;
-            }
+3. 🎮 *Fun Commands*
+${config.prefix}slap - Slap someone
+${config.prefix}hug - Hug someone
+${config.prefix}dance - Show dance
 
-            // Anime Commands Section
-            menuText += `\n🎨 *Anime Commands* [100]\n`;
-            menuText += `• Core Commands:\n`;
-            menuText += `  - anime: Search anime info\n`;
-            menuText += `  - manga: Search manga info\n`;
-            menuText += `  - character: Search characters\n`;
-            menuText += `  - schedule: Anime schedule\n`;
-            menuText += `• Additional Commands:\n`;
-            for (let i = 1; i <= 96; i++) {
-                menuText += `  - anime${i}: Custom anime command ${i}\n`;
-            }
+4. 🎨 *Anime Commands*
+${config.prefix}anime - Search anime
+${config.prefix}manga - Search manga
+${config.prefix}character - Search character
 
-            // Music Commands Section
-            menuText += `\n🎵 *Music Commands* [100]\n`;
-            menuText += `• Core Commands:\n`;
-            menuText += `  - play: Play a song\n`;
-            menuText += `  - queue: View song queue\n`;
-            menuText += `  - skip: Skip current song\n`;
-            menuText += `  - lyrics: Get song lyrics\n`;
-            menuText += `  - playlist: Manage playlists\n`;
-            menuText += `• Additional Commands:\n`;
-            for (let i = 1; i <= 95; i++) {
-                menuText += `  - music${i}: Custom music command ${i}\n`;
-            }
+5. 🎵 *Music Commands*
+${config.prefix}play - Play song
+${config.prefix}skip - Skip song
+${config.prefix}lyrics - Get lyrics
 
-            // NSFW Commands Section
-            menuText += `\n🔞 *NSFW Commands* [100]\n`;
-            menuText += `• Core Commands:\n`;
-            menuText += `  - setnsfw: Toggle NSFW mode\n`;
-            menuText += `  - nsfwcheck: Check NSFW status\n`;
-            menuText += `• Additional Commands:\n`;
-            for (let i = 1; i <= 98; i++) {
-                menuText += `  - nsfw${i}: Custom NSFW command ${i}\n`;
-            }
+6. ⚙️ *Basic Commands*
+${config.prefix}help - Show help
+${config.prefix}ping - Check response
+${config.prefix}info - Bot info
 
-            // Basic Commands Section
-            menuText += `\n⚙️ *Basic Commands* [100]\n`;
-            menuText += `• Core Commands:\n`;
-            menuText += `  - menu: Show this menu\n`;
-            menuText += `  - help: Command help\n`;
-            menuText += `  - ping: Check bot response\n`;
-            menuText += `  - info: Bot information\n`;
-            menuText += `• Additional Commands:\n`;
-            for (let i = 1; i <= 96; i++) {
-                menuText += `  - basic${i}: Custom basic command ${i}\n`;
-            }
+Use ${config.prefix}help <command> for detailed info
+Example: ${config.prefix}help slap`;
 
-            menuText += `\n📝 Total Commands: 700\n`;
-            menuText += `Use ${config.prefix}help <command> for detailed information about specific commands.`;
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: menuText,
+                mentions: [config.ownerNumber]
+            });
 
-            // Split menu into chunks to handle message length limit
-            const chunkSize = 4000;
-            const chunks = menuText.match(new RegExp(`.{1,${chunkSize}}`, 'g'));
-
-            for (let i = 0; i < chunks.length; i++) {
-                await sock.sendMessage(msg.key.remoteJid, {
-                    text: chunks[i] + (i === 0 ? '' : '\n[Continued]'),
-                    mentions: i === 0 ? [config.ownerNumber] : []
-                });
-            }
         } catch (error) {
             logger.error('Error in menu command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -134,7 +67,20 @@ const basicCommands = {
             }
 
             const command = args[0].toLowerCase();
-            const helpText = `*Help: ${command}*\n\nUsage: ${config.prefix}${command}`;
+            let helpText = '';
+
+            // Command-specific help messages
+            const helpMessages = {
+                slap: 'Slap another user with an anime gif\nUsage: !slap @user',
+                hug: 'Give someone a warm hug\nUsage: !hug @user',
+                dance: 'Show a dancing animation\nUsage: !dance',
+                ping: 'Check bot response time\nUsage: !ping',
+                profile: 'View your user profile\nUsage: !profile',
+                play: 'Play a song\nUsage: !play <song name>',
+                menu: 'Show command categories\nUsage: !menu'
+            };
+
+            helpText = helpMessages[command] || `Help for command: ${command}\nUsage: ${config.prefix}${command}`;
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: helpText
@@ -190,26 +136,5 @@ const basicCommands = {
         }
     }
 };
-
-// Generate 96 additional basic commands
-for (let i = 1; i <= 96; i++) {
-    basicCommands[`basic${i}`] = async (sock, msg, args) => {
-        try {
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `✅ Executed basic command ${i}\nWith args: ${args.join(' ')}`
-            });
-
-            logger.info(`Basic command ${i} executed:`, {
-                user: msg.key.participant,
-                args: args
-            });
-        } catch (error) {
-            logger.error(`Error in basic${i} command:`, error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `❌ Failed to execute basic command ${i}: ${error.message}`
-            });
-        }
-    };
-}
 
 module.exports = basicCommands;
