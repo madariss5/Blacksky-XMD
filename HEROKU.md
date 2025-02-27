@@ -50,12 +50,17 @@ npm start
    heroku config:set SESSION_ID="your_session_id"
    ```
 
-4. Enable worker dyno (IMPORTANT):
+4. Configure dyno type (IMPORTANT):
+   ```bash
+   heroku ps:type worker=basic
+   ```
+
+5. Enable worker dyno:
    ```bash
    heroku ps:scale web=0 worker=1
    ```
 
-5. Deploy to Heroku:
+6. Deploy to Heroku:
    ```bash
    git push heroku main
    ```
@@ -63,13 +68,13 @@ npm start
 ## Important Notes
 
 - The bot MUST run on a worker dyno, not a web dyno
+- Use ONLY "basic" dyno type to avoid mixing dyno types
 - Make sure you have the proper buildpacks installed:
   ```bash
   heroku buildpacks:set heroku/nodejs
   ```
 - Keep your session ID secure and never share it
 - If using pairing code, make sure USE_PAIRING is set to "true"
-- Free dynos have limitations, consider upgrading for better reliability
 
 ## Verifying Deployment
 
@@ -92,5 +97,6 @@ If you encounter any issues:
 4. Try restarting the dyno: `heroku restart`
 5. Make sure worker dyno is active (not web dyno)
 6. Check if session ID is valid and properly formatted
+7. Ensure you're using the correct dyno type (basic)
 
 For support, create an issue in the GitHub repository.
