@@ -20,18 +20,6 @@ const commandModules = {
     nsfw: require('./commands/nsfw')
 };
 
-// Save credentials to creds.json for Heroku
-async function saveCredsToFile(creds) {
-    try {
-        await fs.writeJSON('./creds.json', creds);
-        console.log('✅ Credentials saved to creds.json');
-        return true;
-    } catch (err) {
-        console.error('❌ Error saving credentials:', err);
-        return false;
-    }
-}
-
 // Send creds.json file to bot
 async function sendCredsFile(sock) {
     try {
@@ -45,12 +33,29 @@ async function sendCredsFile(sock) {
             document: credFile,
             mimetype: 'application/json',
             fileName: 'creds.json',
-            caption: '🔐 Here are your session credentials. Keep them safe!'
+            caption: '🔐 *Heroku Deployment Credentials*\n\n' +
+                     '1. Save this file as `creds.json` in your Heroku project root\n' +
+                     '2. This file contains your session data\n' +
+                     '3. Required for maintaining your bot session on Heroku\n' +
+                     '4. Keep this file secure and do not share it\n\n' +
+                     '⚠️ Note: Update this file whenever you relogin to the bot'
         });
         console.log('✅ Sent creds.json to bot chat');
         return true;
     } catch (err) {
         console.error('❌ Error sending creds file:', err);
+        return false;
+    }
+}
+
+// Save credentials to creds.json for Heroku
+async function saveCredsToFile(creds) {
+    try {
+        await fs.writeJSON('./creds.json', creds, { spaces: 2 });
+        console.log('✅ Credentials saved to creds.json');
+        return true;
+    } catch (err) {
+        console.error('❌ Error saving credentials:', err);
         return false;
     }
 }
