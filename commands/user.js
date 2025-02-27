@@ -16,31 +16,44 @@ async function safeProfilePicture(sock, jid) {
 const userCommands = {
     profile: async (sock, msg, args) => {
         try {
-            const user = args[0] ? args[0].replace('@', '') + '@s.whatsapp.net' : msg.key.participant;
-            const userInfo = store.getUserInfo(user);
-
-            if (!userInfo) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: 'User not found or not registered. Use !register to create a profile.'
-                });
+            // Handle both group and private chat participants
+            let targetUser;
+            if (args[0]) {
+                // If a user is mentioned
+                targetUser = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+            } else {
+                // If no user is mentioned, use the sender
+                targetUser = msg.key.participant || msg.key.remoteJid;
             }
 
-            const pp = await safeProfilePicture(sock, user);
+            logger.info('Fetching profile for user:', targetUser);
 
-            const info = `*User Profile*\n\n` +
-                        `• Number: @${user.split('@')[0]}\n` +
-                        `• Name: ${userInfo.name || 'Not registered'}\n` +
-                        `• Age: ${userInfo.age || 'Not registered'}\n` +
-                        `• Level: ${userInfo.level || 1}\n` +
-                        `• XP: ${userInfo.xp || 0}\n` +
-                        `• Bio: ${userInfo.bio || 'No bio set'}\n` +
-                        `• Registered: ${userInfo.registeredAt ? new Date(userInfo.registeredAt).toLocaleDateString() : 'No'}`;
+            const userInfo = store.getUserInfo(targetUser);
+            const pp = await safeProfilePicture(sock, targetUser);
+
+            // If user is not registered, show basic info
+            const info = userInfo ? 
+                `*User Profile*\n\n` +
+                `• Number: @${targetUser.split('@')[0]}\n` +
+                `• Name: ${userInfo.name || 'Not set'}\n` +
+                `• Age: ${userInfo.age || 'Not set'}\n` +
+                `• Level: ${userInfo.level || 1}\n` +
+                `• XP: ${userInfo.xp || 0}\n` +
+                `• Bio: ${userInfo.bio || 'No bio set'}\n` +
+                `• Registered: ${userInfo.registeredAt ? new Date(userInfo.registeredAt).toLocaleDateString() : 'No'}`
+                :
+                `*User Profile*\n\n` +
+                `• Number: @${targetUser.split('@')[0]}\n` +
+                `• Status: Not registered\n\n` +
+                `Use ${config.prefix}register <name> <age> to create a profile!`;
 
             await sock.sendMessage(msg.key.remoteJid, {
                 image: { url: pp },
                 caption: info,
-                mentions: [user]
+                mentions: [targetUser]
             });
+
+            logger.info('Profile sent successfully for:', targetUser);
 
         } catch (error) {
             logger.error('Error in profile command:', error);
