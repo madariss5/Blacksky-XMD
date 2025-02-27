@@ -472,45 +472,38 @@ const funCommands = {
 
             const randomMessage = killMessages[Math.floor(Math.random() * killMessages.length)];
 
-            // First send the message
+            // First send the kill message
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: randomMessage + "\n\n☠️ *K.O!* ⚰️",
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
-            // Then send the GIF
+            // Then send the animation
             const mediaPath = './media/anime-kill.gif';
             if (fs.existsSync(mediaPath)) {
-                const stats = fs.statSync(mediaPath);
-                console.log("GIF file size:", stats.size, "bytes");
-
-                if (stats.size > 1000) { // Only send if file is larger than 1KB
-                    try {
-                        await sock.sendMessage(msg.key.remoteJid, {
-                            sticker: fs.readFileSync(mediaPath),
-                            mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-                        });
-                    } catch (gifError) {
-                        console.error("Error sending sticker:", gifError.stack);
-                        // Fallback to simpler message
-                        await sock.sendMessage(msg.key.remoteJid, {
-                            text: '💀 *FATALITY!*',
-                            mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-                        });
-                    }
-                } else {
-                    console.error("Kill animation GIF is too small:", stats.size, "bytes");
+                try {
+                    // Send as video with gifPlayback enabled instead of sticker
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        video: fs.readFileSync(mediaPath),
+                        gifPlayback: true,
+                        caption: '💀',
+                        mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+                    });
+                } catch (mediaError) {
+                    console.error("Error sending kill animation:", mediaError);
+                    // Don't send a fallback message to avoid chat spam
                 }
             } else {
-                console.error("Kill animation GIF not found");
+                console.error("Kill animation not found at:", mediaPath);
             }
         } catch (error) {
-            console.error('Error in kill command:', error.stack);
+            console.error('Error in kill command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: '😅 Failed to execute kill command!'
             });
         }
     },
+
 };
 
 module.exports = funCommands;
