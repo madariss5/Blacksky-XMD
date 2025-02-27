@@ -10,6 +10,15 @@ const store = makeInMemoryStore({
     logger: pino().child({ level: "silent", stream: "store" }) 
 });
 
+// Load command modules
+const commandModules = {
+    basic: require('./commands/basic'),
+    user: require('./commands/user'),
+    group: require('./commands/group'),
+    owner: require('./commands/owner'),
+    fun: require('./commands/fun')
+};
+
 // Start WhatsApp connection
 async function connectToWhatsApp() {
     // Ensure auth directory exists
@@ -119,21 +128,20 @@ async function connectToWhatsApp() {
             const args = textContent.slice(config.prefix.length).trim().split(/ +/).slice(1);
 
             try {
-                if(cmd in require('./commands/basic')) {
-                    // Handle basic commands
-                    await require('./commands/basic')[cmd](sock, msg, args);
-                } else {
-                    // Try loading command from separate file
-                    try {
-                        const commandHandler = require(`./commands/${cmd}.js`);
-                        await commandHandler(sock, msg, args);
-                    } catch(err) {
-                        console.error(`Error loading command ${cmd}:`, err);
-                        await sock.sendMessage(msg.key.remoteJid, { 
-                            text: "Command not found or error in execution."
-                        });
+                // Find the command in modules
+                for (const [moduleName, module] of Object.entries(commandModules)) {
+                    if (cmd in module) {
+                        await module[cmd](sock, msg, args);
+                        console.log(`Executed command ${cmd} from ${moduleName} module`);
+                        return;
                     }
                 }
+
+                // Command not found
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    text: `Command *${cmd}* not found. Use ${config.prefix}menu to see available commands.`
+                });
+
             } catch(err) {
                 console.error(`Error executing command ${cmd}:`, err);
                 await sock.sendMessage(msg.key.remoteJid, { 
