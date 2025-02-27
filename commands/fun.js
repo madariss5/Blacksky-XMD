@@ -19,20 +19,23 @@ const funCommands = {
 11. *!boop* [@user] - Boop someone's nose
 12. *!bonk* [@user] - Bonk someone on the head
 
-🎲 *Games & Fun:*
-13. *!joke* - Get a random funny joke
-14. *!quote* - Get an inspirational quote
-15. *!fact* - Learn an interesting fact
+🎲 *Games & Challenges:*
+13. *!coinflip* - Flip a coin
+14. *!dare* - Get a random dare challenge
+15. *!truth* - Get a random truth question
 16. *!magic8ball* [question] - Ask the magic 8 ball
-17. *!dare* - Get a random dare challenge
-18. *!truth* - Get a random truth question
-19. *!meme* - Get a random anime meme
-20. *!wordgame* - Play a word guessing game
+17. *!wordgame* - Play a word guessing game
     - Use *!guess* [word] to make a guess
-21. *!trivia* - Play a trivia game
+18. *!trivia* - Play a trivia game
     - Use *!answer* [number] to answer
-22. *!emojiart* - Get a random emoji art
-23. *!insult* [@user] - Playfully insult someone\n
+
+🎭 *Fun & Entertainment:*
+19. *!joke* - Get a random funny joke
+20. *!quote* - Get an inspirational quote
+21. *!fact* - Learn an interesting fact
+22. *!meme* - Get a random anime meme
+23. *!emojiart* - Get a random emoji art
+24. *!insult* [@user] - Playfully insult someone\n
 *How to use:*
 - Commands with [@user] can tag someone
 - For games, follow the instructions given
