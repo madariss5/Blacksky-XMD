@@ -4,132 +4,67 @@ const logger = require('pino')();
 const commands = {
     menu: async (sock, msg) => {
         try {
-            const menuHeader = `╭━━━❰ *${config.botName}* ❱━━━⊷❍
-┃ ⌯ Creator: @${config.ownerNumber.split('@')[0]}
-┃ ⌯ Prefix: ${config.prefix}
-┃ ⌯ Version: 2.0.0
-╰━━━━━━━━━━━━⊷❍\n\n`;
+            const menuHeader = `
+╭━━━━━━━━━━━━━━━━━━━━━⊱
+┃ ≡ *${config.botName}* ≡
+┃ Creator: @${config.ownerNumber.split('@')[0]}
+┃ Prefix: ${config.prefix}
+┃ Version: 3.0.0
+╰━━━━━━━━━━━━━━━━━━━━━⊱
+
+🌟 Welcome to the Ultimate Anime Bot! 🌟\n\n`;
 
             // Define command categories with emojis and expanded commands
             const categories = {
-                '👤 User Commands': [
-                    { cmd: 'profile', desc: 'View user profile with picture' },
-                    { cmd: 'me', desc: 'View your own profile with picture' },
-                    { cmd: 'register', desc: 'Register your profile' },
-                    { cmd: 'daily', desc: 'Claim daily rewards' },
-                    { cmd: 'rank', desc: 'Check your rank and level' },
-                    { cmd: 'inventory', desc: 'View your inventory' },
-                    { cmd: 'achievements', desc: 'View your achievements' },
-                    { cmd: 'bio', desc: 'Set or view your bio' },
-                    { cmd: 'reminder', desc: 'Set a reminder' },
-                    { cmd: 'level', desc: 'View detailed level stats' },
-                    { cmd: 'status', desc: 'Check your WhatsApp status' },
-                    { cmd: 'stats', desc: 'View your game statistics' },
-                    { cmd: 'wallet', desc: 'Check your virtual wallet' },
-                    { cmd: 'shop', desc: 'Browse available items' },
-                    { cmd: 'buy', desc: 'Purchase items from shop' },
-                    { cmd: 'sell', desc: 'Sell items from inventory' },
-                    { cmd: 'trade', desc: 'Trade items with users' },
-                    { cmd: 'gift', desc: 'Send gifts to other users' },
-                    { cmd: 'quest', desc: 'View available quests' },
-                    { cmd: 'missions', desc: 'Check daily missions' }
-                    // Additional commands up to 50 can be added here
-                ],
-                '🎭 Fun Commands': [
-                    { cmd: 'slap', desc: 'Slap someone with anime gif' },
-                    { cmd: 'hug', desc: 'Give someone a warm hug' },
-                    { cmd: 'pat', desc: 'Pat someone gently' },
-                    { cmd: 'dance', desc: 'Show off dance moves' },
-                    { cmd: 'kill', desc: 'Dramatically eliminate someone' },
-                    { cmd: 'highfive', desc: 'Give a high-five' },
-                    { cmd: 'facepalm', desc: 'Express disappointment' },
-                    { cmd: 'poke', desc: 'Poke someone playfully' },
-                    { cmd: 'cuddle', desc: 'Cuddle with someone' },
-                    { cmd: 'yeet', desc: 'Yeet someone to space' },
-                    { cmd: 'boop', desc: 'Boop someone\'s nose' },
-                    { cmd: 'bonk', desc: 'Bonk someone' },
-                    { cmd: 'joke', desc: 'Get a random joke' },
-                    { cmd: 'meme', desc: 'Get anime memes' },
-                    { cmd: 'quote', desc: 'Get inspiring quotes' },
-                    { cmd: 'fact', desc: 'Learn random facts' },
-                    { cmd: 'punch', desc: 'Punch with style' },
-                    { cmd: 'kiss', desc: 'Kiss someone sweetly' },
-                    { cmd: 'wave', desc: 'Wave at someone' },
-                    { cmd: 'wink', desc: 'Wink at someone' }
-                    // Additional commands up to 50 can be added here
-                ],
                 '🎮 Game Commands': [
-                    { cmd: 'coinflip', desc: 'Flip a coin' },
-                    { cmd: 'wordgame', desc: 'Play word guessing game' },
-                    { cmd: 'trivia', desc: 'Play trivia quiz' },
-                    { cmd: 'magic8ball', desc: 'Ask the magic 8 ball' },
-                    { cmd: 'truth', desc: 'Get truth questions' },
-                    { cmd: 'dare', desc: 'Get dare challenges' },
-                    { cmd: 'rps', desc: 'Play rock, paper, scissors' },
-                    { cmd: 'pokemon', desc: 'Catch and battle Pokemon' },
-                    { cmd: 'slots', desc: 'Play slot machine' },
-                    { cmd: 'blackjack', desc: 'Play blackjack' },
-                    { cmd: 'dice', desc: 'Roll the dice' },
-                    { cmd: 'quiz', desc: 'Anime quiz game' },
-                    { cmd: 'hangman', desc: 'Play hangman' },
-                    { cmd: 'tictactoe', desc: 'Play tic-tac-toe' },
-                    { cmd: 'memory', desc: 'Test your memory' },
-                    { cmd: 'math', desc: 'Solve math problems' },
-                    { cmd: 'scramble', desc: 'Word scramble game' },
-                    { cmd: 'battle', desc: 'Battle other users' },
+                    { cmd: 'rpg', desc: 'Start an RPG adventure' },
+                    { cmd: 'battle', desc: 'Battle other players' },
+                    { cmd: 'inventory', desc: 'Check your items' },
+                    { cmd: 'shop', desc: 'Browse available items' },
+                    { cmd: 'craft', desc: 'Craft new items' },
+                    { cmd: 'dungeon', desc: 'Enter a dungeon' },
+                    { cmd: 'quest', desc: 'Accept quests' },
                     { cmd: 'fish', desc: 'Go fishing' },
-                    { cmd: 'mine', desc: 'Go mining' }
-                    // Additional commands up to 50 can be added here
+                    { cmd: 'mine', desc: 'Go mining' },
+                    { cmd: 'hunt', desc: 'Go hunting' },
                 ],
-                '👑 Owner Commands': [
-                    { cmd: 'broadcast', desc: 'Send message to all chats' },
-                    { cmd: 'ban', desc: 'Ban a user' },
-                    { cmd: 'unban', desc: 'Unban a user' },
-                    { cmd: 'banlist', desc: 'View banned users' },
-                    { cmd: 'maintenance', desc: 'Toggle maintenance mode' },
-                    { cmd: 'setbotname', desc: 'Change bot name' },
-                    { cmd: 'setbotbio', desc: 'Change bot bio' },
-                    { cmd: 'block', desc: 'Block a user' },
-                    { cmd: 'unblock', desc: 'Unblock a user' },
-                    { cmd: 'system', desc: 'View system stats' },
-                    { cmd: 'restart', desc: 'Restart the bot' },
-                    { cmd: 'update', desc: 'Update bot files' },
-                    { cmd: 'backup', desc: 'Backup database' },
-                    { cmd: 'restore', desc: 'Restore database' },
-                    { cmd: 'logs', desc: 'View bot logs' },
-                    { cmd: 'eval', desc: 'Evaluate code' },
-                    { cmd: 'shell', desc: 'Execute shell command' },
-                    { cmd: 'setprefix', desc: 'Change command prefix' },
-                    { cmd: 'addmod', desc: 'Add a moderator' },
-                    { cmd: 'removemod', desc: 'Remove a moderator' }
-                    // Additional commands up to 50 can be added here
+                '🎨 Anime Commands': [
+                    { cmd: 'anime', desc: 'Search for anime info' },
+                    { cmd: 'manga', desc: 'Search for manga info' },
+                    { cmd: 'character', desc: 'Search anime characters' },
+                    { cmd: 'schedule', desc: 'View anime schedules' },
+                    { cmd: 'seasonal', desc: 'View seasonal anime' },
+                    { cmd: 'wallpaper', desc: 'Get anime wallpapers' },
+                    { cmd: 'quote', desc: 'Random anime quotes' },
+                    { cmd: 'waifu', desc: 'Random waifu pics' },
+                    { cmd: 'neko', desc: 'Random neko pics' },
+                    { cmd: 'cosplay', desc: 'Random cosplay pics' },
                 ],
-                '⚡ Basic Commands': [
-                    { cmd: 'menu', desc: 'Show this menu' },
-                    { cmd: 'ping', desc: 'Check bot response' },
-                    { cmd: 'info', desc: 'Get bot information' },
-                    { cmd: 'help', desc: 'Get command help' },
-                    { cmd: 'about', desc: 'About the bot' },
-                    { cmd: 'donate', desc: 'Support the bot' },
-                    { cmd: 'report', desc: 'Report a bug' },
-                    { cmd: 'owner', desc: 'Contact owner' },
-                    { cmd: 'speed', desc: 'Check bot speed' },
-                    { cmd: 'uptime', desc: 'Bot uptime' },
-                    { cmd: 'stats', desc: 'Bot statistics' },
-                    { cmd: 'runtime', desc: 'Bot runtime' },
-                    { cmd: 'credits', desc: 'Bot credits' },
-                    { cmd: 'support', desc: 'Get support' },
-                    { cmd: 'feedback', desc: 'Send feedback' },
-                    { cmd: 'rules', desc: 'Bot rules' },
-                    { cmd: 'tos', desc: 'Terms of service' },
-                    { cmd: 'privacy', desc: 'Privacy policy' },
-                    { cmd: 'status', desc: 'Bot status' },
-                    { cmd: 'source', desc: 'Source code' }
-                    // Additional commands up to 50 can be added here
+                '🎵 Music Commands': [
+                    { cmd: 'play', desc: 'Play anime music' },
+                    { cmd: 'queue', desc: 'View music queue' },
+                    { cmd: 'skip', desc: 'Skip current song' },
+                    { cmd: 'lyrics', desc: 'Show song lyrics' },
+                    { cmd: 'playlist', desc: 'Manage playlists' },
+                ],
+                '🛠️ Utility Commands': [
+                    { cmd: 'translate', desc: 'Translate text' },
+                    { cmd: 'reminder', desc: 'Set reminders' },
+                    { cmd: 'poll', desc: 'Create polls' },
+                    { cmd: 'weather', desc: 'Check weather' },
+                    { cmd: 'calculate', desc: 'Math calculator' },
+                ],
+                '👥 Social Commands': [
+                    { cmd: 'profile', desc: 'View user profile' },
+                    { cmd: 'level', desc: 'Check your level' },
+                    { cmd: 'rank', desc: 'View leaderboard' },
+                    { cmd: 'marry', desc: 'Marry another user' },
+                    { cmd: 'divorce', desc: 'End marriage' },
                 ]
             };
 
-            // Build menu text
+
+            // Build menu text with proper formatting
             let menuText = menuHeader;
             for (const [category, commandList] of Object.entries(categories)) {
                 menuText += `╭━━━❰ ${category} ❱━━━⊷❍\n`;
@@ -139,16 +74,17 @@ const commands = {
                 menuText += `╰━━━━━━━━━━━━⊷❍\n\n`;
             }
 
+            // Add footer
             menuText += `╭━━━❰ *Usage Info* ❱━━━⊷❍
 ┃ ⌯ Type ${config.prefix}help <command> for details
 ┃ ⌯ Use @ to mention users in commands
 ┃ ⌯ All commands start with: ${config.prefix}
 ╰━━━━━━━━━━━━⊷❍`;
 
-            // First try to send with image
+            // Send menu with anime picture
             try {
                 await sock.sendMessage(msg.key.remoteJid, {
-                    image: { url: 'https://i.ibb.co/JQpNzxT/anime-menu.jpg' },
+                    image: { url: 'https://i.imgur.com/XqQXVVE.jpg' }, // Anime menu banner
                     caption: menuText,
                     mentions: [config.ownerNumber]
                 });
