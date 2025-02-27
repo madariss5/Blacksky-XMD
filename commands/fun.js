@@ -3,6 +3,33 @@ const fs = require('fs-extra');
 const path = require('path');
 
 const funCommands = {
+    menu: async (sock, msg) => {
+        const commandList = `🎮 *Fun Commands Menu* 🎮\n
+1. *!slap* [@user] - Slap someone with an anime gif
+2. *!hug* [@user] - Give someone a warm hug
+3. *!pat* [@user] - Pat someone gently
+4. *!dance* - Show off your dance moves
+5. *!joke* - Get a random funny joke
+6. *!quote* - Get an inspirational quote
+7. *!fact* - Learn an interesting fact
+8. *!magic8ball* [question] - Ask the magic 8 ball a question
+9. *!dare* - Get a random dare challenge
+10. *!truth* - Get a random truth question
+11. *!meme* - Get a random anime meme
+12. *!wordgame* - Play a word guessing game
+   - Use *!guess* [word] to make a guess
+13. *!trivia* - Play a trivia game
+   - Use *!answer* [number] to answer
+14. *!emojiart* - Get a random emoji art
+15. *!insult* [@user] - Playfully insult someone\n
+*How to use:*
+- Commands with [@user] can tag someone
+- For games, follow the instructions given
+- Have fun and be respectful! 😊`;
+
+        await sock.sendMessage(msg.key.remoteJid, { text: commandList });
+    },
+
     coinflip: async (sock, msg) => {
         const result = Math.random() < 0.5 ? 'Heads' : 'Tails';
         await sock.sendMessage(msg.key.remoteJid, { text: `🎲 Coin flip result: *${result}*` });
@@ -395,11 +422,17 @@ const funCommands = {
             "ʕ•ᴥ•ʔ",
             "(づ｡◕‿‿◕｡)づ",
             "(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧",
-            "▼・ᴥ・▼"
+            "▼・ᴥ・▼",
+            "(｡◕‿◕｡)",
+            "( ͡° ͜ʖ ͡°)",
+            "(╯°□°）╯︵ ┻━┻",
+            "┬─┬ノ( º _ ºノ)",
+            "(｡♥‿♥｡)",
+            "^_^"
         ];
         const art = arts[Math.floor(Math.random() * arts.length)];
         await sock.sendMessage(msg.key.remoteJid, {
-            text: `🎨 Here's your emoji art:\n\n${art}`
+            text: `🎨 *Here's your emoji art:*\n\n${art}`
         });
     },
     insult: async (sock, msg, args) => {
@@ -408,7 +441,11 @@ const funCommands = {
             "You're as useful as a screen door on a submarine!",
             "I'd agree with you but then we'd both be wrong.",
             "You're not the sharpest knife in the drawer, are you?",
-            "I'd explain it to you but I ran out of crayons."
+            "I'd explain it to you but I ran out of crayons.",
+            "You're like a cloud - when you disappear, it's a beautiful day!",
+            "I'm not saying you're stupid, I'm just saying you've got bad luck when it comes to thinking.",
+            "If laughter is the best medicine, your face must be curing the world!",
+            "I'm jealous of people who don't know you!"
         ];
         const randomInsult = insults[Math.floor(Math.random() * insults.length)];
         await sock.sendMessage(msg.key.remoteJid, {
