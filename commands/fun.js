@@ -1,5 +1,4 @@
 const config = require('../config');
-const { Sticker } = require('wa-sticker-formatter');
 
 const funCommands = {
     coinflip: async (sock, msg) => {
@@ -11,34 +10,20 @@ const funCommands = {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
 
-            // Send message first in case sticker fails
+            // Send text message first
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: `*${msg.pushName}* slapped ${target}! 👋`,
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
-            // Simple image buffer for testing
-            const imageBuffer = Buffer.from(
-                'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
-                'base64'
-            );
-
-            const sticker = new Sticker(imageBuffer, {
-                pack: config.botName,
-                author: config.ownerName,
-                type: 'full',
-                quality: 50
-            });
-
-            const stickerBuffer = await sticker.toBuffer();
-            await sock.sendMessage(msg.key.remoteJid, { 
-                sticker: stickerBuffer,
+            // Send sticker using native method
+            await sock.sendMessage(msg.key.remoteJid, {
+                sticker: { url: 'https://i.imgur.com/ZXeVMub.webp' },
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
-
         } catch (error) {
             console.error('Error sending slap:', error);
-            // Message already sent above, no need to send again
+            // Message already sent above
         }
     },
 
@@ -51,25 +36,13 @@ const funCommands = {
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
-            const imageBuffer = Buffer.from(
-                'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
-                'base64'
-            );
-
-            const sticker = new Sticker(imageBuffer, {
-                pack: config.botName,
-                author: config.ownerName,
-                type: 'full',
-                quality: 50
-            });
-
-            await sock.sendMessage(msg.key.remoteJid, { 
-                sticker: await sticker.toBuffer(),
+            await sock.sendMessage(msg.key.remoteJid, {
+                sticker: { url: 'https://i.imgur.com/wuK60gP.webp' },
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
         } catch (error) {
             console.error('Error sending hug:', error);
-            // Message already sent above
+            // Text message already sent
         }
     },
 
@@ -77,103 +50,70 @@ const funCommands = {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
 
-            const sticker = new Sticker('https://raw.githubusercontent.com/WhatsApp-Botto-Re/Sticker-Pack/main/pat/pat.webp', {
-                pack: config.botName,
-                author: config.ownerName,
-                type: 'full',
-                quality: 50
-            });
-
-            await sock.sendMessage(msg.key.remoteJid, { 
-                sticker: await sticker.toBuffer(),
-                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-            });
-
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: `*${msg.pushName}* patted ${target}! 🥰`,
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                sticker: { url: 'https://i.imgur.com/P8PH4LJ.webp' },
+                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+            });
         } catch (error) {
             console.error('Error sending pat:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: `*${msg.pushName}* patted ${target}! 🥰 (Sticker unavailable)`
-            });
+            // Text message already sent
         }
     },
 
     dance: async (sock, msg) => {
         try {
-            const sticker = new Sticker('https://raw.githubusercontent.com/WhatsApp-Botto-Re/Sticker-Pack/main/dance/dance.webp', {
-                pack: config.botName,
-                author: config.ownerName,
-                type: 'full',
-                quality: 50
-            });
-
-            await sock.sendMessage(msg.key.remoteJid, { 
-                sticker: await sticker.toBuffer()
-            });
-
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: `*${msg.pushName}* is dancing! 💃`
             });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                sticker: { url: 'https://i.imgur.com/WzlYwGR.webp' }
+            });
         } catch (error) {
             console.error('Error sending dance:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: `*${msg.pushName}* is dancing! 💃 (Sticker unavailable)`
-            });
+            // Text message already sent
         }
     },
+
+    cry: async (sock, msg) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `*${msg.pushName}* is crying! 😢`
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                sticker: { url: 'https://i.imgur.com/TJZjE6r.webp' }
+            });
+        } catch (error) {
+            console.error('Error sending cry:', error);
+            // Text message already sent
+        }
+    },
+
     bonk: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
-            await sock.sendMessage(msg.key.remoteJid, {
-                sticker: { url: 'https://raw.githubusercontent.com/WhatsApp-Botto-Re/Sticker-Pack/main/bonk/bonk.webp' },
-                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-            });
+
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: `*${msg.pushName}* bonked ${target}! 🔨`,
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
-        } catch (error) {
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: `*${msg.pushName}* bonked ${target}! 🔨`
-            });
-        }
-    },
-    cry: async (sock, msg) => {
-        try {
+
             await sock.sendMessage(msg.key.remoteJid, {
-                sticker: { url: 'https://i.ibb.co/TRz60zj/cry.webp' }
-            });
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: `*${msg.pushName}* is crying! 😢`
-            });
-        } catch (error) {
-            console.error('Error sending cry:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: `*${msg.pushName}* is crying! 😢 (Sticker unavailable)`
-            });
-        }
-    },
-    kill: async (sock, msg, args) => {
-        try {
-            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
-            await sock.sendMessage(msg.key.remoteJid, {
-                sticker: { url: 'https://i.ibb.co/h1vPJGF/kill.webp' },
-                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-            });
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: `*${msg.pushName}* killed ${target}! 💀`,
+                sticker: { url: 'https://i.imgur.com/ZNgzelP.webp' },
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
         } catch (error) {
-            console.error('Error sending kill:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: `*${msg.pushName}* killed ${target}! 💀 (Sticker unavailable)`
-            });
+            console.error('Error sending bonk:', error);
+            // Text message already sent
         }
     },
+
     rps: async (sock, msg, args) => {
         const choices = ['rock', 'paper', 'scissors'];
         const userChoice = args[0]?.toLowerCase();
@@ -206,11 +146,21 @@ const funCommands = {
             "Why don't eggs tell jokes? They'd crack up! 🥚",
             "What do you call a bear with no teeth? A gummy bear! 🐻"
         ];
-
         const joke = jokes[Math.floor(Math.random() * jokes.length)];
         await sock.sendMessage(msg.key.remoteJid, {
             text: `😂 *Here's a joke:*\n\n${joke}`
         });
+    },
+    quote: async (sock, msg) => {
+        const quotes = [
+            "Life is what happens when you're busy making other plans.",
+            "The only way to do great work is to love what you do.",
+            "In three words I can sum up everything I've learned about life: it goes on.",
+            "Success is not final, failure is not fatal.",
+            "Be yourself; everyone else is already taken."
+        ];
+        const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+        await sock.sendMessage(msg.key.remoteJid, { text: `📜 Random Quote:\n\n*${randomQuote}*` });
     },
     fact: async (sock, msg) => {
         const facts = [
@@ -219,7 +169,6 @@ const funCommands = {
             "A day on Venus is longer than its year! 🌟",
             "Octopuses have three hearts! 🐙"
         ];
-
         const fact = facts[Math.floor(Math.random() * facts.length)];
         await sock.sendMessage(msg.key.remoteJid, {
             text: `🤓 *Random Fact:*\n\n${fact}`
@@ -308,17 +257,6 @@ const funCommands = {
                 text: '😅 Oops! Failed to fetch a meme. Try again later!'
             });
         }
-    },
-    quote: async (sock, msg) => {
-        const quotes = [
-            "Life is what happens when you're busy making other plans.",
-            "The only way to do great work is to love what you do.",
-            "In three words I can sum up everything I've learned about life: it goes on.",
-            "Success is not final, failure is not fatal.",
-            "Be yourself; everyone else is already taken."
-        ];
-        const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
-        await sock.sendMessage(msg.key.remoteJid, { text: `📜 Random Quote:\n\n*${randomQuote}*` });
     },
     wordgame: async (sock, msg) => {
         const words = ['HAPPY', 'SMILE', 'LAUGH', 'DANCE', 'PARTY'];
