@@ -6,18 +6,13 @@ module.exports = {
     botNumber: '', // Will be set after connection
     menuImage: 'https://raw.githubusercontent.com/your-repo/assets/main/f9.jpg',
     commands: {
-        menu: {
-            description: 'Show bot menu with all commands'
-        },
-        help: {
-            description: 'Shows available commands'
-        },
-        ping: {
-            description: 'Check bot response'
-        },
-        info: {
-            description: 'Get bot information'
-        },
+        // Basic Commands
+        menu: { description: 'Show bot menu with all commands' },
+        help: { description: 'Shows available commands' },
+        ping: { description: 'Check bot response' },
+        info: { description: 'Get bot information' },
+
+        // Owner Commands
         broadcast: { description: 'Send message to all chats (Owner only)' },
         ban: { description: 'Ban a user from using the bot (Owner only)' },
         unban: { description: 'Unban a user (Owner only)' },
@@ -99,6 +94,36 @@ module.exports = {
         nsfwart: { description: '🔞 View age-restricted artwork', nsfw: true },
         nsfwstory: { description: '🔞 Access mature stories', nsfw: true },
         nsfwmedia: { description: '🔞 Browse adult content', nsfw: true },
+
+        // Downloader Commands
+        ytmp3: { description: '📥 Download YouTube audio' },
+        ytmp4: { description: '📥 Download YouTube video' },
+        play: { description: '🎵 Play YouTube audio' },
+        video: { description: '🎥 Play YouTube video' },
+        tiktok: { description: '📱 Download TikTok video' },
+        facebook: { description: '📱 Download Facebook video' },
+        instagram: { description: '📱 Download Instagram media' },
+        mediafire: { description: '📥 Download MediaFire files' },
+        apk: { description: '📱 Download Android apps' },
+        lyrics: { description: '🎵 Find song lyrics' },
+
+        // Economy Commands
+        balance: { description: '💰 Check your balance' },
+        daily: { description: '💰 Claim daily rewards' },
+        transfer: { description: '💸 Transfer money to users' },
+        bank: { description: '🏦 Bank operations' },
+        deposit: { description: '💳 Deposit money to bank' },
+        withdraw: { description: '💵 Withdraw money from bank' },
+        rob: { description: '🦹 Rob other users' },
+        work: { description: '💼 Work to earn money' },
+        mine: { description: '⛏️ Mine for resources' },
+        shop: { description: '🛍️ Buy items from shop' },
+        inventory: { description: '🎒 View your inventory' },
+        gamble: { description: '🎲 Gamble your money' },
+        flip: { description: '🪙 Flip a coin for money' },
+        slots: { description: '🎰 Play slot machine' },
+
+        // AI Commands
         gpt: { description: '🤖 Chat with GPT AI' },
         imagine: { description: '🎨 Generate images with AI' },
         lisa: { description: '👩‍💻 Chat with Lisa AI' },
@@ -106,6 +131,8 @@ module.exports = {
         toxxic: { description: '😈 Chat with Toxxic AI' },
         txt2img: { description: '✨ Convert text to image' },
         aiuser: { description: '👤 Manage AI user settings' },
+
+        // Anime Commands
         couplepp: { description: '💑 Get anime couple profile pictures' },
         hentai: { description: '🔞 View hentai content', nsfw: true },
         hneko: { description: '🔞 View neko hentai', nsfw: true },
@@ -113,6 +140,8 @@ module.exports = {
         neko: { description: '😺 Get random neko images' },
         trap: { description: '🎭 Get anime trap images' },
         waifu: { description: '👘 Get random waifu images' },
+
+        // Debug Commands
         bugandro: { description: '🐛 Report Android bugs' },
         bugios: { description: '🐛 Report iOS bugs' }
     }

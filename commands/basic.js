@@ -11,7 +11,7 @@ const basicCommands = {
             const page = args[0] ? parseInt(args[0]) : 1;
 
             // Set default page if not valid
-            if (isNaN(page) || page < 1 || page > 8) {  // Updated max pages to 8
+            if (isNaN(page) || page < 1 || page > 10) {  
                 global.menuPages[chatId] = 1;
             } else {
                 global.menuPages[chatId] = page;
@@ -44,62 +44,76 @@ const basicCommands = {
                     break;
 
                 case 2:
-                    pageTitle = '🎮 *Fun Commands*';
-                    pageContent = `101. ${config.prefix}slap - Slap with anime gif\n` +
-                                `102. ${config.prefix}hug - Give warm hug\n` +
-                                `103. ${config.prefix}pat - Pat gently\n` +
-                                `104. ${config.prefix}dance - Show dance moves\n` +
-                                `105. ${config.prefix}joke - Random joke\n` +
-                                `106. ${config.prefix}meme - Random meme\n` +
-                                `107. ${config.prefix}quote - Random quote\n` +
-                                `108. ${config.prefix}8ball - Magic 8ball\n` +
-                                `109. ${config.prefix}roll - Roll dice\n` +
-                                `110. ${config.prefix}flip - Flip coin`;
+                    pageTitle = '📥 *Downloader Commands*';
+                    pageContent = `201. ${config.prefix}ytmp3 - YouTube audio\n` +
+                                `202. ${config.prefix}ytmp4 - YouTube video\n` +
+                                `203. ${config.prefix}play - Play YouTube audio\n` +
+                                `204. ${config.prefix}video - Play YouTube video\n` +
+                                `205. ${config.prefix}tiktok - TikTok downloader\n` +
+                                `206. ${config.prefix}facebook - Facebook video\n` +
+                                `207. ${config.prefix}instagram - Instagram media\n` +
+                                `208. ${config.prefix}mediafire - MediaFire files\n` +
+                                `209. ${config.prefix}apk - Android apps\n` +
+                                `210. ${config.prefix}lyrics - Find song lyrics`;
                     break;
 
                 case 3:
-                    pageTitle = '👤 *User Commands*';
-                    pageContent = `201. ${config.prefix}profile - View profile\n` +
-                                `202. ${config.prefix}level - Check level\n` +
-                                `203. ${config.prefix}daily - Daily rewards\n` +
-                                `204. ${config.prefix}inventory - View inventory\n` +
-                                `205. ${config.prefix}register - Create account\n` +
-                                `206. ${config.prefix}nickname - Set nickname\n` +
-                                `207. ${config.prefix}bio - Set bio\n` +
-                                `208. ${config.prefix}avatar - Set avatar\n` +
-                                `209. ${config.prefix}balance - Check wallet\n` +
-                                `210. ${config.prefix}transfer - Send money`;
+                    pageTitle = '💰 *Economy Commands*';
+                    pageContent = `301. ${config.prefix}balance - Check balance\n` +
+                                `302. ${config.prefix}daily - Daily rewards\n` +
+                                `303. ${config.prefix}transfer - Send money\n` +
+                                `304. ${config.prefix}bank - Bank operations\n` +
+                                `305. ${config.prefix}deposit - Bank deposit\n` +
+                                `306. ${config.prefix}withdraw - Bank withdraw\n` +
+                                `307. ${config.prefix}rob - Rob users\n` +
+                                `308. ${config.prefix}work - Earn money\n` +
+                                `309. ${config.prefix}mine - Mine resources\n` +
+                                `310. ${config.prefix}shop - Buy items`;
                     break;
 
                 case 4:
-                    pageTitle = '👥 *Group Commands*';
-                    pageContent = `301. ${config.prefix}kick - Kick member\n` +
-                                `302. ${config.prefix}promote - Promote to admin\n` +
-                                `303. ${config.prefix}demote - Remove admin\n` +
-                                `304. ${config.prefix}add - Add member\n` +
-                                `305. ${config.prefix}remove - Remove member\n` +
-                                `306. ${config.prefix}link - Group link\n` +
-                                `307. ${config.prefix}revoke - Reset link\n` +
-                                `308. ${config.prefix}announce - Send announcement\n` +
-                                `309. ${config.prefix}poll - Create poll\n` +
-                                `310. ${config.prefix}settings - Group settings`;
+                    pageTitle = '🎮 *Games & Gambling*';
+                    pageContent = `401. ${config.prefix}gamble - Gamble money\n` +
+                                `402. ${config.prefix}flip - Coin flip bet\n` +
+                                `403. ${config.prefix}slots - Slot machine\n` +
+                                `404. ${config.prefix}inventory - View items\n` +
+                                `405. ${config.prefix}use - Use items\n` +
+                                `406. ${config.prefix}give - Gift items\n` +
+                                `407. ${config.prefix}trade - Trade items\n` +
+                                `408. ${config.prefix}quest - Daily quests\n` +
+                                `409. ${config.prefix}challenge - Challenges\n` +
+                                `410. ${config.prefix}leaderboard - Rankings`;
                     break;
 
                 case 5:
-                    pageTitle = '🎨 *Anime Commands*';
-                    pageContent = `401. ${config.prefix}anime - Search anime info\n` +
-                                `402. ${config.prefix}manga - Search manga info\n` +
-                                `403. ${config.prefix}waifu - Random waifu image\n` +
-                                `404. ${config.prefix}neko - Random neko image\n` +
-                                `405. ${config.prefix}couplepp - Anime couple pfp\n` +
-                                `406. ${config.prefix}trap - Anime trap image\n` +
-                                `407. ${config.prefix}schedule - Anime schedule\n` +
-                                `408. ${config.prefix}seasonal - Current season\n` +
-                                `409. ${config.prefix}character - Search character\n` +
-                                `410. ${config.prefix}wallpaper - Anime wallpapers`;
+                    pageTitle = '👥 *Group Commands*';
+                    pageContent = `501. ${config.prefix}kick - Kick member\n` +
+                                `502. ${config.prefix}promote - Make admin\n` +
+                                `503. ${config.prefix}demote - Remove admin\n` +
+                                `504. ${config.prefix}add - Add member\n` +
+                                `505. ${config.prefix}remove - Remove member\n` +
+                                `506. ${config.prefix}link - Group link\n` +
+                                `507. ${config.prefix}revoke - Reset link\n` +
+                                `508. ${config.prefix}announce - Send announcement\n` +
+                                `509. ${config.prefix}poll - Create poll\n` +
+                                `510. ${config.prefix}settings - Group settings`;
                     break;
 
                 case 6:
+                    pageTitle = '🎨 *Anime Commands*';
+                    pageContent = `601. ${config.prefix}anime - Search anime\n` +
+                                `602. ${config.prefix}waifu - Random waifu\n` +
+                                `603. ${config.prefix}neko - Random neko\n` +
+                                `604. ${config.prefix}couplepp - Couple pfp\n` +
+                                `605. ${config.prefix}trap - Trap images\n` +
+                                `606. ${config.prefix}hentai - NSFW content\n` +
+                                `607. ${config.prefix}hneko - NSFW neko\n` +
+                                `608. ${config.prefix}hwaifu - NSFW waifu\n` +
+                                `609. ${config.prefix}schedule - Airing list\n` +
+                                `610. ${config.prefix}season - Current anime`;
+                    break;
+
+                case 7:
                     pageTitle = '🤖 *AI Commands*';
                     pageContent = `701. ${config.prefix}gpt - Chat with GPT\n` +
                                 `702. ${config.prefix}imagine - Generate images\n` +
@@ -107,47 +121,61 @@ const basicCommands = {
                                 `704. ${config.prefix}rias - Chat with Rias\n` +
                                 `705. ${config.prefix}toxxic - Chat with Toxxic\n` +
                                 `706. ${config.prefix}txt2img - Text to image\n` +
-                                `707. ${config.prefix}aiuser - AI user settings\n` +
-                                `708. ${config.prefix}bugandro - Report Android bug\n` +
-                                `709. ${config.prefix}bugios - Report iOS bug\n` +
+                                `707. ${config.prefix}aiuser - AI settings\n` +
+                                `708. ${config.prefix}bugandro - Report Android\n` +
+                                `709. ${config.prefix}bugios - Report iOS\n` +
                                 `710. ${config.prefix}help - AI commands help`;
                     break;
 
-                case 7:
-                    pageTitle = '🎵 *Music Commands*';
-                    pageContent = `501. ${config.prefix}play - Play song\n` +
-                                `502. ${config.prefix}skip - Skip song\n` +
-                                `503. ${config.prefix}stop - Stop music\n` +
-                                `504. ${config.prefix}queue - View queue\n` +
-                                `505. ${config.prefix}pause - Pause music\n` +
-                                `506. ${config.prefix}resume - Resume music\n` +
-                                `507. ${config.prefix}volume - Adjust volume\n` +
-                                `508. ${config.prefix}lyrics - Get lyrics\n` +
-                                `509. ${config.prefix}playlist - Manage playlists\n` +
-                                `510. ${config.prefix}search - Search songs`;
+                case 8:
+                    pageTitle = '🔧 *Owner Commands*';
+                    pageContent = `801. ${config.prefix}broadcast - Send to all\n` +
+                                `802. ${config.prefix}ban - Ban user\n` +
+                                `803. ${config.prefix}unban - Unban user\n` +
+                                `804. ${config.prefix}banlist - View bans\n` +
+                                `805. ${config.prefix}bangroup - Ban group\n` +
+                                `806. ${config.prefix}unbangroup - Unban group\n` +
+                                `807. ${config.prefix}restart - Restart bot\n` +
+                                `808. ${config.prefix}setprefix - Change prefix\n` +
+                                `809. ${config.prefix}setbotname - Change name\n` +
+                                `810. ${config.prefix}stats - View stats`;
                     break;
 
-                case 8:
-                    pageTitle = '🎲 *Game Commands*';
-                    pageContent = `601. ${config.prefix}truth - Truth question\n` +
-                                `602. ${config.prefix}dare - Dare challenge\n` +
-                                `603. ${config.prefix}rps - Rock paper scissors\n` +
-                                `604. ${config.prefix}quiz - Start quiz\n` +
-                                `605. ${config.prefix}blackjack - Play blackjack\n` +
-                                `606. ${config.prefix}slots - Play slots\n` +
-                                `607. ${config.prefix}dice - Roll dice\n` +
-                                `608. ${config.prefix}fish - Go fishing\n` +
-                                `609. ${config.prefix}hunt - Go hunting\n` +
-                                `610. ${config.prefix}duel - Challenge duel`;
+                case 9:
+                    pageTitle = '⚙️ *Config Commands*';
+                    pageContent = `901. ${config.prefix}setautoreply - Auto reply\n` +
+                                `902. ${config.prefix}setwelcome - Welcome msg\n` +
+                                `903. ${config.prefix}setgoodbye - Goodbye msg\n` +
+                                `904. ${config.prefix}addcommand - Add command\n` +
+                                `905. ${config.prefix}delcommand - Del command\n` +
+                                `906. ${config.prefix}setlanguage - Language\n` +
+                                `907. ${config.prefix}backup - Create backup\n` +
+                                `908. ${config.prefix}restore - Restore bot\n` +
+                                `909. ${config.prefix}update - Update bot\n` +
+                                `910. ${config.prefix}reset - Reset settings`;
+                    break;
+
+                case 10:
+                    pageTitle = '🔞 *NSFW Commands*';
+                    pageContent = `1001. ${config.prefix}togglensfw - Toggle NSFW\n` +
+                                `1002. ${config.prefix}verifyage - Age verify\n` +
+                                `1003. ${config.prefix}nsfwart - View artwork\n` +
+                                `1004. ${config.prefix}nsfwstory - View stories\n` +
+                                `1005. ${config.prefix}nsfwmedia - View media\n` +
+                                `1006. ${config.prefix}hentai - View hentai\n` +
+                                `1007. ${config.prefix}hneko - Neko content\n` +
+                                `1008. ${config.prefix}hwaifu - Waifu content\n` +
+                                `1009. ${config.prefix}nsearch - NSFW search\n` +
+                                `1010. ${config.prefix}nrandom - Random NSFW`;
                     break;
             }
 
             const navigation = `\n📖 *Page Navigation*\n` +
-                             `• Current: Page ${currentPage}/8\n` +  // Updated max pages
+                             `• Current: Page ${currentPage}/10\n` +  
                              `• Next page: ${config.prefix}menu ${currentPage + 1}\n` +
                              `• Previous: ${config.prefix}menu ${currentPage - 1}\n` +
-                             `• Go to page: ${config.prefix}menu [1-8]\n\n` +  // Updated range
-                             `💡 Commands shown: 80 (10 per category)`;  // Updated count
+                             `• Go to page: ${config.prefix}menu [1-10]\n\n` +  
+                             `💡 Commands shown: 100 (10 per category)`;  
 
             const fullMenu = menuHeader + pageTitle + '\n\n' + pageContent + navigation;
 
@@ -229,7 +257,7 @@ const basicCommands = {
                         `• Owner: @${config.ownerNumber.split('@')[0]}\n` +
                         `• Prefix: ${config.prefix}\n` +
                         `• Version: 1.0.0\n` +
-                        `• Commands: 80\n` +
+                        `• Commands: 100\n` + // Updated command count
                         `• Status: Online`;
 
             await sock.sendMessage(msg.key.remoteJid, {
