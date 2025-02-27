@@ -22,12 +22,21 @@ const commandModules = {
 
 async function executeCommand(sock, msg, command, args, moduleName) {
     try {
-        logger.info(`Executing command: ${command} from module: ${moduleName}`);
+        logger.info(`Executing command: ${command} from module: ${moduleName}`, {
+            user: msg.key.participant,
+            chat: msg.key.remoteJid,
+            args: args
+        });
 
         // Validate message and participant
-        if (!msg.key?.remoteJid || !msg.key?.participant) {
+        if (!msg.key?.remoteJid || (!msg.key?.participant && !msg.key.remoteJid.endsWith('@s.whatsapp.net'))) {
             logger.warn('Invalid message format or missing participant');
             return false;
+        }
+
+        // For private chats, set participant as remoteJid
+        if (!msg.key.participant && msg.key.remoteJid.endsWith('@s.whatsapp.net')) {
+            msg.key.participant = msg.key.remoteJid;
         }
 
         // Check if command exists in module
@@ -36,29 +45,40 @@ async function executeCommand(sock, msg, command, args, moduleName) {
             return false;
         }
 
-        // Execute command
-        await commandModules[moduleName][command](sock, msg, args);
-        logger.info(`Command ${command} executed successfully by ${msg.key.participant} in ${msg.key.remoteJid}`);
-
+        // Execute command with enhanced error handling
         try {
-            // Award XP for command usage
-            const xpResult = await store.addXP(msg.key.participant, store.XP_REWARDS.command);
-            if (xpResult?.levelUp) {
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    text: `🎉 Congratulations @${msg.key.participant.split('@')[0]}!\nYou've reached level ${xpResult.newLevel}!`,
-                    mentions: [msg.key.participant]
-                });
-            }
-        } catch (xpError) {
-            logger.error('Error handling XP reward:', xpError);
-            // Don't fail the command if XP handling fails
-        }
+            await commandModules[moduleName][command](sock, msg, args);
+            logger.info(`Command ${command} executed successfully`, {
+                user: msg.key.participant,
+                chat: msg.key.remoteJid
+            });
 
-        return true;
+            // Award XP for command usage if available
+            try {
+                const xpResult = await store.addXP(msg.key.participant, store.XP_REWARDS.command);
+                if (xpResult?.levelUp) {
+                    await sock.sendMessage(msg.key.remoteJid, { 
+                        text: `🎉 Congratulations @${msg.key.participant.split('@')[0]}!\nYou've reached level ${xpResult.newLevel}!`,
+                        mentions: [msg.key.participant]
+                    });
+                }
+            } catch (xpError) {
+                logger.error('Error handling XP reward:', xpError);
+                // Don't fail the command if XP handling fails
+            }
+
+            return true;
+        } catch (cmdError) {
+            logger.error(`Error executing command ${command}:`, cmdError);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: 'An error occurred while executing the command. Please try again.' 
+            });
+            return false;
+        }
     } catch (error) {
-        logger.error(`Error executing command ${command}:`, error);
+        logger.error(`Fatal error in command execution:`, error);
         await sock.sendMessage(msg.key.remoteJid, { 
-            text: 'An error occurred while executing the command. Please try again.' 
+            text: 'A critical error occurred. Please try again later.' 
         });
         return false;
     }
