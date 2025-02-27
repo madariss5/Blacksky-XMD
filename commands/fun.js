@@ -16,14 +16,14 @@ const funCommands = {
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
-            // Send sticker using native method
+            // Send sticker using native method with a reliable CDN URL
             await sock.sendMessage(msg.key.remoteJid, {
-                sticker: { url: 'https://i.imgur.com/ZXeVMub.webp' },
+                sticker: { url: 'https://cdn.jsdelivr.net/gh/WhatsApp-Botto-Re/Sticker-Pack@main/slap/slap.webp' },
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
         } catch (error) {
             console.error('Error sending slap:', error);
-            // Message already sent above
+            // Text message already sent, no need for fallback
         }
     },
 
@@ -37,7 +37,7 @@ const funCommands = {
             });
 
             await sock.sendMessage(msg.key.remoteJid, {
-                sticker: { url: 'https://i.imgur.com/wuK60gP.webp' },
+                sticker: { url: 'https://cdn.jsdelivr.net/gh/WhatsApp-Botto-Re/Sticker-Pack@main/hug/hug.webp' },
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
         } catch (error) {
@@ -56,7 +56,7 @@ const funCommands = {
             });
 
             await sock.sendMessage(msg.key.remoteJid, {
-                sticker: { url: 'https://i.imgur.com/P8PH4LJ.webp' },
+                sticker: { url: 'https://cdn.jsdelivr.net/gh/WhatsApp-Botto-Re/Sticker-Pack@main/pat/pat.webp' },
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
         } catch (error) {
@@ -72,7 +72,7 @@ const funCommands = {
             });
 
             await sock.sendMessage(msg.key.remoteJid, {
-                sticker: { url: 'https://i.imgur.com/WzlYwGR.webp' }
+                sticker: { url: 'https://cdn.jsdelivr.net/gh/WhatsApp-Botto-Re/Sticker-Pack@main/dance/dance.webp' }
             });
         } catch (error) {
             console.error('Error sending dance:', error);
@@ -87,7 +87,7 @@ const funCommands = {
             });
 
             await sock.sendMessage(msg.key.remoteJid, {
-                sticker: { url: 'https://i.imgur.com/TJZjE6r.webp' }
+                sticker: { url: 'https://cdn.jsdelivr.net/gh/WhatsApp-Botto-Re/Sticker-Pack@main/cry/cry.webp' }
             });
         } catch (error) {
             console.error('Error sending cry:', error);
@@ -105,7 +105,7 @@ const funCommands = {
             });
 
             await sock.sendMessage(msg.key.remoteJid, {
-                sticker: { url: 'https://i.imgur.com/ZNgzelP.webp' },
+                sticker: { url: 'https://cdn.jsdelivr.net/gh/WhatsApp-Botto-Re/Sticker-Pack@main/bonk/bonk.webp' },
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
         } catch (error) {
