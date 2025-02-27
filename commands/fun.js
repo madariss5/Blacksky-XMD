@@ -36,6 +36,7 @@ const funCommands = {
 22. *!meme* - Get a random anime meme
 23. *!emojiart* - Get a random emoji art
 24. *!insult* [@user] - Playfully insult someone\n
+
 *How to use:*
 - Commands with [@user] can tag someone
 - For games, follow the instructions given
