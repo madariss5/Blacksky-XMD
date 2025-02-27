@@ -29,23 +29,30 @@ const basicCommands = {
             let pageTitle = '';
 
             const getCommandDescription = (category, index) => {
-                const commandDescriptions = {
+                // Define core commands for each category
+                const commands = {
                     basic: [
-                        ['menu', 'Show this command menu'],
-                        ['help', 'Get detailed help on commands'],
+                        ['menu', 'Show all available commands'],
+                        ['help', 'Get detailed help for any command'],
                         ['ping', 'Check bot response time'],
-                        ['info', 'Show bot information'],
-                        ['rules', 'Display bot usage rules'],
-                        ['about', 'About this bot and its features'],
+                        ['info', 'View bot information'],
+                        ['rules', 'Show bot usage rules'],
+                        ['about', 'About this bot and features'],
                         ['owner', 'Contact bot owner'],
                         ['donate', 'Support bot development'],
                         ['stats', 'View bot statistics'],
-                        ['uptime', 'Check bot uptime'],
+                        ['uptime', 'Check how long bot is running'],
                         ['speed', 'Test connection speed'],
-                        ['rank', 'Check your rank'],
-                        ['level', 'View your level'],
-                        ['profile', 'Display your profile'],
+                        ['restart', 'Restart the bot'],
+                        ['update', 'Check for updates'],
                         ['settings', 'Configure bot settings'],
+                        ['language', 'Change bot language'],
+                        // Additional basic commands with meaningful names
+                        ['customprefix', 'Change command prefix'],
+                        ['timezone', 'Set your timezone'],
+                        ['notifications', 'Manage notifications'],
+                        ['backup', 'Backup your data'],
+                        ['restore', 'Restore from backup']
                     ],
                     fun: [
                         ['slap', 'Slap someone with anime gif'],
@@ -63,15 +70,21 @@ const basicCommands = {
                         ['hangman', 'Play hangman game'],
                         ['trivia', 'Start a trivia quiz'],
                         ['riddle', 'Get a riddle to solve'],
+                        // Additional fun commands
+                        ['wordchain', 'Play word chain game'],
+                        ['scramble', 'Word scramble game'],
+                        ['typing', 'Typing speed test'],
+                        ['math', 'Math quiz game'],
+                        ['memory', 'Memory card game']
                     ],
                     user: [
-                        ['profile', 'View detailed profile'],
-                        ['level', 'Check your level and XP'],
+                        ['profile', 'View your detailed profile'],
+                        ['level', 'Check your current level'],
                         ['daily', 'Claim daily rewards'],
                         ['inventory', 'Check your items'],
-                        ['register', 'Create an account'],
+                        ['register', 'Create a new account'],
                         ['nickname', 'Change your nickname'],
-                        ['bio', 'Set your bio'],
+                        ['bio', 'Set your profile bio'],
                         ['avatar', 'Change profile picture'],
                         ['balance', 'Check your wallet'],
                         ['transfer', 'Send money to users'],
@@ -80,31 +93,43 @@ const basicCommands = {
                         ['sell', 'Sell your items'],
                         ['gift', 'Send gifts to users'],
                         ['marry', 'Propose to someone'],
+                        // Additional user commands
+                        ['signature', 'Set custom signature'],
+                        ['background', 'Custom profile background'],
+                        ['title', 'Set custom title'],
+                        ['badge', 'View your badges'],
+                        ['achievements', 'Check achievements']
                     ],
                     group: [
-                        ['kick', 'Kick a group member'],
-                        ['promote', 'Promote to admin'],
-                        ['demote', 'Demote from admin'],
-                        ['add', 'Add member to group'],
-                        ['remove', 'Remove from group'],
+                        ['kick', 'Remove member from group'],
+                        ['promote', 'Make someone admin'],
+                        ['demote', 'Remove admin status'],
+                        ['add', 'Add new member'],
+                        ['remove', 'Remove member'],
                         ['link', 'Get group invite link'],
                         ['revoke', 'Reset group link'],
-                        ['announce', 'Make announcement'],
-                        ['poll', 'Create group poll'],
+                        ['announce', 'Send announcement'],
+                        ['poll', 'Create voting poll'],
                         ['settings', 'Group settings'],
                         ['welcome', 'Set welcome message'],
-                        ['leave', 'Set leave message'],
+                        ['leave', 'Set goodbye message'],
                         ['rules', 'Set group rules'],
-                        ['antilink', 'Toggle anti-link'],
-                        ['antispam', 'Toggle anti-spam'],
+                        ['antilink', 'Anti-link protection'],
+                        ['antispam', 'Anti-spam protection'],
+                        // Additional group commands
+                        ['tagall', 'Mention all members'],
+                        ['chatlock', 'Lock group chat'],
+                        ['filter', 'Add word filter'],
+                        ['logs', 'View group logs'],
+                        ['schedule', 'Schedule messages']
                     ],
                     anime: [
                         ['anime', 'Search for anime'],
                         ['manga', 'Search for manga'],
-                        ['character', 'Search anime characters'],
+                        ['character', 'Search characters'],
                         ['waifu', 'Random waifu image'],
                         ['neko', 'Random neko image'],
-                        ['schedule', 'Anime air schedule'],
+                        ['schedule', 'Anime airing schedule'],
                         ['airing', 'Currently airing anime'],
                         ['upcoming', 'Upcoming anime'],
                         ['genre', 'Browse by genre'],
@@ -114,6 +139,12 @@ const basicCommands = {
                         ['wallpaper', 'Anime wallpapers'],
                         ['news', 'Latest anime news'],
                         ['watch', 'Get watch order'],
+                        // Additional anime commands
+                        ['seasonal', 'Seasonal anime list'],
+                        ['review', 'Anime reviews'],
+                        ['trailer', 'Watch anime trailers'],
+                        ['openings', 'Anime openings'],
+                        ['endings', 'Anime endings']
                     ],
                     music: [
                         ['play', 'Play a song'],
@@ -131,85 +162,97 @@ const basicCommands = {
                         ['shuffle', 'Shuffle playlist'],
                         ['radio', 'Play radio stations'],
                         ['spotify', 'Play from Spotify'],
+                        // Additional music commands
+                        ['youtube', 'Play from YouTube'],
+                        ['soundcloud', 'SoundCloud tracks'],
+                        ['favorite', 'Favorite songs'],
+                        ['download', 'Download music'],
+                        ['equalizer', 'Audio equalizer']
                     ],
                     game: [
-                        ['truth', 'Get truth question'],
-                        ['dare', 'Get dare challenge'],
-                        ['rps', 'Rock paper scissors'],
-                        ['quiz', 'Start a quiz game'],
-                        ['blackjack', 'Play blackjack'],
-                        ['poker', 'Play poker game'],
-                        ['slots', 'Play slot machine'],
-                        ['dice', 'Roll the dice'],
-                        ['fish', 'Go fishing'],
-                        ['mine', 'Go mining'],
-                        ['hunt', 'Go hunting'],
-                        ['duel', 'Duel other players'],
+                        ['truth', 'Truth or Dare - Truth'],
+                        ['dare', 'Truth or Dare - Dare'],
+                        ['rps', 'Rock Paper Scissors'],
+                        ['quiz', 'Knowledge quiz'],
+                        ['blackjack', 'Play Blackjack'],
+                        ['poker', 'Texas Hold\'em Poker'],
+                        ['slots', 'Slot machine'],
+                        ['dice', 'Roll dice games'],
+                        ['fish', 'Fishing simulator'],
+                        ['mine', 'Mining adventure'],
+                        ['hunt', 'Hunting game'],
+                        ['duel', 'PvP duels'],
                         ['battle', 'Pokemon battles'],
-                        ['adventure', 'Start adventure'],
+                        ['adventure', 'RPG adventure'],
                         ['quest', 'Daily quests'],
+                        // Additional game commands
+                        ['lottery', 'Daily lottery'],
+                        ['coinflip', 'Bet on coinflip'],
+                        ['jackpot', 'Jackpot game'],
+                        ['roulette', 'Casino roulette'],
+                        ['bingo', 'Play bingo']
                     ]
                 };
 
-                if (index < commandDescriptions[category].length) {
-                    return commandDescriptions[category][index];
+                if (index < commands[category].length) {
+                    return commands[category][index];
                 }
 
-                // Generate themed descriptions for additional commands
+                // Generate themed commands for remaining slots
                 const themes = {
                     basic: [
-                        ['config', 'Configure bot settings'],
-                        ['system', 'System commands'],
-                        ['utility', 'Utility functions'],
-                        ['tool', 'Helper tools'],
-                        ['option', 'Additional options']
+                        ['autoresponder', 'Set automatic responses'],
+                        ['filter', 'Content filtering rules'],
+                        ['schedule', 'Schedule bot actions'],
+                        ['backup', 'Data backup options'],
+                        ['monitor', 'System monitoring']
                     ],
                     fun: [
-                        ['game', 'Mini games'],
-                        ['play', 'Fun activities'],
-                        ['enjoy', 'Entertainment'],
-                        ['mini', 'Quick games'],
-                        ['action', 'Interactive actions']
+                        ['party', 'Party game modes'],
+                        ['challenge', 'Daily challenges'],
+                        ['minigame', 'Quick mini games'],
+                        ['puzzle', 'Brain teasers'],
+                        ['multiplayer', 'Group games']
                     ],
                     user: [
-                        ['account', 'Account management'],
-                        ['profile', 'Profile features'],
-                        ['social', 'Social interactions'],
-                        ['stats', 'Statistics tracking'],
-                        ['perk', 'Special perks']
+                        ['customize', 'Profile customization'],
+                        ['collection', 'Item collections'],
+                        ['achievement', 'Special achievements'],
+                        ['ranking', 'Ranking features'],
+                        ['special', 'Special perks']
                     ],
                     group: [
-                        ['admin', 'Admin controls'],
-                        ['manage', 'Group management'],
-                        ['control', 'Moderation tools'],
-                        ['mod', 'Moderator actions'],
-                        ['chat', 'Chat features']
+                        ['moderation', 'Mod tools'],
+                        ['automod', 'Auto moderation'],
+                        ['welcome', 'Welcome features'],
+                        ['activity', 'Group activities'],
+                        ['security', 'Security features']
                     ],
                     anime: [
-                        ['weeb', 'Anime content'],
-                        ['otaku', 'Otaku stuff'],
-                        ['japan', 'Japanese media'],
-                        ['watch', 'Watching guides'],
-                        ['series', 'Anime series']
+                        ['seasonal', 'Seasonal content'],
+                        ['community', 'Community features'],
+                        ['discovery', 'Anime discovery'],
+                        ['collection', 'Collection tools'],
+                        ['tracking', 'Anime tracking']
                     ],
                     music: [
-                        ['song', 'Song controls'],
-                        ['audio', 'Audio features'],
-                        ['sound', 'Sound effects'],
-                        ['track', 'Track management'],
-                        ['tune', 'Music tuning']
+                        ['playlist', 'Playlist features'],
+                        ['discover', 'Music discovery'],
+                        ['effect', 'Sound effects'],
+                        ['stream', 'Music streaming'],
+                        ['audio', 'Audio tools']
                     ],
                     game: [
-                        ['play', 'Game modes'],
-                        ['challenge', 'Challenges'],
-                        ['compete', 'Competitions'],
-                        ['battle', 'Battle modes'],
-                        ['mission', 'Missions']
+                        ['rpg', 'RPG elements'],
+                        ['tournament', 'Tournaments'],
+                        ['reward', 'Daily rewards'],
+                        ['season', 'Seasonal events'],
+                        ['achievement', 'Game achievements']
                     ]
                 };
 
-                const themeIndex = Math.floor((index - commandDescriptions[category].length) % themes[category].length);
-                const numSuffix = Math.floor((index - commandDescriptions[category].length) / themes[category].length) + 1;
+                const themeIndex = Math.floor((index - commands[category].length) % themes[category].length);
+                const numSuffix = Math.floor((index - commands[category].length) / themes[category].length) + 1;
                 const [prefix, desc] = themes[category][themeIndex];
                 return [`${prefix}${numSuffix}`, `${desc} #${numSuffix}`];
             };
@@ -276,7 +319,6 @@ const basicCommands = {
             });
         }
     },
-
     help: async (sock, msg, args) => {
         try {
             if (!args[0]) {
@@ -312,7 +354,6 @@ const basicCommands = {
             });
         }
     },
-
     ping: async (sock, msg) => {
         try {
             const start = Date.now();
@@ -334,7 +375,6 @@ const basicCommands = {
             });
         }
     },
-
     info: async (sock, msg) => {
         try {
             const info = `*Bot Information*\n\n` +
