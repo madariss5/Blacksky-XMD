@@ -1,44 +1,52 @@
 const config = require('../config');
-const fs = require('fs-extra').promises; // Updated to use promises version
+const fs = require('fs-extra');
 const path = require('path');
 const logger = require('pino')();
 
-// Update the sendGifReaction helper function with better GIF handling
 const sendGifReaction = async (sock, msg, mediaPath, caption = '', mentions = []) => {
     try {
         // Check if media directory exists
         const mediaDir = path.join(__dirname, '../media');
         if (!fs.existsSync(mediaDir)) {
-            await fs.mkdirSync(mediaDir, { recursive: true });
-            logger.warn('Media directory created');
+            await fs.mkdirp(mediaDir);
+            logger.info('Media directory created');
         }
 
         // Check if the GIF exists
         if (fs.existsSync(mediaPath)) {
             const buffer = await fs.readFile(mediaPath);
 
-            // Verify it's a GIF file by checking magic numbers
+            // Log file details for debugging
+            logger.info(`Processing GIF: ${mediaPath}, Size: ${buffer.length} bytes`);
+
+            // Verify it's a valid GIF file by checking magic numbers
             if (buffer.length > 3 && buffer.toString('ascii', 0, 3) === 'GIF') {
                 try {
                     await sock.sendMessage(msg.key.remoteJid, {
                         video: buffer,
-                        gifPlayback: true,
                         caption: caption,
                         mentions: mentions,
-                        mimetype: 'video/mp4', // WhatsApp prefers MP4 for GIF playback
-                        jpegThumbnail: null // Prevent thumbnail generation issues
+                        gifPlayback: true,
+                        mimetype: 'video/mp4',
+                        messageType: 'videoMessage',
+                        jpegThumbnail: null,
+                        seconds: 1,
+                        contextInfo: {
+                            isGif: true
+                        }
                     });
+                    logger.info(`Successfully sent GIF: ${mediaPath}`);
                     return true;
                 } catch (sendError) {
                     logger.error('Error sending GIF message:', sendError);
                     throw sendError;
                 }
             } else {
-                logger.warn(`Invalid GIF format for: ${mediaPath}`);
+                logger.error(`Invalid GIF format for: ${mediaPath}`);
                 throw new Error('Invalid GIF format');
             }
         } else {
-            logger.warn(`GIF not found: ${mediaPath}`);
+            logger.error(`GIF not found: ${mediaPath}`);
             throw new Error('GIF not found');
         }
     } catch (error) {
@@ -722,8 +730,8 @@ const funCommands = {
     },
     jail: async (sock, msg, args) => {
         try {
-            const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
-            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const target = args[0] ?`@${args[0].replace('@', '')}` : msg.pushName;
+            const mentions = args[0] ? [args[0] + '@swhatsapp.net'] : [];
 
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: `🏢 *JAIL*\n${target} is now behind bars!`,
