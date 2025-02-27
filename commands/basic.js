@@ -1,5 +1,6 @@
 const config = require('../config');
 
+// These commands are public and accessible to everyone in both private messages and groups
 const commands = {
     menu: async (sock, msg) => {
         const menuHeader = `╭━━━❰ *${config.botName}* ❱━━━⊷❍
@@ -82,7 +83,8 @@ const commands = {
                 mentions: [config.ownerNumber]
             });
         } catch (error) {
-            // Fallback to text-only menu
+            // Fallback to text-only menu if image fails
+            console.error('Failed to send menu with image:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: menuText,
                 mentions: [config.ownerNumber]
