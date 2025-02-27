@@ -15,6 +15,13 @@
     "94767781689@s.whatsapp.net": {
       "xp": 2,
       "level": 1
+    },
+    "undefined": {
+      "xp": 0,
+      "level": 1,
+      "name": "Martin",
+      "age": 20,
+      "registeredAt": "2025-02-27T15:13:32.902Z"
     }
   }
 }
