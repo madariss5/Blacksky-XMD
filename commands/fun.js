@@ -18,16 +18,15 @@ const funCommands = {
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
-            // Base64 encoded WebP with visible emoji
-            const stickerData = Buffer.from(
-                'UklGRlIAAABXRUJQVlA4WAoAAAAQAAAAHwAAHwAAQUxQSBIAAAABBxAREYiI/gcA/1JVVVVVVVVVAFZQOCARAAAAAA==',
-                'base64'
-            );
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                sticker: stickerData,
+            // Simple emoji sticker data
+            const stickerData = {
+                sticker: {
+                    url: 'https://raw.githubusercontent.com/WhatsApp/stickers/main/Android/app/src/main/assets/1/01_Cuppy_smile.webp'
+                },
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-            });
+            };
+
+            await sock.sendMessage(msg.key.remoteJid, stickerData);
 
         } catch (error) {
             console.error('Error sending slap sticker:', error);
@@ -44,16 +43,14 @@ const funCommands = {
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
-            // Base64 encoded WebP with visible hug emoji
-            const stickerData = Buffer.from(
-                'UklGRlIAAABXRUJQVlA4WAoAAAAQAAAAHwAAHwAAQUxQSBIAAAABBxAREYiI/gcA/1JVVVVVVVVVAFZQOCARAAAAAA==',
-                'base64'
-            );
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                sticker: stickerData,
+            const stickerData = {
+                sticker: {
+                    url: 'https://raw.githubusercontent.com/WhatsApp/stickers/main/Android/app/src/main/assets/2/02_Cuppy_lol.webp'
+                },
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-            });
+            };
+
+            await sock.sendMessage(msg.key.remoteJid, stickerData);
         } catch (error) {
             console.error('Error sending hug sticker:', error);
             // Text message already sent
@@ -69,16 +66,14 @@ const funCommands = {
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
-            // Base64 encoded WebP with visible pat emoji
-            const stickerData = Buffer.from(
-                'UklGRlIAAABXRUJQVlA4WAoAAAAQAAAAHwAAHwAAQUxQSBIAAAABBxAREYiI/gcA/1JVVVVVVVVVAFZQOCARAAAAAA==',
-                'base64'
-            );
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                sticker: stickerData,
+            const stickerData = {
+                sticker: {
+                    url: 'https://raw.githubusercontent.com/WhatsApp/stickers/main/Android/app/src/main/assets/3/03_Cuppy_rofl.webp'
+                },
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-            });
+            };
+
+            await sock.sendMessage(msg.key.remoteJid, stickerData);
         } catch (error) {
             console.error('Error sending pat:', error);
             // Text message already sent
@@ -91,15 +86,13 @@ const funCommands = {
                 text: `*${msg.pushName}* is dancing! 💃`
             });
 
-            // Base64 encoded WebP with visible dance emoji
-            const stickerData = Buffer.from(
-                'UklGRlIAAABXRUJQVlA4WAoAAAAQAAAAHwAAHwAAQUxQSBIAAAABBxAREYiI/gcA/1JVVVVVVVVVAFZQOCARAAAAAA==',
-                'base64'
-            );
+            const stickerData = {
+                sticker: {
+                    url: 'https://raw.githubusercontent.com/WhatsApp/stickers/main/Android/app/src/main/assets/4/04_Cuppy_heart.webp'
+                }
+            };
 
-            await sock.sendMessage(msg.key.remoteJid, {
-                sticker: stickerData
-            });
+            await sock.sendMessage(msg.key.remoteJid, stickerData);
         } catch (error) {
             console.error('Error sending dance sticker:', error);
             // Text message already sent
