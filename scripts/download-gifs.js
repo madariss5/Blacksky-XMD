@@ -2,29 +2,29 @@ const fs = require('fs-extra');
 const https = require('https');
 const path = require('path');
 
-// Updated anime reaction GIF URLs with better, more dynamic options from Tenor
+// Update with stable CDN URLs from GIPHY and other reliable sources
 const gifs = {
-    'anime-slap.gif': 'https://media.tenor.com/Ws6Dm1ZW_vMAAAAC/girl-slap.gif',
-    'anime-hug.gif': 'https://media.tenor.com/kCZjTqCKiggAAAAC/anime-hug.gif',
-    'anime-pat.gif': 'https://media.tenor.com/YaFzR7EkabYAAAAC/head-pat-anime.gif',
-    'anime-dance.gif': 'https://media.tenor.com/9ex0IdWU_P8AAAAC/anime-dance.gif',
-    'anime-kill.gif': 'https://media.tenor.com/2Pm4nI9hBwgAAAAC/anime-fight.gif',
-    'anime-highfive.gif': 'https://media.tenor.com/JBBZ9mQntx8AAAAC/anime-high-five.gif',
-    'anime-facepalm.gif': 'https://media.tenor.com/UIILZBPtX6QAAAAC/anime-facepalm.gif',
-    'anime-poke.gif': 'https://media.tenor.com/1YMrMsCtxLQAAAAC/poke-anime.gif',
-    'anime-cuddle.gif': 'https://media.tenor.com/keasv-Cnh4QAAAAC/anime-hug.gif',
-    'anime-yeet.gif': 'https://media.tenor.com/g8HCtGTNpvsAAAAC/anime-throw.gif',
-    'anime-boop.gif': 'https://media.tenor.com/He-mpsD_hSEAAAAC/boop-anime.gif',
-    'anime-bonk.gif': 'https://media.tenor.com/0XzBtq0DOYQAAAAC/anime-bonk.gif',
-    'anime-wave.gif': 'https://media.tenor.com/1Ek3ViRbG_QAAAAC/wave-anime.gif',
-    'anime-kiss.gif': 'https://media.tenor.com/hK3UBwGHDhsAAAAC/anime-kiss.gif',
-    'anime-punch.gif': 'https://media.tenor.com/p3Hg_w_8QRYAAAAC/anime-punch.gif',
-    'anime-wink.gif': 'https://media.tenor.com/DxMeGkN1YZEAAAAC/anime-wink.gif',
-    // Special effect GIFs
-    'wasted.gif': 'https://media.tenor.com/ZBQz_MYhKekAAAAC/wasted-gta.gif',
-    'triggered.gif': 'https://media.tenor.com/cg8PZP1JtdcAAAAC/anime-triggered.gif',
-    'jail.gif': 'https://media.tenor.com/9SQD7qN0WGEAAAAC/jail-bonk.gif',
-    'rip.gif': 'https://media.tenor.com/4Ql2mWM6hLQAAAAC/anime-rip.gif'
+    'anime-slap.gif': 'https://media4.giphy.com/media/Zau0yrl17uzdK/giphy.gif',
+    'anime-hug.gif': 'https://media4.giphy.com/media/od5H3PmEG5EVq/giphy.gif',
+    'anime-pat.gif': 'https://media2.giphy.com/media/ARSp9T7wwxNcs/giphy.gif',
+    'anime-dance.gif': 'https://media3.giphy.com/media/mJIa7rg9VPEhzU1dyQ/giphy.gif',
+    'anime-kill.gif': 'https://media2.giphy.com/media/HZboJ5Pkti9k4/giphy.gif',
+    'anime-highfive.gif': 'https://media1.giphy.com/media/838dLMDnxfWzS/giphy.gif',
+    'anime-facepalm.gif': 'https://media3.giphy.com/media/pPhyAv5t9V8djyRFJH/giphy.gif',
+    'anime-poke.gif': 'https://media3.giphy.com/media/pWd3gD577gOqs/giphy.gif',
+    'anime-cuddle.gif': 'https://media1.giphy.com/media/143v0Z4767T15e/giphy.gif',
+    'anime-yeet.gif': 'https://media4.giphy.com/media/11s7Ke7jcNxCHS/giphy.gif',
+    'anime-boop.gif': 'https://media2.giphy.com/media/HeaBmucBGiwdW/giphy.gif',
+    'anime-bonk.gif': 'https://media4.giphy.com/media/30lxTuJueXE7C/giphy.gif',
+    'anime-wave.gif': 'https://media2.giphy.com/media/xTiIzJSKB4l7xTouE8/giphy.gif',
+    'anime-kiss.gif': 'https://media1.giphy.com/media/FqBTvSNjNzeZG/giphy.gif',
+    'anime-punch.gif': 'https://media2.giphy.com/media/arbHBoiUWUgmc/giphy.gif',
+    'anime-wink.gif': 'https://media2.giphy.com/media/yoJC2El7xJkYCadlWE/giphy.gif',
+    // Special effect GIFs - using stable CDN URLs
+    'wasted.gif': 'https://media2.giphy.com/media/Rl9Yqavfj2Ula/giphy.gif',
+    'triggered.gif': 'https://media0.giphy.com/media/ZdrUuSEC0LygaFXtNT/giphy.gif',
+    'jail.gif': 'https://media4.giphy.com/media/3o6wNPIj7WBQcJCReE/giphy.gif',
+    'rip.gif': 'https://media1.giphy.com/media/3oz8xQQP4ahKiyuxHy/giphy.gif'
 };
 
 const downloadGif = (url, filename) => {
