@@ -1,48 +1,57 @@
 const config = require('../config');
-const fs = require('fs-extra');
+const fs = require('fs-extra').promises; // Updated to use promises version
 const path = require('path');
 const logger = require('pino')();
 
-// Update the sendGifReaction helper function with better error handling
+// Update the sendGifReaction helper function with better GIF handling
 const sendGifReaction = async (sock, msg, mediaPath, caption = '', mentions = []) => {
     try {
-        // First try to send the gif if available
-        if (fs.existsSync(mediaPath)) {
-            const buffer = fs.readFileSync(mediaPath);
+        // Check if media directory exists
+        const mediaDir = path.join(__dirname, '../media');
+        if (!fs.existsSync(mediaDir)) {
+            await fs.mkdirSync(mediaDir, { recursive: true });
+            logger.warn('Media directory created');
+        }
 
-            // Check if it's a valid GIF file
-            if (buffer.toString('ascii', 0, 3) === 'GIF') {
-                await sock.sendMessage(msg.key.remoteJid, {
-                    video: buffer,
-                    gifPlayback: true,
-                    caption: caption,
-                    mentions: mentions,
-                    mimetype: 'video/gif'
-                });
-                return true;
+        // Check if the GIF exists
+        if (fs.existsSync(mediaPath)) {
+            const buffer = await fs.readFile(mediaPath);
+
+            // Verify it's a GIF file by checking magic numbers
+            if (buffer.length > 3 && buffer.toString('ascii', 0, 3) === 'GIF') {
+                try {
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        video: buffer,
+                        gifPlayback: true,
+                        caption: caption,
+                        mentions: mentions,
+                        mimetype: 'video/mp4', // WhatsApp prefers MP4 for GIF playback
+                        jpegThumbnail: null // Prevent thumbnail generation issues
+                    });
+                    return true;
+                } catch (sendError) {
+                    logger.error('Error sending GIF message:', sendError);
+                    throw sendError;
+                }
             } else {
                 logger.warn(`Invalid GIF format for: ${mediaPath}`);
+                throw new Error('Invalid GIF format');
             }
         } else {
             logger.warn(`GIF not found: ${mediaPath}`);
+            throw new Error('GIF not found');
         }
-
-        // If gif not found or invalid, send a text-only response with emoji
-        await sock.sendMessage(msg.key.remoteJid, {
-            text: `${caption} (GIF not available)`,
-            mentions: mentions
-        });
-        return true;
     } catch (error) {
         logger.error('Error in sendGifReaction:', error);
-        // Attempt to send text-only message as fallback
+
+        // Send fallback text message
         try {
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `${caption} (Error showing GIF)`,
+                text: `${caption} (GIF not available: ${error.message})`,
                 mentions: mentions
             });
         } catch (fallbackError) {
-            logger.error('Error in fallback message:', fallbackError);
+            logger.error('Error sending fallback message:', fallbackError);
         }
         return false;
     }
