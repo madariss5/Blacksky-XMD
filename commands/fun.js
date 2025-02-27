@@ -18,19 +18,19 @@ const funCommands = {
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
-            // Anime slap sticker
-            const stickerData = {
-                sticker: {
-                    url: 'https://raw.githubusercontent.com/FantoX001/Anime-Stickers/main/Slap/slap2.webp'
-                },
+            // Send anime slap gif
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: 'https://i.imgur.com/fm49srQ.gif' },
+                caption: '🎭 Slap!',
+                gifPlayback: true,
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-            };
-
-            await sock.sendMessage(msg.key.remoteJid, stickerData);
+            });
 
         } catch (error) {
-            console.error('Error sending slap sticker:', error);
-            // Text message already sent, no need for fallback
+            console.error('Error in slap command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '😅 Failed to send slap animation, but *SLAP* anyway!' 
+            });
         }
     },
 
@@ -43,17 +43,17 @@ const funCommands = {
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
-            const stickerData = {
-                sticker: {
-                    url: 'https://raw.githubusercontent.com/FantoX001/Anime-Stickers/main/Hug/hug3.webp'
-                },
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: 'https://i.imgur.com/cvqoK8b.gif' },
+                caption: '🎭 Hug!',
+                gifPlayback: true,
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-            };
-
-            await sock.sendMessage(msg.key.remoteJid, stickerData);
+            });
         } catch (error) {
-            console.error('Error sending hug sticker:', error);
-            // Text message already sent
+            console.error('Error in hug command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '😅 Failed to send hug animation, but *HUG* anyway!' 
+            });
         }
     },
 
@@ -66,17 +66,17 @@ const funCommands = {
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
-            const stickerData = {
-                sticker: {
-                    url: 'https://raw.githubusercontent.com/FantoX001/Anime-Stickers/main/Pat/pat2.webp'
-                },
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: 'https://i.imgur.com/Y9qTqxZ.gif' },
+                caption: '🎭 Pat pat!',
+                gifPlayback: true,
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-            };
-
-            await sock.sendMessage(msg.key.remoteJid, stickerData);
+            });
         } catch (error) {
-            console.error('Error sending pat:', error);
-            // Text message already sent
+            console.error('Error in pat command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '😅 Failed to send pat animation, but *PAT PAT* anyway!' 
+            });
         }
     },
 
@@ -86,16 +86,16 @@ const funCommands = {
                 text: `*${msg.pushName}* is dancing! 💃`
             });
 
-            const stickerData = {
-                sticker: {
-                    url: 'https://raw.githubusercontent.com/FantoX001/Anime-Stickers/main/Dance/dance2.webp'
-                }
-            };
-
-            await sock.sendMessage(msg.key.remoteJid, stickerData);
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: 'https://i.imgur.com/71cPxZn.gif' },
+                caption: '🎭 Dance!',
+                gifPlayback: true
+            });
         } catch (error) {
-            console.error('Error sending dance sticker:', error);
-            // Text message already sent
+            console.error('Error in dance command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '😅 Failed to send dance animation, but *DANCE* anyway!' 
+            });
         }
     },
 
