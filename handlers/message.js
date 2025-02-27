@@ -10,7 +10,8 @@ const commandModules = {
     user: require('../commands/user'),
     fun: require('../commands/fun'),
     anime: require('../commands/anime'),
-    music: require('../commands/music')
+    music: require('../commands/music'),
+    ai: require('../commands/ai')  // Added AI commands module
 };
 
 async function executeCommand(sock, msg, command, args, moduleName) {

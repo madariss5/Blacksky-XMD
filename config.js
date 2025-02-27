@@ -6,7 +6,6 @@ module.exports = {
     botNumber: '', // Will be set after connection
     menuImage: 'https://raw.githubusercontent.com/your-repo/assets/main/f9.jpg',
     commands: {
-        // Basic commands
         menu: {
             description: 'Show bot menu with all commands'
         },
@@ -19,8 +18,6 @@ module.exports = {
         info: {
             description: 'Get bot information'
         },
-
-        // Owner commands
         broadcast: { description: 'Send message to all chats (Owner only)' },
         ban: { description: 'Ban a user from using the bot (Owner only)' },
         unban: { description: 'Unban a user (Owner only)' },
@@ -32,8 +29,6 @@ module.exports = {
         setbotname: { description: 'Change bot name (Owner only)' },
         stats: { description: 'View bot statistics (Owner only)' },
         clearcache: { description: 'Clear bot cache (Owner only)' },
-
-        // Extended owner commands with proper names
         setautoreply: { description: '⚙️ Configure automatic message responses' },
         setwelcome: { description: '⚙️ Set group welcome message template' },
         setgoodbye: { description: '⚙️ Set group goodbye message template' },
@@ -42,8 +37,6 @@ module.exports = {
         setlanguage: { description: '⚙️ Change bot language' },
         backup: { description: '⚙️ Create bot data backup' },
         restore: { description: '⚙️ Restore from backup' },
-
-        // Group commands
         kick: { description: 'Kick a user from group (Admin only)' },
         promote: { description: 'Promote a user to admin (Admin only)' },
         demote: { description: 'Demote a user from admin (Admin only)' },
@@ -56,8 +49,6 @@ module.exports = {
         antilink: { description: 'Enable/disable anti-link protection' },
         groupinfo: { description: 'Show group information' },
         poll: { description: 'Create a poll in the group' },
-
-        // Extended group commands with proper names
         schedule: { description: '👥 Schedule group events' },
         announce: { description: '👥 Create group announcements' },
         roles: { description: '👥 Manage group roles' },
@@ -67,16 +58,12 @@ module.exports = {
         challenge: { description: '👥 Set group challenges' },
         vote: { description: '👥 Create group polls' },
         game: { description: '👥 Organize group games' },
-
-        // User commands
         register: { description: 'Register your name and age' },
         me: { description: 'Show your profile info and stats' },
         level: { description: 'Show your current level' },
         profile: { description: 'View user profile with registration info' },
         status: { description: 'View your WhatsApp status' },
         owner: { description: 'View bot owner information' },
-
-        // Extended user commands with proper names
         theme: { description: '👤 Customize profile themes' },
         reminder: { description: '👤 Set personal reminders' },
         bio: { description: '👤 Create custom bio' },
@@ -86,8 +73,6 @@ module.exports = {
         share: { description: '👤 Share contact cards' },
         notify: { description: '👤 Set notification preferences' },
         notes: { description: '👤 Create personal notes' },
-
-        // Fun commands
         coinflip: { description: 'Flip a coin' },
         dice: { description: 'Roll a dice' },
         quote: { description: 'Get a random quote' },
@@ -100,8 +85,6 @@ module.exports = {
         insult: { description: 'Insult someone with a funny message' },
         meme: { description: 'Get a random meme' },
         fight: { description: 'Start an anime-style fight with someone' },
-
-        // Extended fun commands with proper names
         wordgame: { description: '🎮 Play word games' },
         emojiart: { description: '🎮 Create emoji art' },
         story: { description: '🎮 Generate funny stories' },
@@ -111,14 +94,26 @@ module.exports = {
         jokes: { description: '🎮 Share funny quotes' },
         funpoll: { description: '🎮 Create funny polls' },
         guess: { description: '🎮 Play guessing games' },
-
-        // NSFW commands
         togglensfw: { description: '🔞 Toggle NSFW in current group', nsfw: true },
         verifyage: { description: '🔞 Verify your age for NSFW content', nsfw: true },
-
-        // Extended NSFW commands
         nsfwart: { description: '🔞 View age-restricted artwork', nsfw: true },
         nsfwstory: { description: '🔞 Access mature stories', nsfw: true },
-        nsfwmedia: { description: '🔞 Browse adult content', nsfw: true }
+        nsfwmedia: { description: '🔞 Browse adult content', nsfw: true },
+        gpt: { description: '🤖 Chat with GPT AI' },
+        imagine: { description: '🎨 Generate images with AI' },
+        lisa: { description: '👩‍💻 Chat with Lisa AI' },
+        rias: { description: '🎭 Chat with Rias AI' },
+        toxxic: { description: '😈 Chat with Toxxic AI' },
+        txt2img: { description: '✨ Convert text to image' },
+        aiuser: { description: '👤 Manage AI user settings' },
+        couplepp: { description: '💑 Get anime couple profile pictures' },
+        hentai: { description: '🔞 View hentai content', nsfw: true },
+        hneko: { description: '🔞 View neko hentai', nsfw: true },
+        hwaifu: { description: '🔞 View waifu hentai', nsfw: true },
+        neko: { description: '😺 Get random neko images' },
+        trap: { description: '🎭 Get anime trap images' },
+        waifu: { description: '👘 Get random waifu images' },
+        bugandro: { description: '🐛 Report Android bugs' },
+        bugios: { description: '🐛 Report iOS bugs' }
     }
 };

@@ -11,7 +11,7 @@ const basicCommands = {
             const page = args[0] ? parseInt(args[0]) : 1;
 
             // Set default page if not valid
-            if (isNaN(page) || page < 1 || page > 7) {
+            if (isNaN(page) || page < 1 || page > 8) {  // Updated max pages to 8
                 global.menuPages[chatId] = 1;
             } else {
                 global.menuPages[chatId] = page;
@@ -87,19 +87,33 @@ const basicCommands = {
 
                 case 5:
                     pageTitle = '🎨 *Anime Commands*';
-                    pageContent = `401. ${config.prefix}anime - Search anime\n` +
-                                `402. ${config.prefix}manga - Search manga\n` +
-                                `403. ${config.prefix}character - Search character\n` +
-                                `404. ${config.prefix}waifu - Random waifu\n` +
-                                `405. ${config.prefix}neko - Random neko\n` +
-                                `406. ${config.prefix}schedule - Airing schedule\n` +
-                                `407. ${config.prefix}upcoming - Coming soon\n` +
-                                `408. ${config.prefix}genre - Browse by genre\n` +
-                                `409. ${config.prefix}quote - Anime quotes\n` +
+                    pageContent = `401. ${config.prefix}anime - Search anime info\n` +
+                                `402. ${config.prefix}manga - Search manga info\n` +
+                                `403. ${config.prefix}waifu - Random waifu image\n` +
+                                `404. ${config.prefix}neko - Random neko image\n` +
+                                `405. ${config.prefix}couplepp - Anime couple pfp\n` +
+                                `406. ${config.prefix}trap - Anime trap image\n` +
+                                `407. ${config.prefix}schedule - Anime schedule\n` +
+                                `408. ${config.prefix}seasonal - Current season\n` +
+                                `409. ${config.prefix}character - Search character\n` +
                                 `410. ${config.prefix}wallpaper - Anime wallpapers`;
                     break;
 
                 case 6:
+                    pageTitle = '🤖 *AI Commands*';
+                    pageContent = `701. ${config.prefix}gpt - Chat with GPT\n` +
+                                `702. ${config.prefix}imagine - Generate images\n` +
+                                `703. ${config.prefix}lisa - Chat with Lisa\n` +
+                                `704. ${config.prefix}rias - Chat with Rias\n` +
+                                `705. ${config.prefix}toxxic - Chat with Toxxic\n` +
+                                `706. ${config.prefix}txt2img - Text to image\n` +
+                                `707. ${config.prefix}aiuser - AI user settings\n` +
+                                `708. ${config.prefix}bugandro - Report Android bug\n` +
+                                `709. ${config.prefix}bugios - Report iOS bug\n` +
+                                `710. ${config.prefix}help - AI commands help`;
+                    break;
+
+                case 7:
                     pageTitle = '🎵 *Music Commands*';
                     pageContent = `501. ${config.prefix}play - Play song\n` +
                                 `502. ${config.prefix}skip - Skip song\n` +
@@ -113,7 +127,7 @@ const basicCommands = {
                                 `510. ${config.prefix}search - Search songs`;
                     break;
 
-                case 7:
+                case 8:
                     pageTitle = '🎲 *Game Commands*';
                     pageContent = `601. ${config.prefix}truth - Truth question\n` +
                                 `602. ${config.prefix}dare - Dare challenge\n` +
@@ -129,11 +143,11 @@ const basicCommands = {
             }
 
             const navigation = `\n📖 *Page Navigation*\n` +
-                             `• Current: Page ${currentPage}/7\n` +
+                             `• Current: Page ${currentPage}/8\n` +  // Updated max pages
                              `• Next page: ${config.prefix}menu ${currentPage + 1}\n` +
                              `• Previous: ${config.prefix}menu ${currentPage - 1}\n` +
-                             `• Go to page: ${config.prefix}menu [1-7]\n\n` +
-                             `💡 Commands shown: 70 (10 per category)`;
+                             `• Go to page: ${config.prefix}menu [1-8]\n\n` +  // Updated range
+                             `💡 Commands shown: 80 (10 per category)`;  // Updated count
 
             const fullMenu = menuHeader + pageTitle + '\n\n' + pageContent + navigation;
 
@@ -215,7 +229,7 @@ const basicCommands = {
                         `• Owner: @${config.ownerNumber.split('@')[0]}\n` +
                         `• Prefix: ${config.prefix}\n` +
                         `• Version: 1.0.0\n` +
-                        `• Commands: 70\n` +
+                        `• Commands: 80\n` +
                         `• Status: Online`;
 
             await sock.sendMessage(msg.key.remoteJid, {
@@ -239,7 +253,8 @@ function getCommandFromNumber(num) {
         301: 'kick', 302: 'promote', 303: 'demote', 304: 'add', 305: 'remove', 306: 'link', 307: 'revoke', 308: 'announce', 309: 'poll', 310: 'settings',
         401: 'anime', 402: 'manga', 403: 'character', 404: 'waifu', 405: 'neko', 406: 'schedule', 407: 'upcoming', 408: 'genre', 409: 'quote', 410: 'wallpaper',
         501: 'play', 502: 'skip', 503: 'stop', 504: 'queue', 505: 'pause', 506: 'resume', 507: 'volume', 508: 'lyrics', 509: 'playlist', 510: 'search',
-        601: 'truth', 602: 'dare', 603: 'rps', 604: 'quiz', 605: 'blackjack', 606: 'slots', 607: 'dice', 608: 'fish', 609: 'hunt', 610: 'duel'
+        601: 'truth', 602: 'dare', 603: 'rps', 604: 'quiz', 605: 'blackjack', 606: 'slots', 607: 'dice', 608: 'fish', 609: 'hunt', 610: 'duel',
+        701: 'gpt', 702: 'imagine', 703: 'lisa', 704: 'rias', 705: 'toxxic', 706: 'txt2img', 707: 'aiuser', 708: 'bugandro', 709: 'bugios', 710: 'help'
     };
     return commands[num] || 'unknown';
 }

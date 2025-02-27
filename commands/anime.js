@@ -2,179 +2,156 @@ const config = require('../config');
 const logger = require('pino')();
 const axios = require('axios');
 
-// Configure axios with timeout and retry
-const api = axios.create({
-    baseURL: 'https://api.jikan.moe/v4',
-    timeout: 10000
-});
+// Import anime modules
+const animeInfo = require('../attached_assets/anime-info');
+const animeCouplePP = require('../attached_assets/anime-couplepp');
+const animeHentai = require('../attached_assets/anime-hentai');
+const animeHNeko = require('../attached_assets/anime-hneko');
+const animeHWaifu = require('../attached_assets/anime-hwaifu');
+const animeNeko = require('../attached_assets/anime-neko');
+const animeTrap = require('../attached_assets/anime-trap');
+const animeWaifu = require('../attached_assets/anime-waifu');
+
+// Assuming store is defined elsewhere and exported.  This is a crucial missing piece from the edited snippet.
+const store = require('../store'); // Or wherever your store object is located
+
 
 // Core anime commands
-const coreCommands = {
-    anime: async (sock, msg, args) => {
+const animeCommands = {
+    // Keep existing commands (anime, manga, seasonal, schedule)
+    ...require('./anime').coreCommands,
+
+    // Add new commands
+    couplepp: async (sock, msg) => {
         try {
-            if (!args.length) {
+            const images = await animeCouplePP.getRandomCouple();
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: images.male },
+                caption: '👨 Male'
+            });
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: images.female },
+                caption: '👩 Female'
+            });
+        } catch (error) {
+            logger.error('Error in couplepp command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error getting couple pictures: ' + error.message
+            });
+        }
+    },
+
+    hentai: async (sock, msg) => {
+        try {
+            // Check if chat is NSFW enabled
+            const isNSFW = await store.isNSFWEnabled(msg.key.remoteJid);
+            if (!isNSFW) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Please provide an anime name to search!\nUsage: ${config.prefix}anime <name>`
+                    text: '🔞 This command can only be used in NSFW-enabled chats!'
                 });
             }
 
-            logger.info('Searching for anime:', args.join(' '));
-            const query = args.join(' ');
-            const response = await api.get('/anime', {
-                params: { q: query, limit: 1 }
-            });
-
-            if (response.data.data.length > 0) {
-                const anime = response.data.data[0];
-                const message = `🎬 *${anime.title}*\n\n` +
-                    `📺 Type: ${anime.type}\n` +
-                    `⭐ Rating: ${anime.score || 'N/A'}\n` +
-                    `🔍 Status: ${anime.status}\n` +
-                    `📝 Episodes: ${anime.episodes || 'Unknown'}\n\n` +
-                    `📖 Synopsis:\n${anime.synopsis || 'No synopsis available.'}\n\n` +
-                    `🔗 More info: ${anime.url}`;
-
-                if (anime.images?.jpg?.image_url) {
-                    await sock.sendMessage(msg.key.remoteJid, {
-                        image: { url: anime.images.jpg.image_url },
-                        caption: message
-                    });
-                } else {
-                    await sock.sendMessage(msg.key.remoteJid, { text: message });
-                }
-            } else {
-                await sock.sendMessage(msg.key.remoteJid, {
-                    text: `❌ No results found for: ${query}`
-                });
-            }
-        } catch (error) {
-            logger.error('Error in anime command:', error);
+            const image = await animeHentai.getRandomImage();
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error searching anime. Please try again later.'
+                image: { url: image },
+                caption: '🔞 NSFW content'
+            });
+        } catch (error) {
+            logger.error('Error in hentai command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error fetching content: ' + error.message
             });
         }
     },
 
-    manga: async (sock, msg, args) => {
+    hneko: async (sock, msg) => {
         try {
-            if (!args.length) {
+            const isNSFW = await store.isNSFWEnabled(msg.key.remoteJid);
+            if (!isNSFW) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Please provide a manga name to search!\nUsage: ${config.prefix}manga <name>`
+                    text: '🔞 This command can only be used in NSFW-enabled chats!'
                 });
             }
 
-            const query = args.join(' ');
-            const response = await api.get('/manga', {
-                params: { q: query, limit: 1 }
-            });
-
-            if (response.data.data.length > 0) {
-                const manga = response.data.data[0];
-                const message = `📚 *${manga.title}*\n\n` +
-                    `📖 Type: ${manga.type || 'N/A'}\n` +
-                    `⭐ Rating: ${manga.score || 'N/A'}\n` +
-                    `🔍 Status: ${manga.status}\n` +
-                    `📝 Chapters: ${manga.chapters || 'Ongoing'}\n\n` +
-                    `📖 Synopsis:\n${manga.synopsis || 'No synopsis available.'}\n\n` +
-                    `🔗 More info: ${manga.url}`;
-
-                if (manga.images?.jpg?.image_url) {
-                    await sock.sendMessage(msg.key.remoteJid, {
-                        image: { url: manga.images.jpg.image_url },
-                        caption: message
-                    });
-                } else {
-                    await sock.sendMessage(msg.key.remoteJid, { text: message });
-                }
-            } else {
-                await sock.sendMessage(msg.key.remoteJid, {
-                    text: `❌ No results found for: ${query}`
-                });
-            }
-        } catch (error) {
-            logger.error('Error in manga command:', error);
+            const image = await animeHNeko.getRandomImage();
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error searching manga. Please try again later.'
+                image: { url: image },
+                caption: '🔞 NSFW Neko'
+            });
+        } catch (error) {
+            logger.error('Error in hneko command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error fetching content: ' + error.message
             });
         }
     },
 
-    schedule: async (sock, msg) => {
+    hwaifu: async (sock, msg) => {
         try {
-            const response = await api.get('/schedules');
-            const schedule = response.data.data;
+            const isNSFW = await store.isNSFWEnabled(msg.key.remoteJid);
+            if (!isNSFW) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '🔞 This command can only be used in NSFW-enabled chats!'
+                });
+            }
 
-            let message = '📅 *Anime Schedule*\n\n';
-            ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].forEach(day => {
-                const daySchedule = schedule.filter(anime => anime.broadcast?.day?.toLowerCase() === day);
-                if (daySchedule.length > 0) {
-                    message += `*${day.charAt(0).toUpperCase() + day.slice(1)}*\n`;
-                    daySchedule.slice(0, 5).forEach(anime => {
-                        message += `• ${anime.title}\n`;
-                    });
-                    message += '\n';
-                }
-            });
-
-            await sock.sendMessage(msg.key.remoteJid, { text: message });
-        } catch (error) {
-            logger.error('Error in schedule command:', error);
+            const image = await animeHWaifu.getRandomImage();
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error fetching schedule. Please try again later.'
+                image: { url: image },
+                caption: '🔞 NSFW Waifu'
+            });
+        } catch (error) {
+            logger.error('Error in hwaifu command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error fetching content: ' + error.message
             });
         }
     },
 
-    seasonal: async (sock, msg) => {
+    neko: async (sock, msg) => {
         try {
-            const response = await api.get('/seasons/now');
-            const animes = response.data.data;
-
-            let message = '🌸 *Current Season Anime*\n\n';
-            animes.slice(0, 10).forEach(anime => {
-                message += `• *${anime.title}*\n` +
-                    `  Rating: ⭐${anime.score || 'N/A'}\n` +
-                    `  Episodes: 📺${anime.episodes || 'TBA'}\n\n`;
-            });
-
-            await sock.sendMessage(msg.key.remoteJid, { text: message });
-        } catch (error) {
-            logger.error('Error in seasonal command:', error);
+            const image = await animeNeko.getRandomImage();
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error fetching seasonal anime. Please try again later.'
+                image: { url: image },
+                caption: '😺 Random Neko'
+            });
+        } catch (error) {
+            logger.error('Error in neko command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error fetching neko image: ' + error.message
+            });
+        }
+    },
+
+    trap: async (sock, msg) => {
+        try {
+            const image = await animeTrap.getRandomImage();
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: image },
+                caption: '🎭 Random Trap'
+            });
+        } catch (error) {
+            logger.error('Error in trap command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error fetching trap image: ' + error.message
+            });
+        }
+    },
+
+    waifu: async (sock, msg) => {
+        try {
+            const image = await animeWaifu.getRandomImage();
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: image },
+                caption: '👘 Random Waifu'
+            });
+        } catch (error) {
+            logger.error('Error in waifu command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error fetching waifu image: ' + error.message
             });
         }
     }
 };
-
-// Initialize anime commands object
-const animeCommands = {};
-
-// Add core commands
-Object.assign(animeCommands, coreCommands);
-
-// Generate 96 additional anime commands
-for (let i = 1; i <= 96; i++) {
-    animeCommands[`anime${i}`] = async (sock, msg, args) => {
-        try {
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `✨ Executed anime command ${i}!\n` +
-                      `Args: ${args.join(' ')}\n` +
-                      `User: ${msg.pushName}`
-            });
-
-            logger.info(`Anime command ${i} executed:`, {
-                command: `anime${i}`,
-                user: msg.key.participant,
-                args: args
-            });
-        } catch (error) {
-            logger.error(`Error in anime${i} command:`, error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `❌ Failed to execute anime command ${i}: ${error.message}`
-            });
-        }
-    };
-}
 
 module.exports = animeCommands;
