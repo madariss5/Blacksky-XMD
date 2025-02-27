@@ -73,7 +73,6 @@ const funCommands = {
 30. *!jail* [@user] - Jail someone
 31. *!rip* [@user] - RIP someone
 
-
 *How to use:*
 - Commands with [@user] can tag someone
 - For games, follow the instructions given
@@ -694,26 +693,6 @@ const funCommands = {
             });
         }
     },
-
-    triggered: async (sock, msg, args) => {
-        try {
-            const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
-            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
-
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: `😠 *TRIGGERED*\n${target} is triggered!`,
-                mentions: mentions
-            });
-
-            await sendGifReaction(sock, msg, './media/triggered.gif', '😠', mentions);
-        } catch (error) {
-            logger.error('Error in triggered command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to execute triggered command!'
-            });
-        }
-    },
-
     jail: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
@@ -731,7 +710,6 @@ const funCommands = {
             });
         }
     },
-
     rip: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
@@ -752,31 +730,5 @@ const funCommands = {
     }
 };
 
-// Add core commands to funCommands
-Object.assign(funCommands, coreFunCommands);
-
-// Generate 80 additional fun commands
-for (let i = 1; i <= 80; i++) {
-    funCommands[`fun${i}`] = async (sock, msg, args) => {
-        try {
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `✨ Executed fun command ${i}!\n` +
-                      `Args: ${args.join(' ')}\n` +
-                      `User: ${msg.pushName}`
-            });
-
-            logger.info(`Fun command ${i} executed:`, {
-                command: `fun${i}`,
-                user: msg.key.participant,
-                args: args
-            });
-        } catch (error) {
-            logger.error(`Error in fun${i} command:`, error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `❌ Failed to execute fun command ${i}: ${error.message}`
-            });
-        }
-    };
-}
-
+// Export the funCommands object
 module.exports = funCommands;
