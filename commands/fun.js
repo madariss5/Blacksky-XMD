@@ -8,24 +8,42 @@ const sendGifReaction = async (sock, msg, mediaPath, caption = '', mentions = []
     try {
         // First try to send the gif if available
         if (fs.existsSync(mediaPath)) {
-            await sock.sendMessage(msg.key.remoteJid, {
-                video: fs.readFileSync(mediaPath),
-                gifPlayback: true,
-                caption: caption,
-                mentions: mentions
-            });
-            return true;
+            const buffer = fs.readFileSync(mediaPath);
+
+            // Check if it's a valid GIF file
+            if (buffer.toString('ascii', 0, 3) === 'GIF') {
+                await sock.sendMessage(msg.key.remoteJid, {
+                    video: buffer,
+                    gifPlayback: true,
+                    caption: caption,
+                    mentions: mentions,
+                    mimetype: 'video/gif'
+                });
+                return true;
+            } else {
+                logger.warn(`Invalid GIF format for: ${mediaPath}`);
+            }
+        } else {
+            logger.warn(`GIF not found: ${mediaPath}`);
         }
 
-        // If gif not found, send a text-only response with emoji
+        // If gif not found or invalid, send a text-only response with emoji
         await sock.sendMessage(msg.key.remoteJid, {
-            text: `${caption} (Media not available)`,
+            text: `${caption} (GIF not available)`,
             mentions: mentions
         });
-        logger.warn(`GIF not found: ${mediaPath}, falling back to text-only response`);
         return true;
     } catch (error) {
         logger.error('Error in sendGifReaction:', error);
+        // Attempt to send text-only message as fallback
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `${caption} (Error showing GIF)`,
+                mentions: mentions
+            });
+        } catch (fallbackError) {
+            logger.error('Error in fallback message:', fallbackError);
+        }
         return false;
     }
 };
@@ -707,8 +725,7 @@ const funCommands = {
             logger.error('Error in jail command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Failed to execute jail command!'
-            });
-        }
+            });        }
     },
     rip: async (sock, msg, args) => {
         try {
