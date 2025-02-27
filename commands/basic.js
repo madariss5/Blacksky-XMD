@@ -1,5 +1,7 @@
 const config = require('../config');
 const logger = require('pino')();
+const fs = require('fs-extra');
+const path = require('path');
 
 const commands = {
     menu: async (sock, msg) => {
@@ -26,7 +28,7 @@ const commands = {
                     { cmd: 'quest', desc: 'Accept quests' },
                     { cmd: 'fish', desc: 'Go fishing' },
                     { cmd: 'mine', desc: 'Go mining' },
-                    { cmd: 'hunt', desc: 'Go hunting' },
+                    { cmd: 'hunt', desc: 'Go hunting' }
                 ],
                 '🎨 Anime Commands': [
                     { cmd: 'anime', desc: 'Search for anime info' },
@@ -38,31 +40,30 @@ const commands = {
                     { cmd: 'quote', desc: 'Random anime quotes' },
                     { cmd: 'waifu', desc: 'Random waifu pics' },
                     { cmd: 'neko', desc: 'Random neko pics' },
-                    { cmd: 'cosplay', desc: 'Random cosplay pics' },
+                    { cmd: 'cosplay', desc: 'Random cosplay pics' }
                 ],
                 '🎵 Music Commands': [
                     { cmd: 'play', desc: 'Play anime music' },
                     { cmd: 'queue', desc: 'View music queue' },
                     { cmd: 'skip', desc: 'Skip current song' },
                     { cmd: 'lyrics', desc: 'Show song lyrics' },
-                    { cmd: 'playlist', desc: 'Manage playlists' },
+                    { cmd: 'playlist', desc: 'Manage playlists' }
                 ],
                 '🛠️ Utility Commands': [
                     { cmd: 'translate', desc: 'Translate text' },
                     { cmd: 'reminder', desc: 'Set reminders' },
                     { cmd: 'poll', desc: 'Create polls' },
                     { cmd: 'weather', desc: 'Check weather' },
-                    { cmd: 'calculate', desc: 'Math calculator' },
+                    { cmd: 'calculate', desc: 'Math calculator' }
                 ],
                 '👥 Social Commands': [
                     { cmd: 'profile', desc: 'View user profile' },
                     { cmd: 'level', desc: 'Check your level' },
                     { cmd: 'rank', desc: 'View leaderboard' },
                     { cmd: 'marry', desc: 'Marry another user' },
-                    { cmd: 'divorce', desc: 'End marriage' },
+                    { cmd: 'divorce', desc: 'End marriage' }
                 ]
             };
-
 
             // Build menu text with proper formatting
             let menuText = menuHeader;
@@ -81,35 +82,24 @@ const commands = {
 ┃ ⌯ All commands start with: ${config.prefix}
 ╰━━━━━━━━━━━━⊷❍`;
 
-            // Send menu with anime picture
             try {
+                // Use local image file
+                const menuImage = fs.readFileSync(path.join(__dirname, '../media/menu-banner.jpg'));
                 await sock.sendMessage(msg.key.remoteJid, {
-                    image: { url: 'https://raw.githubusercontent.com/WhiskeySockets/Baileys/master/Media/logo.png' }, // More reliable URL
+                    image: menuImage,
                     caption: menuText,
                     mentions: [config.ownerNumber]
                 });
-                logger.info('Menu sent successfully with image');
-            } catch (imageError) {
-                logger.warn('Failed to send menu with first image, trying backup:', imageError);
-                try {
-                    // Try backup image
-                    await sock.sendMessage(msg.key.remoteJid, {
-                        image: { url: 'https://i.ibb.co/4Fgt31L/anime-menu.jpg' },
-                        caption: menuText,
-                        mentions: [config.ownerNumber]
-                    });
-                    logger.info('Menu sent successfully with backup image');
-                } catch (backupError) {
-                    logger.warn('Failed to send menu with backup image, falling back to text:', backupError);
-                    // Fallback to text-only menu
-                    await sock.sendMessage(msg.key.remoteJid, {
-                        text: menuText,
-                        mentions: [config.ownerNumber]
-                    });
-                    logger.info('Menu sent successfully as text-only');
-                }
+                logger.info('Menu sent successfully with local image');
+            } catch (error) {
+                logger.warn('Failed to send menu with image, falling back to text:', error);
+                // Fallback to text-only menu
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: menuText,
+                    mentions: [config.ownerNumber]
+                });
+                logger.info('Menu sent successfully as text-only');
             }
-
         } catch (error) {
             logger.error('Error in menu command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
