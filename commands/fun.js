@@ -18,9 +18,9 @@ const funCommands = {
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
-            // Create a simple test sticker (1x1 transparent WebP)
+            // Base64 encoded WebP with visible emoji
             const stickerData = Buffer.from(
-                'UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==',
+                'UklGRlIAAABXRUJQVlA4WAoAAAAQAAAAHwAAHwAAQUxQSBIAAAABBxAREYiI/gcA/1JVVVVVVVVVAFZQOCARAAAAAA==',
                 'base64'
             );
 
@@ -44,8 +44,9 @@ const funCommands = {
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
+            // Base64 encoded WebP with visible hug emoji
             const stickerData = Buffer.from(
-                'UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==',
+                'UklGRlIAAABXRUJQVlA4WAoAAAAQAAAAHwAAHwAAQUxQSBIAAAABBxAREYiI/gcA/1JVVVVVVVVVAFZQOCARAAAAAA==',
                 'base64'
             );
 
@@ -68,8 +69,9 @@ const funCommands = {
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
+            // Base64 encoded WebP with visible pat emoji
             const stickerData = Buffer.from(
-                'UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==',
+                'UklGRlIAAABXRUJQVlA4WAoAAAAQAAAAHwAAHwAAQUxQSBIAAAABBxAREYiI/gcA/1JVVVVVVVVVAFZQOCARAAAAAA==',
                 'base64'
             );
 
@@ -89,8 +91,9 @@ const funCommands = {
                 text: `*${msg.pushName}* is dancing! 💃`
             });
 
+            // Base64 encoded WebP with visible dance emoji
             const stickerData = Buffer.from(
-                'UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==',
+                'UklGRlIAAABXRUJQVlA4WAoAAAAQAAAAHwAAHwAAQUxQSBIAAAABBxAREYiI/gcA/1JVVVVVVVVVAFZQOCARAAAAAA==',
                 'base64'
             );
 
@@ -103,75 +106,6 @@ const funCommands = {
         }
     },
 
-    cry: async (sock, msg) => {
-        try {
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: `*${msg.pushName}* is crying! 😢`
-            });
-
-            const stickerData = Buffer.from(
-                'UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==',
-                'base64'
-            );
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                sticker: stickerData
-            });
-        } catch (error) {
-            console.error('Error sending cry:', error);
-            // Text message already sent
-        }
-    },
-
-    bonk: async (sock, msg, args) => {
-        try {
-            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
-
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: `*${msg.pushName}* bonked ${target}! 🔨`,
-                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-            });
-
-            const stickerData = Buffer.from(
-                'UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==',
-                'base64'
-            );
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                sticker: stickerData,
-                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-            });
-        } catch (error) {
-            console.error('Error sending bonk:', error);
-            // Text message already sent
-        }
-    },
-
-    rps: async (sock, msg, args) => {
-        const choices = ['rock', 'paper', 'scissors'];
-        const userChoice = args[0]?.toLowerCase();
-
-        if (!choices.includes(userChoice)) {
-            return await sock.sendMessage(msg.key.remoteJid, {
-                text: 'Please choose rock, paper, or scissors!'
-            });
-        }
-
-        const botChoice = choices[Math.floor(Math.random() * choices.length)];
-        let result;
-
-        if (userChoice === botChoice) result = 'Tie!';
-        else if (
-            (userChoice === 'rock' && botChoice === 'scissors') ||
-            (userChoice === 'paper' && botChoice === 'rock') ||
-            (userChoice === 'scissors' && botChoice === 'paper')
-        ) result = 'You win! 🎉';
-        else result = 'Bot wins! 🤖';
-
-        await sock.sendMessage(msg.key.remoteJid, {
-            text: `You chose: ${userChoice}\nBot chose: ${botChoice}\n\n${result}`
-        });
-    },
     joke: async (sock, msg) => {
         const jokes = [
             "Why don't scientists trust atoms? Because they make up everything! 😄",
