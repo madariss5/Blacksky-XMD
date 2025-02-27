@@ -8,7 +8,8 @@ class Store {
         this.data = {
             users: {},
             banned: [],
-            bannedGroups: []
+            bannedGroups: [],
+            groups: {} // Added groups property to store group settings
         };
         this.loadStore();
     }
@@ -90,6 +91,167 @@ class Store {
             return true;
         } catch (error) {
             logger.error('Error updating daily reward:', error);
+            return false;
+        }
+    }
+
+    async updateWeeklyReward(userId, reward) {
+        try {
+            const userData = await this.getUserData(userId);
+            if (!userData) return false;
+
+            userData.gold += reward;
+            userData.lastWeekly = Date.now();
+            await this.saveStore();
+            return true;
+        } catch (error) {
+            logger.error('Error updating weekly reward:', error);
+            return false;
+        }
+    }
+
+    async updateMonthlyReward(userId, reward) {
+        try {
+            const userData = await this.getUserData(userId);
+            if (!userData) return false;
+
+            userData.gold += reward;
+            userData.lastMonthly = Date.now();
+            await this.saveStore();
+            return true;
+        } catch (error) {
+            logger.error('Error updating monthly reward:', error);
+            return false;
+        }
+    }
+
+    async getWorkCooldown(userId) {
+        try {
+            const userData = await this.getUserData(userId);
+            if (!userData) return { canWork: true, timeLeft: 0 };
+
+            const lastWork = userData.lastWork || 0;
+            const now = Date.now();
+            const cooldown = 60 * 60 * 1000; // 1 hour
+            const timeLeft = Math.max(0, cooldown - (now - lastWork));
+
+            return {
+                canWork: timeLeft === 0,
+                timeLeft
+            };
+        } catch (error) {
+            logger.error('Error getting work cooldown:', error);
+            throw error;
+        }
+    }
+
+    async updateWorkReward(userId, reward) {
+        try {
+            const userData = await this.getUserData(userId);
+            if (!userData) return false;
+
+            userData.gold += reward;
+            userData.lastWork = Date.now();
+            await this.saveStore();
+            return true;
+        } catch (error) {
+            logger.error('Error updating work reward:', error);
+            return false;
+        }
+    }
+
+    // Shop system methods
+    async getShopItems() {
+        return [
+            { id: 'fishing_rod', name: 'Fishing Rod', price: 1000, description: 'Required for fishing' },
+            { id: 'pickaxe', name: 'Pickaxe', price: 2000, description: 'Required for mining' },
+            { id: 'hunting_rifle', name: 'Hunting Rifle', price: 3000, description: 'Required for hunting' },
+            { id: 'laptop', name: 'Laptop', price: 5000, description: 'Increases work earnings' }
+        ];
+    }
+
+    async buyItem(userId, itemId) {
+        try {
+            const userData = await this.getUserData(userId);
+            if (!userData) return { success: false, error: 'User not found' };
+
+            const shopItems = await this.getShopItems();
+            const item = shopItems.find(i => i.id === itemId);
+
+            if (!item) return { success: false, error: 'Item not found' };
+            if (userData.gold < item.price) return { success: false, error: 'Insufficient funds' };
+
+            if (!userData.inventory) userData.inventory = {};
+            if (!userData.inventory[itemId]) userData.inventory[itemId] = 0;
+
+            userData.inventory[itemId]++;
+            userData.gold -= item.price;
+
+            await this.saveStore();
+            return { success: true, item };
+        } catch (error) {
+            logger.error('Error buying item:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    async sellItem(userId, itemId, quantity = 1) {
+        try {
+            const userData = await this.getUserData(userId);
+            if (!userData) return { success: false, error: 'User not found' };
+
+            const shopItems = await this.getShopItems();
+            const item = shopItems.find(i => i.id === itemId);
+
+            if (!item) return { success: false, error: 'Item not found' };
+            if (!userData.inventory?.[itemId] || userData.inventory[itemId] < quantity) {
+                return { success: false, error: 'Item not in inventory' };
+            }
+
+            const sellPrice = Math.floor(item.price * 0.7); // 70% of original price
+            userData.inventory[itemId] -= quantity;
+            userData.gold += sellPrice * quantity;
+
+            await this.saveStore();
+            return { success: true, amount: sellPrice * quantity };
+        } catch (error) {
+            logger.error('Error selling item:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    // Activity cooldown methods
+    async getActivityCooldown(userId, activity) {
+        try {
+            const userData = await this.getUserData(userId);
+            if (!userData) return { canDo: true, timeLeft: 0 };
+
+            const lastTime = userData[`last${activity}`] || 0;
+            const now = Date.now();
+            const cooldown = 30 * 60 * 1000; // 30 minutes
+            const timeLeft = Math.max(0, cooldown - (now - lastTime));
+
+            return {
+                canDo: timeLeft === 0,
+                timeLeft
+            };
+        } catch (error) {
+            logger.error(`Error getting ${activity} cooldown:`, error);
+            throw error;
+        }
+    }
+
+    async updateActivity(userId, activity, reward) {
+        try {
+            const userData = await this.getUserData(userId);
+            if (!userData) return false;
+
+            userData.gold += reward;
+            userData[`last${activity}`] = Date.now();
+            await this.saveStore();
+            return true;
+        } catch (error) {
+            logger.error(`Error updating ${activity}:`, error);
             return false;
         }
     }
@@ -267,8 +429,7 @@ class Store {
         }
     }
 
-
-    // Group settings methods
+    // Required group management methods
     async setGroupSetting(groupId, setting, value) {
         try {
             const groups = this.data.groups || {};
