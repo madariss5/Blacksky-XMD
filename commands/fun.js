@@ -27,7 +27,7 @@ const funCommands = {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: 'https://i.imgur.com/fm49srQ.gif' },
+                image: { url: 'https://c.tenor.com/CvBTA0GyrogAAAPo/anime-slap.gif' },
                 caption: `*${msg.pushName}* slapped ${target}! 👋`,
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : [],
                 gifPlayback: true
@@ -44,7 +44,7 @@ const funCommands = {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: 'https://i.imgur.com/2WnViqE.gif' },
+                image: { url: 'https://c.tenor.com/1T1B8HcWalQAAAPo/anime-hug.gif' },
                 caption: `*${msg.pushName}* hugged ${target}! 🤗`,
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : [],
                 gifPlayback: true
@@ -60,7 +60,7 @@ const funCommands = {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: 'https://i.imgur.com/wOmoeF8.gif' },
+                image: { url: 'https://c.tenor.com/wUQH5CF2DJ4AAAPo/anime-cuddle.gif' },
                 caption: `*${msg.pushName}* cuddled ${target}! 🥰`,
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : [],
                 gifPlayback: true
@@ -76,7 +76,7 @@ const funCommands = {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: 'https://i.imgur.com/SkBZWJp.gif' },
+                image: { url: 'https://c.tenor.com/F02Ep3b2jJgAAAPo/cute-kawai.gif' },
                 caption: `*${msg.pushName}* kissed ${target}! 💋`,
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : [],
                 gifPlayback: true
@@ -92,7 +92,7 @@ const funCommands = {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: 'https://i.imgur.com/DfLXcxQ.gif' },
+                image: { url: 'https://c.tenor.com/UKsNkAqj7YkAAAPo/anime-kill.gif' },
                 caption: `*${msg.pushName}* killed ${target}! 💀`,
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : [],
                 gifPlayback: true
@@ -107,7 +107,7 @@ const funCommands = {
     dance: async (sock, msg) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: 'https://i.imgur.com/ZXhGlqc.gif' },
+                image: { url: 'https://c.tenor.com/1sCpX5R3idsAAAPo/anime-dance.gif' },
                 caption: `*${msg.pushName}* is dancing! 💃`,
                 gifPlayback: true
             });
@@ -136,8 +136,9 @@ const funCommands = {
     meme: async (sock, msg) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: 'https://i.imgur.com/memes/random.jpg' },
-                caption: '😂 Here\'s your meme!'
+                image: { url: 'https://c.tenor.com/ZATOxNglZlwAAAPo/anime-meme.gif' },
+                caption: '😂 Here\'s your meme!',
+                gifPlayback: true
             });
         } catch (error) {
             await sock.sendMessage(msg.key.remoteJid, { 
@@ -160,12 +161,14 @@ const funCommands = {
             const damage = damages[Math.floor(Math.random() * damages.length)];
 
             await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: 'https://i.imgur.com/NWx8ypA.gif' },
+                image: { url: 'https://c.tenor.com/E0mxW6hhZQcAAAPo/anime-fight.gif' },
                 caption: `*${msg.pushName}* ${move}\nDealt ${damage} damage to ${target}! 👊💥`,
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : [],
                 gifPlayback: true
             });
         } catch (error) {
+            const move = moves[Math.floor(Math.random() * moves.length)];
+            const damage = damages[Math.floor(Math.random() * damages.length)];
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: `*${msg.pushName}* ${move}\nDealt ${damage} damage to ${target}! 👊💥`,
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
@@ -195,7 +198,6 @@ const funCommands = {
         });
     },
 
-    // Additional fun commands
     rps: async (sock, msg, args) => {
         const choices = ['rock', 'paper', 'scissors'];
         const userChoice = args[0]?.toLowerCase();
@@ -233,7 +235,6 @@ const funCommands = {
             text: `🤔 Trivia Time!\n\nQuestion: ${question.q}\n\nReply with your answer!`
         });
     },
-    // Added original dynamically generated commands
     ...Array.from({ length: 48 }, (_, i) => ({
         [`funCmd${i + 1}`]: async (sock, msg, args) => {
             const reactions = ['😂', '🎮', '🎯', '🎲', '🎪', '🎨', '🎭', '🎪'];
