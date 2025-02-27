@@ -1,6 +1,28 @@
 const config = require('../config');
 const fs = require('fs-extra');
 const path = require('path');
+const logger = require('pino')();
+
+// Helper function to send GIF reactions
+const sendGifReaction = async (sock, msg, mediaPath, caption = '', mentions = []) => {
+    try {
+        if (!fs.existsSync(mediaPath)) {
+            logger.warn(`GIF not found: ${mediaPath}`);
+            return false;
+        }
+
+        await sock.sendMessage(msg.key.remoteJid, {
+            video: fs.readFileSync(mediaPath),
+            gifPlayback: true,
+            caption: caption,
+            mentions: mentions
+        });
+        return true;
+    } catch (error) {
+        logger.error('Error sending GIF reaction:', error);
+        return false;
+    }
+};
 
 const funCommands = {
     menu: async (sock, msg) => {
@@ -51,93 +73,71 @@ const funCommands = {
     slap: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: `*${msg.pushName}* slapped ${target}! 👋`,
-                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+                mentions: mentions
             });
 
-            const mediaPath = './media/anime-slap.gif';
-            if (fs.existsSync(mediaPath)) {
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    video: fs.readFileSync(mediaPath),
-                    gifPlayback: true,
-                    caption: '🎭',
-                    mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-                });
-            }
+            await sendGifReaction(sock, msg, './media/anime-slap.gif', '👋', mentions);
         } catch (error) {
-            console.error('Error in slap command:', error);
+            logger.error('Error in slap command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: '😅 Failed to send slap animation!' 
+                text: '😅 Failed to execute slap command!'
             });
         }
     },
+
     hug: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: `*${msg.pushName}* hugged ${target}! 🤗`,
-                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+                mentions: mentions
             });
 
-            const mediaPath = './media/anime-hug.gif';
-            if (fs.existsSync(mediaPath)) {
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    video: fs.readFileSync(mediaPath),
-                    gifPlayback: true,
-                    caption: '🎭',
-                    mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-                });
-            }
+            await sendGifReaction(sock, msg, './media/anime-hug.gif', '🤗', mentions);
         } catch (error) {
-            console.error('Error in hug command:', error);
+            logger.error('Error in hug command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: '😅 Failed to send hug animation!' 
+                text: '😅 Failed to execute hug command!'
             });
         }
     },
+
     pat: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: `*${msg.pushName}* patted ${target}! 🥰`,
-                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+                mentions: mentions
             });
 
-            const mediaPath = './media/anime-pat.gif';
-            if (fs.existsSync(mediaPath)) {
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    video: fs.readFileSync(mediaPath),
-                    gifPlayback: true,
-                    caption: '🎭',
-                    mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-                });
-            }
+            await sendGifReaction(sock, msg, './media/anime-pat.gif', '🥰', mentions);
         } catch (error) {
-            console.error('Error in pat command:', error);
+            logger.error('Error in pat command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: '😅 Failed to send pat animation!' 
+                text: '😅 Failed to execute pat command!'
             });
         }
     },
+
     dance: async (sock, msg) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: `*${msg.pushName}* is dancing! 💃`
             });
 
-            const mediaPath = './media/anime-dance.gif';
-            if (fs.existsSync(mediaPath)) {
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    video: fs.readFileSync(mediaPath),
-                    gifPlayback: true,
-                    caption: '🎭'
-                });
-            }
+            await sendGifReaction(sock, msg, './media/anime-dance.gif', '💃');
         } catch (error) {
-            console.error('Error in dance command:', error);
+            logger.error('Error in dance command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: '😅 Failed to send dance animation!' 
+                text: '😅 Failed to execute dance command!'
             });
         }
     },
@@ -455,47 +455,16 @@ const funCommands = {
     kill: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
-            const killMessages = [
-                `💀 *${msg.pushName}* used the death note on ${target}!`,
-                `🔪 *${msg.pushName}* dramatically eliminated ${target}!`,
-                `⚰️ *${msg.pushName}* sent ${target} to the shadow realm!`,
-                `☠️ *${msg.pushName}* used Avada Kedavra on ${target}!`,
-                `🎮 *${msg.pushName}* used /kill command on ${target}!`,
-                `👻 *${msg.pushName}* made ${target} disappear mysteriously!`,
-                `💥 *${msg.pushName}* used the infinity gauntlet on ${target}!`,
-                `🌟 *${msg.pushName}* used their special move on ${target}!`,
-                `🎯 *${msg.pushName}* landed a critical hit on ${target}!`,
-                `🌪️ *${msg.pushName}* banished ${target} to the void!`
-            ];
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
-            const randomMessage = killMessages[Math.floor(Math.random() * killMessages.length)];
-
-            // First send the kill message
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: randomMessage + "\n\n☠️ *K.O!* ⚰️",
-                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+                text: `*${msg.pushName}* eliminated ${target}! ☠️`,
+                mentions: mentions
             });
 
-            // Then send the animation
-            const mediaPath = './media/anime-kill.gif';
-            if (fs.existsSync(mediaPath)) {
-                try {
-                    // Send as video with gifPlayback enabled instead of sticker
-                    await sock.sendMessage(msg.key.remoteJid, {
-                        video: fs.readFileSync(mediaPath),
-                        gifPlayback: true,
-                        caption: '💀',
-                        mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-                    });
-                } catch (mediaError) {
-                    console.error("Error sending kill animation:", mediaError);
-                    // Don't send a fallback message to avoid chat spam
-                }
-            } else {
-                console.error("Kill animation not found at:", mediaPath);
-            }
+            await sendGifReaction(sock, msg, './media/anime-kill.gif', '☠️', mentions);
         } catch (error) {
-            console.error('Error in kill command:', error);
+            logger.error('Error in kill command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: '😅 Failed to execute kill command!'
             });
@@ -504,165 +473,122 @@ const funCommands = {
     highfive: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: `*${msg.pushName}* high-fives ${target}! ✨`,
-                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+                text: `*${msg.pushName}* high-fived ${target}! 🙌`,
+                mentions: mentions
             });
 
-            const mediaPath = './media/anime-highfive.gif';
-            if (fs.existsSync(mediaPath)) {
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    video: fs.readFileSync(mediaPath),
-                    gifPlayback: true,
-                    caption: '🙌',
-                    mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-                });
-            }
+            await sendGifReaction(sock, msg, './media/anime-highfive.gif', '🙌', mentions);
         } catch (error) {
-            console.error('Error in highfive command:', error);
+            logger.error('Error in highfive command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: '😅 Failed to send high-five animation!'
+                text: '😅 Failed to execute highfive command!'
             });
         }
     },
-    facepalm: async (sock, msg, args) => {
+    facepalm: async (sock, msg) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: `*${msg.pushName}* facepalms! 🤦‍♂️`
+                text: `*${msg.pushName}* facepalmed! 🤦‍♂️`
             });
 
-            const mediaPath = './media/anime-facepalm.gif';
-            if (fs.existsSync(mediaPath)) {
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    video: fs.readFileSync(mediaPath),
-                    gifPlayback: true,
-                    caption: '🤦‍♂️'
-                });
-            }
+            await sendGifReaction(sock, msg, './media/anime-facepalm.gif', '🤦‍♂️');
         } catch (error) {
-            console.error('Error in facepalm command:', error);
+            logger.error('Error in facepalm command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: '😅 Failed to send facepalm animation!'
+                text: '😅 Failed to execute facepalm command!'
             });
         }
     },
     poke: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: `*${msg.pushName}* pokes ${target}! 👉`,
-                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+                text: `*${msg.pushName}* poked ${target}! 👉`,
+                mentions: mentions
             });
 
-            const mediaPath = './media/anime-poke.gif';
-            if (fs.existsSync(mediaPath)) {
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    video: fs.readFileSync(mediaPath),
-                    gifPlayback: true,
-                    caption: '👉',
-                    mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-                });
-            }
+            await sendGifReaction(sock, msg, './media/anime-poke.gif', '👉', mentions);
         } catch (error) {
-            console.error('Error in poke command:', error);
+            logger.error('Error in poke command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: '😅 Failed to send poke animation!'
+                text: '😅 Failed to execute poke command!'
             });
         }
     },
     cuddle: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: `*${msg.pushName}* cuddles ${target} sweetly! 🤗`,
-                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+                text: `*${msg.pushName}* cuddles ${target}! 🤗`,
+                mentions: mentions
             });
 
-            const mediaPath = './media/anime-cuddle.gif';
-            if (fs.existsSync(mediaPath)) {
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    video: fs.readFileSync(mediaPath),
-                    gifPlayback: true,
-                    caption: '🤗',
-                    mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-                });
-            }
+            await sendGifReaction(sock, msg, './media/anime-cuddle.gif', '🤗', mentions);
         } catch (error) {
-            console.error('Error in cuddle command:', error);
+            logger.error('Error in cuddle command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: '😅 Failed to send cuddle animation!'
+                text: '😅 Failed to execute cuddle command!'
             });
         }
     },
     yeet: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: `*${msg.pushName}* yeets ${target} into space! 🚀`,
-                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+                text: `*${msg.pushName}* yeeted ${target}! 🚀`,
+                mentions: mentions
             });
 
-            const mediaPath = './media/anime-yeet.gif';
-            if (fs.existsSync(mediaPath)) {
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    video: fs.readFileSync(mediaPath),
-                    gifPlayback: true,
-                    caption: '🚀',
-                    mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-                });
-            }
+            await sendGifReaction(sock, msg, './media/anime-yeet.gif', '🚀', mentions);
         } catch (error) {
-            console.error('Error in yeet command:', error);
+            logger.error('Error in yeet command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: '😅 Failed to send yeet animation!'
+                text: '😅 Failed to execute yeet command!'
             });
         }
     },
     boop: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: `*${msg.pushName}* boops ${target}'s nose! 👉👃`,
-                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+                mentions: mentions
             });
 
-            const mediaPath = './media/anime-boop.gif';
-            if (fs.existsSync(mediaPath)) {
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    video: fs.readFileSync(mediaPath),
-                    gifPlayback: true,
-                    caption: '👉👃',
-                    mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-                });
-            }
+            await sendGifReaction(sock, msg, './media/anime-boop.gif', '👉👃', mentions);
         } catch (error) {
-            console.error('Error in boop command:', error);
+            logger.error('Error in boop command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: '😅 Failed to send boop animation!'
+                text: '😅 Failed to execute boop command!'
             });
         }
     },
     bonk: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: `*${msg.pushName}* bonks ${target} on the head! 🔨`,
-                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+                text: `*${msg.pushName}* bonked ${target}! 🔨`,
+                mentions: mentions
             });
 
-            const mediaPath = './media/anime-bonk.gif';
-            if (fs.existsSync(mediaPath)) {
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    video: fs.readFileSync(mediaPath),
-                    gifPlayback: true,
-                    caption: '🔨',
-                    mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-                });
-            }
+            await sendGifReaction(sock, msg, './media/anime-bonk.gif', '🔨', mentions);
         } catch (error) {
-            console.error('Error in bonk command:', error);
+            logger.error('Error in bonk command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: '😅 Failed to send bonk animation!'
+                text: '😅 Failed to execute bonk command!'
             });
         }
     }
