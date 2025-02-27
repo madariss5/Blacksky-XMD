@@ -103,10 +103,20 @@ async function connectToWhatsApp() {
         const messageType = Object.keys(msg.message)[0];
         const messageContent = msg.message[messageType];
 
+        // Extract the text content based on message type
+        let textContent = '';
+        if (messageType === 'conversation') {
+            textContent = messageContent;
+        } else if (messageType === 'extendedTextMessage') {
+            textContent = messageContent.text;
+        } else if (messageType === 'imageMessage' || messageType === 'videoMessage') {
+            textContent = messageContent.caption || '';
+        }
+
         // Check if message starts with prefix
-        if(messageContent?.startsWith(config.prefix)) {
-            const cmd = messageContent.slice(config.prefix.length).trim().split(/ +/).shift().toLowerCase();
-            const args = messageContent.slice(config.prefix.length).trim().split(/ +/).slice(1);
+        if(textContent.startsWith(config.prefix)) {
+            const cmd = textContent.slice(config.prefix.length).trim().split(/ +/).shift().toLowerCase();
+            const args = textContent.slice(config.prefix.length).trim().split(/ +/).slice(1);
 
             try {
                 if(cmd in require('./commands/basic')) {
