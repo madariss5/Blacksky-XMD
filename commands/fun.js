@@ -11,29 +11,21 @@ const funCommands = {
     slap: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
-
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: `*${msg.pushName}* slapped ${target}! 👋`,
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
-            try {
-                let sticker = new Sticker("./media/anime-slap.gif", {
-                    pack: config.NOM_OWNER,
-                    author: config.OWNER_NAME,
-                    type: StickerTypes.FULL,
-                    categories: ['🤩', '🎉'],
-                    id: "12345",
-                    quality: 70,
-                    background: "transparent"
+            // Send slap animation
+            const mediaPath = './media/anime-slap.gif';
+            if (fs.existsSync(mediaPath)) {
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    video: fs.readFileSync(mediaPath),
+                    gifPlayback: true,
+                    caption: '🎭',
+                    mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
                 });
-
-                const buffer = await sticker.toBuffer();
-                await sock.sendMessage(msg.key.remoteJid, { sticker: buffer });
-            } catch (stickerError) {
-                console.error('Sticker creation error:', stickerError);
             }
-
         } catch (error) {
             console.error('Error in slap command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
@@ -45,27 +37,19 @@ const funCommands = {
     hug: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
-
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: `*${msg.pushName}* hugged ${target}! 🤗`,
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
-            try {
-                let sticker = new Sticker("./media/anime-hug.gif", {
-                    pack: config.NOM_OWNER,
-                    author: config.OWNER_NAME,
-                    type: StickerTypes.FULL,
-                    categories: ['🤩', '🎉'],
-                    id: "12345",
-                    quality: 70,
-                    background: "transparent"
+            const mediaPath = './media/anime-hug.gif';
+            if (fs.existsSync(mediaPath)) {
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    video: fs.readFileSync(mediaPath),
+                    gifPlayback: true,
+                    caption: '🎭',
+                    mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
                 });
-
-                const buffer = await sticker.toBuffer();
-                await sock.sendMessage(msg.key.remoteJid, { sticker: buffer });
-            } catch (stickerError) {
-                console.error('Sticker creation error:', stickerError);
             }
         } catch (error) {
             console.error('Error in hug command:', error);
@@ -78,27 +62,19 @@ const funCommands = {
     pat: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
-
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: `*${msg.pushName}* patted ${target}! 🥰`,
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
-            try {
-                let sticker = new Sticker("./media/anime-pat.gif", {
-                    pack: config.NOM_OWNER,
-                    author: config.OWNER_NAME,
-                    type: StickerTypes.FULL,
-                    categories: ['🤩', '🎉'],
-                    id: "12345",
-                    quality: 70,
-                    background: "transparent"
+            const mediaPath = './media/anime-pat.gif';
+            if (fs.existsSync(mediaPath)) {
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    video: fs.readFileSync(mediaPath),
+                    gifPlayback: true,
+                    caption: '🎭',
+                    mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
                 });
-
-                const buffer = await sticker.toBuffer();
-                await sock.sendMessage(msg.key.remoteJid, { sticker: buffer });
-            } catch (stickerError) {
-                console.error('Sticker creation error:', stickerError);
             }
         } catch (error) {
             console.error('Error in pat command:', error);
@@ -114,21 +90,13 @@ const funCommands = {
                 text: `*${msg.pushName}* is dancing! 💃`
             });
 
-            try {
-                let sticker = new Sticker("./media/anime-dance.gif", {
-                    pack: config.NOM_OWNER,
-                    author: config.OWNER_NAME,
-                    type: StickerTypes.FULL,
-                    categories: ['🤩', '🎉'],
-                    id: "12345",
-                    quality: 70,
-                    background: "transparent"
+            const mediaPath = './media/anime-dance.gif';
+            if (fs.existsSync(mediaPath)) {
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    video: fs.readFileSync(mediaPath),
+                    gifPlayback: true,
+                    caption: '🎭'
                 });
-
-                const buffer = await sticker.toBuffer();
-                await sock.sendMessage(msg.key.remoteJid, { sticker: buffer });
-            } catch (stickerError) {
-                console.error('Sticker creation error:', stickerError);
             }
         } catch (error) {
             console.error('Error in dance command:', error);
@@ -137,6 +105,7 @@ const funCommands = {
             });
         }
     },
+
     joke: async (sock, msg) => {
         const jokes = [
             "Why don't scientists trust atoms? Because they make up everything! 😄",
@@ -245,18 +214,14 @@ const funCommands = {
     },
     meme: async (sock, msg) => {
         try {
-            let sticker = new Sticker("./media/anime-meme.gif", {
-                pack: config.NOM_OWNER,
-                author: config.OWNER_NAME,
-                type: StickerTypes.FULL,
-                categories: ['😂'],
-                id: 'meme',
-                quality: 50,
-                background: 'transparent'
-            });
-
-            const buffer = await sticker.toBuffer();
-            await sock.sendMessage(msg.key.remoteJid, { sticker: buffer });
+            const mediaPath = './media/anime-meme.gif';
+            if (fs.existsSync(mediaPath)) {
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    video: fs.readFileSync(mediaPath),
+                    gifPlayback: true,
+                    caption: '😂 Here\'s your meme!'
+                });
+            }
         } catch (error) {
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: '😅 Oops! Failed to fetch a meme. Try again later!'
