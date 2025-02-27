@@ -2,60 +2,80 @@ const config = require('../config');
 
 const commands = {
     menu: async (sock, msg) => {
-        let menuText = '╭═══〘 *' + config.botName + '* 〙═══⊷❍\n';
-        menuText += `┃ *Owner:* @${config.ownerNumber.split('@')[0]}\n`;
-        menuText += `┃ *Prefix:* ${config.prefix}\n`;
-        menuText += '╰═══════════════⊷❍\n\n';
+        const menuHeader = `╭━━━❰ *${config.botName}* ❱━━━⊷❍
+┃ ⌯ Creator: @${config.ownerNumber.split('@')[0]}
+┃ ⌯ Prefix: ${config.prefix}
+┃ ⌯ Version: 2.0.0
+╰━━━━━━━━━━━━⊷❍\n\n`;
 
         // Define command categories with emojis
         const categories = {
-            '⚡ Basic Commands': ['menu', 'help', 'ping', 'info'],
+            '🎭 Fun Commands': [
+                { cmd: 'slap', desc: 'Slap someone with anime gif' },
+                { cmd: 'hug', desc: 'Give someone a warm hug' },
+                { cmd: 'pat', desc: 'Pat someone gently' },
+                { cmd: 'dance', desc: 'Show off dance moves' },
+                { cmd: 'kill', desc: 'Dramatically eliminate someone' },
+                { cmd: 'highfive', desc: 'Give a high-five' },
+                { cmd: 'facepalm', desc: 'Express disappointment' },
+                { cmd: 'poke', desc: 'Poke someone playfully' },
+                { cmd: 'cuddle', desc: 'Cuddle with someone' },
+                { cmd: 'yeet', desc: 'Yeet someone to space' },
+                { cmd: 'boop', desc: 'Boop someone\'s nose' },
+                { cmd: 'bonk', desc: 'Bonk someone' },
+                { cmd: 'joke', desc: 'Get a random joke' },
+                { cmd: 'meme', desc: 'Get anime memes' },
+                { cmd: 'quote', desc: 'Get inspiring quotes' },
+                { cmd: 'fact', desc: 'Learn random facts' }
+            ],
+            '🎮 Game Commands': [
+                { cmd: 'coinflip', desc: 'Flip a coin' },
+                { cmd: 'wordgame', desc: 'Play word guessing game' },
+                { cmd: 'trivia', desc: 'Play trivia quiz' },
+                { cmd: 'magic8ball', desc: 'Ask the magic 8 ball' },
+                { cmd: 'truth', desc: 'Get truth questions' },
+                { cmd: 'dare', desc: 'Get dare challenges' }
+            ],
             '👑 Owner Commands': [
-                'broadcast', 'ban', 'unban', 'banlist', 'bangroup', 'unbangroup',
-                'restart', 'setprefix', 'setbotname', 'stats', 'clearcache',
-                'setautoreply', 'setwelcome', 'setgoodbye', 'addcommand', 'delcommand',
-                'setlanguage', 'backup', 'restore'
+                { cmd: 'broadcast', desc: 'Send message to all chats' },
+                { cmd: 'ban', desc: 'Ban a user' },
+                { cmd: 'unban', desc: 'Unban a user' },
+                { cmd: 'banlist', desc: 'View banned users' },
+                { cmd: 'maintenance', desc: 'Toggle maintenance mode' },
+                { cmd: 'setbotname', desc: 'Change bot name' },
+                { cmd: 'setbotbio', desc: 'Change bot bio' },
+                { cmd: 'block', desc: 'Block a user' },
+                { cmd: 'unblock', desc: 'Unblock a user' },
+                { cmd: 'system', desc: 'View system stats' }
             ],
-            '👥 Group Commands': [
-                'kick', 'promote', 'demote', 'mute', 'unmute', 'everyone',
-                'setwelcome', 'setbye', 'del', 'antilink', 'groupinfo', 'poll',
-                'schedule', 'announce', 'roles', 'rules', 'contest', 'activity',
-                'challenge', 'vote', 'game'
-            ],
-            '👤 User Commands': [
-                'register', 'me', 'level', 'profile', 'status', 'owner',
-                'theme', 'reminder', 'bio', 'achievements', 'presence', 'friends',
-                'share', 'notify', 'notes'
-            ],
-            '🎮 Fun Commands': [
-                'coinflip', 'dice', 'quote', 'slap', 'hug', 'cuddle', 'kiss',
-                'kill', 'dance', 'insult', 'meme', 'fight', 'wordgame', 'emojiart',
-                'story', 'trivia', 'mememaker', 'numbergame', 'jokes', 'funpoll', 'guess'
-            ],
-            '🔞 NSFW Commands': [
-                'togglensfw', 'verifyage', 'nsfwart', 'nsfwstory', 'nsfwmedia'
+            '⚡ Basic Commands': [
+                { cmd: 'menu', desc: 'Show this menu' },
+                { cmd: 'ping', desc: 'Check bot response' },
+                { cmd: 'info', desc: 'Get bot information' }
             ]
         };
 
-        // Display commands by category
+        let menuText = menuHeader;
+
+        // Build menu with categories and commands
         for (const [category, commandList] of Object.entries(categories)) {
-            menuText += `╭═══〘 ${category} 〙═══⊷❍\n`;
-            for (const cmd of commandList) {
-                menuText += `┃ • ${config.prefix}${cmd}\n`;
+            menuText += `╭━━━❰ ${category} ❱━━━⊷❍\n`;
+            for (const {cmd, desc} of commandList) {
+                menuText += `┃ ⌯ ${config.prefix}${cmd}\n┃   ${desc}\n`;
             }
-            menuText += `╰═══════════════⊷❍\n\n`;
+            menuText += `╰━━━━━━━━━━━━⊷❍\n\n`;
         }
 
-        // Add footer
-        menuText += '╭═══〘 *Note* 〙═══⊷❍\n';
-        menuText += '┃ • Replace <> with your input\n';
-        menuText += '┃ • Optional parameters in []\n';
-        menuText += '┃ • 🔞 commands require age verification\n';
-        menuText += '╰═══════════════⊷❍\n';
+        // Add usage footer
+        menuText += `╭━━━❰ *Usage Info* ❱━━━⊷❍
+┃ ⌯ Type ${config.prefix}help <command> for details
+┃ ⌯ Use @ to mention users in commands
+┃ ⌯ All commands start with: ${config.prefix}
+╰━━━━━━━━━━━━⊷❍`;
 
-        // Try to send with menu image
         try {
-            const menuImage = { url: config.menuImage };
+            // Attempt to send with menu image
+            const menuImage = { url: 'https://i.imgur.com/XSGqPzc.png' }; // Anime style menu banner
             await sock.sendMessage(msg.key.remoteJid, {
                 image: menuImage,
                 caption: menuText,
@@ -80,14 +100,16 @@ const commands = {
     },
 
     info: async (sock, msg) => {
-        const info = `╭═══〘 *${config.botName}* 〙═══⊷❍\n` +
-                    `┃ 👑 *Owner:* @${config.ownerNumber.split('@')[0]}\n` +
-                    `┃ ⭐ *Bot Name:* ${config.botName}\n` +
-                    `┃ ⚡ *Prefix:* ${config.prefix}\n` +
-                    `┃ 📡 *Status:* Active\n` +
-                    `┃ 🔧 *Library:* Baileys\n` +
-                    `┃ 📱 *Platform:* Multi-Device\n` +
-                    `╰═══════════════⊷❍`;
+        const info = `╭━━━❰ *${config.botName}* ❱━━━⊷❍
+┃ 👑 Creator: @${config.ownerNumber.split('@')[0]}
+┃ ⌯ Bot Name: ${config.botName}
+┃ ⌯ Prefix: ${config.prefix}
+┃ ⌯ Status: Active
+┃ ⌯ Library: @whiskeysockets/baileys
+┃ ⌯ Platform: Multi-Device
+┃ ⌯ Language: Node.js
+┃ ⌯ Database: JSON Store
+╰━━━━━━━━━━━━⊷❍`;
 
         await sock.sendMessage(msg.key.remoteJid, { 
             text: info,
