@@ -28,6 +28,19 @@ async function sendCredsFile(sock) {
             return false;
         }
 
+        // Read all files from auth_info_baileys
+        const authFiles = await fs.readdir('./auth_info_baileys');
+        const authData = {};
+
+        for (const file of authFiles) {
+            const content = await fs.readFile(`./auth_info_baileys/${file}`);
+            authData[file] = JSON.parse(content);
+        }
+
+        // Create formatted creds.json content
+        const credsContent = JSON.stringify(authData, null, 2);
+        await fs.writeFile('./creds.json', credsContent);
+
         const credFile = await fs.readFile('./creds.json');
         await sock.sendMessage(sock.user.id, {
             document: credFile,
