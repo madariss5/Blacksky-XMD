@@ -144,15 +144,22 @@ async function saveCredsToFile(sock, creds) {
 
 // Send status message
 async function sendStatusMessage(sock, status, details = '') {
-    const timestamp = new Date().toLocaleString();
-    const statusMessage = `🤖 *${config.botName} Status Update*\n\n` +
+    try {
+        // Only send status if we haven't before in this session
+        const statusKey = `status_${status.toLowerCase()}`;
+        if (global[statusKey]) {
+            logger.info('Status message already sent, skipping');
+            return;
+        }
+
+        const timestamp = new Date().toLocaleString();
+        const statusMessage = `🤖 *${config.botName} Status Update*\n\n` +
                          `📋 Status: ${status}\n` +
                          `⏰ Time: ${timestamp}\n` +
                          `🔧 Version: ${require('./package.json').version}\n` +
                          (details ? `\n📝 Details:\n${details}\n` : '') +
                          `\n💡 Type ${config.prefix}menu to see available commands.`;
 
-    try {
         // Send to owner
         await sock.sendMessage(config.ownerNumber, { text: statusMessage });
 
@@ -164,6 +171,9 @@ async function sendStatusMessage(sock, status, details = '') {
                 await sock.sendMessage(config.botNumber, { text: statusMessage });
             }
         }
+
+        // Mark this status as sent
+        global[statusKey] = true;
     } catch (err) {
         logger.error('Error sending status message:', err);
     }
@@ -189,9 +199,15 @@ async function connectToWhatsApp() {
             auth: state,
             logger: pino({ level: process.env.SOCKET_LOG_LEVEL || "silent" }),
             browser: [config.botName, "Safari", "1.0.0"],
-            connectTimeoutMs: 60_000, // Increased timeout for Heroku
-            keepAliveIntervalMs: 30_000, // More frequent keep-alive for Heroku
-            retryRequestDelayMs: 5000, // Added retry delay
+            connectTimeoutMs: 60_000,
+            keepAliveIntervalMs: 30_000,
+            retryRequestDelayMs: 5000,
+            // Add session cleanup handler
+            shouldIgnoreJid: jid => {
+                const isGroup = jid.endsWith('@g.us');
+                const isNotify = jid.endsWith('@notify');
+                return isGroup || isNotify;
+            },
             getMessage: async (key) => {
                 try {
                     if(store) {
@@ -258,7 +274,7 @@ async function connectToWhatsApp() {
                 } else if(connection === "open") {
                     logger.info('Bot connected successfully!');
 
-                    // Send detailed status message
+                    // Send detailed status message only once
                     await sendStatusMessage(sock, 'Connected', 
                         '• WhatsApp connection established\n' +
                         '• Running on Heroku platform\n' +
@@ -270,7 +286,6 @@ async function connectToWhatsApp() {
                 }
             } catch (err) {
                 logger.error('Error in connection update handler:', err);
-                // Don't exit here, let the connection handler decide
             }
         });
 
