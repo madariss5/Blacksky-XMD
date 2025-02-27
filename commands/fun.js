@@ -21,7 +21,8 @@ const funCommands = {
 13. *!trivia* - Play a trivia game
    - Use *!answer* [number] to answer
 14. *!emojiart* - Get a random emoji art
-15. *!insult* [@user] - Playfully insult someone\n
+15. *!insult* [@user] - Playfully insult someone
+16. *!kill* [@user] - Dramatically eliminate someone\n
 *How to use:*
 - Commands with [@user] can tag someone
 - For games, follow the instructions given
@@ -452,6 +453,34 @@ const funCommands = {
             text: `*${msg.pushName}* insults ${target}:\n\n"${randomInsult}" 😈`,
             mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
         });
+    },
+    kill: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const killMessages = [
+                `💀 *${msg.pushName}* used the death note on ${target}!`,
+                `🔪 *${msg.pushName}* dramatically eliminated ${target}!`,
+                `⚰️ *${msg.pushName}* sent ${target} to the shadow realm!`,
+                `☠️ *${msg.pushName}* used Avada Kedavra on ${target}!`,
+                `🎮 *${msg.pushName}* used /kill command on ${target}!`,
+                `👻 *${msg.pushName}* made ${target} disappear mysteriously!`,
+                `💥 *${msg.pushName}* used the infinity gauntlet on ${target}!`,
+                `🌟 *${msg.pushName}* used their special move on ${target}!`,
+                `🎯 *${msg.pushName}* landed a critical hit on ${target}!`,
+                `🌪️ *${msg.pushName}* banished ${target} to the void!`
+            ];
+
+            const randomMessage = killMessages[Math.floor(Math.random() * killMessages.length)];
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: randomMessage + "\n\n☠️ *K.O!* ⚰️",
+                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+            });
+        } catch (error) {
+            console.error('Error in kill command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '😅 Failed to execute kill command!'
+            });
+        }
     },
 };
 
