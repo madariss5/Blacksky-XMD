@@ -102,40 +102,43 @@ const funCommands = {
 1. *!slap* [@user] - Slap someone with an anime gif
 2. *!hug* [@user] - Give someone a warm hug
 3. *!pat* [@user] - Pat someone gently
-4. *!dance* - Show off your dance moves
-5. *!kill* [@user] - Dramatically eliminate someone
-6. *!highfive* [@user] - Give someone a high-five
-7. *!facepalm* - Express your disappointment
-8. *!poke* [@user] - Poke someone playfully
-9. *!cuddle* [@user] - Cuddle with someone sweetly
-10. *!yeet* [@user] - Yeet someone into space
-11. *!boop* [@user] - Boop someone's nose
-12. *!bonk* [@user] - Bonk someone on the head
-13. *!wave* [@user] - Wave at someone
-14. *!kiss* [@user] - Kiss someone
-15. *!punch* [@user] - Punch someone
-16. *!wink* [@user] - Wink at someone
+4. *!highfive* [@user] - Give someone a high-five
+5. *!poke* [@user] - Poke someone playfully
+6. *!cuddle* [@user] - Cuddle with someone sweetly
+7. *!boop* [@user] - Boop someone's nose
+8. *!bonk* [@user] - Bonk someone on the head
+9. *!wave* [@user] - Wave at someone
+10. *!kiss* [@user] - Kiss someone
+11. *!punch* [@user] - Punch someone
+12. *!wink* [@user] - Wink at someone
+13. *!yeet* [@user] - Yeet someone into space
+14. *!kill* [@user] - Dramatically eliminate someone
+15. *!insult* [@user] - Playfully insult someone
+
+🎭 *Emote Actions:*
+16. *!dance* - Show off your dance moves
+17. *!facepalm* - Express your disappointment
+
+🎬 *Special Effects:*
+18. *!wasted* [@user] - Apply a wasted effect
+19. *!jail* [@user] - Put someone behind bars
+20. *!rip* [@user] - Create a memorial
 
 🎲 *Games & Challenges:*
-17. *!coinflip* - Flip a coin
-18. *!dare* - Get a random dare challenge
-19. *!truth* - Get a random truth question
-20. *!magic8ball* [question] - Ask the magic 8 ball
-21. *!wordgame* - Play a word guessing game
+21. *!coinflip* - Flip a coin
+22. *!dare* - Get a random dare challenge
+23. *!truth* - Get a random truth question
+24. *!magic8ball* [question] - Ask the magic 8 ball
+25. *!wordgame* - Play a word guessing game
     - Use *!guess* [word] to make a guess
-22. *!trivia* - Play a trivia game
+26. *!trivia* - Play a trivia game
     - Use *!answer* [number] to answer
 
-🎭 *Fun & Entertainment:*
-23. *!joke* - Get a random funny joke
-24. *!quote* - Get an inspirational quote
-25. *!fact* - Learn an interesting fact
-26. *!meme* - Get a random anime meme
-27. *!emojiart* - Get a random emoji art
-28. *!insult* [@user] - Playfully insult someone
-29. *!wasted* [@user] - Waste someone
-30. *!jail* [@user] - Jail someone
-31. *!rip* [@user] - RIP someone
+🎨 *Fun Content:*
+27. *!joke* - Get a random funny joke
+28. *!quote* - Get an inspirational quote
+29. *!fact* - Learn an interesting fact
+30. *!emojiart* - Get a random emoji art
 
 *How to use:*
 - Commands with [@user] can tag someone
