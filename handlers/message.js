@@ -25,7 +25,7 @@ async function messageHandler(sock, msg) {
             // Get the sender ID correctly for both private and group messages
             // For groups, always use key.participant
             const senderId = msg.key.remoteJid.endsWith('@g.us') ? 
-                (msg.key.participant || '').split(':')[0] : // Handle both normal and status broadcast
+                (msg.key.participant.split(':')[0] || msg.key.participant) : 
                 msg.key.remoteJid;
 
             // Check if message starts with prefix
@@ -95,6 +95,7 @@ async function messageHandler(sock, msg) {
                     await allCommands[command](sock, msg, args);
                     logger.info(`Command ${command} executed successfully by ${senderId} in ${msg.key.remoteJid}`);
                 } catch (error) {
+                    console.error('Error executing command:', error);
                     logger.error(`Error executing command ${command}:`, error);
                     await sock.sendMessage(msg.key.remoteJid, { 
                         text: 'An error occurred while executing the command.' 
@@ -103,6 +104,7 @@ async function messageHandler(sock, msg) {
             }
         }
     } catch (error) {
+        console.error('Error in message handler:', error);
         logger.error('Error in message handler:', error);
     }
 }
