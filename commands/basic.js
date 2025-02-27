@@ -129,45 +129,40 @@ const commands = {
                 ]
             };
 
-            try {
-                // First send the menu banner image - updated URL to a verified working one
-                await sock.sendMessage(msg.key.remoteJid, {
-                    image: { url: 'https://raw.githubusercontent.com/BlackAmda/QueenAmdi/master/assets/qabanner.jpg' },
-                    caption: '✨ *Welcome to BlackSky Menu* ✨'
-                });
-
-                // Then send the detailed menu text
-                let menuText = menuHeader;
-
-                // Build menu with categories and commands
-                for (const [category, commandList] of Object.entries(categories)) {
-                    menuText += `╭━━━❰ ${category} ❱━━━⊷❍\n`;
-                    for (const {cmd, desc} of commandList) {
-                        menuText += `┃ ⌯ ${config.prefix}${cmd}\n┃   ${desc}\n`;
-                    }
-                    menuText += `╰━━━━━━━━━━━━⊷❍\n\n`;
+            // Build menu text
+            let menuText = menuHeader;
+            for (const [category, commandList] of Object.entries(categories)) {
+                menuText += `╭━━━❰ ${category} ❱━━━⊷❍\n`;
+                for (const {cmd, desc} of commandList) {
+                    menuText += `┃ ⌯ ${config.prefix}${cmd}\n┃   ${desc}\n`;
                 }
+                menuText += `╰━━━━━━━━━━━━⊷❍\n\n`;
+            }
 
-                menuText += `╭━━━❰ *Usage Info* ❱━━━⊷❍
+            menuText += `╭━━━❰ *Usage Info* ❱━━━⊷❍
 ┃ ⌯ Type ${config.prefix}help <command> for details
 ┃ ⌯ Use @ to mention users in commands
 ┃ ⌯ All commands start with: ${config.prefix}
 ╰━━━━━━━━━━━━⊷❍`;
 
+            // First try to send with image
+            try {
                 await sock.sendMessage(msg.key.remoteJid, {
-                    text: menuText,
+                    image: { url: 'https://i.ibb.co/JQpNzxT/anime-menu.jpg' },
+                    caption: menuText,
                     mentions: [config.ownerNumber]
                 });
-
-                logger.info('Menu command executed successfully');
-            } catch (error) {
-                logger.error('Error sending menu:', error);
-                // If image fails, send text-only menu as fallback
+                logger.info('Menu sent successfully with image');
+            } catch (imageError) {
+                logger.warn('Failed to send menu with image:', imageError);
+                // Fallback to text-only menu
                 await sock.sendMessage(msg.key.remoteJid, { 
                     text: menuText,
                     mentions: [config.ownerNumber]
                 });
+                logger.info('Menu sent successfully as text-only');
             }
+
         } catch (error) {
             logger.error('Error in menu command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
