@@ -1,18 +1,10 @@
 {
-  "name": "𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻",
+  "name": "BlackSky-XMD",
   "description": "WhatsApp Multi-Device Bot using Node.js and Baileys library",
-  "repository": "https://github.com/your-username/your-repo",
-  "logo": "https://raw.githubusercontent.com/your-repo/assets/main/f9.jpg",
-  "keywords": ["node", "whatsapp", "bot", "baileys"],
+  "repository": "https://github.com/madariss5/Blacksky-XMD",
+  "logo": "https://node-js-sample.herokuapp.com/node.png",
+  "keywords": ["node", "whatsapp", "bot", "baileys", "multi-device"],
   "env": {
-    "SESSION_ID": {
-      "description": "Session ID for WhatsApp connection",
-      "required": false
-    },
-    "SESSION_DATA": {
-      "description": "Full session data for WhatsApp connection (will be provided after first local run)",
-      "required": false
-    },
     "OWNER_NAME": {
       "description": "Name of the bot owner",
       "required": true
@@ -21,19 +13,26 @@
       "description": "WhatsApp number of the bot owner (with country code)",
       "required": true
     },
-    "BOT_NUMBER": {
-      "description": "WhatsApp number for pairing code (with country code, no '+' or spaces)",
-      "required": false
-    },
     "USE_PAIRING": {
       "description": "Enable pairing code authentication (true/false)",
       "required": false,
       "value": "true"
+    },
+    "NODE_ENV": {
+      "description": "Environment mode (production/development)",
+      "value": "production"
     }
   },
   "buildpacks": [
     {
       "url": "heroku/nodejs"
     }
-  ]
+  ],
+  "formation": {
+    "worker": {
+      "quantity": 1,
+      "size": "eco"
+    }
+  },
+  "stack": "heroku-22"
 }
