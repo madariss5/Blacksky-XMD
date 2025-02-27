@@ -16,22 +16,35 @@ const commands = {
 
 Welcome to the Ultimate Anime Bot! (◕‿◕)♡\n\n`;
 
-            // Define command categories with emojis and expanded commands
+            // Define command categories with emojis and all available commands
             const categories = {
-                '🎮 Game Commands': [
-                    { cmd: 'rpg', desc: 'Start an RPG adventure' },
-                    { cmd: 'battle', desc: 'Battle other players' },
-                    { cmd: 'inventory', desc: 'Check your items' },
-                    { cmd: 'shop', desc: 'Browse available items' },
-                    { cmd: 'craft', desc: 'Craft new items' }
+                '🎭 Fun & Reactions': [
+                    { cmd: 'slap', desc: 'Slap someone with a sticker' },
+                    { cmd: 'hug', desc: 'Give someone a warm hug' },
+                    { cmd: 'pat', desc: 'Pat someone gently' },
+                    { cmd: 'dance', desc: 'Show a dance sticker' },
+                    { cmd: 'kill', desc: 'Playfully eliminate someone' },
+                    { cmd: 'highfive', desc: 'Give a high five' },
+                    { cmd: 'facepalm', desc: 'Express disappointment' },
+                    { cmd: 'poke', desc: 'Poke someone playfully' },
+                    { cmd: 'cuddle', desc: 'Cuddle with someone' },
+                    { cmd: 'yeet', desc: 'Yeet someone away' },
+                    { cmd: 'boop', desc: 'Boop someone\'s nose' },
+                    { cmd: 'bonk', desc: 'Bonk someone' },
+                    { cmd: 'wave', desc: 'Wave at someone' },
+                    { cmd: 'kiss', desc: 'Kiss someone' },
+                    { cmd: 'punch', desc: 'Punch someone' },
+                    { cmd: 'wink', desc: 'Wink at someone' }
                 ],
-                '🎨 Anime Commands': [
+
+                '🎨 Anime & Manga': [
                     { cmd: 'anime', desc: 'Search for anime info' },
                     { cmd: 'manga', desc: 'Search for manga info' },
                     { cmd: 'character', desc: 'Search anime characters' },
                     { cmd: 'schedule', desc: 'View anime schedules' },
                     { cmd: 'seasonal', desc: 'View seasonal anime' }
                 ],
+
                 '🎵 Music Commands': [
                     { cmd: 'play', desc: 'Play anime music' },
                     { cmd: 'queue', desc: 'View music queue' },
@@ -39,19 +52,43 @@ Welcome to the Ultimate Anime Bot! (◕‿◕)♡\n\n`;
                     { cmd: 'lyrics', desc: 'Show song lyrics' },
                     { cmd: 'playlist', desc: 'Manage playlists' }
                 ],
-                '🛠️ Utility Commands': [
-                    { cmd: 'translate', desc: 'Translate text' },
-                    { cmd: 'reminder', desc: 'Set reminders' },
-                    { cmd: 'poll', desc: 'Create polls' },
-                    { cmd: 'weather', desc: 'Check weather' },
-                    { cmd: 'calculate', desc: 'Math calculator' }
+
+                '🎮 Games & Fun': [
+                    { cmd: 'rps', desc: 'Play rock, paper, scissors' },
+                    { cmd: 'coinflip', desc: 'Flip a coin' },
+                    { cmd: 'truth', desc: 'Get truth questions' },
+                    { cmd: 'dare', desc: 'Get dare challenges' },
+                    { cmd: 'meme', desc: 'Get random memes' }
                 ],
-                '👥 Social Commands': [
-                    { cmd: 'profile', desc: 'View user profile' },
-                    { cmd: 'level', desc: 'Check your level' },
-                    { cmd: 'rank', desc: 'View leaderboard' },
-                    { cmd: 'marry', desc: 'Marry another user' },
-                    { cmd: 'divorce', desc: 'End marriage' }
+
+                '👑 Owner Commands': [
+                    { cmd: 'broadcast', desc: 'Send message to all chats' },
+                    { cmd: 'ban', desc: 'Ban a user' },
+                    { cmd: 'unban', desc: 'Unban a user' },
+                    { cmd: 'banlist', desc: 'View banned users' },
+                    { cmd: 'maintenance', desc: 'Toggle maintenance mode' },
+                    { cmd: 'setbotname', desc: 'Change bot name' },
+                    { cmd: 'setbotbio', desc: 'Change bot bio' },
+                    { cmd: 'block', desc: 'Block a user' },
+                    { cmd: 'unblock', desc: 'Unblock a user' },
+                    { cmd: 'system', desc: 'View system stats' },
+                    { cmd: 'restart', desc: 'Restart the bot' },
+                    { cmd: 'setprefix', desc: 'Change command prefix' },
+                    { cmd: 'addmod', desc: 'Add a moderator' },
+                    { cmd: 'removemod', desc: 'Remove a moderator' }
+                ],
+
+                '🔞 NSFW Commands': [
+                    { cmd: 'setnsfw', desc: 'Enable/disable NSFW in group' },
+                    { cmd: 'nsfwcheck', desc: 'Check NSFW settings' }
+                ],
+
+                '⚙️ Basic Commands': [
+                    { cmd: 'help', desc: 'Get command help' },
+                    { cmd: 'ping', desc: 'Check bot response' },
+                    { cmd: 'info', desc: 'Get bot information' },
+                    { cmd: 'profile', desc: 'View your profile' },
+                    { cmd: 'rank', desc: 'Check your rank' }
                 ]
             };
 
