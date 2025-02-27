@@ -10,33 +10,79 @@ const basicCommands = {
 ┃ Status: Online
 ╰━━━━━━━━━━━━⊷❍\n\n`;
 
+            // Define categories with more inclusive filters
             const categories = {
                 '📥 *DOWNLOADER*': Object.entries(config.commands)
-                    .filter(([_, cmd]) => cmd.description.includes('Download') || cmd.description.includes('Play'))
+                    .filter(([_, cmd]) => 
+                        cmd.description.includes('Download') || 
+                        cmd.description.includes('Play') ||
+                        cmd.description.includes('📥') ||
+                        cmd.description.includes('🎵') ||
+                        cmd.description.includes('📱'))
                     .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
 
                 '💰 *ECONOMY*': Object.entries(config.commands)
-                    .filter(([_, cmd]) => cmd.description.includes('💰') || cmd.description.includes('💸') || cmd.description.includes('🎲'))
+                    .filter(([_, cmd]) => 
+                        cmd.description.includes('💰') || 
+                        cmd.description.includes('💸') || 
+                        cmd.description.includes('🎲') ||
+                        cmd.description.includes('🏦') ||
+                        cmd.description.includes('💼'))
                     .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
 
                 '👥 *GROUP*': Object.entries(config.commands)
-                    .filter(([_, cmd]) => cmd.description.includes('group') || cmd.description.includes('admin'))
+                    .filter(([_, cmd]) => 
+                        cmd.description.toLowerCase().includes('group') || 
+                        cmd.description.toLowerCase().includes('admin') ||
+                        cmd.description.includes('👥'))
                     .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
 
                 '🎨 *FUN & MEDIA*': Object.entries(config.commands)
-                    .filter(([_, cmd]) => cmd.description.includes('Create') || cmd.description.includes('effect') || cmd.description.includes('sticker'))
+                    .filter(([_, cmd]) => 
+                        cmd.description.includes('Create') || 
+                        cmd.description.includes('effect') || 
+                        cmd.description.includes('sticker') ||
+                        cmd.description.includes('🎨'))
+                    .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
+
+                '🎮 *GAMES*': Object.entries(config.commands)
+                    .filter(([_, cmd]) => 
+                        cmd.description.includes('🎮') ||
+                        cmd.description.includes('game') ||
+                        cmd.description.includes('Play'))
                     .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
 
                 '🤖 *AI & TOOLS*': Object.entries(config.commands)
-                    .filter(([_, cmd]) => cmd.description.includes('AI') || cmd.description.includes('Generate'))
+                    .filter(([_, cmd]) => 
+                        cmd.description.includes('🤖') ||
+                        cmd.description.includes('AI') || 
+                        cmd.description.includes('Generate'))
                     .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
 
                 '👑 *OWNER*': Object.entries(config.commands)
-                    .filter(([_, cmd]) => cmd.description.includes('Owner') || cmd.description.includes('Bot'))
+                    .filter(([_, cmd]) => 
+                        cmd.description.includes('👑') ||
+                        cmd.description.toLowerCase().includes('owner') || 
+                        cmd.description.toLowerCase().includes('bot'))
                     .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
 
-                '🔧 *UTILITY*': Object.entries(config.commands)
-                    .filter(([_, cmd]) => cmd.description.includes('Toggle') || cmd.description.includes('Set'))
+                '⚙️ *UTILITY*': Object.entries(config.commands)
+                    .filter(([_, cmd]) => 
+                        cmd.description.includes('⚙️') ||
+                        cmd.description.includes('Toggle') || 
+                        cmd.description.includes('Set'))
+                    .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
+
+                '🔞 *NSFW*': Object.entries(config.commands)
+                    .filter(([_, cmd]) => 
+                        cmd.description.includes('🔞') ||
+                        cmd.nsfw === true)
+                    .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
+
+                '🐛 *DEBUG*': Object.entries(config.commands)
+                    .filter(([_, cmd]) => 
+                        cmd.description.includes('🐛') ||
+                        cmd.description.toLowerCase().includes('debug'))
                     .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`)
             };
 
@@ -44,11 +90,13 @@ const basicCommands = {
 
             // Add categories and their commands
             Object.entries(categories).forEach(([category, commands]) => {
-                menuContent += `${category}\n${'-'.repeat(40)}\n`;
-                commands.forEach((cmd, i) => {
-                    menuContent += `${i + 1}. ${cmd}\n`;
-                });
-                menuContent += '\n';
+                if (commands.length > 0) {  // Only show categories with commands
+                    menuContent += `${category}\n${'-'.repeat(40)}\n`;
+                    commands.forEach((cmd, i) => {
+                        menuContent += `${i + 1}. ${cmd}\n`;
+                    });
+                    menuContent += '\n';
+                }
             });
 
             // Add footer stats
@@ -57,7 +105,8 @@ const basicCommands = {
 ┃ Version: 1.0.0
 ╰━━━━━━━━━━━━⊷❍\n\n`;
 
-            menuContent += `Note: Use ${config.prefix}help <command> for detailed info`;
+            menuContent += `Note: Use ${config.prefix}help <command> for detailed info\n`;
+            menuContent += `Example: ${config.prefix}help ytmp3`;
 
             // Send as a single message
             await sock.sendMessage(msg.key.remoteJid, {
