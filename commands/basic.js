@@ -13,60 +13,50 @@ const basicCommands = {
             // Get all commands
             const allCommands = Object.entries(config.commands);
 
-            // Define categories with comprehensive filters
+            // Define categories with their commands
             const categories = {
-                '⚙️ *BASIC*': allCommands
-                    .filter(([cmd]) => 
-                        /^(menu|help|ping|info)$/i.test(cmd))
+                '⚙️ *BASIC COMMANDS*': allCommands
+                    .filter(([_, cmd]) => cmd.category === 'Basic')
+                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
+
+                '🎨 *MEDIA & STICKERS*': allCommands
+                    .filter(([_, cmd]) => cmd.category === 'Media')
                     .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
                 '📥 *DOWNLOADER*': allCommands
-                    .filter(([_, cmd]) => 
-                        /download|play|youtube|yt|tiktok|fb|facebook|instagram|ig|twitter|spotify|soundcloud|mediafire|gdrive|mega|apk|ringtone|movie|anime|manga|mp3|mp4|audio|video/i.test(cmd.description))
+                    .filter(([_, cmd]) => cmd.category === 'Downloader')
+                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
+
+                '🎵 *MUSIC*': allCommands
+                    .filter(([_, cmd]) => cmd.category === 'Music')
+                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
+
+                '🤖 *AI & GENERATION*': allCommands
+                    .filter(([_, cmd]) => cmd.category === 'AI')
+                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
+
+                '👥 *GROUP MANAGEMENT*': allCommands
+                    .filter(([_, cmd]) => cmd.category === 'Group')
+                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
+
+                '🎮 *FUN & REACTIONS*': allCommands
+                    .filter(([_, cmd]) => cmd.category === 'Fun')
                     .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
                 '💰 *ECONOMY*': allCommands
-                    .filter(([_, cmd]) => 
-                        /balance|money|coin|reward|bank|deposit|withdraw|rob|work|mine|shop|gamble|flip|slot|bet|trade|crypto|heist|fish|hunt|farm|craft|inventory/i.test(cmd.description))
+                    .filter(([_, cmd]) => cmd.category === 'Economy')
                     .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
-                '👥 *GROUP*': allCommands
-                    .filter(([_, cmd]) => 
-                        /group|admin|kick|ban|promote|demote|mute|unmute|link|revoke|announce|poll|welcome|goodbye|tag|anti|settings/i.test(cmd.description))
-                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
-
-                '🎨 *FUN & MEDIA*': allCommands
-                    .filter(([_, cmd]) => 
-                        /sticker|effect|image|photo|picture|create|convert|quote|meme|emoji|animation|trigger|wasted|jail|rip|trash|rainbow|blur|circle|slap/i.test(cmd.description))
-                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
-
-                '🎮 *GAMES*': allCommands
-                    .filter(([_, cmd]) => 
-                        /game|play|slot|poker|blackjack|dice|hunt|fish|duel|quest|challenge|truth|dare|quiz/i.test(cmd.description))
-                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
-
-                '🤖 *AI & TOOLS*': allCommands
-                    .filter(([_, cmd]) => 
-                        /ai|gpt|chat|generate|imagine|enhance|translate|voice|qr|text|image|dalle|remini|recolor|colorize|upscale|anime2d|cartoon/i.test(cmd.description))
+                '🛠️ *UTILITY*': allCommands
+                    .filter(([_, cmd]) => cmd.category === 'Utility')
                     .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
                 '👑 *OWNER*': allCommands
-                    .filter(([_, cmd]) => 
-                        /owner|broadcast|bc|bot|system|prefix|ban|restart|update|eval|exec|join|leave|block|unblock|clear|set/i.test(cmd.description))
-                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
-
-                '⚙️ *UTILITY*': allCommands
-                    .filter(([_, cmd]) => 
-                        /toggle|set|config|backup|restore|language|auto|mode|setting|reply|welcome|goodbye|command/i.test(cmd.description))
+                    .filter(([_, cmd]) => cmd.category === 'Owner')
                     .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
                 '🔞 *NSFW*': allCommands
-                    .filter(([_, cmd]) => cmd.nsfw || /nsfw|hentai|adult|mature|hwaifu|hneko/i.test(cmd.description))
-                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
-
-                '🐛 *DEBUG*': allCommands
-                    .filter(([_, cmd]) => 
-                        /debug|bug|report|test|log|error|status|ping|cache|memory|cpu/i.test(cmd.description))
+                    .filter(([_, cmd]) => cmd.category === 'NSFW')
                     .map(([cmd, info]) => `${cmd} ➠ ${info.description}`)
             };
 
@@ -82,25 +72,6 @@ const basicCommands = {
                     menuContent += '\n';
                 }
             });
-
-            // Check for uncategorized commands
-            const categorizedCommands = new Set(
-                Object.values(categories)
-                    .flat()
-                    .map(cmd => cmd.split(' ➠ ')[0])
-            );
-
-            const uncategorizedCommands = allCommands
-                .filter(([cmd]) => !categorizedCommands.has(cmd))
-                .map(([cmd, info]) => `${cmd} ➠ ${info.description}`);
-
-            if (uncategorizedCommands.length > 0) {
-                menuContent += `📋 *OTHER COMMANDS*\n${'-'.repeat(40)}\n`;
-                uncategorizedCommands.forEach(cmd => {
-                    menuContent += `◈ ${cmd}\n`;
-                });
-                menuContent += '\n';
-            }
 
             // Add footer stats
             menuContent += `╭━━━❰ *STATS* ❱━━━⊷❍
