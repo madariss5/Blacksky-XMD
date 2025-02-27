@@ -43,8 +43,16 @@ const basicCommands = {
                     .filter(([_, cmd]) => cmd.category === 'Fun')
                     .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
+                '🎲 *GAMES*': allCommands
+                    .filter(([_, cmd]) => cmd.category === 'Game')
+                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
+
                 '💰 *ECONOMY*': allCommands
                     .filter(([_, cmd]) => cmd.category === 'Economy')
+                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
+
+                '🎌 *ANIME*': allCommands
+                    .filter(([_, cmd]) => cmd.category === 'Anime')
                     .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
                 '🛠️ *UTILITY*': allCommands
@@ -57,6 +65,10 @@ const basicCommands = {
 
                 '🔞 *NSFW*': allCommands
                     .filter(([_, cmd]) => cmd.category === 'NSFW')
+                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
+
+                '🐛 *DEBUG*': allCommands
+                    .filter(([_, cmd]) => cmd.category === 'Debug')
                     .map(([cmd, info]) => `${cmd} ➠ ${info.description}`)
             };
 
@@ -117,7 +129,7 @@ const basicCommands = {
                 text: `*Command: ${config.prefix}${command}*\n\n` +
                       `📝 Description: ${cmdInfo.description}\n` +
                       `ℹ️ Category: ${cmdInfo.category || 'General'}\n` +
-                      `🔞 NSFW: ${cmdInfo.nsfw ? 'Yes' : 'No'}`
+                      `🔞 NSFW: ${cmdInfo.category === 'NSFW' ? 'Yes' : 'No'}`
             });
         } catch (error) {
             logger.error('Error in help command:', error);
