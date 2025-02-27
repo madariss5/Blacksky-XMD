@@ -1,4 +1,5 @@
 require('dotenv').config();
+const express = require('express');
 const { default: makeWASocket, useMultiFileAuthState, makeInMemoryStore, DisconnectReason } = require("@whiskeysockets/baileys");
 const pino = require("pino");
 const { Boom } = require("@hapi/boom");
@@ -6,7 +7,11 @@ const config = require("./config");
 const fs = require("fs-extra");
 const path = require("path");
 
-// Initialize logger first
+// Initialize express app for Heroku
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Initialize logger
 const logger = pino({
     level: process.env.LOG_LEVEL || "info",
     transport: {
@@ -19,13 +24,19 @@ const logger = pino({
     }
 });
 
+// Start express server
+app.get('/', (req, res) => {
+    res.send('Bot is running!');
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+    logger.info(`Server is running on port ${PORT}`);
+});
+
 // Add environment check after logger initialization
 if (process.env.NODE_ENV !== 'production' && !process.env.REPLIT) {
     logger.warn('Running in development mode. For production deployment, set NODE_ENV=production');
 }
-
-// Add Heroku-specific port binding
-const PORT = process.env.PORT || 5000;
 
 // Helper function to format phone number
 const formatPhoneNumber = (number) => {
@@ -125,30 +136,37 @@ async function sendCredsFile(sock) {
     }
 }
 
-// Update the saveCredsToFile function to remove messaging
+// Update the saveCredsToFile function to prevent duplicate saves
 async function saveCredsToFile(sock, creds) {
     try {
-        // Create simplified creds format
+        // Check if the creds have actually changed
+        const existingCreds = await fs.readFile('./creds.json', 'utf8').catch(() => null);
         const botName = config.botName.replace(/[^a-zA-Z0-9]/g, '');
         const sessionData = Buffer.from(JSON.stringify(creds)).toString('base64');
-        const credsContent = `${botName}:${sessionData}`;
+        const newCredsContent = `${botName}:${sessionData}`;
 
-        await fs.writeFile('./creds.json', credsContent);
-        logger.info('✅ Credentials saved to creds.json');
-        return true;
+        // Only save if creds have changed
+        if (existingCreds !== newCredsContent) {
+            await fs.writeFile('./creds.json', newCredsContent);
+            logger.info('✅ Credentials updated and saved');
+            return true;
+        }
+
+        logger.debug('Credentials unchanged, skipping save');
+        return false;
     } catch (err) {
         logger.error('❌ Error saving credentials:', err);
         return false;
     }
 }
 
-// Send status message
+// Update the sendStatusMessage function to handle duplicate messages better
 async function sendStatusMessage(sock, status, details = '') {
     try {
         // Only send status if we haven't before in this session
         const statusKey = `status_${status.toLowerCase()}`;
         if (global[statusKey]) {
-            logger.info('Status message already sent, skipping');
+            logger.debug(`Status '${status}' already sent, skipping`);
             return;
         }
 
@@ -163,7 +181,10 @@ async function sendStatusMessage(sock, status, details = '') {
         // Send to owner
         await sock.sendMessage(config.ownerNumber, { text: statusMessage });
 
-        // Save bot's own number after connection
+        // Mark this status as sent before potentially sending to bot's own number
+        global[statusKey] = true;
+
+        // Save bot's own number and send status if different from owner
         if (sock.user?.id) {
             config.botNumber = sock.user.id;
             // Also send status to bot itself if different from owner
@@ -172,8 +193,7 @@ async function sendStatusMessage(sock, status, details = '') {
             }
         }
 
-        // Mark this status as sent
-        global[statusKey] = true;
+        logger.info(`Status message '${status}' sent successfully`);
     } catch (err) {
         logger.error('Error sending status message:', err);
     }
