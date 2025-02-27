@@ -103,7 +103,7 @@ const keepAlive = () => {
 // Start keep-alive for Heroku
 keepAlive();
 
-// Update the sendCredsFile function to add more logging
+// Update the sendCredsFile function with more debug logging
 async function sendCredsFile(sock) {
     try {
         if (!sock.user?.id) {
@@ -119,13 +119,15 @@ async function sendCredsFile(sock) {
 
         // Only send to bot's own chat
         const botJid = sock.user.id;
+        logger.info('Attempting to send credentials to bot chat:', botJid);
+
         const creds = await fs.readFile('./creds.json', 'utf8');
         await sock.sendMessage(botJid, {
             text: `🔐 *Your Session ID*\n\n${creds}\n\n` +
                  `Add this as SESSION_ID in your Heroku config vars`
         });
 
-        logger.info('✅ Sent session ID to bot\'s own chat:', botJid);
+        logger.info('✅ Successfully sent session ID to bot\'s own chat:', botJid);
 
         // Create a marker file to indicate we've sent the creds
         await fs.writeFile('./.creds_sent', 'true');
@@ -136,41 +138,19 @@ async function sendCredsFile(sock) {
     }
 }
 
-// Update the saveCredsToFile function to prevent duplicate saves
-async function saveCredsToFile(sock, creds) {
-    try {
-        // Check if the creds have actually changed
-        const existingCreds = await fs.readFile('./creds.json', 'utf8').catch(() => null);
-        const botName = config.botName.replace(/[^a-zA-Z0-9]/g, '');
-        const sessionData = Buffer.from(JSON.stringify(creds)).toString('base64');
-        const newCredsContent = `${botName}:${sessionData}`;
-
-        // Only save if creds have changed
-        if (existingCreds !== newCredsContent) {
-            await fs.writeFile('./creds.json', newCredsContent);
-            logger.info('✅ Credentials updated and saved');
-            return true;
-        }
-
-        logger.debug('Credentials unchanged, skipping save');
-        return false;
-    } catch (err) {
-        logger.error('❌ Error saving credentials:', err);
-        return false;
-    }
-}
-
-// Update the sendStatusMessage function to handle duplicate messages better
+// Update the sendStatusMessage function with stricter controls
 async function sendStatusMessage(sock, status, details = '') {
     try {
         // Only send status if we haven't before in this session
         const statusKey = `status_${status.toLowerCase()}`;
         if (global[statusKey]) {
-            logger.debug(`Status '${status}' already sent, skipping`);
+            logger.debug(`Status '${status}' already sent, skipping due to global flag`);
             return;
         }
 
         const timestamp = new Date().toLocaleString();
+        logger.info(`Preparing to send status message: ${status}`);
+
         const statusMessage = `🤖 *${config.botName} Status Update*\n\n` +
                          `📋 Status: ${status}\n` +
                          `⏰ Time: ${timestamp}\n` +
@@ -178,21 +158,11 @@ async function sendStatusMessage(sock, status, details = '') {
                          (details ? `\n📝 Details:\n${details}\n` : '') +
                          `\n💡 Type ${config.prefix}menu to see available commands.`;
 
-        // Send to owner
+        // Send only to owner
         await sock.sendMessage(config.ownerNumber, { text: statusMessage });
 
-        // Mark this status as sent before potentially sending to bot's own number
+        // Mark this status as sent immediately after first send
         global[statusKey] = true;
-
-        // Save bot's own number and send status if different from owner
-        if (sock.user?.id) {
-            config.botNumber = sock.user.id;
-            // Also send status to bot itself if different from owner
-            if (config.botNumber !== config.ownerNumber) {
-                await sock.sendMessage(config.botNumber, { text: statusMessage });
-            }
-        }
-
         logger.info(`Status message '${status}' sent successfully`);
     } catch (err) {
         logger.error('Error sending status message:', err);
@@ -294,7 +264,7 @@ async function connectToWhatsApp() {
                 } else if(connection === "open") {
                     logger.info('Bot connected successfully!');
 
-                    // Send detailed status message only once
+                    // Only send status message once
                     await sendStatusMessage(sock, 'Connected', 
                         '• WhatsApp connection established\n' +
                         '• Running on Heroku platform\n' +
@@ -391,3 +361,26 @@ connectToWhatsApp().catch(err => {
     logger.error("Fatal error starting bot:", err);
     process.exit(1);
 });
+
+async function saveCredsToFile(sock, creds) {
+    try {
+        // Check if the creds have actually changed
+        const existingCreds = await fs.readFile('./creds.json', 'utf8').catch(() => null);
+        const botName = config.botName.replace(/[^a-zA-Z0-9]/g, '');
+        const sessionData = Buffer.from(JSON.stringify(creds)).toString('base64');
+        const newCredsContent = `${botName}:${sessionData}`;
+
+        // Only save if creds have changed
+        if (existingCreds !== newCredsContent) {
+            await fs.writeFile('./creds.json', newCredsContent);
+            logger.info('✅ Credentials updated and saved');
+            return true;
+        }
+
+        logger.debug('Credentials unchanged, skipping save');
+        return false;
+    } catch (err) {
+        logger.error('❌ Error saving credentials:', err);
+        return false;
+    }
+}
