@@ -3,23 +3,29 @@ const fs = require('fs-extra');
 const path = require('path');
 const logger = require('pino')();
 
-// Helper function to send GIF reactions
+// Update the sendGifReaction helper function with better error handling
 const sendGifReaction = async (sock, msg, mediaPath, caption = '', mentions = []) => {
     try {
-        if (!fs.existsSync(mediaPath)) {
-            logger.warn(`GIF not found: ${mediaPath}`);
-            return false;
+        // First try to send the gif if available
+        if (fs.existsSync(mediaPath)) {
+            await sock.sendMessage(msg.key.remoteJid, {
+                video: fs.readFileSync(mediaPath),
+                gifPlayback: true,
+                caption: caption,
+                mentions: mentions
+            });
+            return true;
         }
 
+        // If gif not found, send a text-only response with emoji
         await sock.sendMessage(msg.key.remoteJid, {
-            video: fs.readFileSync(mediaPath),
-            gifPlayback: true,
-            caption: caption,
+            text: `${caption} (Media not available)`,
             mentions: mentions
         });
+        logger.warn(`GIF not found: ${mediaPath}, falling back to text-only response`);
         return true;
     } catch (error) {
-        logger.error('Error sending GIF reaction:', error);
+        logger.error('Error in sendGifReaction:', error);
         return false;
     }
 };
@@ -66,6 +72,11 @@ const coreFunCommands = {
 26. *!meme* - Get a random anime meme
 27. *!emojiart* - Get a random emoji art
 28. *!insult* [@user] - Playfully insult someone
+29. *!wasted* [@user] - Waste someone
+30. *!triggered* [@user] - Trigger someone
+31. *!jail* [@user] - Jail someone
+32. *!rip* [@user] - RIP someone
+
 
 *How to use:*
 - Commands with [@user] can tag someone
@@ -666,6 +677,81 @@ const coreFunCommands = {
             logger.error('Error in wink command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: '😅 Failed to execute wink command!'
+            });
+        }
+    },
+    wasted: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `💀 *WASTED*\n${target} has been wasted!`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/wasted.gif', '💀', mentions);
+        } catch (error) {
+            logger.error('Error in wasted command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to execute wasted command!'
+            });
+        }
+    },
+
+    triggered: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `😠 *TRIGGERED*\n${target} is triggered!`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/triggered.gif', '😠', mentions);
+        } catch (error) {
+            logger.error('Error in triggered command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to execute triggered command!'
+            });
+        }
+    },
+
+    jail: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `🏢 *JAIL*\n${target} is now behind bars!`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/jail.gif', '🏢', mentions);
+        } catch (error) {
+            logger.error('Error in jail command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to execute jail command!'
+            });
+        }
+    },
+
+    rip: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `⚰️ *RIP*\nHere lies ${target}, they will be missed.`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/rip.gif', '⚰️', mentions);
+        } catch (error) {
+            logger.error('Error in rip command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to execute rip command!'
             });
         }
     }
