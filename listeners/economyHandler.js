@@ -13,15 +13,29 @@ class EconomyHandler {
                 throw new Error('User not found');
             }
 
+            let newBalance;
             switch (type) {
                 case 'deposit':
-                    await this.store.updateUserGold(userId, userData.gold + amount);
+                    newBalance = userData.gold + amount;
+                    await this.store.updateUserGold(userId, newBalance);
                     break;
                 case 'withdraw':
                     if (userData.gold < amount) {
                         throw new Error('Insufficient funds');
                     }
-                    await this.store.updateUserGold(userId, userData.gold - amount);
+                    newBalance = userData.gold - amount;
+                    await this.store.updateUserGold(userId, newBalance);
+                    break;
+                case 'add':
+                    newBalance = userData.gold + amount;
+                    await this.store.updateUserGold(userId, newBalance);
+                    break;
+                case 'remove':
+                    if (userData.gold < amount) {
+                        throw new Error('Insufficient funds');
+                    }
+                    newBalance = userData.gold - amount;
+                    await this.store.updateUserGold(userId, newBalance);
                     break;
                 default:
                     throw new Error('Invalid transaction type');
@@ -82,6 +96,41 @@ class EconomyHandler {
                 success: false,
                 error: error.message
             };
+        }
+    }
+
+    async canAfford(userId, amount) {
+        try {
+            const { gold } = await this.getBalance(userId);
+            return gold >= amount;
+        } catch (error) {
+            logger.error('Failed to check affordability:', error);
+            return false;
+        }
+    }
+
+    async getDailyStatus(userId) {
+        try {
+            const userData = await this.store.getUserData(userId);
+            if (!userData) {
+                return {
+                    canClaim: true,
+                    timeLeft: 0
+                };
+            }
+
+            const lastDaily = userData.lastDaily || 0;
+            const now = Date.now();
+            const cooldown = 24 * 60 * 60 * 1000; // 24 hours
+            const timeLeft = Math.max(0, cooldown - (now - lastDaily));
+
+            return {
+                canClaim: timeLeft === 0,
+                timeLeft
+            };
+        } catch (error) {
+            logger.error('Failed to get daily status:', error);
+            throw error;
         }
     }
 }

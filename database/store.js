@@ -1,10 +1,15 @@
 const fs = require('fs').promises;
 const path = require('path');
+const logger = require('pino')();
 
 class Store {
     constructor() {
         this.storePath = path.join(__dirname, 'store.json');
-        this.data = {};
+        this.data = {
+            users: {},
+            banned: [],
+            bannedGroups: []
+        };
         this.loadStore();
     }
 
@@ -17,15 +22,79 @@ class Store {
             if (error.code === 'ENOENT') {
                 await this.saveStore();
             } else {
+                logger.error('Error loading store:', error);
                 throw error;
             }
         }
     }
 
     async saveStore() {
-        await fs.writeFile(this.storePath, JSON.stringify(this.data, null, 2));
+        try {
+            await fs.writeFile(this.storePath, JSON.stringify(this.data, null, 2));
+        } catch (error) {
+            logger.error('Error saving store:', error);
+            throw error;
+        }
     }
 
+    // User data methods
+    async getUserData(userId) {
+        try {
+            if (!this.data.users[userId]) {
+                this.data.users[userId] = {
+                    gold: 0,
+                    bank: 0,
+                    inventory: [],
+                    lastDaily: 0,
+                    level: 1,
+                    xp: 0
+                };
+                await this.saveStore();
+            }
+            return this.data.users[userId];
+        } catch (error) {
+            logger.error('Error getting user data:', error);
+            return null;
+        }
+    }
+
+    async updateUserGold(userId, newGold) {
+        try {
+            if (!this.data.users[userId]) {
+                this.data.users[userId] = {
+                    gold: 0,
+                    bank: 0,
+                    inventory: [],
+                    lastDaily: 0,
+                    level: 1,
+                    xp: 0
+                };
+            }
+            this.data.users[userId].gold = newGold;
+            await this.saveStore();
+            return true;
+        } catch (error) {
+            logger.error('Error updating user gold:', error);
+            return false;
+        }
+    }
+
+    async updateDailyReward(userId, reward) {
+        try {
+            const userData = await this.getUserData(userId);
+            if (!userData) return false;
+
+            userData.gold += reward;
+            userData.lastDaily = Date.now();
+            await this.saveStore();
+            return true;
+        } catch (error) {
+            logger.error('Error updating daily reward:', error);
+            return false;
+        }
+    }
+
+    // Required methods from other modules
     async set(key, value) {
         this.data[key] = value;
         await this.saveStore();
@@ -39,6 +108,7 @@ class Store {
         delete this.data[key];
         await this.saveStore();
     }
+
 
     // Ban management methods
     async banUser(userId) {
@@ -173,41 +243,6 @@ class Store {
             .sort((a, b) => b.xp - a.xp);
 
         return usersList.findIndex(user => user.id === userId) + 1;
-    }
-
-    getUserData(userId) {
-        try {
-            const users = this.data.users || {};
-            if (!users[userId]) {
-                return null;
-            }
-            return {
-                ...users[userId],
-                hp: users[userId].hp || 100,
-                mp: users[userId].mp || 100,
-                gold: users[userId].gold || 0,
-                level: users[userId].level || 1
-            };
-        } catch (error) {
-            logger.error('Error getting user data:', error);
-            return null;
-        }
-    }
-
-    async updateUserGold(userId, newGold) {
-        try {
-            const users = this.data.users || {};
-            if (!users[userId]) {
-                users[userId] = { xp: 0, level: 1 };
-            }
-            users[userId].gold = newGold;
-            this.data.users = users;
-            await this.saveStore();
-            return true;
-        } catch (error) {
-            logger.error('Error updating user gold:', error);
-            return false;
-        }
     }
 
     // User inventory methods

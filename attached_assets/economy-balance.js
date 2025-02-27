@@ -1,22 +1,49 @@
+const store = require('../database/store');
 const logger = require('pino')();
 
 const balance = {
     getBalance: async (userId) => {
-        logger.info('Stub balance.getBalance called for user:', userId);
-        return {
-            wallet: 1000,
-            bank: 5000
-        };
+        try {
+            const userData = await store.getUserData(userId);
+            if (!userData) {
+                return {
+                    wallet: 0,
+                    bank: 0
+                };
+            }
+            return {
+                wallet: userData.gold || 0,
+                bank: userData.bank || 0
+            };
+        } catch (error) {
+            logger.error('Error getting balance:', error);
+            throw error;
+        }
     },
 
     addBalance: async (userId, amount) => {
-        logger.info('Stub balance.addBalance called:', { userId, amount });
-        return true;
+        try {
+            const userData = await store.getUserData(userId);
+            const newBalance = (userData?.gold || 0) + amount;
+            return await store.updateUserGold(userId, newBalance);
+        } catch (error) {
+            logger.error('Error adding balance:', error);
+            return false;
+        }
     },
 
     deductBalance: async (userId, amount) => {
-        logger.info('Stub balance.deductBalance called:', { userId, amount });
-        return true;
+        try {
+            const userData = await store.getUserData(userId);
+            if (!userData || userData.gold < amount) {
+                return false;
+            }
+            const newBalance = userData.gold - amount;
+            return await store.updateUserGold(userId, newBalance);
+        } catch (error) {
+            logger.error('Error deducting balance:', error);
+            return false;
+        }
     }
 };
 

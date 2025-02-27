@@ -2,26 +2,46 @@
   "users": {
     "6283857560733@s.whatsapp.net": {
       "xp": 15,
-      "level": 1
+      "level": 1,
+      "gold": 0,
+      "bank": 0,
+      "inventory": [],
+      "lastDaily": 0
     },
     "6285819331381@s.whatsapp.net": {
       "xp": 42,
-      "level": 1
+      "level": 1,
+      "gold": 0,
+      "bank": 0,
+      "inventory": [],
+      "lastDaily": 0
     },
     "33189310806@s.whatsapp.net": {
       "xp": 6,
-      "level": 1
+      "level": 1,
+      "gold": 0,
+      "bank": 0,
+      "inventory": [],
+      "lastDaily": 0
     },
     "94767781689@s.whatsapp.net": {
       "xp": 2,
-      "level": 1
+      "level": 1,
+      "gold": 0,
+      "bank": 0,
+      "inventory": [],
+      "lastDaily": 0
     },
     "undefined": {
       "xp": 0,
       "level": 1,
       "name": "Martin",
       "age": 20,
-      "registeredAt": "2025-02-27T15:13:32.902Z"
+      "registeredAt": "2025-02-27T15:13:32.902Z",
+      "gold": 0,
+      "bank": 0,
+      "inventory": [],
+      "lastDaily": 0
     }
   },
   "groups": {

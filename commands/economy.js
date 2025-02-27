@@ -69,7 +69,7 @@ const economyCommands = {
         } catch (error) {
             logger.error('Error in daily command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error claiming daily reward: ' + error.message
+                text: '❌ ' + error.message
             });
         }
     },
@@ -140,24 +140,54 @@ const economyCommands = {
 
     transfer: async (sock, msg, args) => {
         try {
+            // Validate arguments
             if (args.length < 2) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: `Please specify recipient and amount!\nUsage: ${config.prefix}transfer @user <amount>`
                 });
             }
 
+            // Extract recipient number from mention
+            const recipientMention = args[0];
+            if (!recipientMention.startsWith('@')) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please mention a user with @ to transfer money!'
+                });
+            }
+
             const recipient = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
             const amount = parseInt(args[1]);
 
+            // Validate amount
             if (isNaN(amount) || amount <= 0) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '❌ Please enter a valid amount greater than 0!'
                 });
             }
 
-            await bank.transfer(msg.key.participant, recipient, amount);
+            // Check sender's balance
+            const senderBalance = await balance.getBalance(msg.key.participant);
+            if (senderBalance.wallet < amount) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Insufficient funds in your wallet!'
+                });
+            }
+
+            // Verify recipient exists
+            const recipientBalance = await balance.getBalance(recipient);
+            if (!recipientBalance) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Could not find the recipient!'
+                });
+            }
+
+            // Perform transfer
+            await balance.deductBalance(msg.key.participant, amount);
+            await balance.addBalance(recipient, amount);
+
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `💸 Successfully transferred $${amount} to ${args[0]}!`
+                text: `💸 Successfully transferred $${amount} to ${args[0]}!`,
+                mentions: [recipient]
             });
         } catch (error) {
             logger.error('Error in transfer command:', error);
