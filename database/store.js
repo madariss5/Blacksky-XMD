@@ -526,6 +526,89 @@ class Store {
         const users = this.data.users || {};
         return users[userId]?.preferences?.[setting];
     }
+
+    // Warning system methods
+    async addWarning(groupId, userId, reason = '', warnedBy) {
+        try {
+            const groups = this.data.groups || {};
+            if (!groups[groupId]) {
+                groups[groupId] = { warnings: {} };
+            }
+            if (!groups[groupId].warnings) {
+                groups[groupId].warnings = {};
+            }
+            if (!groups[groupId].warnings[userId]) {
+                groups[groupId].warnings[userId] = [];
+            }
+
+            const warning = {
+                reason,
+                warnedBy,
+                timestamp: Date.now()
+            };
+
+            groups[groupId].warnings[userId].push(warning);
+            this.data.groups = groups;
+            await this.saveStore();
+
+            return {
+                success: true,
+                warningCount: groups[groupId].warnings[userId].length
+            };
+        } catch (error) {
+            logger.error('Error adding warning:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    async removeWarning(groupId, userId, index) {
+        try {
+            const groups = this.data.groups || {};
+            if (!groups[groupId]?.warnings?.[userId]) {
+                return { success: false, error: 'No warnings found' };
+            }
+
+            const warnings = groups[groupId].warnings[userId];
+            if (index >= warnings.length) {
+                return { success: false, error: 'Invalid warning index' };
+            }
+
+            warnings.splice(index, 1);
+            if (warnings.length === 0) {
+                delete groups[groupId].warnings[userId];
+            }
+
+            await this.saveStore();
+            return { success: true, remainingWarnings: warnings.length };
+        } catch (error) {
+            logger.error('Error removing warning:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    async getWarnings(groupId, userId) {
+        try {
+            const groups = this.data.groups || {};
+            return groups[groupId]?.warnings?.[userId] || [];
+        } catch (error) {
+            logger.error('Error getting warnings:', error);
+            return [];
+        }
+    }
+
+    async clearWarnings(groupId, userId) {
+        try {
+            const groups = this.data.groups || {};
+            if (groups[groupId]?.warnings?.[userId]) {
+                delete groups[groupId].warnings[userId];
+                await this.saveStore();
+            }
+            return { success: true };
+        } catch (error) {
+            logger.error('Error clearing warnings:', error);
+            return { success: false, error: error.message };
+        }
+    }
 }
 
 // Add XP reward amounts

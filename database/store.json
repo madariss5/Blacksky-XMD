@@ -46,7 +46,8 @@
   },
   "groups": {
     "120363407638585565@g.us": {
-      "muted": true
+      "muted": true,
+      "warnings": {}
     }
   },
   "banned": []

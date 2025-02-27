@@ -457,25 +457,150 @@ const groupCommands = {
             });
         }
     },
+    warn: async (sock, msg, args) => {
+        try {
+            const groupMetadata = await validateGroupContext(sock, msg, true);
+            if (!groupMetadata) return;
+
+            if (!args[0]) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `❌ Please mention a user to warn!\nUsage: ${config.prefix}warn @user [reason]`
+                });
+            }
+
+            const targetUser = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+            const reason = args.slice(1).join(' ') || 'No reason provided';
+
+            const result = await store.addWarning(
+                msg.key.remoteJid,
+                targetUser,
+                reason,
+                msg.key.participant
+            );
+
+            if (!result.success) {
+                throw new Error(result.error);
+            }
+
+            const warningCount = result.warningCount;
+            let response = `⚠️ *WARNING #${warningCount}*\n\n`;
+            response += `@${targetUser.split('@')[0]} has been warned.\n`;
+            response += `Reason: ${reason}\n`;
+
+            if (warningCount >= 3) {
+                response += '\n⛔ Maximum warnings reached. User will be removed.';
+                await sock.groupParticipantsUpdate(msg.key.remoteJid, [targetUser], "remove");
+                await store.clearWarnings(msg.key.remoteJid, targetUser);
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: response,
+                mentions: [targetUser]
+            });
+        } catch (error) {
+            logger.error('Error in warn command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to warn user: ' + error.message
+            });
+        }
+    },
+
+    delwarn: async (sock, msg, args) => {
+        try {
+            const groupMetadata = await validateGroupContext(sock, msg, true);
+            if (!groupMetadata) return;
+
+            if (args.length < 2) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `❌ Please specify user and warning number!\nUsage: ${config.prefix}delwarn @user <warning_number>`
+                });
+            }
+
+            const targetUser = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+            const warningIndex = parseInt(args[1]) - 1;
+
+            const result = await store.removeWarning(msg.key.remoteJid, targetUser, warningIndex);
+            if (!result.success) {
+                throw new Error(result.error);
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Warning #${warningIndex + 1} has been removed from @${targetUser.split('@')[0]}.\nRemaining warnings: ${result.remainingWarnings}`,
+                mentions: [targetUser]
+            });
+        } catch (error) {
+            logger.error('Error in delwarn command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to delete warning: ' + error.message
+            });
+        }
+    },
+
+    warnlist: async (sock, msg, args) => {
+        try {
+            const groupMetadata = await validateGroupContext(sock, msg, true);
+            if (!groupMetadata) return;
+
+            if (!args[0]) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `❌ Please mention a user!\nUsage: ${config.prefix}warnlist @user`
+                });
+            }
+
+            const targetUser = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+            const warnings = await store.getWarnings(msg.key.remoteJid, targetUser);
+
+            if (!warnings.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `✅ @${targetUser.split('@')[0]} has no warnings.`,
+                    mentions: [targetUser]
+                });
+            }
+
+            let warnText = `⚠️ *Warnings for @${targetUser.split('@')[0]}*\n\n`;
+            warnings.forEach((warn, index) => {
+                warnText += `*${index + 1}.* ${warn.reason}\n`;
+                warnText += `⏰ ${new Date(warn.timestamp).toLocaleString()}\n`;
+                warnText += `👮‍♂️ By: @${warn.warnedBy.split('@')[0]}\n\n`;
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: warnText,
+                mentions: [targetUser, ...warnings.map(w => w.warnedBy)]
+            });
+        } catch (error) {
+            logger.error('Error in warnlist command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to get warnings: ' + error.message
+            });
+        }
+    },
+
     del: async (sock, msg) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
             if (!groupMetadata) return;
 
-            if (msg.message.extendedTextMessage?.contextInfo?.quotedMessage) {
-                const quotedMsg = msg.message.extendedTextMessage.contextInfo;
-                await sock.sendMessage(msg.key.remoteJid, { delete: quotedMsg.stanzaId });
-                logger.info('Message deleted:', {
-                    group: msg.key.remoteJid,
-                    deletedBy: msg.key.participant,
-                    stanzaId: quotedMsg.stanzaId
+            if (!msg.message.extendedTextMessage?.contextInfo?.quotedMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to a message to delete it!'
                 });
-            } else {
-                await sock.sendMessage(msg.key.remoteJid, { text: 'Please reply to a message to delete it!' });
             }
+
+            const quotedMsg = msg.message.extendedTextMessage.contextInfo;
+            await sock.sendMessage(msg.key.remoteJid, { 
+                delete: quotedMsg.stanzaId 
+            });
+
+            logger.info('Message deleted:', {
+                group: msg.key.remoteJid,
+                deletedBy: msg.key.participant
+            });
         } catch (error) {
             logger.error('Error in del command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { text: 'Failed to delete message: ' + error.message });
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to delete message: ' + error.message
+            });
         }
     },
     poll: async (sock, msg, args) => {

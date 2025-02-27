@@ -88,6 +88,9 @@ module.exports = {
         stop: { description: 'Stop music playback', category: 'Music' },
         spotify: { description: 'Download Spotify tracks/albums', category: 'Music' },
         soundcloud: { description: 'Download SoundCloud tracks', category: 'Music' },
+        pause: { description: 'Pause current playback', category: 'Music' },
+        resume: { description: 'Resume paused playback', category: 'Music' },
+
 
         // AI & Generation Commands
         gpt: { description: 'Chat with GPT AI', category: 'AI' },
@@ -124,6 +127,10 @@ module.exports = {
         antispam: { description: 'Toggle anti-spam protection', category: 'Group' },
         antitoxic: { description: 'Toggle anti-toxic protection', category: 'Group' },
         groupinfo: { description: 'View group information', category: 'Group' },
+        warn: { description: 'Give warning to a member (3 warns = kick)', category: 'Group' },
+        delwarn: { description: 'Remove a warning from a member', category: 'Group' },
+        warnlist: { description: 'View member\'s warning list', category: 'Group' },
+        del: { description: 'Delete a message (admin only)', category: 'Group' },
 
         // Owner Commands
         broadcast: { description: 'Send message to all chats', category: 'Owner' },
