@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { default: makeWASocket, useMultiFileAuthState, makeInMemoryStore, DisconnectReason } = require("@whiskeysockets/baileys");
 const pino = require("pino");
 const { Boom } = require("@hapi/boom");
@@ -32,13 +33,17 @@ const validateEnv = () => {
     }
 
     console.log('✅ Environment variables validated successfully');
+    return true;
 };
 
-// Add the validation call before WhatsApp connection
+// Load and validate environment variables
 validateEnv();
 
-// Update config with formatted number
+// Update config with environment variables
+config.ownerName = process.env.OWNER_NAME;
 config.ownerNumber = formatPhoneNumber(process.env.OWNER_NUMBER);
+config.botName = process.env.BOT_NAME || 'BlackSky-MD';
+config.prefix = process.env.PREFIX || '!';
 
 // Create store to save chats
 const store = makeInMemoryStore({ 
