@@ -12,6 +12,19 @@ const commands = {
 
             // Define command categories with emojis
             const categories = {
+                '👤 User Commands': [
+                    { cmd: 'profile', desc: 'View user profile with picture' },
+                    { cmd: 'me', desc: 'View your own profile with picture' },
+                    { cmd: 'register', desc: 'Register your profile' },
+                    { cmd: 'daily', desc: 'Claim daily rewards' },
+                    { cmd: 'rank', desc: 'Check your rank and level' },
+                    { cmd: 'inventory', desc: 'View your inventory' },
+                    { cmd: 'achievements', desc: 'View your achievements' },
+                    { cmd: 'bio', desc: 'Set or view your bio' },
+                    { cmd: 'reminder', desc: 'Set a reminder' },
+                    { cmd: 'level', desc: 'View detailed level stats' },
+                    { cmd: 'status', desc: 'Check your WhatsApp status' }
+                ],
                 '🎭 Fun Commands': [
                     { cmd: 'slap', desc: 'Slap someone with anime gif' },
                     { cmd: 'hug', desc: 'Give someone a warm hug' },
