@@ -10,137 +10,69 @@ const basicCommands = {
 ┃ Status: Online
 ╰━━━━━━━━━━━━⊷❍\n\n`;
 
-            const sections = [
-                {
-                    title: '📥 *DOWNLOADER*',
-                    commands: [
-                        'ytmp3 - Download YouTube audio',
-                        'ytmp4 - Download YouTube video',
-                        'play - Play YouTube audio',
-                        'video - Play YouTube video',
-                        'tiktok - TikTok video',
-                        'facebook - Facebook video',
-                        'instagram - Instagram media',
-                        'twitter - Twitter media',
-                        'pinterest - Pinterest media',
-                        'spotify - Spotify tracks'
-                    ]
-                },
-                {
-                    title: '💰 *ECONOMY*',
-                    commands: [
-                        'balance - Check balance',
-                        'daily - Daily rewards',
-                        'weekly - Weekly rewards',
-                        'monthly - Monthly rewards',
-                        'bank - Bank operations',
-                        'deposit - Bank deposit',
-                        'withdraw - Bank withdraw',
-                        'transfer - Send money',
-                        'rob - Rob users',
-                        'work - Work for money'
-                    ]
-                },
-                {
-                    title: '🎮 *GAMES*',
-                    commands: [
-                        'gamble - Gamble money',
-                        'flip - Coin flip',
-                        'slots - Slot machine',
-                        'blackjack - Play blackjack',
-                        'poker - Play poker',
-                        'roulette - Play roulette',
-                        'dice - Roll dice',
-                        'lottery - Buy lottery',
-                        'hunt - Go hunting',
-                        'fish - Go fishing'
-                    ]
-                },
-                {
-                    title: '👥 *GROUP*',
-                    commands: [
-                        'kick - Kick member',
-                        'add - Add member',
-                        'promote - Make admin',
-                        'demote - Remove admin',
-                        'setname - Group name',
-                        'setdesc - Group desc',
-                        'setppgc - Group pic',
-                        'tagall - Tag all',
-                        'hidetag - Hidden tag',
-                        'antilink - Anti link'
-                    ]
-                },
-                {
-                    title: '🎨 *FUN*',
-                    commands: [
-                        'sticker - Make sticker',
-                        'emojimix - Mix emojis',
-                        'toimg - Sticker to image',
-                        'tomp3 - Video to audio',
-                        'tts - Text to speech',
-                        'quote - Quote image',
-                        'triggered - Triggered effect',
-                        'wasted - Wasted effect',
-                        'jail - Jail effect',
-                        'rip - RIP effect'
-                    ]
-                },
-                {
-                    title: '🤖 *AI*',
-                    commands: [
-                        'gpt - Chat with GPT',
-                        'dalle - DALL-E art',
-                        'imagine - Generate art',
-                        'lisa - Chat with Lisa',
-                        'rias - Chat with Rias',
-                        'toxxic - Chat with Toxxic',
-                        'remini - Enhance image',
-                        'anime2d - Photo to anime',
-                        'txt2img - Text to image',
-                        'img2txt - Image to text'
-                    ]
-                },
-                {
-                    title: '👑 *OWNER*',
-                    commands: [
-                        'broadcast - Send to all',
-                        'ban - Ban user',
-                        'unban - Unban user',
-                        'block - Block user',
-                        'unblock - Unblock user',
-                        'setbotbio - Set bot bio',
-                        'setbotname - Set bot name',
-                        'setbotpp - Set bot pic',
-                        'setstatus - Set status',
-                        'setprefix - Change prefix'
-                    ]
-                }
-            ];
+            const categories = {
+                '📥 *DOWNLOADER*': Object.entries(config.commands)
+                    .filter(([_, cmd]) => cmd.description.includes('Download') || cmd.description.includes('Play'))
+                    .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
+
+                '💰 *ECONOMY*': Object.entries(config.commands)
+                    .filter(([_, cmd]) => cmd.description.includes('💰') || cmd.description.includes('💸') || cmd.description.includes('🎲'))
+                    .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
+
+                '👥 *GROUP*': Object.entries(config.commands)
+                    .filter(([_, cmd]) => cmd.description.includes('group') || cmd.description.includes('admin'))
+                    .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
+
+                '🎨 *FUN & MEDIA*': Object.entries(config.commands)
+                    .filter(([_, cmd]) => cmd.description.includes('Create') || cmd.description.includes('effect') || cmd.description.includes('sticker'))
+                    .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
+
+                '🤖 *AI & TOOLS*': Object.entries(config.commands)
+                    .filter(([_, cmd]) => cmd.description.includes('AI') || cmd.description.includes('Generate'))
+                    .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
+
+                '👑 *OWNER*': Object.entries(config.commands)
+                    .filter(([_, cmd]) => cmd.description.includes('Owner') || cmd.description.includes('Bot'))
+                    .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`),
+
+                '🔧 *UTILITY*': Object.entries(config.commands)
+                    .filter(([_, cmd]) => cmd.description.includes('Toggle') || cmd.description.includes('Set'))
+                    .map(([cmd, info]) => `${config.prefix}${cmd} - ${info.description}`)
+            };
 
             let menuContent = menuHeader;
 
-            // Add each section with its commands
-            sections.forEach(section => {
-                menuContent += `${section.title}\n`;
-                section.commands.forEach((cmd, i) => {
-                    menuContent += `${i + 1}. ${config.prefix}${cmd}\n`;
+            // Add categories and their commands
+            Object.entries(categories).forEach(([category, commands]) => {
+                menuContent += `${category}\n`;
+                commands.forEach((cmd, i) => {
+                    menuContent += `${i + 1}. ${cmd}\n`;
                 });
                 menuContent += '\n';
             });
 
-            // Add footer
+            // Add footer stats
             menuContent += `╭━━━❰ *STATS* ❱━━━⊷❍
 ┃ Total Commands: ${Object.keys(config.commands).length}
 ┃ Version: 1.0.0
 ╰━━━━━━━━━━━━⊷❍\n\n`;
 
-            menuContent += `Note: Use ${config.prefix}help <command> for detailed info`;
+            // Split the menu into chunks for readability
+            // WhatsApp's readmore feature will be triggered automatically due to length
+            const chunks = menuContent.match(/.{1,4096}/g) || [];
 
+            // Send first chunk with mentions
             await sock.sendMessage(msg.key.remoteJid, {
-                text: menuContent,
+                text: chunks[0],
                 mentions: [config.ownerNumber]
             });
+
+            // Send remaining chunks if any
+            for (let i = 1; i < chunks.length; i++) {
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: chunks[i]
+                });
+            }
 
         } catch (error) {
             logger.error('Error in menu command:', error);
