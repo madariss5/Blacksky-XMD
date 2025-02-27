@@ -20,6 +20,43 @@ const commandModules = {
     nsfw: require('./commands/nsfw')
 };
 
+// Save credentials to creds.json for Heroku
+async function saveCredsToFile(creds) {
+    try {
+        await fs.writeJSON('./creds.json', creds);
+        console.log('✅ Credentials saved to creds.json');
+    } catch (err) {
+        console.error('❌ Error saving credentials:', err);
+    }
+}
+
+// Send status message
+async function sendStatusMessage(sock, status, details = '') {
+    const timestamp = new Date().toLocaleString();
+    const statusMessage = `🤖 *${config.botName} Status Update*\n\n` +
+                         `📋 Status: ${status}\n` +
+                         `⏰ Time: ${timestamp}\n` +
+                         `🔧 Version: ${require('./package.json').version}\n` +
+                         (details ? `\n📝 Details:\n${details}\n` : '') +
+                         `\n💡 Type ${config.prefix}menu to see available commands.`;
+
+    try {
+        // Send to owner
+        await sock.sendMessage(config.ownerNumber, { text: statusMessage });
+
+        // Save bot's own number after connection
+        if (sock.user?.id) {
+            config.botNumber = sock.user.id;
+            // Also send status to bot itself if different from owner
+            if (config.botNumber !== config.ownerNumber) {
+                await sock.sendMessage(config.botNumber, { text: statusMessage });
+            }
+        }
+    } catch (err) {
+        console.error('Error sending status message:', err);
+    }
+}
+
 // Start WhatsApp connection
 async function connectToWhatsApp() {
     // Ensure auth directory exists
@@ -87,21 +124,21 @@ async function connectToWhatsApp() {
             }
         } else if(connection === "open") {
             console.log("✅ Bot is now connected!");
-
-            // Send initial status message
-            const statusMessage = `🤖 ${config.botName} is now active!\n\n` +
-                                `Type ${config.prefix}menu to see available commands.`;
-
-            try {
-                await sock.sendMessage(config.ownerNumber, { text: statusMessage });
-            } catch (err) {
-                console.log("Could not send initial status message:", err);
-            }
+            // Send detailed status message
+            await sendStatusMessage(sock, 'Connected', 
+                '• Session authenticated successfully\n' +
+                '• Bot is ready to receive commands\n' +
+                '• All systems operational'
+            );
         }
     });
 
     // Save credentials whenever updated
-    sock.ev.on("creds.update", saveCreds);
+    sock.ev.on("creds.update", async (creds) => {
+        await saveCreds(creds);
+        // Also save to creds.json for Heroku
+        await saveCredsToFile(creds);
+    });
 
     // Handle messages
     sock.ev.on("messages.upsert", async ({ messages, type }) => {

@@ -3,6 +3,7 @@ module.exports = {
     ownerNumber: process.env.OWNER_NUMBER || '1234567890@s.whatsapp.net',  // Default owner number
     ownerName: process.env.OWNER_NAME || 'Bot Owner',
     botName: '𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻',
+    botNumber: '', // Will be set after connection
     menuImage: 'https://raw.githubusercontent.com/your-repo/assets/main/f9.jpg',
     commands: {
         // Basic commands
