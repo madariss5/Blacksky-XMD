@@ -5,6 +5,7 @@ const path = require('path');
 const funCommands = {
     menu: async (sock, msg) => {
         const commandList = `🎮 *Fun Commands Menu* 🎮\n
+🎯 *Reaction Commands:*
 1. *!slap* [@user] - Slap someone with an anime gif
 2. *!hug* [@user] - Give someone a warm hug
 3. *!pat* [@user] - Pat someone gently
@@ -12,20 +13,26 @@ const funCommands = {
 5. *!highfive* [@user] - Give someone a high-five
 6. *!facepalm* - Express your disappointment
 7. *!poke* [@user] - Poke someone playfully
-8. *!joke* - Get a random funny joke
-9. *!quote* - Get an inspirational quote
-10. *!fact* - Learn an interesting fact
-11. *!magic8ball* [question] - Ask the magic 8 ball
-12. *!dare* - Get a random dare challenge
-13. *!truth* - Get a random truth question
-14. *!meme* - Get a random anime meme
-15. *!wordgame* - Play a word guessing game
+8. *!cuddle* [@user] - Cuddle with someone sweetly
+9. *!yeet* [@user] - Yeet someone into space
+10. *!boop* [@user] - Boop someone's nose
+11. *!bonk* [@user] - Bonk someone on the head
+12. *!kill* [@user] - Dramatically eliminate someone
+
+🎲 *Games & Fun:*
+13. *!joke* - Get a random funny joke
+14. *!quote* - Get an inspirational quote
+15. *!fact* - Learn an interesting fact
+16. *!magic8ball* [question] - Ask the magic 8 ball
+17. *!dare* - Get a random dare challenge
+18. *!truth* - Get a random truth question
+19. *!meme* - Get a random anime meme
+20. *!wordgame* - Play a word guessing game
     - Use *!guess* [word] to make a guess
-16. *!trivia* - Play a trivia game
+21. *!trivia* - Play a trivia game
     - Use *!answer* [number] to answer
-17. *!emojiart* - Get a random emoji art
-18. *!insult* [@user] - Playfully insult someone
-19. *!kill* [@user] - Dramatically eliminate someone\n
+22. *!emojiart* - Get a random emoji art
+23. *!insult* [@user] - Playfully insult someone\n
 *How to use:*
 - Commands with [@user] can tag someone
 - For games, follow the instructions given
@@ -33,12 +40,10 @@ const funCommands = {
 
         await sock.sendMessage(msg.key.remoteJid, { text: commandList });
     },
-
     coinflip: async (sock, msg) => {
         const result = Math.random() < 0.5 ? 'Heads' : 'Tails';
         await sock.sendMessage(msg.key.remoteJid, { text: `🎲 Coin flip result: *${result}*` });
     },
-
     slap: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
@@ -63,7 +68,6 @@ const funCommands = {
             });
         }
     },
-
     hug: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
@@ -88,7 +92,6 @@ const funCommands = {
             });
         }
     },
-
     pat: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
@@ -113,7 +116,6 @@ const funCommands = {
             });
         }
     },
-
     dance: async (sock, msg) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, { 
@@ -135,7 +137,6 @@ const funCommands = {
             });
         }
     },
-
     joke: async (sock, msg) => {
         const jokes = [
             "Why don't scientists trust atoms? Because they make up everything! 😄",
@@ -152,7 +153,6 @@ const funCommands = {
             text: `😂 *Here's a joke:*\n\n${joke}`
         });
     },
-
     quote: async (sock, msg) => {
         const quotes = [
             "Life is what happens when you're busy making other plans. - John Lennon",
@@ -169,7 +169,6 @@ const funCommands = {
             text: `📜 *Inspirational Quote:*\n\n${randomQuote}`
         });
     },
-
     fact: async (sock, msg) => {
         const facts = [
             "Honey never spoils! 🍯",
@@ -186,7 +185,6 @@ const funCommands = {
             text: `🤓 *Random Fact:*\n\n${fact}`
         });
     },
-
     magic8ball: async (sock, msg, args) => {
         const responses = [
             "It is certain! ✨",
@@ -212,7 +210,6 @@ const funCommands = {
             text: `🎱 *Magic 8 Ball*\n\nQ: ${args.join(' ')}\nA: ${response}`
         });
     },
-
     dare: async (sock, msg) => {
         const dares = [
             "Send your latest selfie! 📸",
@@ -232,7 +229,6 @@ const funCommands = {
             text: `🎯 *Dare Challenge*\n\n${dare}\n\nAre you brave enough to do it? 😏`
         });
     },
-
     truth: async (sock, msg) => {
         const truths = [
             "What's your biggest fear? 😱",
@@ -252,7 +248,6 @@ const funCommands = {
             text: `🎯 *Truth Challenge*\n\n${truth}\n\nDare to answer honestly? 🤔`
         });
     },
-
     meme: async (sock, msg) => {
         try {
             const mediaPath = './media/anime-meme.gif';
@@ -269,7 +264,6 @@ const funCommands = {
             });
         }
     },
-
     wordgame: async (sock, msg) => {
         try {
             const words = {
@@ -299,7 +293,6 @@ const funCommands = {
             });
         }
     },
-
     guess: async (sock, msg, args) => {
         try {
             if (!args.length) {
@@ -334,7 +327,6 @@ const funCommands = {
             });
         }
     },
-
     trivia: async (sock, msg) => {
         try {
             const questions = [
@@ -383,7 +375,6 @@ const funCommands = {
             });
         }
     },
-
     answer: async (sock, msg, args) => {
         try {
             if (!args.length) {
@@ -506,7 +497,6 @@ const funCommands = {
             });
         }
     },
-
     highfive: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
@@ -531,7 +521,6 @@ const funCommands = {
             });
         }
     },
-
     facepalm: async (sock, msg, args) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, { 
@@ -553,7 +542,6 @@ const funCommands = {
             });
         }
     },
-
     poke: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
@@ -575,6 +563,102 @@ const funCommands = {
             console.error('Error in poke command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: '😅 Failed to send poke animation!'
+            });
+        }
+    },
+    cuddle: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `*${msg.pushName}* cuddles ${target} sweetly! 🤗`,
+                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+            });
+
+            const mediaPath = './media/anime-cuddle.gif';
+            if (fs.existsSync(mediaPath)) {
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    video: fs.readFileSync(mediaPath),
+                    gifPlayback: true,
+                    caption: '🤗',
+                    mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+                });
+            }
+        } catch (error) {
+            console.error('Error in cuddle command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '😅 Failed to send cuddle animation!'
+            });
+        }
+    },
+    yeet: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `*${msg.pushName}* yeets ${target} into space! 🚀`,
+                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+            });
+
+            const mediaPath = './media/anime-yeet.gif';
+            if (fs.existsSync(mediaPath)) {
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    video: fs.readFileSync(mediaPath),
+                    gifPlayback: true,
+                    caption: '🚀',
+                    mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+                });
+            }
+        } catch (error) {
+            console.error('Error in yeet command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '😅 Failed to send yeet animation!'
+            });
+        }
+    },
+    boop: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `*${msg.pushName}* boops ${target}'s nose! 👉👃`,
+                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+            });
+
+            const mediaPath = './media/anime-boop.gif';
+            if (fs.existsSync(mediaPath)) {
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    video: fs.readFileSync(mediaPath),
+                    gifPlayback: true,
+                    caption: '👉👃',
+                    mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+                });
+            }
+        } catch (error) {
+            console.error('Error in boop command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '😅 Failed to send boop animation!'
+            });
+        }
+    },
+    bonk: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `*${msg.pushName}* bonks ${target} on the head! 🔨`,
+                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+            });
+
+            const mediaPath = './media/anime-bonk.gif';
+            if (fs.existsSync(mediaPath)) {
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    video: fs.readFileSync(mediaPath),
+                    gifPlayback: true,
+                    caption: '🔨',
+                    mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+                });
+            }
+        } catch (error) {
+            console.error('Error in bonk command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '😅 Failed to send bonk animation!'
             });
         }
     }

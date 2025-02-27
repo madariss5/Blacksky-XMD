@@ -10,5 +10,9 @@ This directory contains animation files used by the bot for various reactions:
 - anime-highfive.gif - High-five reaction animation
 - anime-facepalm.gif - Facepalm reaction animation
 - anime-poke.gif - Poke reaction animation
+- anime-cuddle.gif - Cuddle reaction animation
+- anime-yeet.gif - Yeet reaction animation
+- anime-boop.gif - Boop reaction animation
+- anime-bonk.gif - Bonk reaction animation
 
 These files are used by the fun commands to create animated reactions.
