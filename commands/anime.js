@@ -12,16 +12,29 @@ const animeNeko = require('../attached_assets/anime-neko');
 const animeTrap = require('../attached_assets/anime-trap');
 const animeWaifu = require('../attached_assets/anime-waifu');
 
-// Assuming store is defined elsewhere and exported.  This is a crucial missing piece from the edited snippet.
-const store = require('../store'); // Or wherever your store object is located
+// Import store
+const store = require('../database/store');
 
-
-// Core anime commands
 const animeCommands = {
-    // Keep existing commands (anime, manga, seasonal, schedule)
-    ...require('./anime').coreCommands,
+    anime: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `Please provide an anime name!\nUsage: ${config.prefix}anime <name>`
+                });
+            }
+            const info = await animeInfo.search(args.join(' '));
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: info
+            });
+        } catch (error) {
+            logger.error('Error in anime command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error searching anime: ' + error.message
+            });
+        }
+    },
 
-    // Add new commands
     couplepp: async (sock, msg) => {
         try {
             const images = await animeCouplePP.getRandomCouple();
@@ -43,7 +56,6 @@ const animeCommands = {
 
     hentai: async (sock, msg) => {
         try {
-            // Check if chat is NSFW enabled
             const isNSFW = await store.isNSFWEnabled(msg.key.remoteJid);
             if (!isNSFW) {
                 return await sock.sendMessage(msg.key.remoteJid, {
