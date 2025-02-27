@@ -49,7 +49,6 @@ const coreFunCommands = {
 15. *!punch* [@user] - Punch someone
 16. *!wink* [@user] - Wink at someone
 
-
 🎲 *Games & Challenges:*
 17. *!coinflip* - Flip a coin
 18. *!dare* - Get a random dare challenge
@@ -66,7 +65,7 @@ const coreFunCommands = {
 25. *!fact* - Learn an interesting fact
 26. *!meme* - Get a random anime meme
 27. *!emojiart* - Get a random emoji art
-28. *!insult* [@user] - Playfully insult someone\n
+28. *!insult* [@user] - Playfully insult someone
 
 *How to use:*
 - Commands with [@user] can tag someone
