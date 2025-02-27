@@ -2,30 +2,38 @@ const config = require('../config');
 const store = require('../database/store');
 const logger = require('pino')();
 
+async function safeProfilePicture(sock, jid) {
+    try {
+        const pp = await sock.profilePictureUrl(jid, 'image');
+        logger.info('Profile picture fetched successfully');
+        return pp;
+    } catch (err) {
+        logger.warn('Failed to fetch profile picture:', err);
+        return 'https://i.imgur.com/wuxBN7M.png'; // Default profile picture
+    }
+}
+
 const userCommands = {
     profile: async (sock, msg, args) => {
         try {
             const user = args[0] ? args[0].replace('@', '') + '@s.whatsapp.net' : msg.key.participant;
             const userInfo = store.getUserInfo(user);
 
-            logger.info('Fetching profile for user:', user);
-
-            // Always try to get profile picture
-            let pp;
-            try {
-                pp = await sock.profilePictureUrl(user, 'image');
-                logger.info('Profile picture fetched successfully');
-            } catch (err) {
-                logger.warn('Failed to fetch profile picture:', err);
-                pp = 'https://i.imgur.com/wuxBN7M.png'; // Default profile picture URL
+            if (!userInfo) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: 'User not found or not registered. Use !register to create a profile.'
+                });
             }
+
+            const pp = await safeProfilePicture(sock, user);
 
             const info = `*User Profile*\n\n` +
                         `• Number: @${user.split('@')[0]}\n` +
                         `• Name: ${userInfo.name || 'Not registered'}\n` +
                         `• Age: ${userInfo.age || 'Not registered'}\n` +
-                        `• Level: ${userInfo.level}\n` +
-                        `• XP: ${userInfo.xp}\n` +
+                        `• Level: ${userInfo.level || 1}\n` +
+                        `• XP: ${userInfo.xp || 0}\n` +
+                        `• Bio: ${userInfo.bio || 'No bio set'}\n` +
                         `• Registered: ${userInfo.registeredAt ? new Date(userInfo.registeredAt).toLocaleDateString() : 'No'}`;
 
             await sock.sendMessage(msg.key.remoteJid, {
@@ -49,7 +57,6 @@ const userCommands = {
 
             logger.info('Fetching self profile for user:', user);
 
-            // Always try to get profile picture
             let pp;
             try {
                 pp = await sock.profilePictureUrl(user, 'image');
@@ -196,7 +203,7 @@ const userCommands = {
             return await sock.sendMessage(msg.key.remoteJid, {
                 text: currentBio ? 
                     `📝 *Your Bio*\n\n${currentBio}` :
-                    'You haven\'t set a bio yet! Use !bio <text> to set one.'
+                    `You haven't set a bio yet! Use ${config.prefix}bio <text> to set one.`
             });
         }
 
@@ -207,10 +214,17 @@ const userCommands = {
             });
         }
 
-        store.setUserBio(user, newBio);
-        await sock.sendMessage(msg.key.remoteJid, {
-            text: '✅ Bio updated successfully!'
-        });
+        try {
+            store.setUserBio(user, newBio);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '✅ Bio updated successfully!'
+            });
+        } catch (error) {
+            logger.error('Error updating bio:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to update bio. Please try again later.'
+            });
+        }
     },
 
     reminder: async (sock, msg, args) => {
@@ -218,7 +232,7 @@ const userCommands = {
 
         if (!args.length) {
             return await sock.sendMessage(msg.key.remoteJid, {
-                text: '⏰ Usage: !reminder <time in minutes> <message>'
+                text: `⏰ Usage: ${config.prefix}reminder <time in minutes> <message>`
             });
         }
 
@@ -236,12 +250,21 @@ const userCommands = {
             });
         }
 
-        setTimeout(async () => {
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `⏰ *Reminder*\n\n@${user.split('@')[0]}, you asked me to remind you:\n${message}`,
-                mentions: [user]
-            });
+        // Store reminder in memory with cleanup
+        const reminderTimeout = setTimeout(async () => {
+            try {
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `⏰ *Reminder*\n\n@${user.split('@')[0]}, you asked me to remind you:\n${message}`,
+                    mentions: [user]
+                });
+            } catch (error) {
+                logger.error('Error sending reminder:', error);
+            }
         }, time * 60 * 1000);
+
+        // Store timeout reference for cleanup
+        if (!global.reminderTimeouts) global.reminderTimeouts = new Map();
+        global.reminderTimeouts.set(`${user}-${Date.now()}`, reminderTimeout);
 
         await sock.sendMessage(msg.key.remoteJid, {
             text: `✅ I'll remind you about "${message}" in ${time} minutes!`

@@ -24,28 +24,41 @@ async function executeCommand(sock, msg, command, args, moduleName) {
     try {
         logger.info(`Executing command: ${command} from module: ${moduleName}`);
 
+        // Validate message and participant
+        if (!msg.key?.remoteJid || !msg.key?.participant) {
+            logger.warn('Invalid message format or missing participant');
+            return false;
+        }
+
         // Check if command exists in module
-        if (!commandModules[moduleName][command]) {
+        if (!commandModules[moduleName]?.[command]) {
             logger.warn(`Command ${command} not found in module ${moduleName}`);
             return false;
         }
 
+        // Execute command
         await commandModules[moduleName][command](sock, msg, args);
         logger.info(`Command ${command} executed successfully by ${msg.key.participant} in ${msg.key.remoteJid}`);
 
-        // Award XP for command usage
-        const xpResult = await store.addXP(msg.key.participant, store.XP_REWARDS.command);
-        if (xpResult.levelUp) {
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: `🎉 Congratulations @${msg.key.participant.split('@')[0]}!\nYou've reached level ${xpResult.newLevel}!`,
-                mentions: [msg.key.participant]
-            });
+        try {
+            // Award XP for command usage
+            const xpResult = await store.addXP(msg.key.participant, store.XP_REWARDS.command);
+            if (xpResult?.levelUp) {
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    text: `🎉 Congratulations @${msg.key.participant.split('@')[0]}!\nYou've reached level ${xpResult.newLevel}!`,
+                    mentions: [msg.key.participant]
+                });
+            }
+        } catch (xpError) {
+            logger.error('Error handling XP reward:', xpError);
+            // Don't fail the command if XP handling fails
         }
+
         return true;
     } catch (error) {
         logger.error(`Error executing command ${command}:`, error);
         await sock.sendMessage(msg.key.remoteJid, { 
-            text: 'An error occurred while executing the command.' 
+            text: 'An error occurred while executing the command. Please try again.' 
         });
         return false;
     }
@@ -53,7 +66,10 @@ async function executeCommand(sock, msg, command, args, moduleName) {
 
 async function messageHandler(sock, msg) {
     try {
-        if (!msg.message) return;
+        if (!msg.message || !msg.key?.remoteJid) {
+            logger.debug('Skipping invalid message');
+            return;
+        }
 
         const messageType = Object.keys(msg.message)[0];
         const messageContent = msg.message[messageType];
@@ -65,34 +81,48 @@ async function messageHandler(sock, msg) {
             pushName: msg.pushName
         });
 
-        // Award XP for sending messages
-        if (msg.key.participant) {
-            await store.addXP(msg.key.participant, store.XP_REWARDS.message);
+        // Handle XP for messages
+        try {
+            if (msg.key.participant) {
+                await store.addXP(msg.key.participant, store.XP_REWARDS.message);
+            }
+        } catch (xpError) {
+            logger.error('Error handling message XP:', xpError);
+        }
+
+        // Extract text content from different message types
+        let textContent = '';
+        switch (messageType) {
+            case 'conversation':
+                textContent = messageContent;
+                break;
+            case 'extendedTextMessage':
+                textContent = messageContent.text;
+                break;
+            case 'imageMessage':
+            case 'videoMessage':
+                textContent = messageContent.caption || '';
+                break;
+            default:
+                logger.debug(`Unhandled message type: ${messageType}`);
+                return;
         }
 
         // Handle commands
-        if (messageType === 'conversation' || messageType === 'extendedTextMessage') {
-            const text = messageType === 'conversation' ? 
-                msg.message.conversation : 
-                msg.message.extendedTextMessage.text;
-
-            // Get the sender ID
-            const senderId = msg.key.remoteJid.endsWith('@g.us') ? 
-                (msg.key.participant?.split('@')[0] + '@s.whatsapp.net') : 
-                msg.key.remoteJid;
-
-            // Check if message starts with prefix
-            if (!text.startsWith(config.prefix)) return;
-
-            // Extract command and arguments
-            const [command, ...args] = text.slice(config.prefix.length).trim().split(' ');
+        if (textContent.startsWith(config.prefix)) {
+            const [command, ...args] = textContent.slice(config.prefix.length).trim().split(/\s+/);
             logger.info(`Command received: ${command}, Arguments:`, args);
+
+            // Set participant for group messages
+            if (msg.key.remoteJid.endsWith('@g.us') && !msg.key.participant) {
+                msg.key.participant = msg.key.remoteJid;
+            }
 
             // Find and execute command
             let commandExecuted = false;
             for (const [moduleName, module] of Object.entries(commandModules)) {
-                if (command in module) {
-                    commandExecuted = await executeCommand(sock, msg, command, args, moduleName);
+                if (command.toLowerCase() in module) {
+                    commandExecuted = await executeCommand(sock, msg, command.toLowerCase(), args, moduleName);
                     break;
                 }
             }
