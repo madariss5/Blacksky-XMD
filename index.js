@@ -6,13 +6,15 @@ const config = require("./config");
 const fs = require("fs-extra");
 const path = require("path");
 
-// Add Heroku-specific logging
+// Update logging format for better clarity
 const logger = pino({
     level: process.env.LOG_LEVEL || "info",
     transport: {
         target: 'pino-pretty',
         options: {
-            colorize: true
+            colorize: true,
+            translateTime: 'SYS:standard',
+            ignore: 'pid,hostname'
         }
     }
 });
@@ -158,14 +160,19 @@ async function sendStatusMessage(sock, status, details = '') {
     }
 }
 
-// Update the connection function with better Heroku support
+// Update the connection function with better Heroku support and add more detailed session logging
 async function connectToWhatsApp() {
     try {
         // Ensure auth directory exists
         await fs.ensureDir("./auth_info_baileys");
+        logger.info("Authentication directory checked");
 
         const { state, saveCreds } = await useMultiFileAuthState("./auth_info_baileys");
-        logger.info("Loaded session:", state.creds.registered ? "Registered" : "Waiting for QR");
+        logger.info("Session state loaded:", {
+            registered: state.creds.registered,
+            platform: process.env.NODE_ENV,
+            sessionPath: "./auth_info_baileys"
+        });
 
         // Create socket connection with Heroku-optimized settings
         const sock = makeWASocket({
