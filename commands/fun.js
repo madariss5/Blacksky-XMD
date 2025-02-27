@@ -95,7 +95,6 @@ const sendGifReaction = async (sock, msg, mediaPath, caption = '', mentions = []
     }
 };
 
-// Update the menu command to remove triggered from the list
 const funCommands = {
     menu: async (sock, msg) => {
         const commandList = `🎮 *Fun Commands Menu* 🎮\n
@@ -743,7 +742,7 @@ const funCommands = {
     wasted: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
-            const mentions = args[0 ? [args[0] + '@s.whatsapp.net'] : [];
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `💀 *WASTED*\n${target} has been wasted!`,
@@ -758,6 +757,7 @@ const funCommands = {
             });
         }
     },
+
     jail: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
@@ -776,6 +776,7 @@ const funCommands = {
             });
         }
     },
+
     rip: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
