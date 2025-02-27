@@ -152,11 +152,11 @@ async function sendStatusMessage(sock, status, details = '') {
         logger.info(`Preparing to send status message: ${status}`);
 
         const statusMessage = `🤖 *${config.botName} Status Update*\n\n` +
-                         `📋 Status: ${status}\n` +
-                         `⏰ Time: ${timestamp}\n` +
-                         `🔧 Version: ${require('./package.json').version}\n` +
-                         (details ? `\n📝 Details:\n${details}\n` : '') +
-                         `\n💡 Type ${config.prefix}menu to see available commands.`;
+                             `📋 Status: ${status}\n` +
+                             `⏰ Time: ${timestamp}\n` +
+                             `🔧 Version: ${require('./package.json').version}\n` +
+                             (details ? `\n📝 Details:\n${details}\n` : '') +
+                             `\n💡 Type ${config.prefix}menu to see available commands.`;
 
         // Send only to owner
         await sock.sendMessage(config.ownerNumber, { text: statusMessage });
@@ -192,11 +192,9 @@ async function connectToWhatsApp() {
             connectTimeoutMs: 60_000,
             keepAliveIntervalMs: 30_000,
             retryRequestDelayMs: 5000,
-            // Add session cleanup handler
+            // Remove group message filtering to allow group messages
             shouldIgnoreJid: jid => {
-                const isGroup = jid.endsWith('@g.us');
-                const isNotify = jid.endsWith('@notify');
-                return isGroup || isNotify;
+                return jid.endsWith('@notify'); // Only ignore notify messages
             },
             getMessage: async (key) => {
                 try {
@@ -315,7 +313,21 @@ async function connectToWhatsApp() {
                 const args = textContent.slice(config.prefix.length).trim().split(/ +/).slice(1);
 
                 try {
-                    // Find the command in modules
+                    // Check if bot is in maintenance mode
+                    if (store.getMaintenanceMode() && msg.key.remoteJid !== config.ownerNumber) {
+                        await sock.sendMessage(msg.key.remoteJid, { 
+                            text: '🛠️ Bot is currently in maintenance mode. Please try again later.' 
+                        });
+                        return;
+                    }
+
+                    // Check if user or group is banned
+                    if (store.isUserBanned(msg.key.participant) || 
+                        (msg.key.remoteJid.endsWith('@g.us') && store.isGroupBanned(msg.key.remoteJid))) {
+                        return;
+                    }
+
+                    // Find and execute the command
                     for (const [moduleName, module] of Object.entries(commandModules)) {
                         if (cmd in module) {
                             await module[cmd](sock, msg, args);
