@@ -130,9 +130,9 @@ const commands = {
             };
 
             try {
-                // First send the menu banner image
+                // First send the menu banner image - updated URL to a verified working one
                 await sock.sendMessage(msg.key.remoteJid, {
-                    image: { url: 'https://i.imgur.com/RcGbWTH.jpeg' }, // Anime style menu banner
+                    image: { url: 'https://raw.githubusercontent.com/BlackAmda/QueenAmdi/master/assets/qabanner.jpg' },
                     caption: '✨ *Welcome to BlackSky Menu* ✨'
                 });
 
@@ -162,8 +162,10 @@ const commands = {
                 logger.info('Menu command executed successfully');
             } catch (error) {
                 logger.error('Error sending menu:', error);
+                // If image fails, send text-only menu as fallback
                 await sock.sendMessage(msg.key.remoteJid, { 
-                    text: 'Error displaying menu. Please try again later.' 
+                    text: menuText,
+                    mentions: [config.ownerNumber]
                 });
             }
         } catch (error) {
