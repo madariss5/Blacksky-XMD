@@ -1,11 +1,3 @@
-// Add environment check at the top of the file
-if (process.env.NODE_ENV !== 'production' && !process.env.REPLIT) {
-    logger.warn('Running in development mode. For production deployment, set NODE_ENV=production');
-}
-
-// Add Heroku-specific port binding
-const PORT = process.env.PORT || 5000;
-
 require('dotenv').config();
 const { default: makeWASocket, useMultiFileAuthState, makeInMemoryStore, DisconnectReason } = require("@whiskeysockets/baileys");
 const pino = require("pino");
@@ -14,7 +6,7 @@ const config = require("./config");
 const fs = require("fs-extra");
 const path = require("path");
 
-// Update logging format for better clarity
+// Initialize logger first
 const logger = pino({
     level: process.env.LOG_LEVEL || "info",
     transport: {
@@ -26,6 +18,14 @@ const logger = pino({
         }
     }
 });
+
+// Add environment check after logger initialization
+if (process.env.NODE_ENV !== 'production' && !process.env.REPLIT) {
+    logger.warn('Running in development mode. For production deployment, set NODE_ENV=production');
+}
+
+// Add Heroku-specific port binding
+const PORT = process.env.PORT || 5000;
 
 // Helper function to format phone number
 const formatPhoneNumber = (number) => {
