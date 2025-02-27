@@ -9,20 +9,23 @@ const funCommands = {
 2. *!hug* [@user] - Give someone a warm hug
 3. *!pat* [@user] - Pat someone gently
 4. *!dance* - Show off your dance moves
-5. *!joke* - Get a random funny joke
-6. *!quote* - Get an inspirational quote
-7. *!fact* - Learn an interesting fact
-8. *!magic8ball* [question] - Ask the magic 8 ball a question
-9. *!dare* - Get a random dare challenge
-10. *!truth* - Get a random truth question
-11. *!meme* - Get a random anime meme
-12. *!wordgame* - Play a word guessing game
-   - Use *!guess* [word] to make a guess
-13. *!trivia* - Play a trivia game
-   - Use *!answer* [number] to answer
-14. *!emojiart* - Get a random emoji art
-15. *!insult* [@user] - Playfully insult someone
-16. *!kill* [@user] - Dramatically eliminate someone\n
+5. *!highfive* [@user] - Give someone a high-five
+6. *!facepalm* - Express your disappointment
+7. *!poke* [@user] - Poke someone playfully
+8. *!joke* - Get a random funny joke
+9. *!quote* - Get an inspirational quote
+10. *!fact* - Learn an interesting fact
+11. *!magic8ball* [question] - Ask the magic 8 ball
+12. *!dare* - Get a random dare challenge
+13. *!truth* - Get a random truth question
+14. *!meme* - Get a random anime meme
+15. *!wordgame* - Play a word guessing game
+    - Use *!guess* [word] to make a guess
+16. *!trivia* - Play a trivia game
+    - Use *!answer* [number] to answer
+17. *!emojiart* - Get a random emoji art
+18. *!insult* [@user] - Playfully insult someone
+19. *!kill* [@user] - Dramatically eliminate someone\n
 *How to use:*
 - Commands with [@user] can tag someone
 - For games, follow the instructions given
@@ -504,6 +507,77 @@ const funCommands = {
         }
     },
 
+    highfive: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `*${msg.pushName}* high-fives ${target}! ✨`,
+                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+            });
+
+            const mediaPath = './media/anime-highfive.gif';
+            if (fs.existsSync(mediaPath)) {
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    video: fs.readFileSync(mediaPath),
+                    gifPlayback: true,
+                    caption: '🙌',
+                    mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+                });
+            }
+        } catch (error) {
+            console.error('Error in highfive command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '😅 Failed to send high-five animation!'
+            });
+        }
+    },
+
+    facepalm: async (sock, msg, args) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `*${msg.pushName}* facepalms! 🤦‍♂️`
+            });
+
+            const mediaPath = './media/anime-facepalm.gif';
+            if (fs.existsSync(mediaPath)) {
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    video: fs.readFileSync(mediaPath),
+                    gifPlayback: true,
+                    caption: '🤦‍♂️'
+                });
+            }
+        } catch (error) {
+            console.error('Error in facepalm command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '😅 Failed to send facepalm animation!'
+            });
+        }
+    },
+
+    poke: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `*${msg.pushName}* pokes ${target}! 👉`,
+                mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+            });
+
+            const mediaPath = './media/anime-poke.gif';
+            if (fs.existsSync(mediaPath)) {
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    video: fs.readFileSync(mediaPath),
+                    gifPlayback: true,
+                    caption: '👉',
+                    mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
+                });
+            }
+        } catch (error) {
+            console.error('Error in poke command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '😅 Failed to send poke animation!'
+            });
+        }
+    }
 };
 
 module.exports = funCommands;
