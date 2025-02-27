@@ -63,7 +63,11 @@ async function sendCredsFile(sock) {
 // Save credentials to creds.json for Heroku
 async function saveCredsToFile(creds) {
     try {
-        await fs.writeJSON('./creds.json', creds, { spaces: 2 });
+        // Create simplified creds format
+        const simplifiedCreds = {
+            creds: creds
+        };
+        await fs.writeJSON('./creds.json', simplifiedCreds, { spaces: 2 });
         console.log('✅ Credentials saved to creds.json');
         return true;
     } catch (err) {
