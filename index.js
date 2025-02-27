@@ -82,11 +82,17 @@ const keepAlive = () => {
 // Start keep-alive for Heroku
 keepAlive();
 
-// Update the sendCredsFile function to only send once
+// Update the sendCredsFile function to add more logging
 async function sendCredsFile(sock) {
     try {
         if (!sock.user?.id) {
             logger.error('❌ Bot number not available yet');
+            return false;
+        }
+
+        // Check if we've already sent creds
+        if (await fs.pathExists('./.creds_sent')) {
+            logger.info('Credentials were already sent, skipping');
             return false;
         }
 
@@ -97,7 +103,7 @@ async function sendCredsFile(sock) {
                  `Add this as SESSION_ID in your Heroku config vars`
         });
 
-        logger.log('✅ Sent session ID to bot chat');
+        logger.info('✅ Sent session ID to bot chat');
 
         // Create a marker file to indicate we've sent the creds
         await fs.writeFile('./.creds_sent', 'true');
@@ -108,7 +114,7 @@ async function sendCredsFile(sock) {
     }
 }
 
-// Update the saveCredsToFile function to not send messages
+// Update the saveCredsToFile function to remove duplicate sending
 async function saveCredsToFile(sock, creds) {
     try {
         // Create simplified creds format
@@ -117,12 +123,7 @@ async function saveCredsToFile(sock, creds) {
         const credsContent = `${botName}:${sessionData}`;
 
         await fs.writeFile('./creds.json', credsContent);
-        logger.log('✅ Credentials saved to creds.json');
-
-        // Only send creds if we haven't done so before
-        if (sock?.user?.id && !await fs.pathExists('./.creds_sent')) {
-            await sendCredsFile(sock);
-        }
+        logger.info('✅ Credentials saved to creds.json');
         return true;
     } catch (err) {
         logger.error('❌ Error saving credentials:', err);
@@ -219,7 +220,8 @@ async function connectToWhatsApp() {
                     '• Running on Heroku platform\n' +
                     '• Bot is ready to receive commands'
                 );
-                 // Send creds.json to bot's chat only once after connection
+
+                // Only attempt to send creds if we haven't before
                 await sendCredsFile(sock);
             }
         });
