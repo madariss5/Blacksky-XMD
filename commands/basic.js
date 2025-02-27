@@ -18,6 +18,24 @@ Welcome to the Ultimate Anime Bot! (◕‿◕)♡\n\n`;
 
             // Define command categories with emojis and all available commands
             const categories = {
+                '👤 User Commands': [
+                    { cmd: 'profile', desc: 'View your detailed profile' },
+                    { cmd: 'register', desc: 'Register your account' },
+                    { cmd: 'level', desc: 'Check your current level' },
+                    { cmd: 'rank', desc: 'View your ranking' },
+                    { cmd: 'daily', desc: 'Claim daily rewards' },
+                    { cmd: 'inventory', desc: 'Check your items' },
+                    { cmd: 'wallet', desc: 'View your currency balance' },
+                    { cmd: 'shop', desc: 'Browse available items' },
+                    { cmd: 'buy', desc: 'Purchase items from shop' },
+                    { cmd: 'sell', desc: 'Sell items from inventory' },
+                    { cmd: 'transfer', desc: 'Transfer currency to others' },
+                    { cmd: 'achievements', desc: 'View your achievements' },
+                    { cmd: 'stats', desc: 'Check your statistics' },
+                    { cmd: 'bio', desc: 'Set or view your biography' },
+                    { cmd: 'settings', desc: 'Manage your user settings' }
+                ],
+
                 '👥 Group Commands': [
                     { cmd: 'kick', desc: 'Kick a user from group (Admin only)' },
                     { cmd: 'promote', desc: 'Promote a user to admin (Admin only)' },
@@ -95,17 +113,16 @@ Welcome to the Ultimate Anime Bot! (◕‿◕)♡\n\n`;
                     { cmd: 'removemod', desc: 'Remove a moderator' }
                 ],
 
-                '🔞 NSFW Commands': [
-                    { cmd: 'setnsfw', desc: 'Enable/disable NSFW in group' },
-                    { cmd: 'nsfwcheck', desc: 'Check NSFW settings' }
-                ],
-
                 '⚙️ Basic Commands': [
                     { cmd: 'help', desc: 'Get command help' },
                     { cmd: 'ping', desc: 'Check bot response' },
                     { cmd: 'info', desc: 'Get bot information' },
                     { cmd: 'profile', desc: 'View your profile' },
                     { cmd: 'rank', desc: 'Check your rank' }
+                ],
+                '🔞 NSFW Commands': [
+                    { cmd: 'setnsfw', desc: 'Enable/disable NSFW in group' },
+                    { cmd: 'nsfwcheck', desc: 'Check NSFW settings' }
                 ]
             };
 
