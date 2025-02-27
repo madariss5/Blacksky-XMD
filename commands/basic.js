@@ -28,58 +28,198 @@ const basicCommands = {
             let pageContent = '';
             let pageTitle = '';
 
-            const getCommandName = (category, index) => {
-                const basicNames = ['menu', 'help', 'ping', 'info', 'rules', 'about', 'owner', 'donate', 'stats', 'uptime',
-                    'speed', 'rank', 'level', 'profile', 'settings', 'language', 'timezone', 'restart', 'update', 'status'];
-                const funNames = ['slap', 'hug', 'pat', 'dance', 'joke', 'meme', 'quote', '8ball', 'roll', 'flip',
-                    'rps', 'tictactoe', 'hangman', 'trivia', 'riddle', 'dare', 'truth', 'snake', 'puzzle', 'memory'];
-                const userNames = ['profile', 'level', 'daily', 'inventory', 'register', 'nickname', 'bio', 'avatar',
-                    'balance', 'transfer', 'shop', 'buy', 'sell', 'gift', 'marry', 'divorce', 'quest', 'achievement', 'pet', 'collection'];
-                const groupNames = ['kick', 'promote', 'demote', 'add', 'remove', 'link', 'revoke', 'announce', 'poll',
-                    'settings', 'welcome', 'leave', 'rules', 'antilink', 'antispam', 'warning', 'ban', 'unban', 'mute', 'unmute'];
-                const animeNames = ['anime', 'manga', 'character', 'waifu', 'neko', 'schedule', 'airing', 'upcoming',
-                    'genre', 'studio', 'recommend', 'quote', 'wallpaper', 'news', 'watch', 'seasonal', 'top', 'random', 'search', 'info'];
-                const musicNames = ['play', 'skip', 'stop', 'queue', 'pause', 'resume', 'volume', 'lyrics', 'playlist',
-                    'nowplaying', 'search', 'loop', 'shuffle', 'radio', 'spotify', 'youtube', 'download', 'favorite', 'history', 'trending'];
-                const gameNames = ['truth', 'dare', 'rps', 'quiz', 'blackjack', 'poker', 'slots', 'dice', 'fish', 'mine',
-                    'hunt', 'duel', 'battle', 'adventure', 'quest', 'lottery', 'coinflip', 'jackpot', 'bet', 'gamble'];
-
-                const baseNames = {
-                    'basic': basicNames,
-                    'fun': funNames,
-                    'user': userNames,
-                    'group': groupNames,
-                    'anime': animeNames,
-                    'music': musicNames,
-                    'game': gameNames
+            const getCommandDescription = (category, index) => {
+                const commandDescriptions = {
+                    basic: [
+                        ['menu', 'Show this command menu'],
+                        ['help', 'Get detailed help on commands'],
+                        ['ping', 'Check bot response time'],
+                        ['info', 'Show bot information'],
+                        ['rules', 'Display bot usage rules'],
+                        ['about', 'About this bot and its features'],
+                        ['owner', 'Contact bot owner'],
+                        ['donate', 'Support bot development'],
+                        ['stats', 'View bot statistics'],
+                        ['uptime', 'Check bot uptime'],
+                        ['speed', 'Test connection speed'],
+                        ['rank', 'Check your rank'],
+                        ['level', 'View your level'],
+                        ['profile', 'Display your profile'],
+                        ['settings', 'Configure bot settings'],
+                    ],
+                    fun: [
+                        ['slap', 'Slap someone with anime gif'],
+                        ['hug', 'Give someone a warm hug'],
+                        ['pat', 'Pat someone gently'],
+                        ['dance', 'Show dance animations'],
+                        ['joke', 'Get a random joke'],
+                        ['meme', 'Send random memes'],
+                        ['quote', 'Get inspirational quotes'],
+                        ['8ball', 'Ask magic 8 ball'],
+                        ['roll', 'Roll a dice'],
+                        ['flip', 'Flip a coin'],
+                        ['rps', 'Play rock paper scissors'],
+                        ['tictactoe', 'Play tic tac toe'],
+                        ['hangman', 'Play hangman game'],
+                        ['trivia', 'Start a trivia quiz'],
+                        ['riddle', 'Get a riddle to solve'],
+                    ],
+                    user: [
+                        ['profile', 'View detailed profile'],
+                        ['level', 'Check your level and XP'],
+                        ['daily', 'Claim daily rewards'],
+                        ['inventory', 'Check your items'],
+                        ['register', 'Create an account'],
+                        ['nickname', 'Change your nickname'],
+                        ['bio', 'Set your bio'],
+                        ['avatar', 'Change profile picture'],
+                        ['balance', 'Check your wallet'],
+                        ['transfer', 'Send money to users'],
+                        ['shop', 'Browse item shop'],
+                        ['buy', 'Purchase items'],
+                        ['sell', 'Sell your items'],
+                        ['gift', 'Send gifts to users'],
+                        ['marry', 'Propose to someone'],
+                    ],
+                    group: [
+                        ['kick', 'Kick a group member'],
+                        ['promote', 'Promote to admin'],
+                        ['demote', 'Demote from admin'],
+                        ['add', 'Add member to group'],
+                        ['remove', 'Remove from group'],
+                        ['link', 'Get group invite link'],
+                        ['revoke', 'Reset group link'],
+                        ['announce', 'Make announcement'],
+                        ['poll', 'Create group poll'],
+                        ['settings', 'Group settings'],
+                        ['welcome', 'Set welcome message'],
+                        ['leave', 'Set leave message'],
+                        ['rules', 'Set group rules'],
+                        ['antilink', 'Toggle anti-link'],
+                        ['antispam', 'Toggle anti-spam'],
+                    ],
+                    anime: [
+                        ['anime', 'Search for anime'],
+                        ['manga', 'Search for manga'],
+                        ['character', 'Search anime characters'],
+                        ['waifu', 'Random waifu image'],
+                        ['neko', 'Random neko image'],
+                        ['schedule', 'Anime air schedule'],
+                        ['airing', 'Currently airing anime'],
+                        ['upcoming', 'Upcoming anime'],
+                        ['genre', 'Browse by genre'],
+                        ['studio', 'Search by studio'],
+                        ['recommend', 'Get recommendations'],
+                        ['quote', 'Random anime quotes'],
+                        ['wallpaper', 'Anime wallpapers'],
+                        ['news', 'Latest anime news'],
+                        ['watch', 'Get watch order'],
+                    ],
+                    music: [
+                        ['play', 'Play a song'],
+                        ['skip', 'Skip current song'],
+                        ['stop', 'Stop playback'],
+                        ['queue', 'View music queue'],
+                        ['pause', 'Pause playback'],
+                        ['resume', 'Resume playback'],
+                        ['volume', 'Adjust volume'],
+                        ['lyrics', 'Get song lyrics'],
+                        ['playlist', 'Manage playlists'],
+                        ['nowplaying', 'Show current song'],
+                        ['search', 'Search for songs'],
+                        ['loop', 'Toggle repeat mode'],
+                        ['shuffle', 'Shuffle playlist'],
+                        ['radio', 'Play radio stations'],
+                        ['spotify', 'Play from Spotify'],
+                    ],
+                    game: [
+                        ['truth', 'Get truth question'],
+                        ['dare', 'Get dare challenge'],
+                        ['rps', 'Rock paper scissors'],
+                        ['quiz', 'Start a quiz game'],
+                        ['blackjack', 'Play blackjack'],
+                        ['poker', 'Play poker game'],
+                        ['slots', 'Play slot machine'],
+                        ['dice', 'Roll the dice'],
+                        ['fish', 'Go fishing'],
+                        ['mine', 'Go mining'],
+                        ['hunt', 'Go hunting'],
+                        ['duel', 'Duel other players'],
+                        ['battle', 'Pokemon battles'],
+                        ['adventure', 'Start adventure'],
+                        ['quest', 'Daily quests'],
+                    ]
                 };
 
-                if (index < baseNames[category].length) {
-                    return baseNames[category][index];
+                if (index < commandDescriptions[category].length) {
+                    return commandDescriptions[category][index];
                 }
 
-                // Generate descriptive names for remaining commands
+                // Generate themed descriptions for additional commands
                 const themes = {
-                    'basic': ['config', 'system', 'utility', 'tool', 'option'],
-                    'fun': ['game', 'play', 'enjoy', 'mini', 'action'],
-                    'user': ['account', 'profile', 'social', 'stats', 'perk'],
-                    'group': ['admin', 'manage', 'control', 'mod', 'chat'],
-                    'anime': ['weeb', 'otaku', 'japan', 'watch', 'series'],
-                    'music': ['song', 'audio', 'sound', 'track', 'tune'],
-                    'game': ['play', 'challenge', 'compete', 'battle', 'mission']
+                    basic: [
+                        ['config', 'Configure bot settings'],
+                        ['system', 'System commands'],
+                        ['utility', 'Utility functions'],
+                        ['tool', 'Helper tools'],
+                        ['option', 'Additional options']
+                    ],
+                    fun: [
+                        ['game', 'Mini games'],
+                        ['play', 'Fun activities'],
+                        ['enjoy', 'Entertainment'],
+                        ['mini', 'Quick games'],
+                        ['action', 'Interactive actions']
+                    ],
+                    user: [
+                        ['account', 'Account management'],
+                        ['profile', 'Profile features'],
+                        ['social', 'Social interactions'],
+                        ['stats', 'Statistics tracking'],
+                        ['perk', 'Special perks']
+                    ],
+                    group: [
+                        ['admin', 'Admin controls'],
+                        ['manage', 'Group management'],
+                        ['control', 'Moderation tools'],
+                        ['mod', 'Moderator actions'],
+                        ['chat', 'Chat features']
+                    ],
+                    anime: [
+                        ['weeb', 'Anime content'],
+                        ['otaku', 'Otaku stuff'],
+                        ['japan', 'Japanese media'],
+                        ['watch', 'Watching guides'],
+                        ['series', 'Anime series']
+                    ],
+                    music: [
+                        ['song', 'Song controls'],
+                        ['audio', 'Audio features'],
+                        ['sound', 'Sound effects'],
+                        ['track', 'Track management'],
+                        ['tune', 'Music tuning']
+                    ],
+                    game: [
+                        ['play', 'Game modes'],
+                        ['challenge', 'Challenges'],
+                        ['compete', 'Competitions'],
+                        ['battle', 'Battle modes'],
+                        ['mission', 'Missions']
+                    ]
                 };
 
-                const theme = themes[category][Math.floor((index - baseNames[category].length) % themes[category].length)];
-                const num = Math.floor((index - baseNames[category].length) / themes[category].length) + 1;
-                return `${theme}${num}`;
+                const themeIndex = Math.floor((index - commandDescriptions[category].length) % themes[category].length);
+                const numSuffix = Math.floor((index - commandDescriptions[category].length) / themes[category].length) + 1;
+                const [prefix, desc] = themes[category][themeIndex];
+                return [`${prefix}${numSuffix}`, `${desc} #${numSuffix}`];
             };
 
             const generateCommands = (start, category) => {
                 let content = '';
                 for (let i = 0; i < 100; i++) {
                     const cmdNum = start + i;
-                    const cmdName = getCommandName(category, i);
-                    content += `${cmdNum}. ${config.prefix}${cmdName}\n`;
+                    const [cmdName, cmdDesc] = getCommandDescription(category, i);
+                    content += `${cmdNum}. ${config.prefix}${cmdName} - ${cmdDesc}\n`;
                 }
                 return content;
             };
