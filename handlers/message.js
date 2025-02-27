@@ -23,8 +23,9 @@ async function messageHandler(sock, msg) {
                 msg.message.extendedTextMessage.text;
 
             // Get the sender ID correctly for both private and group messages
+            // For groups, always use key.participant
             const senderId = msg.key.remoteJid.endsWith('@g.us') ? 
-                msg.key.participant : 
+                (msg.key.participant || '').split(':')[0] : // Handle both normal and status broadcast
                 msg.key.remoteJid;
 
             // Check if message starts with prefix
@@ -33,8 +34,8 @@ async function messageHandler(sock, msg) {
             // Extract command and arguments
             const [command, ...args] = text.slice(config.prefix.length).trim().split(' ');
 
-            // Log incoming command
-            logger.info(`Received command: ${command} from ${senderId} in ${msg.key.remoteJid}`);
+            // Log incoming command with detailed info
+            logger.info(`Received command: ${command} from ${senderId} in ${msg.key.remoteJid} (${msg.key.remoteJid.endsWith('@g.us') ? 'group' : 'private'})`);
 
             // Combine all commands
             const allCommands = {
@@ -65,8 +66,16 @@ async function messageHandler(sock, msg) {
                         return;
                     }
 
+                    // Group command validation
+                    if (command in groupCommands && !msg.key.remoteJid.endsWith('@g.us')) {
+                        await sock.sendMessage(msg.key.remoteJid, { 
+                            text: 'This command can only be used in groups!' 
+                        });
+                        return;
+                    }
+
                     // Group admin commands check for group context only
-                    if (msg.key.remoteJid.endsWith('@g.us') && command in groupCommands) {
+                    if (msg.key.remoteJid.endsWith('@g.us')) {
                         const adminOnlyCommands = ['kick', 'promote', 'demote', 'mute', 'unmute', 'setwelcome', 'setbye', 'antilink', 'setrules'];
 
                         if (adminOnlyCommands.includes(command)) {
