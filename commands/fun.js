@@ -20,9 +20,10 @@ const funCommands = {
 
             // Send anime slap gif
             await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: 'https://i.imgur.com/fm49srQ.gif' },
+                video: { url: 'https://i.imgur.com/fm49srQ.gif' },
                 caption: '🎭 Slap!',
                 gifPlayback: true,
+                mimetype: 'video/gif',
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
@@ -44,9 +45,10 @@ const funCommands = {
             });
 
             await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: 'https://i.imgur.com/cvqoK8b.gif' },
+                video: { url: 'https://i.imgur.com/cvqoK8b.gif' },
                 caption: '🎭 Hug!',
                 gifPlayback: true,
+                mimetype: 'video/gif',
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
         } catch (error) {
@@ -67,9 +69,10 @@ const funCommands = {
             });
 
             await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: 'https://i.imgur.com/Y9qTqxZ.gif' },
+                video: { url: 'https://i.imgur.com/Y9qTqxZ.gif' },
                 caption: '🎭 Pat pat!',
                 gifPlayback: true,
+                mimetype: 'video/gif',
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
         } catch (error) {
@@ -87,9 +90,10 @@ const funCommands = {
             });
 
             await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: 'https://i.imgur.com/71cPxZn.gif' },
+                video: { url: 'https://i.imgur.com/71cPxZn.gif' },
                 caption: '🎭 Dance!',
-                gifPlayback: true
+                gifPlayback: true,
+                mimetype: 'video/gif'
             });
         } catch (error) {
             console.error('Error in dance command:', error);
@@ -208,9 +212,10 @@ const funCommands = {
     meme: async (sock, msg) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: 'https://c.tenor.com/ZATOxNglZlwAAAPo/anime-meme.gif' },
+                video: { url: 'https://c.tenor.com/ZATOxNglZlwAAAPo/anime-meme.gif' },
                 caption: '😂 Here\'s your meme!',
-                gifPlayback: true
+                gifPlayback: true,
+                mimetype: 'video/gif'
             });
         } catch (error) {
             await sock.sendMessage(msg.key.remoteJid, { 
