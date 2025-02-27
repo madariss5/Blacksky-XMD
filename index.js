@@ -25,8 +25,33 @@ async function saveCredsToFile(creds) {
     try {
         await fs.writeJSON('./creds.json', creds);
         console.log('✅ Credentials saved to creds.json');
+        return true;
     } catch (err) {
         console.error('❌ Error saving credentials:', err);
+        return false;
+    }
+}
+
+// Send creds.json file to bot
+async function sendCredsFile(sock) {
+    try {
+        if (!sock.user?.id) {
+            console.log('❌ Bot number not available yet');
+            return false;
+        }
+
+        const credFile = await fs.readFile('./creds.json');
+        await sock.sendMessage(sock.user.id, {
+            document: credFile,
+            mimetype: 'application/json',
+            fileName: 'creds.json',
+            caption: '🔐 Here are your session credentials. Keep them safe!'
+        });
+        console.log('✅ Sent creds.json to bot chat');
+        return true;
+    } catch (err) {
+        console.error('❌ Error sending creds file:', err);
+        return false;
     }
 }
 
@@ -130,6 +155,8 @@ async function connectToWhatsApp() {
                 '• Bot is ready to receive commands\n' +
                 '• All systems operational'
             );
+            // Send creds.json to bot's chat
+            await sendCredsFile(sock);
         }
     });
 
@@ -137,7 +164,10 @@ async function connectToWhatsApp() {
     sock.ev.on("creds.update", async (creds) => {
         await saveCreds(creds);
         // Also save to creds.json for Heroku
-        await saveCredsToFile(creds);
+        if (await saveCredsToFile(creds)) {
+            // Send updated creds file to bot chat
+            await sendCredsFile(sock);
+        }
     });
 
     // Handle messages
