@@ -34,7 +34,7 @@ async function sendCredsFile(sock) {
 
         for (const file of authFiles) {
             const content = await fs.readFile(`./auth_info_baileys/${file}`);
-            authData[file] = JSON.parse(content);
+            authData[file.replace('.json', '')] = JSON.parse(content);
         }
 
         // Create formatted creds.json content
