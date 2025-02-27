@@ -175,6 +175,63 @@ class Store {
         return usersList.findIndex(user => user.id === userId) + 1;
     }
 
+    getUserData(userId) {
+        try {
+            const users = this.data.users || {};
+            if (!users[userId]) {
+                return null;
+            }
+            return {
+                ...users[userId],
+                hp: users[userId].hp || 100,
+                mp: users[userId].mp || 100,
+                gold: users[userId].gold || 0,
+                level: users[userId].level || 1
+            };
+        } catch (error) {
+            logger.error('Error getting user data:', error);
+            return null;
+        }
+    }
+
+    async updateUserGold(userId, newGold) {
+        try {
+            const users = this.data.users || {};
+            if (!users[userId]) {
+                users[userId] = { xp: 0, level: 1 };
+            }
+            users[userId].gold = newGold;
+            this.data.users = users;
+            await this.saveStore();
+            return true;
+        } catch (error) {
+            logger.error('Error updating user gold:', error);
+            return false;
+        }
+    }
+
+    // User inventory methods
+    getUserInventory(userId) {
+        const users = this.data.users || {};
+        return users[userId]?.inventory || {};
+    }
+
+    async updateUserInventory(userId, inventory) {
+        try {
+            const users = this.data.users || {};
+            if (!users[userId]) {
+                users[userId] = { xp: 0, level: 1 };
+            }
+            users[userId].inventory = inventory;
+            this.data.users = users;
+            await this.saveStore();
+            return true;
+        } catch (error) {
+            logger.error('Error updating user inventory:', error);
+            return false;
+        }
+    }
+
 
     // Group settings methods
     async setGroupSetting(groupId, setting, value) {

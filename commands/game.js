@@ -5,6 +5,12 @@ const logger = require('pino')();
 const gameCommands = {
     rpg: async (sock, msg) => {
         try {
+            if (!msg.key.participant) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: 'Could not identify user. Please try again.'
+                });
+            }
+
             const userData = store.getUserData(msg.key.participant);
             if (!userData) {
                 return await sock.sendMessage(msg.key.remoteJid, {
@@ -14,12 +20,15 @@ const gameCommands = {
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `🎮 *RPG Status*\n\n` +
-                      `Level: ${userData.level || 1}\n` +
-                      `HP: ${userData.hp || 100}/100\n` +
-                      `MP: ${userData.mp || 100}/100\n` +
-                      `Gold: ${userData.gold || 0}\n\n` +
+                      `• Level: ${userData.level || 1}\n` +
+                      `• HP: ${userData.hp || 100}/100\n` +
+                      `• MP: ${userData.mp || 100}/100\n` +
+                      `• Gold: ${userData.gold || 0}\n` +
+                      `• XP: ${userData.xp || 0}\n\n` +
                       `Use ${config.prefix}quest to start an adventure!`
             });
+
+            logger.info('RPG status displayed for user:', msg.key.participant);
         } catch (error) {
             logger.error('Error in rpg command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -30,6 +39,12 @@ const gameCommands = {
 
     battle: async (sock, msg, args) => {
         try {
+            if (!msg.key.participant) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: 'Could not identify user. Please try again.'
+                });
+            }
+
             if (!args[0]) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: `Please mention a user to battle!\nUsage: ${config.prefix}battle @user`
@@ -55,38 +70,57 @@ const gameCommands = {
                 });
             }
 
-            // Simple battle logic
-            const challengerRoll = Math.floor(Math.random() * 100) + challengerData.level;
-            const opponentRoll = Math.floor(Math.random() * 100) + opponentData.level;
+            // Battle logic
+            const challengerRoll = Math.floor(Math.random() * 100) + (challengerData.level || 1);
+            const opponentRoll = Math.floor(Math.random() * 100) + (opponentData.level || 1);
 
             const winner = challengerRoll > opponentRoll ? challenger : opponent;
-            const winnerData = winner === challenger ? challengerData : opponentData;
+            const loser = winner === challenger ? opponent : challenger;
+            const reward = 100;
+
+            // Update winner's gold
+            const currentGold = (winner === challenger ? challengerData : opponentData).gold || 0;
+            await store.updateUserGold(winner, currentGold + reward);
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `⚔️ *Battle Results*\n\n` +
-                      `${challengerData.name} vs ${opponentData.name}\n\n` +
+                      `${challengerData.name || 'Challenger'} vs ${opponentData.name || 'Opponent'}\n\n` +
                       `🏆 Winner: @${winner.split('@')[0]}\n` +
-                      `💰 Reward: 100 gold\n`,
-                mentions: [challenger, opponent]
+                      `💰 Reward: ${reward} gold\n\n` +
+                      `Battle Stats:\n` +
+                      `🎲 ${challengerData.name}: ${challengerRoll}\n` +
+                      `🎲 ${opponentData.name}: ${opponentRoll}`,
+                mentions: [winner, loser]
             });
 
-            // Update winner's gold
-            store.updateUserGold(winner, (winnerData.gold || 0) + 100);
-
+            logger.info('Battle completed:', { winner, reward });
         } catch (error) {
             logger.error('Error in battle command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: 'Error initiating battle. Please try again.'
+                text: 'Error during battle. Please try again.'
             });
         }
     },
 
     quest: async (sock, msg) => {
         try {
+            if (!msg.key.participant) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: 'Could not identify user. Please try again.'
+                });
+            }
+
             const userData = store.getUserData(msg.key.participant);
             if (!userData) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: `You need to register first! Use ${config.prefix}register <name> <age> to create your profile.`
+                });
+            }
+
+            // Check if user already has an active quest
+            if (global.activeQuests?.has(msg.key.participant)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `You already have an active quest! Use ${config.prefix}complete to finish it first.`
                 });
             }
 
@@ -116,6 +150,7 @@ const gameCommands = {
                 timestamp: Date.now()
             });
 
+            logger.info('New quest started:', { user: msg.key.participant, quest: randomQuest, reward });
         } catch (error) {
             logger.error('Error in quest command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -126,6 +161,12 @@ const gameCommands = {
 
     complete: async (sock, msg) => {
         try {
+            if (!msg.key.participant) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: 'Could not identify user. Please try again.'
+                });
+            }
+
             if (!global.activeQuests?.has(msg.key.participant)) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: `You don't have an active quest! Use ${config.prefix}quest to start one.`
@@ -144,17 +185,25 @@ const gameCommands = {
 
             // Update user's gold
             const userData = store.getUserData(msg.key.participant);
-            store.updateUserGold(msg.key.participant, (userData.gold || 0) + quest.reward);
+            const currentGold = userData?.gold || 0;
+            const success = await store.updateUserGold(msg.key.participant, currentGold + quest.reward);
+
+            if (!success) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: 'Failed to update rewards. Please try again.'
+                });
+            }
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `🎉 *Quest Completed*\n\n` +
                       `Quest: ${quest.quest}\n` +
                       `Reward: ${quest.reward} gold\n\n` +
-                      `Current Gold: ${(userData.gold || 0) + quest.reward}`
+                      `Current Gold: ${currentGold + quest.reward}`
             });
 
             // Clear completed quest
             global.activeQuests.delete(msg.key.participant);
+            logger.info('Quest completed:', { user: msg.key.participant, quest: quest.quest, reward: quest.reward });
 
         } catch (error) {
             logger.error('Error in complete command:', error);
