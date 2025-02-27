@@ -44,7 +44,7 @@ const basicCommands = {
 
             // Add categories and their commands
             Object.entries(categories).forEach(([category, commands]) => {
-                menuContent += `${category}\n`;
+                menuContent += `${category}\n${'-'.repeat(40)}\n`;
                 commands.forEach((cmd, i) => {
                     menuContent += `${i + 1}. ${cmd}\n`;
                 });
@@ -57,22 +57,13 @@ const basicCommands = {
 ┃ Version: 1.0.0
 ╰━━━━━━━━━━━━⊷❍\n\n`;
 
-            // Split the menu into chunks for readability
-            // WhatsApp's readmore feature will be triggered automatically due to length
-            const chunks = menuContent.match(/.{1,4096}/g) || [];
+            menuContent += `Note: Use ${config.prefix}help <command> for detailed info`;
 
-            // Send first chunk with mentions
+            // Send as a single message
             await sock.sendMessage(msg.key.remoteJid, {
-                text: chunks[0],
+                text: menuContent,
                 mentions: [config.ownerNumber]
             });
-
-            // Send remaining chunks if any
-            for (let i = 1; i < chunks.length; i++) {
-                await sock.sendMessage(msg.key.remoteJid, {
-                    text: chunks[i]
-                });
-            }
 
         } catch (error) {
             logger.error('Error in menu command:', error);
