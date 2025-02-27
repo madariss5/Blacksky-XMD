@@ -193,44 +193,79 @@ async function connectToWhatsApp() {
 
         // Enhanced connection handling for Heroku
         sock.ev.on("connection.update", async (update) => {
-            const { connection, lastDisconnect, qr } = update;
+            try {
+                const { connection, lastDisconnect, qr } = update;
 
-            if(qr) {
-                logger.info('QR Code available for scanning');
-            }
-
-            if(connection === "close") {
-                const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
-                logger.info('Connection closed due to:', lastDisconnect?.error?.message);
-
-                if(shouldReconnect) {
-                    logger.info('Attempting to reconnect...');
-                    connectToWhatsApp();
-                } else {
-                    logger.error('Connection closed permanently, cleaning up...');
-                    await fs.remove("./auth_info_baileys");
-                    process.exit(1);
+                if(qr) {
+                    logger.info('QR Code available for scanning');
                 }
-            } else if(connection === "open") {
-                logger.info('Bot connected successfully!');
 
-                // Send detailed status message
-                await sendStatusMessage(sock, 'Connected', 
-                    '• WhatsApp connection established\n' +
-                    '• Running on Heroku platform\n' +
-                    '• Bot is ready to receive commands'
-                );
+                if(connection === "close") {
+                    let error = lastDisconnect?.error;
+                    let statusCode = error?.output?.statusCode;
+                    let shouldReconnect = true;
 
-                // Only attempt to send creds if we haven't before
-                await sendCredsFile(sock);
+                    // Handle specific disconnect reasons
+                    if (statusCode === DisconnectReason.loggedOut) {
+                        shouldReconnect = false;
+                        logger.error('Session logged out, cleaning up...');
+                        await fs.remove("./auth_info_baileys");
+                        process.exit(1);
+                    } else if (statusCode === DisconnectReason.badSession) {
+                        logger.error('Bad session, removing auth files...');
+                        await fs.remove("./auth_info_baileys");
+                        shouldReconnect = true;
+                    } else if (statusCode === DisconnectReason.connectionClosed) {
+                        logger.info('Connection closed, reconnecting...');
+                        shouldReconnect = true;
+                    } else if (statusCode === DisconnectReason.connectionLost) {
+                        logger.info('Connection lost, reconnecting...');
+                        shouldReconnect = true;
+                    } else if (statusCode === DisconnectReason.connectionReplaced) {
+                        logger.warn('Connection replaced, shutting down...');
+                        shouldReconnect = false;
+                    } else if (statusCode === DisconnectReason.timedOut) {
+                        logger.info('Connection timeout, reconnecting...');
+                        shouldReconnect = true;
+                    } else {
+                        logger.warn('Unknown disconnect reason:', error?.message);
+                        shouldReconnect = true;
+                    }
+
+                    if(shouldReconnect) {
+                        logger.info('Attempting to reconnect...');
+                        setTimeout(() => connectToWhatsApp(), 5000);
+                    } else {
+                        logger.error('Connection closed permanently');
+                        process.exit(1);
+                    }
+                } else if(connection === "open") {
+                    logger.info('Bot connected successfully!');
+
+                    // Send detailed status message
+                    await sendStatusMessage(sock, 'Connected', 
+                        '• WhatsApp connection established\n' +
+                        '• Running on Heroku platform\n' +
+                        '• Bot is ready to receive commands'
+                    );
+
+                    // Only attempt to send creds if we haven't before
+                    await sendCredsFile(sock);
+                }
+            } catch (err) {
+                logger.error('Error in connection update handler:', err);
+                // Don't exit here, let the connection handler decide
             }
         });
 
         // Save credentials whenever updated
         sock.ev.on("creds.update", async (creds) => {
-            await saveCreds(creds);
-            // Pass sock to saveCredsToFile
-            await saveCredsToFile(sock, creds);
+            try {
+                await saveCreds(creds);
+                await saveCredsToFile(sock, creds);
+            } catch (err) {
+                logger.error('Error saving credentials:', err);
+            }
         });
 
         // Handle messages
