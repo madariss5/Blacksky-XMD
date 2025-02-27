@@ -36,7 +36,7 @@ async function messageHandler(sock, msg) {
             // Get the sender ID correctly for both private and group messages
             // For groups, always use key.participant
             const senderId = msg.key.remoteJid.endsWith('@g.us') ? 
-                (msg.key.participant?.split(':')[0] || msg.key.participant || msg.key.remoteJid) : 
+                (msg.key.participant?.split('@')[0] + '@s.whatsapp.net') : 
                 msg.key.remoteJid;
 
             // Debug log command processing
