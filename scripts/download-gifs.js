@@ -24,9 +24,9 @@ const gifs = {
     'anime-wink.gif': 'https://waifu.pics/api/sfw/wink',
     // Special effect GIFs using alternative emotional reactions
     'wasted.gif': 'https://waifu.pics/api/sfw/cry',
-    'triggered.gif': 'https://waifu.pics/api/sfw/angry', // Using angry as alternative for triggered
     'jail.gif': 'https://waifu.pics/api/sfw/handhold',
     'rip.gif': 'https://waifu.pics/api/sfw/cry'
+    // Temporarily removed triggered.gif until we find a working alternative
 };
 
 const downloadGif = async (endpoint, filename) => {

@@ -30,11 +30,8 @@ const sendGifReaction = async (sock, msg, mediaPath, caption = '', mentions = []
     }
 };
 
-// Generate 100 fun commands
-const funCommands = {};
-
-// Core fun commands (first 20)
-const coreFunCommands = {
+// Update the menu command to remove triggered from the list
+const funCommands = {
     menu: async (sock, msg) => {
         const commandList = `🎮 *Fun Commands Menu* 🎮\n
 🎯 *Reaction Commands:*
@@ -73,9 +70,8 @@ const coreFunCommands = {
 27. *!emojiart* - Get a random emoji art
 28. *!insult* [@user] - Playfully insult someone
 29. *!wasted* [@user] - Waste someone
-30. *!triggered* [@user] - Trigger someone
-31. *!jail* [@user] - Jail someone
-32. *!rip* [@user] - RIP someone
+30. *!jail* [@user] - Jail someone
+31. *!rip* [@user] - RIP someone
 
 
 *How to use:*
@@ -728,8 +724,7 @@ const coreFunCommands = {
                 mentions: mentions
             });
 
-            await sendGifReaction(sock, msg, './media/jail.gif', '🏢', mentions);
-        } catch (error) {
+            await sendGifReaction(sock, msg, './media/jail.gif', '🏢', mentions);        } catch (error) {
             logger.error('Error in jail command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Failed to execute jail command!'
