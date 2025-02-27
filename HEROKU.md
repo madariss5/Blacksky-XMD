@@ -1,5 +1,10 @@
 # Heroku Deployment Guide
 
+## Recent Updates
+- Added proper port binding for web process
+- Fixed duplicate status messages
+- Improved credential handling
+
 ## Prerequisites
 1. A Heroku account
 2. Heroku CLI installed
@@ -32,71 +37,66 @@
    heroku login
    ```
 
-2. Create a new Heroku app (if not already created):
+2. Add Heroku remote (if not already added):
    ```bash
-   heroku create your-app-name
+   heroku git:remote -a your-app-name
    ```
 
-3. Set up environment variables:
+3. Set environment variables:
    ```bash
+   heroku config:set NODE_ENV="production"
    heroku config:set OWNER_NAME="Your Name"
    heroku config:set OWNER_NUMBER="1234567890"
-   heroku config:set NODE_ENV="production"
+   heroku config:set LOG_LEVEL="info"
    ```
 
-4. Configure dyno type (IMPORTANT):
-   ```bash
-   heroku ps:type worker=basic
-   ```
-
-5. Deploy to Heroku:
+4. Deploy the code:
    ```bash
    git push heroku main
    ```
 
-6. Enable worker dyno and disable web dyno:
+5. Scale dynos properly:
    ```bash
-   heroku ps:scale web=0 worker=1
+   heroku ps:scale web=1 worker=0
    ```
 
-7. Check logs to ensure proper startup:
+6. Verify deployment:
    ```bash
    heroku logs --tail
    ```
 
-## Important Notes
+## Verification Steps
 
-1. The bot MUST run on a worker dyno, not a web dyno
-2. The SESSION_ID will be sent to the bot's own chat after first connection
-3. Copy the SESSION_ID from the bot's chat and set it in Heroku:
-   ```bash
-   heroku config:set SESSION_ID="your_session_id"
-   ```
-4. After setting SESSION_ID, restart the dyno:
-   ```bash
-   heroku restart
-   ```
-5. Make sure you have the proper buildpacks installed:
-   ```bash
-   heroku buildpacks:set heroku/nodejs
-   ```
-6. Keep your session ID secure and never share it
-7. If using pairing code, make sure USE_PAIRING is set to "true"
+1. Check the logs for proper port binding:
+   - Look for: "Server is running on port [PORT]"
+
+2. Monitor status messages:
+   - Should see only one "Bot connected successfully" message
+   - Status updates should not be duplicated
+
+3. Verify credential handling:
+   - The session ID should only be sent once to the bot's own chat
+   - Check for "Credentials were already sent, skipping" message
 
 
 ## Troubleshooting
 
-If you encounter any issues:
-1. Check the Heroku logs: `heroku logs --tail`
-2. Verify all environment variables are set correctly
-3. Ensure your WhatsApp number format is correct
-4. Try restarting the dyno: `heroku restart`
-5. Make sure worker dyno is active (not web dyno)
-6. Check if session ID is valid and properly formatted
-7. If needed, reset the authentication:
+If you encounter issues:
+
+1. Check logs for errors:
+   ```bash
+   heroku logs --tail
+   ```
+
+2. Restart the application:
+   ```bash
+   heroku restart
+   ```
+
+3. Clear credentials and restart if needed:
    ```bash
    heroku run rm -rf auth_info_baileys/
    heroku restart
    ```
 
-For support, create an issue in the GitHub repository.
+For support, please create an issue in the GitHub repository.
