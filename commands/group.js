@@ -1,59 +1,70 @@
 const config = require('../config');
 const store = require('../database/store');
+const logger = require('pino')();
 
 const groupCommands = {
     kick: async (sock, msg, args) => {
-        // Check if it's a group
-        if (!msg.key.remoteJid.endsWith('@g.us')) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: 'This command can only be used in groups!' });
-        }
-
-        // Get group metadata
-        const groupMetadata = await sock.groupMetadata(msg.key.remoteJid);
-        const isAdmin = groupMetadata.participants.find(p => p.id === msg.key.participant)?.admin;
-
-        if (!isAdmin) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only admins can use this command!' });
-        }
-
-        const user = args[0]?.replace('@', '') + '@s.whatsapp.net';
-        if (!user) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please mention a user to kick!' });
-        }
-
         try {
+            // Check if it's a group
+            if (!msg.key.remoteJid.endsWith('@g.us')) {
+                return await sock.sendMessage(msg.key.remoteJid, { text: 'This command can only be used in groups!' });
+            }
+
+            // Get group metadata
+            const groupMetadata = await sock.groupMetadata(msg.key.remoteJid);
+            const sender = msg.key.participant || msg.participant;
+            const isAdmin = groupMetadata.participants.find(p => p.id === sender)?.admin;
+
+            logger.info('Group command executed:', {
+                command: 'kick',
+                group: msg.key.remoteJid,
+                sender: sender,
+                isAdmin: isAdmin
+            });
+
+            if (!isAdmin) {
+                return await sock.sendMessage(msg.key.remoteJid, { text: 'Only admins can use this command!' });
+            }
+
+            const user = args[0]?.replace('@', '') + '@s.whatsapp.net';
+            if (!user) {
+                return await sock.sendMessage(msg.key.remoteJid, { text: 'Please mention a user to kick!' });
+            }
+
             await sock.groupParticipantsUpdate(msg.key.remoteJid, [user], "remove");
             await sock.sendMessage(msg.key.remoteJid, { text: `Kicked @${user.split('@')[0]}`, mentions: [user] });
         } catch (error) {
-            await sock.sendMessage(msg.key.remoteJid, { text: 'Failed to kick user!' });
+            logger.error('Error in kick command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: 'Failed to kick user: ' + error.message });
         }
     },
 
     promote: async (sock, msg, args) => {
-        if (!msg.key.remoteJid.endsWith('@g.us')) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: 'This command can only be used in groups!' });
-        }
-
-        const groupMetadata = await sock.groupMetadata(msg.key.remoteJid);
-        const isAdmin = groupMetadata.participants.find(p => p.id === msg.key.participant)?.admin;
-
-        if (!isAdmin) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only admins can use this command!' });
-        }
-
-        const user = args[0]?.replace('@', '') + '@s.whatsapp.net';
-        if (!user) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please mention a user to promote!' });
-        }
-
         try {
+            if (!msg.key.remoteJid.endsWith('@g.us')) {
+                return await sock.sendMessage(msg.key.remoteJid, { text: 'This command can only be used in groups!' });
+            }
+
+            const groupMetadata = await sock.groupMetadata(msg.key.remoteJid);
+            const sender = msg.key.participant || msg.participant;
+            const isAdmin = groupMetadata.participants.find(p => p.id === sender)?.admin;
+
+            if (!isAdmin) {
+                return await sock.sendMessage(msg.key.remoteJid, { text: 'Only admins can use this command!' });
+            }
+
+            const user = args[0]?.replace('@', '') + '@s.whatsapp.net';
+            if (!user) {
+                return await sock.sendMessage(msg.key.remoteJid, { text: 'Please mention a user to promote!' });
+            }
+
             await sock.groupParticipantsUpdate(msg.key.remoteJid, [user], "promote");
             await sock.sendMessage(msg.key.remoteJid, { text: `Promoted @${user.split('@')[0]} to admin`, mentions: [user] });
         } catch (error) {
-            await sock.sendMessage(msg.key.remoteJid, { text: 'Failed to promote user!' });
+            logger.error('Error in promote command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: 'Failed to promote user: ' + error.message });
         }
     },
-
     demote: async (sock, msg, args) => {
         if (!msg.key.remoteJid.endsWith('@g.us')) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'This command can only be used in groups!' });
@@ -78,7 +89,6 @@ const groupCommands = {
             await sock.sendMessage(msg.key.remoteJid, { text: 'Failed to demote user!' });
         }
     },
-
     mute: async (sock, msg) => {
         if (!msg.key.remoteJid.endsWith('@g.us')) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'This command can only be used in groups!' });
@@ -94,7 +104,6 @@ const groupCommands = {
         await store.setGroupSetting(msg.key.remoteJid, 'muted', true);
         await sock.sendMessage(msg.key.remoteJid, { text: 'Group has been muted. Only admins can send messages.' });
     },
-
     unmute: async (sock, msg) => {
         if (!msg.key.remoteJid.endsWith('@g.us')) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'This command can only be used in groups!' });
@@ -110,7 +119,6 @@ const groupCommands = {
         await store.setGroupSetting(msg.key.remoteJid, 'muted', false);
         await sock.sendMessage(msg.key.remoteJid, { text: 'Group has been unmuted. Everyone can send messages now.' });
     },
-
     everyone: async (sock, msg) => {
         if (!msg.key.remoteJid.endsWith('@g.us')) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'This command can only be used in groups!' });
@@ -124,7 +132,6 @@ const groupCommands = {
             mentions: participants
         });
     },
-
     setwelcome: async (sock, msg, args) => {
         if (!msg.key.remoteJid.endsWith('@g.us')) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'This command can only be used in groups!' });
@@ -145,7 +152,6 @@ const groupCommands = {
         await store.setGroupSetting(msg.key.remoteJid, 'welcomeMessage', welcomeMsg);
         await sock.sendMessage(msg.key.remoteJid, { text: 'Welcome message has been set!' });
     },
-
     setbye: async (sock, msg, args) => {
         if (!msg.key.remoteJid.endsWith('@g.us')) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'This command can only be used in groups!' });
@@ -166,7 +172,6 @@ const groupCommands = {
         await store.setGroupSetting(msg.key.remoteJid, 'byeMessage', byeMsg);
         await sock.sendMessage(msg.key.remoteJid, { text: 'Goodbye message has been set!' });
     },
-
     del: async (sock, msg) => {
         if (!msg.key.remoteJid.endsWith('@g.us')) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'This command can only be used in groups!' });
@@ -186,7 +191,6 @@ const groupCommands = {
             await sock.sendMessage(msg.key.remoteJid, { text: 'Please reply to a message to delete it!' });
         }
     },
-
     antilink: async (sock, msg, args) => {
         if (!msg.key.remoteJid.endsWith('@g.us')) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'This command can only be used in groups!' });
@@ -205,7 +209,6 @@ const groupCommands = {
             text: `Antilink has been ${status ? 'enabled' : 'disabled'}`
         });
     },
-
     groupinfo: async (sock, msg) => {
         if (!msg.key.remoteJid.endsWith('@g.us')) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'This command can only be used in groups!' });
@@ -237,7 +240,6 @@ const groupCommands = {
             });
         }
     },
-
     poll: async (sock, msg, args) => {
         if (!msg.key.remoteJid.endsWith('@g.us')) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'This command can only be used in groups!' });
@@ -274,7 +276,6 @@ const groupCommands = {
         await store.setGroupRules(msg.key.remoteJid, rules);
         await sock.sendMessage(msg.key.remoteJid, { text: 'Group rules have been updated!' });
     },
-
     viewrules: async (sock, msg) => {
         if (!msg.key.remoteJid.endsWith('@g.us')) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'This command can only be used in groups!' });

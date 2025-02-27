@@ -291,62 +291,79 @@ async function connectToWhatsApp() {
         sock.ev.on("messages.upsert", async ({ messages, type }) => {
             if(type !== "notify") return;
 
-            const msg = messages[0];
-            if(!msg.message) return;
+            try {
+                const msg = messages[0];
+                if(!msg.message) return;
 
-            const messageType = Object.keys(msg.message)[0];
-            const messageContent = msg.message[messageType];
+                // Add debug logging
+                logger.debug('Received message:', {
+                    remoteJid: msg.key.remoteJid,
+                    participant: msg.key.participant,
+                    fromMe: msg.key.fromMe,
+                    isGroup: msg.key.remoteJid?.endsWith('@g.us')
+                });
 
-            // Extract the text content based on message type
-            let textContent = '';
-            if (messageType === 'conversation') {
-                textContent = messageContent;
-            } else if (messageType === 'extendedTextMessage') {
-                textContent = messageContent.text;
-            } else if (messageType === 'imageMessage' || messageType === 'videoMessage') {
-                textContent = messageContent.caption || '';
-            }
+                const messageType = Object.keys(msg.message)[0];
+                const messageContent = msg.message[messageType];
 
-            // Check if message starts with prefix
-            if(textContent.startsWith(config.prefix)) {
-                const cmd = textContent.slice(config.prefix.length).trim().split(/ +/).shift().toLowerCase();
-                const args = textContent.slice(config.prefix.length).trim().split(/ +/).slice(1);
+                // Extract the text content based on message type
+                let textContent = '';
+                if (messageType === 'conversation') {
+                    textContent = messageContent;
+                } else if (messageType === 'extendedTextMessage') {
+                    textContent = messageContent.text;
+                } else if (messageType === 'imageMessage' || messageType === 'videoMessage') {
+                    textContent = messageContent.caption || '';
+                }
 
-                try {
-                    // Check if bot is in maintenance mode
-                    if (store.getMaintenanceMode() && msg.key.remoteJid !== config.ownerNumber) {
-                        await sock.sendMessage(msg.key.remoteJid, { 
-                            text: '🛠️ Bot is currently in maintenance mode. Please try again later.' 
-                        });
-                        return;
-                    }
+                // Check if message starts with prefix
+                if(textContent.startsWith(config.prefix)) {
+                    const cmd = textContent.slice(config.prefix.length).trim().split(/ +/).shift().toLowerCase();
+                    const args = textContent.slice(config.prefix.length).trim().split(/ +/).slice(1);
 
-                    // Check if user or group is banned
-                    if (store.isUserBanned(msg.key.participant) || 
-                        (msg.key.remoteJid.endsWith('@g.us') && store.isGroupBanned(msg.key.remoteJid))) {
-                        return;
-                    }
-
-                    // Find and execute the command
-                    for (const [moduleName, module] of Object.entries(commandModules)) {
-                        if (cmd in module) {
-                            await module[cmd](sock, msg, args);
-                            logger.info(`Executed command ${cmd} from ${moduleName} module`);
+                    try {
+                        // Check if bot is in maintenance mode
+                        if (store.getMaintenanceMode() && msg.key.remoteJid !== config.ownerNumber) {
+                            await sock.sendMessage(msg.key.remoteJid, { 
+                                text: '🛠️ Bot is currently in maintenance mode. Please try again later.' 
+                            });
                             return;
                         }
+
+                        // For group messages, set the participant as the sender
+                        if (msg.key.remoteJid.endsWith('@g.us')) {
+                            msg.key.participant = msg.key.participant || msg.participant;
+                        }
+
+                        // Check if user or group is banned
+                        if ((msg.key.participant && store.isUserBanned(msg.key.participant)) || 
+                            (msg.key.remoteJid.endsWith('@g.us') && store.isGroupBanned(msg.key.remoteJid))) {
+                            return;
+                        }
+
+                        // Find and execute the command
+                        for (const [moduleName, module] of Object.entries(commandModules)) {
+                            if (cmd in module) {
+                                logger.info(`Executing command ${cmd} from ${moduleName} module`);
+                                await module[cmd](sock, msg, args);
+                                return;
+                            }
+                        }
+
+                        // Command not found
+                        await sock.sendMessage(msg.key.remoteJid, { 
+                            text: `Command *${cmd}* not found. Use ${config.prefix}menu to see available commands.`
+                        });
+
+                    } catch(err) {
+                        logger.error(`Error executing command ${cmd}:`, err);
+                        await sock.sendMessage(msg.key.remoteJid, { 
+                            text: "Error executing command. Please try again later."
+                        });
                     }
-
-                    // Command not found
-                    await sock.sendMessage(msg.key.remoteJid, { 
-                        text: `Command *${cmd}* not found. Use ${config.prefix}menu to see available commands.`
-                    });
-
-                } catch(err) {
-                    logger.error(`Error executing command ${cmd}:`, err);
-                    await sock.sendMessage(msg.key.remoteJid, { 
-                        text: "Error executing command. Please try again later."
-                    });
                 }
+            } catch (err) {
+                logger.error('Error processing message:', err);
             }
         });
 
