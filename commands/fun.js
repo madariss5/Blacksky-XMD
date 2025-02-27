@@ -16,7 +16,6 @@ const funCommands = {
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
-            // Send slap animation
             const mediaPath = './media/anime-slap.gif';
             if (fs.existsSync(mediaPath)) {
                 await sock.sendMessage(msg.key.remoteJid, { 
@@ -111,36 +110,52 @@ const funCommands = {
             "Why don't scientists trust atoms? Because they make up everything! 😄",
             "What did the grape say when it got stepped on? Nothing, it just let out a little wine! 🍷",
             "Why don't eggs tell jokes? They'd crack up! 🥚",
-            "What do you call a bear with no teeth? A gummy bear! 🐻"
+            "What do you call a bear with no teeth? A gummy bear! 🐻",
+            "Why did the scarecrow win an award? He was outstanding in his field! 🌾",
+            "What do you call a can opener that doesn't work? A can't opener! 🥫",
+            "Why did the cookie go to the doctor? Because it was feeling crumbly! 🍪",
+            "What do you call fake spaghetti? An impasta! 🍝"
         ];
         const joke = jokes[Math.floor(Math.random() * jokes.length)];
         await sock.sendMessage(msg.key.remoteJid, {
             text: `😂 *Here's a joke:*\n\n${joke}`
         });
     },
+
     quote: async (sock, msg) => {
         const quotes = [
-            "Life is what happens when you're busy making other plans.",
-            "The only way to do great work is to love what you do.",
-            "In three words I can sum up everything I've learned about life: it goes on.",
-            "Success is not final, failure is not fatal.",
-            "Be yourself; everyone else is already taken."
+            "Life is what happens when you're busy making other plans. - John Lennon",
+            "The only way to do great work is to love what you do. - Steve Jobs",
+            "In three words I can sum up everything I've learned about life: it goes on. - Robert Frost",
+            "Success is not final, failure is not fatal. - Winston Churchill",
+            "Be yourself; everyone else is already taken. - Oscar Wilde",
+            "The future belongs to those who believe in the beauty of their dreams. - Eleanor Roosevelt",
+            "Do what you can, with what you have, where you are. - Theodore Roosevelt",
+            "Everything you've ever wanted is on the other side of fear. - George Addair"
         ];
         const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
-        await sock.sendMessage(msg.key.remoteJid, { text: `📜 Random Quote:\n\n*${randomQuote}*` });
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: `📜 *Inspirational Quote:*\n\n${randomQuote}`
+        });
     },
+
     fact: async (sock, msg) => {
         const facts = [
             "Honey never spoils! 🍯",
             "Bananas are berries, but strawberries aren't! 🍌",
             "A day on Venus is longer than its year! 🌟",
-            "Octopuses have three hearts! 🐙"
+            "Octopuses have three hearts! 🐙",
+            "The Great Wall of China isn't visible from space! 🌍",
+            "Sloths can hold their breath for up to 40 minutes underwater! 🦥",
+            "Cows have best friends and get stressed when separated! 🐄",
+            "A cloud can weigh more than a million pounds! ☁️"
         ];
         const fact = facts[Math.floor(Math.random() * facts.length)];
         await sock.sendMessage(msg.key.remoteJid, {
             text: `🤓 *Random Fact:*\n\n${fact}`
         });
     },
+
     magic8ball: async (sock, msg, args) => {
         const responses = [
             "It is certain! ✨",
@@ -150,12 +165,14 @@ const funCommands = {
             "Cannot predict now... 🤔",
             "Don't count on it! 🚫",
             "My sources say no! ❌",
-            "Outlook not so good! 😕"
+            "Outlook not so good! 😕",
+            "Signs point to yes! ✅",
+            "Ask again later! 🕐"
         ];
 
         if (!args.length) {
             return await sock.sendMessage(msg.key.remoteJid, {
-                text: "Please ask a question! 🎱"
+                text: "🎱 Please ask a question! For example: !magic8ball will it rain today?"
             });
         }
 
@@ -164,6 +181,7 @@ const funCommands = {
             text: `🎱 *Magic 8 Ball*\n\nQ: ${args.join(' ')}\nA: ${response}`
         });
     },
+
     dare: async (sock, msg) => {
         const dares = [
             "Send your latest selfie! 📸",
@@ -173,14 +191,17 @@ const funCommands = {
             "Tell us your worst joke! 😆",
             "Share your phone's battery percentage! 🔋",
             "Tell us the last thing you googled! 🔍",
-            "Share your most used emoji! 😊"
+            "Share your most used emoji! 😊",
+            "Do 10 jumping jacks right now! 🏃‍♂️",
+            "Tell us your favorite childhood memory! 👶"
         ];
 
         const dare = dares[Math.floor(Math.random() * dares.length)];
         await sock.sendMessage(msg.key.remoteJid, {
-            text: `🎯 *Dare*\n\n${dare}`
+            text: `🎯 *Dare Challenge*\n\n${dare}\n\nAre you brave enough to do it? 😏`
         });
     },
+
     truth: async (sock, msg) => {
         const truths = [
             "What's your biggest fear? 😱",
@@ -190,28 +211,17 @@ const funCommands = {
             "Who's your crush? 💕",
             "What's the worst thing you've ever done? 😈",
             "What's your biggest regret? 😔",
-            "What's the childish thing you still do? 👶"
+            "What's the childish thing you still do? 👶",
+            "What's the weirdest dream you've had? 💭",
+            "What's your most unusual talent? 🎭"
         ];
 
         const truth = truths[Math.floor(Math.random() * truths.length)];
         await sock.sendMessage(msg.key.remoteJid, {
-            text: `🎯 *Truth*\n\n${truth}`
+            text: `🎯 *Truth Challenge*\n\n${truth}\n\nDare to answer honestly? 🤔`
         });
     },
-    insult: async (sock, msg, args) => {
-        const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
-        const insults = [
-            "You're as useful as a screen door on a submarine!",
-            "I'd agree with you but then we'd both be wrong.",
-            "You're not the sharpest knife in the drawer, are you?",
-            "I'd explain it to you but I ran out of crayons."
-        ];
-        const randomInsult = insults[Math.floor(Math.random() * insults.length)];
-        await sock.sendMessage(msg.key.remoteJid, {
-            text: `*${msg.pushName}* insults ${target}:\n\n"${randomInsult}" 😈`,
-            mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
-        });
-    },
+
     meme: async (sock, msg) => {
         try {
             const mediaPath = './media/anime-meme.gif';
@@ -228,13 +238,157 @@ const funCommands = {
             });
         }
     },
+
     wordgame: async (sock, msg) => {
-        const words = ['HAPPY', 'SMILE', 'LAUGH', 'DANCE', 'PARTY'];
-        const word = words[Math.floor(Math.random() * words.length)];
-        const hidden = word.replace(/[A-Z]/g, '_ ');
-        await sock.sendMessage(msg.key.remoteJid, {
-            text: `🎮 Word Game\n\nGuess this word: ${hidden}\nHint: It's related to fun!`
-        });
+        try {
+            const words = {
+                'HAPPY': 'Feeling or showing pleasure or contentment',
+                'SMILE': 'Form one\'s features into a pleased expression',
+                'LAUGH': 'Make the spontaneous sounds and movements of the face and body that are instinctive expressions of lively amusement',
+                'DANCE': 'Move rhythmically to music',
+                'PARTY': 'A social gathering of invited guests'
+            };
+
+            const wordList = Object.keys(words);
+            const selectedWord = wordList[Math.floor(Math.random() * wordList.length)];
+            const hint = words[selectedWord];
+            const hidden = selectedWord.replace(/[A-Z]/g, '_ ');
+
+            // Store the word in memory for later checking
+            if (!global.wordGameAnswers) global.wordGameAnswers = {};
+            global.wordGameAnswers[msg.key.remoteJid] = selectedWord;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🎮 *Word Game*\n\nGuess this word: ${hidden}\n\n💡 Hint: ${hint}\n\nReply with !guess [your answer] to play!`
+            });
+        } catch (error) {
+            console.error('Error in wordgame:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Oops! Something went wrong with the word game!'
+            });
+        }
+    },
+
+    guess: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide your guess! Example: !guess HAPPY'
+                });
+            }
+
+            const userGuess = args[0].toUpperCase();
+            const correctWord = global.wordGameAnswers?.[msg.key.remoteJid];
+
+            if (!correctWord) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ No active word game! Start one with !wordgame'
+                });
+            }
+
+            if (userGuess === correctWord) {
+                delete global.wordGameAnswers[msg.key.remoteJid];
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `🎉 Congratulations! You got it right!\nThe word was: ${correctWord}`
+                });
+            } else {
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Wrong guess! Try again!'
+                });
+            }
+        } catch (error) {
+            console.error('Error in guess command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Oops! Something went wrong while checking your guess!'
+            });
+        }
+    },
+
+    trivia: async (sock, msg) => {
+        try {
+            const questions = [
+                { 
+                    q: "What planet is known as the Red Planet?",
+                    a: "Mars",
+                    options: ["Venus", "Mars", "Jupiter", "Mercury"]
+                },
+                { 
+                    q: "What is the largest planet in our solar system?",
+                    a: "Jupiter",
+                    options: ["Saturn", "Neptune", "Jupiter", "Uranus"]
+                },
+                { 
+                    q: "What is the closest star to Earth?",
+                    a: "The Sun",
+                    options: ["Proxima Centauri", "The Sun", "Alpha Centauri", "Sirius"]
+                },
+                {
+                    q: "Which animal can sleep for 3 years?",
+                    a: "Snail",
+                    options: ["Bear", "Snail", "Sloth", "Koala"]
+                }
+            ];
+
+            const question = questions[Math.floor(Math.random() * questions.length)];
+
+            // Store the answer for checking
+            if (!global.triviaAnswers) global.triviaAnswers = {};
+            global.triviaAnswers[msg.key.remoteJid] = question.a;
+
+            // Randomize options order
+            const shuffledOptions = question.options.sort(() => Math.random() - 0.5);
+
+            const questionText = `🤔 *Trivia Time!*\n\nQuestion: ${question.q}\n\nOptions:\n${
+                shuffledOptions.map((opt, i) => `${i + 1}. ${opt}`).join('\n')
+            }\n\nReply with !answer [number] to submit your answer!`;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: questionText
+            });
+        } catch (error) {
+            console.error('Error in trivia command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Oops! Something went wrong with the trivia game!'
+            });
+        }
+    },
+
+    answer: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide your answer number! Example: !answer 2'
+                });
+            }
+
+            const correctAnswer = global.triviaAnswers?.[msg.key.remoteJid];
+            if (!correctAnswer) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ No active trivia question! Start one with !trivia'
+                });
+            }
+
+            const userAnswer = parseInt(args[0]);
+            if (isNaN(userAnswer) || userAnswer < 1 || userAnswer > 4) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a valid answer number (1-4)!'
+                });
+            }
+
+            delete global.triviaAnswers[msg.key.remoteJid];
+            const isCorrect = correctAnswer === userAnswer;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: isCorrect 
+                    ? `🎉 Correct! The answer was ${correctAnswer}`
+                    : `❌ Wrong! The correct answer was ${correctAnswer}`
+            });
+        } catch (error) {
+            console.error('Error in answer command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Oops! Something went wrong while checking your answer!'
+            });
+        }
     },
     emojiart: async (sock, msg) => {
         const arts = [
@@ -248,26 +402,20 @@ const funCommands = {
             text: `🎨 Here's your emoji art:\n\n${art}`
         });
     },
-    trivia: async (sock, msg) => {
-        const questions = [
-            { q: "What planet is known as the Red Planet?", a: "Mars" },
-            { q: "What is the largest planet in our solar system?", a: "Jupiter" },
-            { q: "What is the closest star to Earth?", a: "The Sun" }
+    insult: async (sock, msg, args) => {
+        const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+        const insults = [
+            "You're as useful as a screen door on a submarine!",
+            "I'd agree with you but then we'd both be wrong.",
+            "You're not the sharpest knife in the drawer, are you?",
+            "I'd explain it to you but I ran out of crayons."
         ];
-        const question = questions[Math.floor(Math.random() * questions.length)];
+        const randomInsult = insults[Math.floor(Math.random() * insults.length)];
         await sock.sendMessage(msg.key.remoteJid, {
-            text: `🤔 Trivia Time!\n\nQuestion: ${question.q}\n\nReply with your answer!`
+            text: `*${msg.pushName}* insults ${target}:\n\n"${randomInsult}" 😈`,
+            mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
         });
     },
-    ...Array.from({ length: 48 }, (_, i) => ({
-        [`funCmd${i + 1}`]: async (sock, msg, args) => {
-            const reactions = ['😂', '🎮', '🎯', '🎲', '🎪', '🎨', '🎭', '🎪'];
-            const randomReaction = reactions[Math.floor(Math.random() * reactions.length)];
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: `${randomReaction} Executing fun command ${i + 1} with args: ${args.join(' ')}`
-            });
-        }
-    })).reduce((acc, curr) => ({ ...acc, ...curr }), {})
 };
 
 module.exports = funCommands;
