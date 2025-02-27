@@ -21,17 +21,19 @@ async function messageHandler(sock, msg) {
             msg.message.conversation : 
             msg.message.extendedTextMessage.text;
 
+        // Get the sender ID correctly for both private and group messages
+        const senderId = msg.key.participant || msg.key.remoteJid;
+
         // Add XP for message activity (1-5 XP randomly)
-        if (msg.key.participant || msg.key.remoteJid) {
-            const userId = msg.key.participant || msg.key.remoteJid;
+        if (senderId) {
             const xpGain = Math.floor(Math.random() * 5) + 1;
-            const leveledUp = await store.addXP(userId, xpGain);
+            const leveledUp = await store.addXP(senderId, xpGain);
 
             if (leveledUp) {
-                const stats = store.getUserStats(userId);
+                const stats = store.getUserStats(senderId);
                 await sock.sendMessage(msg.key.remoteJid, {
-                    text: `🎉 Congratulations @${userId.split('@')[0]}!\nYou've reached level ${stats.level}!`,
-                    mentions: [userId]
+                    text: `🎉 Congratulations @${senderId.split('@')[0]}!\nYou've reached level ${stats.level}!`,
+                    mentions: [senderId]
                 });
             }
         }
@@ -56,7 +58,7 @@ async function messageHandler(sock, msg) {
             try {
                 // Check if user is banned
                 const banned = store.get('banned') || [];
-                if (banned.includes(msg.key.participant) && command !== 'help') {
+                if (banned.includes(senderId) && command !== 'help') {
                     await sock.sendMessage(msg.key.remoteJid, { 
                         text: 'You are banned from using the bot!' 
                     });
@@ -64,30 +66,33 @@ async function messageHandler(sock, msg) {
                 }
 
                 // Owner commands check
-                if (command in ownerCommands && msg.key.remoteJid !== config.ownerNumber) {
+                if (command in ownerCommands && senderId !== config.ownerNumber) {
                     await sock.sendMessage(msg.key.remoteJid, { 
                         text: 'This command is only available to the bot owner!' 
                     });
                     return;
                 }
 
-                // Group admin commands check
-                if (command in groupCommands && msg.key.remoteJid.endsWith('@g.us')) {
-                    const groupMetadata = await sock.groupMetadata(msg.key.remoteJid);
-                    const isAdmin = groupMetadata.participants.find(p => p.id === msg.key.participant)?.admin;
+                // Group admin commands check for group context only
+                if (msg.key.remoteJid.endsWith('@g.us')) {
                     const adminOnlyCommands = ['kick', 'promote', 'demote', 'mute', 'unmute', 'setwelcome', 'setbye', 'antilink', 'setrules'];
 
-                    if (adminOnlyCommands.includes(command) && !isAdmin) {
-                        await sock.sendMessage(msg.key.remoteJid, { 
-                            text: 'This command is only available to group admins!' 
-                        });
-                        return;
+                    if (adminOnlyCommands.includes(command)) {
+                        const groupMetadata = await sock.groupMetadata(msg.key.remoteJid);
+                        const isAdmin = groupMetadata.participants.find(p => p.id === senderId)?.admin;
+
+                        if (!isAdmin) {
+                            await sock.sendMessage(msg.key.remoteJid, { 
+                                text: 'This command is only available to group admins!' 
+                            });
+                            return;
+                        }
                     }
                 }
 
                 // Execute the command
                 await allCommands[command](sock, msg, args);
-                logger.info(`Command ${command} executed by ${msg.key.remoteJid}`);
+                logger.info(`Command ${command} executed by ${senderId} in ${msg.key.remoteJid}`);
             } catch (error) {
                 logger.error(`Error executing command ${command}:`, error);
                 await sock.sendMessage(msg.key.remoteJid, { 
