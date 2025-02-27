@@ -22,15 +22,16 @@ async function messageHandler(sock, msg) {
             msg.message.extendedTextMessage.text;
 
         // Add XP for message activity (1-5 XP randomly)
-        if (msg.key.participant) {
+        if (msg.key.participant || msg.key.remoteJid) {
+            const userId = msg.key.participant || msg.key.remoteJid;
             const xpGain = Math.floor(Math.random() * 5) + 1;
-            const leveledUp = await store.addXP(msg.key.participant, xpGain);
+            const leveledUp = await store.addXP(userId, xpGain);
 
             if (leveledUp) {
-                const stats = store.getUserStats(msg.key.participant);
+                const stats = store.getUserStats(userId);
                 await sock.sendMessage(msg.key.remoteJid, {
-                    text: `🎉 Congratulations @${msg.key.participant.split('@')[0]}!\nYou've reached level ${stats.level}!`,
-                    mentions: [msg.key.participant]
+                    text: `🎉 Congratulations @${userId.split('@')[0]}!\nYou've reached level ${stats.level}!`,
+                    mentions: [userId]
                 });
             }
         }
@@ -52,27 +53,39 @@ async function messageHandler(sock, msg) {
 
         // Check if command exists and execute it
         if (command in allCommands) {
-            // Check if user is banned
-            const banned = store.get('banned') || [];
-            if (banned.includes(msg.key.participant) && command !== 'help') {
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    text: 'You are banned from using the bot!' 
-                });
-                return;
-            }
-
-            // Check if group is banned
-            if (msg.key.remoteJid.endsWith('@g.us')) {
-                const bannedGroups = store.get('bannedGroups') || [];
-                if (bannedGroups.includes(msg.key.remoteJid)) {
+            try {
+                // Check if user is banned
+                const banned = store.get('banned') || [];
+                if (banned.includes(msg.key.participant) && command !== 'help') {
                     await sock.sendMessage(msg.key.remoteJid, { 
-                        text: 'This group is banned from using the bot!' 
+                        text: 'You are banned from using the bot!' 
                     });
                     return;
                 }
-            }
 
-            try {
+                // Owner commands check
+                if (command in ownerCommands && msg.key.remoteJid !== config.ownerNumber) {
+                    await sock.sendMessage(msg.key.remoteJid, { 
+                        text: 'This command is only available to the bot owner!' 
+                    });
+                    return;
+                }
+
+                // Group admin commands check
+                if (command in groupCommands && msg.key.remoteJid.endsWith('@g.us')) {
+                    const groupMetadata = await sock.groupMetadata(msg.key.remoteJid);
+                    const isAdmin = groupMetadata.participants.find(p => p.id === msg.key.participant)?.admin;
+                    const adminOnlyCommands = ['kick', 'promote', 'demote', 'mute', 'unmute', 'setwelcome', 'setbye', 'antilink', 'setrules'];
+
+                    if (adminOnlyCommands.includes(command) && !isAdmin) {
+                        await sock.sendMessage(msg.key.remoteJid, { 
+                            text: 'This command is only available to group admins!' 
+                        });
+                        return;
+                    }
+                }
+
+                // Execute the command
                 await allCommands[command](sock, msg, args);
                 logger.info(`Command ${command} executed by ${msg.key.remoteJid}`);
             } catch (error) {
@@ -82,7 +95,6 @@ async function messageHandler(sock, msg) {
                 });
             }
         }
-        // No response for invalid commands
     }
 }
 
