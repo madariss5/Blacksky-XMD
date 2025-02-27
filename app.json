@@ -1,10 +1,8 @@
 {
-  "name": "BlackSky-XMD",
+  "name": "BlackSky-MD",
   "description": "WhatsApp Multi-Device Bot using Node.js and Baileys library",
   "repository": "https://github.com/madariss5/Blacksky-XMD",
   "logo": "https://node-js-sample.herokuapp.com/node.png",
-  "keywords": ["node", "whatsapp", "bot", "baileys", "multi-device"],
-  "success_url": "/",
   "env": {
     "SESSION_ID": {
       "description": "Session ID for WhatsApp authentication",
@@ -18,24 +16,20 @@
       "description": "WhatsApp number (country code + number, e.g., 1234567890)",
       "required": true
     },
-    "BOT_NAME": {
-      "description": "Name of your WhatsApp bot",
-      "required": false,
-      "value": "BlackSky-MD"
-    },
-    "PREFIX": {
-      "description": "Command prefix for the bot",
-      "required": false,
-      "value": "!"
-    },
-    "LOG_LEVEL": {
-      "description": "Logging level (info/debug/error)",
-      "required": false,
-      "value": "info"
-    },
     "NODE_ENV": {
       "description": "Environment mode",
       "value": "production"
+    },
+    "LOG_LEVEL": {
+      "description": "Logging level (info/debug/error)",
+      "value": "info",
+      "required": false
+    }
+  },
+  "formation": {
+    "worker": {
+      "quantity": 1,
+      "size": "basic"
     }
   },
   "buildpacks": [
@@ -43,12 +37,6 @@
       "url": "heroku/nodejs"
     }
   ],
-  "formation": {
-    "worker": {
-      "quantity": 1,
-      "size": "basic"
-    }
-  },
   "stack": "heroku-22",
   "addons": []
 }

@@ -19,35 +19,29 @@
 - `OWNER_NUMBER`: Your WhatsApp number (format: country code + number, e.g., 1234567890)
 
 ### Optional Variables
+- `LOG_LEVEL`: Logging level (default: info)
+- `NODE_ENV`: Should be set to "production"
 - `BOT_NAME`: Name for your bot (default: BlackSky-MD)
 - `PREFIX`: Command prefix (default: !)
 - `USE_PAIRING`: Enable pairing code authentication (default: true)
 
-## Getting Your Session ID
-
-1. Run the bot locally first:
-```bash
-npm install
-npm start
-```
-
-2. Scan the QR code with WhatsApp (Linked Devices > Link a Device)
-3. After successful connection, the bot will send you the session ID in your WhatsApp
-4. Copy this session ID and add it to your Heroku Config Vars
-
 ## Deployment Steps
 
-1. Fork the repository
-2. Create a new Heroku app:
+1. Login to Heroku CLI:
+   ```bash
+   heroku login
+   ```
+
+2. Create a new Heroku app (if not already created):
    ```bash
    heroku create your-app-name
    ```
 
-3. Set up the environment variables:
+3. Set up environment variables:
    ```bash
    heroku config:set OWNER_NAME="Your Name"
    heroku config:set OWNER_NUMBER="1234567890"
-   heroku config:set SESSION_ID="your_session_id"
+   heroku config:set NODE_ENV="production"
    ```
 
 4. Configure dyno type (IMPORTANT):
@@ -55,48 +49,54 @@ npm start
    heroku ps:type worker=basic
    ```
 
-5. Enable worker dyno:
-   ```bash
-   heroku ps:scale web=0 worker=1
-   ```
-
-6. Deploy to Heroku:
+5. Deploy to Heroku:
    ```bash
    git push heroku main
    ```
 
-## Important Notes
+6. Enable worker dyno and disable web dyno:
+   ```bash
+   heroku ps:scale web=0 worker=1
+   ```
 
-- The bot MUST run on a worker dyno, not a web dyno
-- Use ONLY "basic" dyno type to avoid mixing dyno types
-- Make sure you have the proper buildpacks installed:
-  ```bash
-  heroku buildpacks:set heroku/nodejs
-  ```
-- Keep your session ID secure and never share it
-- If using pairing code, make sure USE_PAIRING is set to "true"
-
-## Verifying Deployment
-
-1. Check your deployment logs:
+7. Check logs to ensure proper startup:
    ```bash
    heroku logs --tail
    ```
 
-2. Make sure the worker dyno is running:
+## Important Notes
+
+1. The bot MUST run on a worker dyno, not a web dyno
+2. The SESSION_ID will be sent to the bot's own chat after first connection
+3. Copy the SESSION_ID from the bot's chat and set it in Heroku:
    ```bash
-   heroku ps
+   heroku config:set SESSION_ID="your_session_id"
    ```
+4. After setting SESSION_ID, restart the dyno:
+   ```bash
+   heroku restart
+   ```
+5. Make sure you have the proper buildpacks installed:
+   ```bash
+   heroku buildpacks:set heroku/nodejs
+   ```
+6. Keep your session ID secure and never share it
+7. If using pairing code, make sure USE_PAIRING is set to "true"
+
 
 ## Troubleshooting
 
 If you encounter any issues:
-1. Check the Heroku logs for errors: `heroku logs --tail`
+1. Check the Heroku logs: `heroku logs --tail`
 2. Verify all environment variables are set correctly
 3. Ensure your WhatsApp number format is correct
 4. Try restarting the dyno: `heroku restart`
 5. Make sure worker dyno is active (not web dyno)
 6. Check if session ID is valid and properly formatted
-7. Ensure you're using the correct dyno type (basic)
+7. If needed, reset the authentication:
+   ```bash
+   heroku run rm -rf auth_info_baileys/
+   heroku restart
+   ```
 
 For support, create an issue in the GitHub repository.

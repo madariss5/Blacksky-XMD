@@ -1,3 +1,11 @@
+// Add environment check at the top of the file
+if (process.env.NODE_ENV !== 'production' && !process.env.REPLIT) {
+    logger.warn('Running in development mode. For production deployment, set NODE_ENV=production');
+}
+
+// Add Heroku-specific port binding
+const PORT = process.env.PORT || 5000;
+
 require('dotenv').config();
 const { default: makeWASocket, useMultiFileAuthState, makeInMemoryStore, DisconnectReason } = require("@whiskeysockets/baileys");
 const pino = require("pino");
