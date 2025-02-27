@@ -1,4 +1,6 @@
 const config = require('../config');
+const fs = require('fs-extra');
+const path = require('path');
 
 const funCommands = {
     coinflip: async (sock, msg) => {
@@ -16,13 +18,19 @@ const funCommands = {
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
-            // Send sticker using native method with a reliable CDN URL
+            // Create a simple test sticker (1x1 transparent WebP)
+            const stickerData = Buffer.from(
+                'UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==',
+                'base64'
+            );
+
             await sock.sendMessage(msg.key.remoteJid, {
-                sticker: { url: 'https://cdn.jsdelivr.net/gh/WhatsApp-Botto-Re/Sticker-Pack@main/slap/slap.webp' },
+                sticker: stickerData,
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
+
         } catch (error) {
-            console.error('Error sending slap:', error);
+            console.error('Error sending slap sticker:', error);
             // Text message already sent, no need for fallback
         }
     },
@@ -36,12 +44,17 @@ const funCommands = {
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
+            const stickerData = Buffer.from(
+                'UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==',
+                'base64'
+            );
+
             await sock.sendMessage(msg.key.remoteJid, {
-                sticker: { url: 'https://cdn.jsdelivr.net/gh/WhatsApp-Botto-Re/Sticker-Pack@main/hug/hug.webp' },
+                sticker: stickerData,
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
         } catch (error) {
-            console.error('Error sending hug:', error);
+            console.error('Error sending hug sticker:', error);
             // Text message already sent
         }
     },
@@ -55,8 +68,13 @@ const funCommands = {
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
+            const stickerData = Buffer.from(
+                'UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==',
+                'base64'
+            );
+
             await sock.sendMessage(msg.key.remoteJid, {
-                sticker: { url: 'https://cdn.jsdelivr.net/gh/WhatsApp-Botto-Re/Sticker-Pack@main/pat/pat.webp' },
+                sticker: stickerData,
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
         } catch (error) {
@@ -71,11 +89,16 @@ const funCommands = {
                 text: `*${msg.pushName}* is dancing! 💃`
             });
 
+            const stickerData = Buffer.from(
+                'UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==',
+                'base64'
+            );
+
             await sock.sendMessage(msg.key.remoteJid, {
-                sticker: { url: 'https://cdn.jsdelivr.net/gh/WhatsApp-Botto-Re/Sticker-Pack@main/dance/dance.webp' }
+                sticker: stickerData
             });
         } catch (error) {
-            console.error('Error sending dance:', error);
+            console.error('Error sending dance sticker:', error);
             // Text message already sent
         }
     },
@@ -86,8 +109,13 @@ const funCommands = {
                 text: `*${msg.pushName}* is crying! 😢`
             });
 
+            const stickerData = Buffer.from(
+                'UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==',
+                'base64'
+            );
+
             await sock.sendMessage(msg.key.remoteJid, {
-                sticker: { url: 'https://cdn.jsdelivr.net/gh/WhatsApp-Botto-Re/Sticker-Pack@main/cry/cry.webp' }
+                sticker: stickerData
             });
         } catch (error) {
             console.error('Error sending cry:', error);
@@ -104,8 +132,13 @@ const funCommands = {
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
+            const stickerData = Buffer.from(
+                'UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==',
+                'base64'
+            );
+
             await sock.sendMessage(msg.key.remoteJid, {
-                sticker: { url: 'https://cdn.jsdelivr.net/gh/WhatsApp-Botto-Re/Sticker-Pack@main/bonk/bonk.webp' },
+                sticker: stickerData,
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
         } catch (error) {
