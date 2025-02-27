@@ -28,273 +28,103 @@ const basicCommands = {
             let pageContent = '';
             let pageTitle = '';
 
-            const getCommandDescription = (category, index) => {
-                // Define core commands for each category
-                const commands = {
-                    basic: [
-                        ['menu', 'Show all available commands'],
-                        ['help', 'Get detailed help for any command'],
-                        ['ping', 'Check bot response time'],
-                        ['info', 'View bot information'],
-                        ['rules', 'Show bot usage rules'],
-                        ['about', 'About this bot and features'],
-                        ['owner', 'Contact bot owner'],
-                        ['donate', 'Support bot development'],
-                        ['stats', 'View bot statistics'],
-                        ['uptime', 'Check how long bot is running'],
-                        ['speed', 'Test connection speed'],
-                        ['restart', 'Restart the bot'],
-                        ['update', 'Check for updates'],
-                        ['settings', 'Configure bot settings'],
-                        ['language', 'Change bot language'],
-                        // Additional basic commands with meaningful names
-                        ['customprefix', 'Change command prefix'],
-                        ['timezone', 'Set your timezone'],
-                        ['notifications', 'Manage notifications'],
-                        ['backup', 'Backup your data'],
-                        ['restore', 'Restore from backup']
-                    ],
-                    fun: [
-                        ['slap', 'Slap someone with anime gif'],
-                        ['hug', 'Give someone a warm hug'],
-                        ['pat', 'Pat someone gently'],
-                        ['dance', 'Show dance animations'],
-                        ['joke', 'Get a random joke'],
-                        ['meme', 'Send random memes'],
-                        ['quote', 'Get inspirational quotes'],
-                        ['8ball', 'Ask magic 8 ball'],
-                        ['roll', 'Roll a dice'],
-                        ['flip', 'Flip a coin'],
-                        ['rps', 'Play rock paper scissors'],
-                        ['tictactoe', 'Play tic tac toe'],
-                        ['hangman', 'Play hangman game'],
-                        ['trivia', 'Start a trivia quiz'],
-                        ['riddle', 'Get a riddle to solve'],
-                        // Additional fun commands
-                        ['wordchain', 'Play word chain game'],
-                        ['scramble', 'Word scramble game'],
-                        ['typing', 'Typing speed test'],
-                        ['math', 'Math quiz game'],
-                        ['memory', 'Memory card game']
-                    ],
-                    user: [
-                        ['profile', 'View your detailed profile'],
-                        ['level', 'Check your current level'],
-                        ['daily', 'Claim daily rewards'],
-                        ['inventory', 'Check your items'],
-                        ['register', 'Create a new account'],
-                        ['nickname', 'Change your nickname'],
-                        ['bio', 'Set your profile bio'],
-                        ['avatar', 'Change profile picture'],
-                        ['balance', 'Check your wallet'],
-                        ['transfer', 'Send money to users'],
-                        ['shop', 'Browse item shop'],
-                        ['buy', 'Purchase items'],
-                        ['sell', 'Sell your items'],
-                        ['gift', 'Send gifts to users'],
-                        ['marry', 'Propose to someone'],
-                        // Additional user commands
-                        ['signature', 'Set custom signature'],
-                        ['background', 'Custom profile background'],
-                        ['title', 'Set custom title'],
-                        ['badge', 'View your badges'],
-                        ['achievements', 'Check achievements']
-                    ],
-                    group: [
-                        ['kick', 'Remove member from group'],
-                        ['promote', 'Make someone admin'],
-                        ['demote', 'Remove admin status'],
-                        ['add', 'Add new member'],
-                        ['remove', 'Remove member'],
-                        ['link', 'Get group invite link'],
-                        ['revoke', 'Reset group link'],
-                        ['announce', 'Send announcement'],
-                        ['poll', 'Create voting poll'],
-                        ['settings', 'Group settings'],
-                        ['welcome', 'Set welcome message'],
-                        ['leave', 'Set goodbye message'],
-                        ['rules', 'Set group rules'],
-                        ['antilink', 'Anti-link protection'],
-                        ['antispam', 'Anti-spam protection'],
-                        // Additional group commands
-                        ['tagall', 'Mention all members'],
-                        ['chatlock', 'Lock group chat'],
-                        ['filter', 'Add word filter'],
-                        ['logs', 'View group logs'],
-                        ['schedule', 'Schedule messages']
-                    ],
-                    anime: [
-                        ['anime', 'Search for anime'],
-                        ['manga', 'Search for manga'],
-                        ['character', 'Search characters'],
-                        ['waifu', 'Random waifu image'],
-                        ['neko', 'Random neko image'],
-                        ['schedule', 'Anime airing schedule'],
-                        ['airing', 'Currently airing anime'],
-                        ['upcoming', 'Upcoming anime'],
-                        ['genre', 'Browse by genre'],
-                        ['studio', 'Search by studio'],
-                        ['recommend', 'Get recommendations'],
-                        ['quote', 'Random anime quotes'],
-                        ['wallpaper', 'Anime wallpapers'],
-                        ['news', 'Latest anime news'],
-                        ['watch', 'Get watch order'],
-                        // Additional anime commands
-                        ['seasonal', 'Seasonal anime list'],
-                        ['review', 'Anime reviews'],
-                        ['trailer', 'Watch anime trailers'],
-                        ['openings', 'Anime openings'],
-                        ['endings', 'Anime endings']
-                    ],
-                    music: [
-                        ['play', 'Play a song'],
-                        ['skip', 'Skip current song'],
-                        ['stop', 'Stop playback'],
-                        ['queue', 'View music queue'],
-                        ['pause', 'Pause playback'],
-                        ['resume', 'Resume playback'],
-                        ['volume', 'Adjust volume'],
-                        ['lyrics', 'Get song lyrics'],
-                        ['playlist', 'Manage playlists'],
-                        ['nowplaying', 'Show current song'],
-                        ['search', 'Search for songs'],
-                        ['loop', 'Toggle repeat mode'],
-                        ['shuffle', 'Shuffle playlist'],
-                        ['radio', 'Play radio stations'],
-                        ['spotify', 'Play from Spotify'],
-                        // Additional music commands
-                        ['youtube', 'Play from YouTube'],
-                        ['soundcloud', 'SoundCloud tracks'],
-                        ['favorite', 'Favorite songs'],
-                        ['download', 'Download music'],
-                        ['equalizer', 'Audio equalizer']
-                    ],
-                    game: [
-                        ['truth', 'Truth or Dare - Truth'],
-                        ['dare', 'Truth or Dare - Dare'],
-                        ['rps', 'Rock Paper Scissors'],
-                        ['quiz', 'Knowledge quiz'],
-                        ['blackjack', 'Play Blackjack'],
-                        ['poker', 'Texas Hold\'em Poker'],
-                        ['slots', 'Slot machine'],
-                        ['dice', 'Roll dice games'],
-                        ['fish', 'Fishing simulator'],
-                        ['mine', 'Mining adventure'],
-                        ['hunt', 'Hunting game'],
-                        ['duel', 'PvP duels'],
-                        ['battle', 'Pokemon battles'],
-                        ['adventure', 'RPG adventure'],
-                        ['quest', 'Daily quests'],
-                        // Additional game commands
-                        ['lottery', 'Daily lottery'],
-                        ['coinflip', 'Bet on coinflip'],
-                        ['jackpot', 'Jackpot game'],
-                        ['roulette', 'Casino roulette'],
-                        ['bingo', 'Play bingo']
-                    ]
-                };
-
-                if (index < commands[category].length) {
-                    return commands[category][index];
-                }
-
-                // Generate themed commands for remaining slots
-                const themes = {
-                    basic: [
-                        ['autoresponder', 'Set automatic responses'],
-                        ['filter', 'Content filtering rules'],
-                        ['schedule', 'Schedule bot actions'],
-                        ['backup', 'Data backup options'],
-                        ['monitor', 'System monitoring']
-                    ],
-                    fun: [
-                        ['party', 'Party game modes'],
-                        ['challenge', 'Daily challenges'],
-                        ['minigame', 'Quick mini games'],
-                        ['puzzle', 'Brain teasers'],
-                        ['multiplayer', 'Group games']
-                    ],
-                    user: [
-                        ['customize', 'Profile customization'],
-                        ['collection', 'Item collections'],
-                        ['achievement', 'Special achievements'],
-                        ['ranking', 'Ranking features'],
-                        ['special', 'Special perks']
-                    ],
-                    group: [
-                        ['moderation', 'Mod tools'],
-                        ['automod', 'Auto moderation'],
-                        ['welcome', 'Welcome features'],
-                        ['activity', 'Group activities'],
-                        ['security', 'Security features']
-                    ],
-                    anime: [
-                        ['seasonal', 'Seasonal content'],
-                        ['community', 'Community features'],
-                        ['discovery', 'Anime discovery'],
-                        ['collection', 'Collection tools'],
-                        ['tracking', 'Anime tracking']
-                    ],
-                    music: [
-                        ['playlist', 'Playlist features'],
-                        ['discover', 'Music discovery'],
-                        ['effect', 'Sound effects'],
-                        ['stream', 'Music streaming'],
-                        ['audio', 'Audio tools']
-                    ],
-                    game: [
-                        ['rpg', 'RPG elements'],
-                        ['tournament', 'Tournaments'],
-                        ['reward', 'Daily rewards'],
-                        ['season', 'Seasonal events'],
-                        ['achievement', 'Game achievements']
-                    ]
-                };
-
-                const themeIndex = Math.floor((index - commands[category].length) % themes[category].length);
-                const numSuffix = Math.floor((index - commands[category].length) / themes[category].length) + 1;
-                const [prefix, desc] = themes[category][themeIndex];
-                return [`${prefix}${numSuffix}`, `${desc} #${numSuffix}`];
-            };
-
-            const generateCommands = (start, category) => {
-                let content = '';
-                for (let i = 0; i < 100; i++) {
-                    const cmdNum = start + i;
-                    const [cmdName, cmdDesc] = getCommandDescription(category, i);
-                    content += `${cmdNum}. ${config.prefix}${cmdName} - ${cmdDesc}\n`;
-                }
-                return content;
-            };
-
             switch(currentPage) {
                 case 1:
-                    pageTitle = '⚙️ *Basic Commands* [100]';
-                    pageContent = generateCommands(1, 'basic');
+                    pageTitle = '⚙️ *Basic Commands*';
+                    pageContent = `1. ${config.prefix}menu - Show all commands\n` +
+                                `2. ${config.prefix}help - Get command help\n` +
+                                `3. ${config.prefix}ping - Check bot response\n` +
+                                `4. ${config.prefix}info - View bot information\n` +
+                                `5. ${config.prefix}rules - Show bot rules\n` +
+                                `6. ${config.prefix}about - About this bot\n` +
+                                `7. ${config.prefix}owner - Contact owner\n` +
+                                `8. ${config.prefix}donate - Support development\n` +
+                                `9. ${config.prefix}stats - View statistics\n` +
+                                `10. ${config.prefix}uptime - Check uptime`;
                     break;
+
                 case 2:
-                    pageTitle = '🎮 *Fun Commands* [100]';
-                    pageContent = generateCommands(101, 'fun');
+                    pageTitle = '🎮 *Fun Commands*';
+                    pageContent = `101. ${config.prefix}slap - Slap with anime gif\n` +
+                                `102. ${config.prefix}hug - Give warm hug\n` +
+                                `103. ${config.prefix}pat - Pat gently\n` +
+                                `104. ${config.prefix}dance - Show dance moves\n` +
+                                `105. ${config.prefix}joke - Random joke\n` +
+                                `106. ${config.prefix}meme - Random meme\n` +
+                                `107. ${config.prefix}quote - Random quote\n` +
+                                `108. ${config.prefix}8ball - Magic 8ball\n` +
+                                `109. ${config.prefix}roll - Roll dice\n` +
+                                `110. ${config.prefix}flip - Flip coin`;
                     break;
+
                 case 3:
-                    pageTitle = '👤 *User Commands* [100]';
-                    pageContent = generateCommands(201, 'user');
+                    pageTitle = '👤 *User Commands*';
+                    pageContent = `201. ${config.prefix}profile - View profile\n` +
+                                `202. ${config.prefix}level - Check level\n` +
+                                `203. ${config.prefix}daily - Daily rewards\n` +
+                                `204. ${config.prefix}inventory - View inventory\n` +
+                                `205. ${config.prefix}register - Create account\n` +
+                                `206. ${config.prefix}nickname - Set nickname\n` +
+                                `207. ${config.prefix}bio - Set bio\n` +
+                                `208. ${config.prefix}avatar - Set avatar\n` +
+                                `209. ${config.prefix}balance - Check wallet\n` +
+                                `210. ${config.prefix}transfer - Send money`;
                     break;
+
                 case 4:
-                    pageTitle = '👥 *Group Commands* [100]';
-                    pageContent = generateCommands(301, 'group');
+                    pageTitle = '👥 *Group Commands*';
+                    pageContent = `301. ${config.prefix}kick - Kick member\n` +
+                                `302. ${config.prefix}promote - Promote to admin\n` +
+                                `303. ${config.prefix}demote - Remove admin\n` +
+                                `304. ${config.prefix}add - Add member\n` +
+                                `305. ${config.prefix}remove - Remove member\n` +
+                                `306. ${config.prefix}link - Group link\n` +
+                                `307. ${config.prefix}revoke - Reset link\n` +
+                                `308. ${config.prefix}announce - Send announcement\n` +
+                                `309. ${config.prefix}poll - Create poll\n` +
+                                `310. ${config.prefix}settings - Group settings`;
                     break;
+
                 case 5:
-                    pageTitle = '🎨 *Anime Commands* [100]';
-                    pageContent = generateCommands(401, 'anime');
+                    pageTitle = '🎨 *Anime Commands*';
+                    pageContent = `401. ${config.prefix}anime - Search anime\n` +
+                                `402. ${config.prefix}manga - Search manga\n` +
+                                `403. ${config.prefix}character - Search character\n` +
+                                `404. ${config.prefix}waifu - Random waifu\n` +
+                                `405. ${config.prefix}neko - Random neko\n` +
+                                `406. ${config.prefix}schedule - Airing schedule\n` +
+                                `407. ${config.prefix}upcoming - Coming soon\n` +
+                                `408. ${config.prefix}genre - Browse by genre\n` +
+                                `409. ${config.prefix}quote - Anime quotes\n` +
+                                `410. ${config.prefix}wallpaper - Anime wallpapers`;
                     break;
+
                 case 6:
-                    pageTitle = '🎵 *Music Commands* [100]';
-                    pageContent = generateCommands(501, 'music');
+                    pageTitle = '🎵 *Music Commands*';
+                    pageContent = `501. ${config.prefix}play - Play song\n` +
+                                `502. ${config.prefix}skip - Skip song\n` +
+                                `503. ${config.prefix}stop - Stop music\n` +
+                                `504. ${config.prefix}queue - View queue\n` +
+                                `505. ${config.prefix}pause - Pause music\n` +
+                                `506. ${config.prefix}resume - Resume music\n` +
+                                `507. ${config.prefix}volume - Adjust volume\n` +
+                                `508. ${config.prefix}lyrics - Get lyrics\n` +
+                                `509. ${config.prefix}playlist - Manage playlists\n` +
+                                `510. ${config.prefix}search - Search songs`;
                     break;
+
                 case 7:
-                    pageTitle = '🎲 *Game Commands* [100]';
-                    pageContent = generateCommands(601, 'game');
+                    pageTitle = '🎲 *Game Commands*';
+                    pageContent = `601. ${config.prefix}truth - Truth question\n` +
+                                `602. ${config.prefix}dare - Dare challenge\n` +
+                                `603. ${config.prefix}rps - Rock paper scissors\n` +
+                                `604. ${config.prefix}quiz - Start quiz\n` +
+                                `605. ${config.prefix}blackjack - Play blackjack\n` +
+                                `606. ${config.prefix}slots - Play slots\n` +
+                                `607. ${config.prefix}dice - Roll dice\n` +
+                                `608. ${config.prefix}fish - Go fishing\n` +
+                                `609. ${config.prefix}hunt - Go hunting\n` +
+                                `610. ${config.prefix}duel - Challenge duel`;
                     break;
             }
 
@@ -303,7 +133,7 @@ const basicCommands = {
                              `• Next page: ${config.prefix}menu ${currentPage + 1}\n` +
                              `• Previous: ${config.prefix}menu ${currentPage - 1}\n` +
                              `• Go to page: ${config.prefix}menu [1-7]\n\n` +
-                             `💡 Total Commands: 700`;
+                             `💡 Commands shown: 70 (10 per category)`;
 
             const fullMenu = menuHeader + pageTitle + '\n\n' + pageContent + navigation;
 
@@ -319,6 +149,7 @@ const basicCommands = {
             });
         }
     },
+
     help: async (sock, msg, args) => {
         try {
             if (!args[0]) {
@@ -354,6 +185,7 @@ const basicCommands = {
             });
         }
     },
+
     ping: async (sock, msg) => {
         try {
             const start = Date.now();
@@ -375,6 +207,7 @@ const basicCommands = {
             });
         }
     },
+
     info: async (sock, msg) => {
         try {
             const info = `*Bot Information*\n\n` +
@@ -382,7 +215,7 @@ const basicCommands = {
                         `• Owner: @${config.ownerNumber.split('@')[0]}\n` +
                         `• Prefix: ${config.prefix}\n` +
                         `• Version: 1.0.0\n` +
-                        `• Commands: 700\n` +
+                        `• Commands: 70\n` +
                         `• Status: Online`;
 
             await sock.sendMessage(msg.key.remoteJid, {
@@ -400,13 +233,15 @@ const basicCommands = {
 
 // Helper function to get command name from number
 function getCommandFromNumber(num) {
-    if (num <= 100) return `basic${num-4}`;
-    if (num <= 200) return `fun${num-104}`;
-    if (num <= 300) return `user${num-204}`;
-    if (num <= 400) return `group${num-304}`;
-    if (num <= 500) return `anime${num-404}`;
-    if (num <= 600) return `music${num-504}`;
-    return `game${num-604}`;
+    const commands = {
+        101: 'slap', 102: 'hug', 103: 'pat', 104: 'dance', 105: 'joke', 106: 'meme', 107: 'quote', 108: '8ball', 109: 'roll', 110: 'flip',
+        201: 'profile', 202: 'level', 203: 'daily', 204: 'inventory', 205: 'register', 206: 'nickname', 207: 'bio', 208: 'avatar', 209: 'balance', 210: 'transfer',
+        301: 'kick', 302: 'promote', 303: 'demote', 304: 'add', 305: 'remove', 306: 'link', 307: 'revoke', 308: 'announce', 309: 'poll', 310: 'settings',
+        401: 'anime', 402: 'manga', 403: 'character', 404: 'waifu', 405: 'neko', 406: 'schedule', 407: 'upcoming', 408: 'genre', 409: 'quote', 410: 'wallpaper',
+        501: 'play', 502: 'skip', 503: 'stop', 504: 'queue', 505: 'pause', 506: 'resume', 507: 'volume', 508: 'lyrics', 509: 'playlist', 510: 'search',
+        601: 'truth', 602: 'dare', 603: 'rps', 604: 'quiz', 605: 'blackjack', 606: 'slots', 607: 'dice', 608: 'fish', 609: 'hunt', 610: 'duel'
+    };
+    return commands[num] || 'unknown';
 }
 
 module.exports = basicCommands;
