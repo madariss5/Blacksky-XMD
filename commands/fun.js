@@ -18,10 +18,10 @@ const funCommands = {
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             });
 
-            // Simple emoji sticker data
+            // Anime slap sticker
             const stickerData = {
                 sticker: {
-                    url: 'https://raw.githubusercontent.com/WhatsApp/stickers/main/Android/app/src/main/assets/1/01_Cuppy_smile.webp'
+                    url: 'https://raw.githubusercontent.com/FantoX001/Anime-Stickers/main/Slap/slap2.webp'
                 },
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             };
@@ -45,7 +45,7 @@ const funCommands = {
 
             const stickerData = {
                 sticker: {
-                    url: 'https://raw.githubusercontent.com/WhatsApp/stickers/main/Android/app/src/main/assets/2/02_Cuppy_lol.webp'
+                    url: 'https://raw.githubusercontent.com/FantoX001/Anime-Stickers/main/Hug/hug3.webp'
                 },
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             };
@@ -68,7 +68,7 @@ const funCommands = {
 
             const stickerData = {
                 sticker: {
-                    url: 'https://raw.githubusercontent.com/WhatsApp/stickers/main/Android/app/src/main/assets/3/03_Cuppy_rofl.webp'
+                    url: 'https://raw.githubusercontent.com/FantoX001/Anime-Stickers/main/Pat/pat2.webp'
                 },
                 mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
             };
@@ -88,7 +88,7 @@ const funCommands = {
 
             const stickerData = {
                 sticker: {
-                    url: 'https://raw.githubusercontent.com/WhatsApp/stickers/main/Android/app/src/main/assets/4/04_Cuppy_heart.webp'
+                    url: 'https://raw.githubusercontent.com/FantoX001/Anime-Stickers/main/Dance/dance2.webp'
                 }
             };
 
