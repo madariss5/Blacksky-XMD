@@ -10,79 +10,63 @@ const basicCommands = {
 ┃ Status: Online
 ╰━━━━━━━━━━━━⊷❍\n\n`;
 
-            // Define categories with more inclusive filters
+            // Get all commands
+            const allCommands = Object.entries(config.commands);
+
+            // Define categories with comprehensive filters
             const categories = {
-                '📥 *DOWNLOADER*': Object.entries(config.commands)
-                    .filter(([_, cmd]) => 
-                        cmd.description.includes('Download') || 
-                        cmd.description.includes('Play') ||
-                        cmd.description.includes('📥') ||
-                        cmd.description.includes('🎵') ||
-                        cmd.description.includes('📱'))
+                '⚙️ *BASIC*': allCommands
+                    .filter(([cmd]) => 
+                        /^(menu|help|ping|info)$/i.test(cmd))
                     .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
-                '💰 *ECONOMY*': Object.entries(config.commands)
+                '📥 *DOWNLOADER*': allCommands
                     .filter(([_, cmd]) => 
-                        cmd.description.includes('💰') || 
-                        cmd.description.includes('💸') || 
-                        cmd.description.includes('🎲') ||
-                        cmd.description.includes('🏦') ||
-                        cmd.description.includes('💼'))
+                        /download|play|youtube|yt|tiktok|fb|facebook|instagram|ig|twitter|spotify|soundcloud|mediafire|gdrive|mega|apk|ringtone|movie|anime|manga|mp3|mp4|audio|video/i.test(cmd.description))
                     .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
-                '👥 *GROUP*': Object.entries(config.commands)
+                '💰 *ECONOMY*': allCommands
                     .filter(([_, cmd]) => 
-                        cmd.description.toLowerCase().includes('group') || 
-                        cmd.description.toLowerCase().includes('admin') ||
-                        cmd.description.includes('👥'))
+                        /balance|money|coin|reward|bank|deposit|withdraw|rob|work|mine|shop|gamble|flip|slot|bet|trade|crypto|heist|fish|hunt|farm|craft|inventory/i.test(cmd.description))
                     .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
-                '🎨 *FUN & MEDIA*': Object.entries(config.commands)
+                '👥 *GROUP*': allCommands
                     .filter(([_, cmd]) => 
-                        cmd.description.includes('Create') || 
-                        cmd.description.includes('effect') || 
-                        cmd.description.includes('sticker') ||
-                        cmd.description.includes('🎨'))
+                        /group|admin|kick|ban|promote|demote|mute|unmute|link|revoke|announce|poll|welcome|goodbye|tag|anti|settings/i.test(cmd.description))
                     .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
-                '🎮 *GAMES*': Object.entries(config.commands)
+                '🎨 *FUN & MEDIA*': allCommands
                     .filter(([_, cmd]) => 
-                        cmd.description.includes('🎮') ||
-                        cmd.description.includes('game') ||
-                        cmd.description.includes('Play'))
+                        /sticker|effect|image|photo|picture|create|convert|quote|meme|emoji|animation|trigger|wasted|jail|rip|trash|rainbow|blur|circle|slap/i.test(cmd.description))
                     .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
-                '🤖 *AI & TOOLS*': Object.entries(config.commands)
+                '🎮 *GAMES*': allCommands
                     .filter(([_, cmd]) => 
-                        cmd.description.includes('🤖') ||
-                        cmd.description.includes('AI') || 
-                        cmd.description.includes('Generate'))
+                        /game|play|slot|poker|blackjack|dice|hunt|fish|duel|quest|challenge|truth|dare|quiz/i.test(cmd.description))
                     .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
-                '👑 *OWNER*': Object.entries(config.commands)
+                '🤖 *AI & TOOLS*': allCommands
                     .filter(([_, cmd]) => 
-                        cmd.description.includes('👑') ||
-                        cmd.description.toLowerCase().includes('owner') || 
-                        cmd.description.toLowerCase().includes('bot'))
+                        /ai|gpt|chat|generate|imagine|enhance|translate|voice|qr|text|image|dalle|remini|recolor|colorize|upscale|anime2d|cartoon/i.test(cmd.description))
                     .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
-                '⚙️ *UTILITY*': Object.entries(config.commands)
+                '👑 *OWNER*': allCommands
                     .filter(([_, cmd]) => 
-                        cmd.description.includes('⚙️') ||
-                        cmd.description.includes('Toggle') || 
-                        cmd.description.includes('Set'))
+                        /owner|broadcast|bc|bot|system|prefix|ban|restart|update|eval|exec|join|leave|block|unblock|clear|set/i.test(cmd.description))
                     .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
-                '🔞 *NSFW*': Object.entries(config.commands)
+                '⚙️ *UTILITY*': allCommands
                     .filter(([_, cmd]) => 
-                        cmd.description.includes('🔞') ||
-                        cmd.nsfw === true)
+                        /toggle|set|config|backup|restore|language|auto|mode|setting|reply|welcome|goodbye|command/i.test(cmd.description))
                     .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
 
-                '🐛 *DEBUG*': Object.entries(config.commands)
+                '🔞 *NSFW*': allCommands
+                    .filter(([_, cmd]) => cmd.nsfw || /nsfw|hentai|adult|mature|hwaifu|hneko/i.test(cmd.description))
+                    .map(([cmd, info]) => `${cmd} ➠ ${info.description}`),
+
+                '🐛 *DEBUG*': allCommands
                     .filter(([_, cmd]) => 
-                        cmd.description.includes('🐛') ||
-                        cmd.description.toLowerCase().includes('debug'))
+                        /debug|bug|report|test|log|error|status|ping|cache|memory|cpu/i.test(cmd.description))
                     .map(([cmd, info]) => `${cmd} ➠ ${info.description}`)
             };
 
@@ -90,7 +74,7 @@ const basicCommands = {
 
             // Add categories and their commands
             Object.entries(categories).forEach(([category, commands]) => {
-                if (commands.length > 0) {  // Only show categories with commands
+                if (commands.length > 0) {
                     menuContent += `${category}\n${'-'.repeat(40)}\n`;
                     commands.forEach(cmd => {
                         menuContent += `◈ ${cmd}\n`;
@@ -98,6 +82,25 @@ const basicCommands = {
                     menuContent += '\n';
                 }
             });
+
+            // Check for uncategorized commands
+            const categorizedCommands = new Set(
+                Object.values(categories)
+                    .flat()
+                    .map(cmd => cmd.split(' ➠ ')[0])
+            );
+
+            const uncategorizedCommands = allCommands
+                .filter(([cmd]) => !categorizedCommands.has(cmd))
+                .map(([cmd, info]) => `${cmd} ➠ ${info.description}`);
+
+            if (uncategorizedCommands.length > 0) {
+                menuContent += `📋 *OTHER COMMANDS*\n${'-'.repeat(40)}\n`;
+                uncategorizedCommands.forEach(cmd => {
+                    menuContent += `◈ ${cmd}\n`;
+                });
+                menuContent += '\n';
+            }
 
             // Add footer stats
             menuContent += `╭━━━❰ *STATS* ❱━━━⊷❍
