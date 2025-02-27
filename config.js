@@ -91,6 +91,15 @@ module.exports = {
             [`funCmd${i + 1}`]: {
                 description: `Fun command ${i + 1}`
             }
+        })).reduce((acc, curr) => ({...acc, ...curr}), {}),
+
+        // NSFW commands (50) - These will be implemented in a separate file and require age verification
+        // Note: We'll implement these with proper age restrictions and group settings
+        ...Array.from({length: 50}, (_, i) => ({
+            [`nsfwCmd${i + 1}`]: {
+                description: `NSFW command ${i + 1} (Age restricted)`,
+                nsfw: true
+            }
         })).reduce((acc, curr) => ({...acc, ...curr}), {})
     }
 };

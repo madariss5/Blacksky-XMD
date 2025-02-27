@@ -16,7 +16,8 @@ const commandModules = {
     user: require('./commands/user'),
     group: require('./commands/group'),
     owner: require('./commands/owner'),
-    fun: require('./commands/fun')
+    fun: require('./commands/fun'),
+    nsfw: require('./commands/nsfw')
 };
 
 // Start WhatsApp connection
