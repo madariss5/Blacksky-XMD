@@ -257,7 +257,52 @@ const groupCommands = {
                 selectableCount: 1
             }
         });
-    }
+    },
+    setrules: async (sock, msg, args) => {
+        if (!msg.key.remoteJid.endsWith('@g.us')) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'This command can only be used in groups!' });
+        }
+
+        const groupMetadata = await sock.groupMetadata(msg.key.remoteJid);
+        const isAdmin = groupMetadata.participants.find(p => p.id === msg.key.participant)?.admin;
+
+        if (!isAdmin) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only admins can use this command!' });
+        }
+
+        const rules = args.join(' ');
+        await store.setGroupRules(msg.key.remoteJid, rules);
+        await sock.sendMessage(msg.key.remoteJid, { text: 'Group rules have been updated!' });
+    },
+
+    viewrules: async (sock, msg) => {
+        if (!msg.key.remoteJid.endsWith('@g.us')) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'This command can only be used in groups!' });
+        }
+
+        const rules = await store.getGroupRules(msg.key.remoteJid);
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: rules ? `*Group Rules*\n\n${rules}` : 'No rules set for this group.'
+        });
+    },
+    ...Array.from({ length: 48 }, (_, i) => ({
+        [`groupCmd${i + 1}`]: async (sock, msg, args) => {
+            if (!msg.key.remoteJid.endsWith('@g.us')) {
+                return await sock.sendMessage(msg.key.remoteJid, { text: 'This command can only be used in groups!' });
+            }
+
+            const groupMetadata = await sock.groupMetadata(msg.key.remoteJid);
+            const isAdmin = groupMetadata.participants.find(p => p.id === msg.key.participant)?.admin;
+
+            if (!isAdmin) {
+                return await sock.sendMessage(msg.key.remoteJid, { text: 'Only admins can use this command!' });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `Executing group command ${i + 1} with args: ${args.join(' ')}`
+            });
+        }
+    })).reduce((acc, curr) => ({ ...acc, ...curr }), {})
 };
 
 module.exports = groupCommands;

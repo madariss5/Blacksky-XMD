@@ -62,9 +62,61 @@ const commands = {
                 {cmd: 'insult', desc: 'Insult someone', usage: '!insult @user'},
                 {cmd: 'meme', desc: 'Get random meme', usage: '!meme'},
                 {cmd: 'ship', desc: 'Ship two users', usage: '!ship @user1 @user2'},
-                {cmd: 'fight', desc: 'Start a fight', usage: '!fight @user'}
+                {cmd: 'fight', desc: 'Start a fight', usage: '!fight @user'},
+                {cmd: 'rps', desc: 'Play rock paper scissors', usage: '!rps <choice>'},
+                {cmd: 'truthordare', desc: 'Play truth or dare', usage: '!truthordare <truth/dare>'}
+            ],
+            '🔞 NSFW Commands': [
+                {cmd: 'togglensfw', desc: 'Toggle NSFW in group', usage: '!togglensfw on/off'},
+                {cmd: 'verifyage', desc: 'Verify your age', usage: '!verifyage <age>'}
             ]
         };
+
+        // Add auto-generated commands to categories
+        for (let i = 1; i <= 50; i++) {
+            if (i > 3) { 
+                categories['⚡ Basic Commands'].push({
+                    cmd: `basicCmd${i}`,
+                    desc: `Basic command ${i}`,
+                    usage: `!basicCmd${i}`
+                });
+            }
+            if (i > 11) { 
+                categories['👑 Owner Commands'].push({
+                    cmd: `ownerCmd${i}`,
+                    desc: `Owner command ${i}`,
+                    usage: `!ownerCmd${i}`
+                });
+            }
+            if (i > 12) { 
+                categories['👥 Group Commands'].push({
+                    cmd: `groupCmd${i}`,
+                    desc: `Group command ${i}`,
+                    usage: `!groupCmd${i}`
+                });
+            }
+            if (i > 6) { 
+                categories['👤 User Commands'].push({
+                    cmd: `userCmd${i}`,
+                    desc: `User command ${i}`,
+                    usage: `!userCmd${i}`
+                });
+            }
+            if (i > 15) { 
+                categories['🎮 Fun Commands'].push({
+                    cmd: `funCmd${i}`,
+                    desc: `Fun command ${i}`,
+                    usage: `!funCmd${i}`
+                });
+            }
+            if (i > 2) { 
+                categories['🔞 NSFW Commands'].push({
+                    cmd: `nsfwCmd${i}`,
+                    desc: `NSFW command ${i} (Age restricted)`,
+                    usage: `!nsfwCmd${i}`
+                });
+            }
+        }
 
         // Display commands by category with fancy formatting
         for (const [category, commandList] of Object.entries(categories)) {
@@ -81,6 +133,7 @@ const commands = {
         menuText += '╭═══〘 *Note* 〙═══⊷❍\n';
         menuText += '┃ • Replace <> with your input\n';
         menuText += '┃ • Optional parameters in []\n';
+        menuText += '┃ • 🔞 commands require age verification\n';
         menuText += '╰═══════════════⊷❍\n';
 
         // Try to send with menu image

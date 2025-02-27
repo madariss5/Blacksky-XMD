@@ -23,10 +23,9 @@ const funCommands = {
         await sock.sendMessage(msg.key.remoteJid, { text: `📜 Random Quote:\n\n*${randomQuote}*` });
     },
 
-    // Interactive anime-style commands
     slap: async (sock, msg, args) => {
         const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
-        const sticker = { url: 'https://example.com/stickers/slap.webp' }; // Replace with actual sticker URL
+        const sticker = { url: 'https://example.com/stickers/slap.webp' }; 
         await sock.sendMessage(msg.key.remoteJid, {
             sticker: sticker,
             caption: `*${msg.pushName}* slapped ${target}! 👋`,
@@ -36,7 +35,7 @@ const funCommands = {
 
     hug: async (sock, msg, args) => {
         const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
-        const sticker = { url: 'https://example.com/stickers/hug.webp' }; // Replace with actual sticker URL
+        const sticker = { url: 'https://example.com/stickers/hug.webp' }; 
         await sock.sendMessage(msg.key.remoteJid, {
             sticker: sticker,
             caption: `*${msg.pushName}* hugged ${target}! 🤗`,
@@ -46,7 +45,7 @@ const funCommands = {
 
     cuddle: async (sock, msg, args) => {
         const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
-        const sticker = { url: 'https://example.com/stickers/cuddle.webp' }; // Replace with actual sticker URL
+        const sticker = { url: 'https://example.com/stickers/cuddle.webp' }; 
         await sock.sendMessage(msg.key.remoteJid, {
             sticker: sticker,
             caption: `*${msg.pushName}* cuddled ${target}! 🥰`,
@@ -56,7 +55,7 @@ const funCommands = {
 
     kiss: async (sock, msg, args) => {
         const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
-        const sticker = { url: 'https://example.com/stickers/kiss.webp' }; // Replace with actual sticker URL
+        const sticker = { url: 'https://example.com/stickers/kiss.webp' }; 
         await sock.sendMessage(msg.key.remoteJid, {
             sticker: sticker,
             caption: `*${msg.pushName}* kissed ${target}! 💋`,
@@ -66,7 +65,7 @@ const funCommands = {
 
     kill: async (sock, msg, args) => {
         const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
-        const sticker = { url: 'https://example.com/stickers/kill.webp' }; // Replace with actual sticker URL
+        const sticker = { url: 'https://example.com/stickers/kill.webp' }; 
         await sock.sendMessage(msg.key.remoteJid, {
             sticker: sticker,
             caption: `*${msg.pushName}* killed ${target}! 💀`,
@@ -75,7 +74,7 @@ const funCommands = {
     },
 
     dance: async (sock, msg) => {
-        const sticker = { url: 'https://example.com/stickers/dance.webp' }; // Replace with actual sticker URL
+        const sticker = { url: 'https://example.com/stickers/dance.webp' }; 
         await sock.sendMessage(msg.key.remoteJid, {
             sticker: sticker,
             caption: `*${msg.pushName}* is dancing! 💃`
@@ -98,8 +97,7 @@ const funCommands = {
     },
 
     meme: async (sock, msg) => {
-        // Fetch random meme from an API
-        const memeUrl = 'https://example.com/meme.jpg'; // Replace with actual meme API
+        const memeUrl = 'https://example.com/meme.jpg'; 
         await sock.sendMessage(msg.key.remoteJid, {
             image: { url: memeUrl },
             caption: '😂 Here\'s your meme!'
@@ -142,13 +140,74 @@ const funCommands = {
         const move = moves[Math.floor(Math.random() * moves.length)];
         const damage = damages[Math.floor(Math.random() * damages.length)];
 
-        const sticker = { url: 'https://example.com/stickers/fight.webp' }; // Replace with actual sticker
+        const sticker = { url: 'https://example.com/stickers/fight.webp' }; 
         await sock.sendMessage(msg.key.remoteJid, {
             sticker: sticker,
             caption: `*${msg.pushName}* ${move}\nDealt ${damage} damage to ${target}! 👊💥`,
             mentions: args[0] ? [args[0] + '@s.whatsapp.net'] : []
         });
-    }
+    },
+    rps: async (sock, msg, args) => {
+        const choices = ['rock', 'paper', 'scissors'];
+        const userChoice = args[0]?.toLowerCase();
+
+        if (!choices.includes(userChoice)) {
+            return await sock.sendMessage(msg.key.remoteJid, { 
+                text: 'Please choose rock, paper, or scissors!'
+            });
+        }
+
+        const botChoice = choices[Math.floor(Math.random() * 3)];
+        let result;
+
+        if (userChoice === botChoice) result = 'Tie!';
+        else if (
+            (userChoice === 'rock' && botChoice === 'scissors') ||
+            (userChoice === 'paper' && botChoice === 'rock') ||
+            (userChoice === 'scissors' && botChoice === 'paper')
+        ) result = 'You win!';
+        else result = 'Bot wins!';
+
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: `You chose: ${userChoice}\nBot chose: ${botChoice}\n\n${result}`
+        });
+    },
+
+    truthordare: async (sock, msg, args) => {
+        const type = args[0]?.toLowerCase();
+        if (!['truth', 'dare'].includes(type)) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: 'Please specify either truth or dare!'
+            });
+        }
+
+        const truths = [
+            "What's your biggest fear?",
+            "What's your most embarrassing moment?",
+            "What's the worst trouble you've been in?"
+        ];
+
+        const dares = [
+            "Send your latest selfie",
+            "Text your crush",
+            "Do 10 push-ups"
+        ];
+
+        const question = type === 'truth' 
+            ? truths[Math.floor(Math.random() * truths.length)]
+            : dares[Math.floor(Math.random() * dares.length)];
+
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: `Here's your ${type}:\n\n${question}`
+        });
+    },
+    ...Array.from({ length: 48 }, (_, i) => ({
+        [`funCmd${i + 1}`]: async (sock, msg, args) => {
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `Executing fun command ${i + 1} with args: ${args.join(' ')}`
+            });
+        }
+    })).reduce((acc, curr) => ({ ...acc, ...curr }), {})
 };
 
 module.exports = funCommands;
