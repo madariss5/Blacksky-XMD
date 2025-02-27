@@ -8,6 +8,7 @@
 4. Add the following required variables:
 
 ### Required Variables
+- `SESSION_ID`: Your WhatsApp session ID (will be provided after first local run)
 - `OWNER_NAME`: Your name as the bot owner
 - `OWNER_NUMBER`: Your WhatsApp number with country code (format: 1234567890@s.whatsapp.net)
 
@@ -16,6 +17,18 @@
 - `PREFIX`: Command prefix (default: !)
 - `USE_PAIRING`: Enable pairing code authentication (default: true)
 
+## Getting Your Session ID
+
+1. Run the bot locally first:
+```bash
+npm install
+npm start
+```
+
+2. Scan the QR code with WhatsApp (Linked Devices > Link a Device)
+3. After successful connection, the bot will send you the session ID in your WhatsApp
+4. Copy this session ID and add it to your Heroku Config Vars
+
 ## Deployment Steps
 
 1. Fork the repository
@@ -23,14 +36,12 @@
 3. Connect your GitHub repository to Heroku
 4. Set up the environment variables as described above
 5. Deploy the app
-6. Check the logs for the QR code or pairing code
-7. Scan the QR code with WhatsApp to authenticate
 
 ## Important Notes
 
 - The bot requires a worker dyno, not a web dyno
 - Make sure you have the proper buildpacks installed (heroku/nodejs)
-- Keep your creds.json file secure and never commit it to version control
+- Keep your session ID secure and never share it
 - If using pairing code, make sure USE_PAIRING is set to "true"
 
 ## Troubleshooting
