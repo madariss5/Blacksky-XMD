@@ -37,15 +37,11 @@ const commands = {
             ]
         };
 
-        // Display commands by category with fancy formatting
+        // Display commands by category
         for (const [category, commandList] of Object.entries(categories)) {
             menuText += `╭═══〘 ${category} 〙═══⊷❍\n`;
             for (const cmd of commandList) {
-                if (config.commands[cmd]) {
-                    menuText += `┃ • ${config.prefix}${cmd}\n`;
-                    menuText += `┃   ${config.commands[cmd].description}\n`;
-                    menuText += `┃   Usage: ${config.prefix}${cmd}\n`;
-                }
+                menuText += `┃ • ${config.prefix}${cmd}\n`;
             }
             menuText += `╰═══════════════⊷❍\n\n`;
         }
