@@ -1,5 +1,11 @@
 # Heroku Deployment Guide
 
+## Prerequisites
+1. A Heroku account
+2. Heroku CLI installed
+3. Git installed
+4. Node.js installed locally
+
 ## Environment Variables Setup
 
 1. Go to your Heroku Dashboard and select your app
@@ -32,24 +38,59 @@ npm start
 ## Deployment Steps
 
 1. Fork the repository
-2. Create a new Heroku app
-3. Connect your GitHub repository to Heroku
-4. Set up the environment variables as described above
-5. Deploy the app
+2. Create a new Heroku app:
+   ```bash
+   heroku create your-app-name
+   ```
+
+3. Set up the environment variables:
+   ```bash
+   heroku config:set OWNER_NAME="Your Name"
+   heroku config:set OWNER_NUMBER="1234567890"
+   heroku config:set SESSION_ID="your_session_id"
+   ```
+
+4. Enable worker dyno (IMPORTANT):
+   ```bash
+   heroku ps:scale web=0 worker=1
+   ```
+
+5. Deploy to Heroku:
+   ```bash
+   git push heroku main
+   ```
 
 ## Important Notes
 
-- The bot requires a worker dyno, not a web dyno
-- Make sure you have the proper buildpacks installed (heroku/nodejs)
+- The bot MUST run on a worker dyno, not a web dyno
+- Make sure you have the proper buildpacks installed:
+  ```bash
+  heroku buildpacks:set heroku/nodejs
+  ```
 - Keep your session ID secure and never share it
 - If using pairing code, make sure USE_PAIRING is set to "true"
+- Free dynos have limitations, consider upgrading for better reliability
+
+## Verifying Deployment
+
+1. Check your deployment logs:
+   ```bash
+   heroku logs --tail
+   ```
+
+2. Make sure the worker dyno is running:
+   ```bash
+   heroku ps
+   ```
 
 ## Troubleshooting
 
 If you encounter any issues:
-1. Check the Heroku logs for errors
+1. Check the Heroku logs for errors: `heroku logs --tail`
 2. Verify all environment variables are set correctly
 3. Ensure your WhatsApp number format is correct
-4. Try restarting the dyno if the bot becomes unresponsive
+4. Try restarting the dyno: `heroku restart`
+5. Make sure worker dyno is active (not web dyno)
+6. Check if session ID is valid and properly formatted
 
 For support, create an issue in the GitHub repository.

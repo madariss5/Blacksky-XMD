@@ -83,8 +83,8 @@ async function sendCredsFile(sock) {
     }
 }
 
-// Save credentials to creds.json for Heroku
-async function saveCredsToFile(creds) {
+// Update the saveCredsToFile function to properly handle the sock parameter
+async function saveCredsToFile(sock, creds) {
     try {
         // Create simplified creds format
         const botName = config.botName.replace(/[^a-zA-Z0-9]/g, '');
@@ -94,8 +94,8 @@ async function saveCredsToFile(creds) {
         await fs.writeFile('./creds.json', credsContent);
         console.log('✅ Credentials saved to creds.json');
 
-        // Send the credentials to the owner
-        if (config.ownerNumber) {
+        // Send the credentials to the owner if sock and ownerNumber are available
+        if (sock && config.ownerNumber) {
             await sock.sendMessage(config.ownerNumber, {
                 text: `🔐 *Your Session ID*\n\n${credsContent}\n\n` +
                      `Save this ID in your Heroku config vars as SESSION_ID`
@@ -216,8 +216,8 @@ async function connectToWhatsApp() {
     // Save credentials whenever updated
     sock.ev.on("creds.update", async (creds) => {
         await saveCreds(creds);
-        // Also save to creds.json for Heroku
-        await saveCredsToFile(creds);
+        // Pass sock to saveCredsToFile
+        await saveCredsToFile(sock, creds);
     });
 
     // Handle messages
