@@ -75,22 +75,45 @@ config.ownerNumber = formatPhoneNumber(process.env.OWNER_NUMBER);
 config.botName = process.env.BOT_NAME || 'BlackSky-MD';
 config.prefix = process.env.PREFIX || '!';
 
-// Create store to save chats with better error handling
+// Update store initialization with proper error handling
 const store = makeInMemoryStore({ 
-    logger: pino().child({ level: process.env.STORE_LOG_LEVEL || "silent", stream: "store" }) 
+    logger: pino({ level: "debug" }) 
 });
+
+// Initialize store data
+store.data = {
+    users: {},
+    chats: [],
+    settings: {
+        maintenance: false,
+        maxWarnings: 3,
+        botMode: 'public'
+    }
+};
+
 
 // Load command modules with error handling
 const commandModules = {};
 try {
-    commandModules.basic = require('./commands/basic');
-    commandModules.user = require('./commands/user');
-    commandModules.group = require('./commands/group');
-    commandModules.owner = require('./commands/owner');
-    commandModules.fun = require('./commands/fun');
-    commandModules.nsfw = require('./commands/nsfw');
+    const commandsPath = path.join(__dirname, 'commands');
+    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+
+    for (const file of commandFiles) {
+        const moduleName = path.parse(file).name;
+        try {
+            const module = require(path.join(commandsPath, file));
+            commandModules[moduleName] = module;
+            logger.info(`Loaded command module: ${moduleName}`);
+        } catch (err) {
+            logger.error(`Failed to load command module ${file}:`, err);
+        }
+    }
+
+    if (Object.keys(commandModules).length === 0) {
+        throw new Error('No command modules were loaded successfully');
+    }
 } catch (err) {
-    logger.error('Error loading command modules:', err);
+    logger.error('Fatal error loading command modules:', err);
     process.exit(1);
 }
 
@@ -209,7 +232,18 @@ async function connectToWhatsApp() {
             }
         });
 
-        store.bind(sock.ev);
+        // Bind store to sock events with error handling
+        const bindStore = (sock) => {
+            try {
+                store.bind(sock.ev);
+                logger.info('Store bound successfully to socket events');
+            } catch (err) {
+                logger.error('Error binding store:', err);
+                process.exit(1);
+            }
+        };
+        bindStore(sock);
+
 
         // Enhanced connection handling for Heroku
         sock.ev.on("connection.update", async (update) => {
@@ -289,18 +323,17 @@ async function connectToWhatsApp() {
 
         // Handle messages
         sock.ev.on("messages.upsert", async ({ messages, type }) => {
-            if(type !== "notify") return;
+            if (type !== "notify") return;
 
             try {
                 const msg = messages[0];
-                if(!msg.message) return;
+                if (!msg?.message) return;
 
-                // Add debug logging
-                logger.debug('Received message:', {
+                logger.info('Processing message:', {
+                    type: type,
                     remoteJid: msg.key.remoteJid,
                     participant: msg.key.participant,
-                    fromMe: msg.key.fromMe,
-                    isGroup: msg.key.remoteJid?.endsWith('@g.us')
+                    fromMe: msg.key.fromMe
                 });
 
                 const messageType = Object.keys(msg.message)[0];
@@ -316,49 +349,49 @@ async function connectToWhatsApp() {
                     textContent = messageContent.caption || '';
                 }
 
+                logger.debug('Message content:', {
+                    messageType,
+                    textContent: textContent.substring(0, 100) 
+                });
+
                 // Check if message starts with prefix
-                if(textContent.startsWith(config.prefix)) {
+                if (textContent.startsWith(config.prefix)) {
                     const cmd = textContent.slice(config.prefix.length).trim().split(/ +/).shift().toLowerCase();
                     const args = textContent.slice(config.prefix.length).trim().split(/ +/).slice(1);
 
+                    logger.info(`Command received: ${cmd}`, {
+                        args: args,
+                        from: msg.key.remoteJid
+                    });
+
                     try {
-                        // Check if bot is in maintenance mode
-                        if (store.getMaintenanceMode() && msg.key.remoteJid !== config.ownerNumber) {
-                            await sock.sendMessage(msg.key.remoteJid, { 
-                                text: '🛠️ Bot is currently in maintenance mode. Please try again later.' 
-                            });
-                            return;
-                        }
-
-                        // For group messages, set the participant as the sender
+                        // For group messages, ensure participant is set
                         if (msg.key.remoteJid.endsWith('@g.us')) {
-                            msg.key.participant = msg.key.participant || msg.participant;
-                        }
-
-                        // Check if user or group is banned
-                        if ((msg.key.participant && store.isUserBanned(msg.key.participant)) || 
-                            (msg.key.remoteJid.endsWith('@g.us') && store.isGroupBanned(msg.key.remoteJid))) {
-                            return;
+                            msg.participant = msg.key.participant;
                         }
 
                         // Find and execute the command
+                        let commandExecuted = false;
                         for (const [moduleName, module] of Object.entries(commandModules)) {
                             if (cmd in module) {
                                 logger.info(`Executing command ${cmd} from ${moduleName} module`);
                                 await module[cmd](sock, msg, args);
-                                return;
+                                commandExecuted = true;
+                                break;
                             }
                         }
 
-                        // Command not found
-                        await sock.sendMessage(msg.key.remoteJid, { 
-                            text: `Command *${cmd}* not found. Use ${config.prefix}menu to see available commands.`
-                        });
+                        if (!commandExecuted) {
+                            logger.info(`Command not found: ${cmd}`);
+                            await sock.sendMessage(msg.key.remoteJid, { 
+                                text: `Command *${cmd}* not found. Use ${config.prefix}menu to see available commands.`
+                            });
+                        }
 
-                    } catch(err) {
+                    } catch (err) {
                         logger.error(`Error executing command ${cmd}:`, err);
                         await sock.sendMessage(msg.key.remoteJid, { 
-                            text: "Error executing command. Please try again later."
+                            text: `Error executing command ${cmd}. Please try again later.`
                         });
                     }
                 }
