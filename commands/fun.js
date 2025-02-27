@@ -40,24 +40,29 @@ const funCommands = {
 10. *!yeet* [@user] - Yeet someone into space
 11. *!boop* [@user] - Boop someone's nose
 12. *!bonk* [@user] - Bonk someone on the head
+13. *!wave* [@user] - Wave at someone
+14. *!kiss* [@user] - Kiss someone
+15. *!punch* [@user] - Punch someone
+16. *!wink* [@user] - Wink at someone
+
 
 🎲 *Games & Challenges:*
-13. *!coinflip* - Flip a coin
-14. *!dare* - Get a random dare challenge
-15. *!truth* - Get a random truth question
-16. *!magic8ball* [question] - Ask the magic 8 ball
-17. *!wordgame* - Play a word guessing game
+17. *!coinflip* - Flip a coin
+18. *!dare* - Get a random dare challenge
+19. *!truth* - Get a random truth question
+20. *!magic8ball* [question] - Ask the magic 8 ball
+21. *!wordgame* - Play a word guessing game
     - Use *!guess* [word] to make a guess
-18. *!trivia* - Play a trivia game
+22. *!trivia* - Play a trivia game
     - Use *!answer* [number] to answer
 
 🎭 *Fun & Entertainment:*
-19. *!joke* - Get a random funny joke
-20. *!quote* - Get an inspirational quote
-21. *!fact* - Learn an interesting fact
-22. *!meme* - Get a random anime meme
-23. *!emojiart* - Get a random emoji art
-24. *!insult* [@user] - Playfully insult someone\n
+23. *!joke* - Get a random funny joke
+24. *!quote* - Get an inspirational quote
+25. *!fact* - Learn an interesting fact
+26. *!meme* - Get a random anime meme
+27. *!emojiart* - Get a random emoji art
+28. *!insult* [@user] - Playfully insult someone\n
 
 *How to use:*
 - Commands with [@user] can tag someone
@@ -589,6 +594,81 @@ const funCommands = {
             logger.error('Error in bonk command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: '😅 Failed to execute bonk command!'
+            });
+        }
+    },
+    wave: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `*${msg.pushName}* waves at ${target}! 👋`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-wave.gif', '👋', mentions);
+        } catch (error) {
+            logger.error('Error in wave command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '😅 Failed to execute wave command!'
+            });
+        }
+    },
+
+    kiss: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `*${msg.pushName}* kisses ${target}! 💋`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-kiss.gif', '💋', mentions);
+        } catch (error) {
+            logger.error('Error in kiss command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '😅 Failed to execute kiss command!'
+            });
+        }
+    },
+
+    punch: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `*${msg.pushName}* punches ${target}! 👊`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-punch.gif', '👊', mentions);
+        } catch (error) {
+            logger.error('Error in punch command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '😅 Failed to execute punch command!'
+            });
+        }
+    },
+
+    wink: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'everyone';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `*${msg.pushName}* winks at ${target}! 😉`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-wink.gif', '😉', mentions);
+        } catch (error) {
+            logger.error('Error in wink command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '😅 Failed to execute wink command!'
             });
         }
     }
