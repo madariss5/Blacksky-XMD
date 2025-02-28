@@ -6,6 +6,10 @@ const path = require('path');
 const { exec } = require('child_process');
 const ffmpeg = require('fluent-ffmpeg');
 
+// Ensure temp directory exists
+const tempDir = path.join(__dirname, '../temp');
+fs.ensureDirSync(tempDir);
+
 const mediaCommands = {
     sticker: async (sock, msg, args) => {
         try {
@@ -39,12 +43,44 @@ const mediaCommands = {
                 }
             );
 
-            // Send as sticker
+            // Create temp file paths
+            const inputPath = path.join(tempDir, `input.${isVideo ? 'mp4' : 'jpg'}`);
+            await fs.writeFile(inputPath, buffer);
+
+            // If it's a video, extract first frame
+            let imageBuffer = buffer;
+            if (isVideo) {
+                await new Promise((resolve, reject) => {
+                    ffmpeg(inputPath)
+                        .screenshots({
+                            timestamps: ['00:00:00'],
+                            filename: 'frame.jpg',
+                            folder: tempDir
+                        })
+                        .on('end', resolve)
+                        .on('error', reject);
+                });
+                imageBuffer = await fs.readFile(path.join(tempDir, 'frame.jpg'));
+            }
+
+            // Send as sticker using Baileys' built-in method
             await sock.sendMessage(msg.key.remoteJid, {
-                sticker: buffer,
-                packname: config.botName,
-                author: config.ownerName
+                sticker: imageBuffer,
+                contextInfo: {
+                    externalAdReply: {
+                        title: config.botName,
+                        body: config.ownerName,
+                        mediaType: 1,
+                        renderLargerThumbnail: true
+                    }
+                }
             });
+
+            // Cleanup temp files
+            await fs.remove(inputPath);
+            if (isVideo) {
+                await fs.remove(path.join(tempDir, 'frame.jpg'));
+            }
 
         } catch (error) {
             logger.error('Error in sticker command:', error);
@@ -122,11 +158,8 @@ const mediaCommands = {
             );
 
             // Convert video to audio using ffmpeg
-            const tempInput = path.join(__dirname, '../temp', 'input.mp4');
-            const tempOutput = path.join(__dirname, '../temp', 'output.mp3');
-
-            // Ensure temp directory exists
-            await fs.ensureDir(path.join(__dirname, '../temp'));
+            const tempInput = path.join(tempDir, 'input.mp4');
+            const tempOutput = path.join(tempDir, 'output.mp3');
 
             await fs.writeFile(tempInput, buffer);
 
