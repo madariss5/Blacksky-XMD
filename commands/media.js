@@ -1,4 +1,5 @@
 const config = require('../config');
+const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 const logger = require('pino')();
 const fs = require('fs-extra');
 const path = require('path');
@@ -22,15 +23,19 @@ const mediaCommands = {
 
             const isVideo = !!quotedMsg.videoMessage;
             const messageType = isVideo ? 'videoMessage' : 'imageMessage';
-            const mimetype = quotedMsg[messageType].mimetype;
 
-            // Download media
-            const buffer = await sock.downloadMediaMessage(
+            // Download media using downloadMediaMessage from Baileys
+            const buffer = await downloadMediaMessage(
                 { message: { [messageType]: quotedMsg[messageType] } },
-                'buffer'
+                'buffer',
+                { },
+                { 
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
             );
 
-            // Convert to WebP
+            // Convert to WebP and send as sticker
             await sock.sendImageAsSticker(msg.key.remoteJid, buffer, {
                 packname: config.botName,
                 author: config.ownerName
@@ -57,9 +62,14 @@ const mediaCommands = {
                 text: '⏳ Converting sticker to image...'
             });
 
-            const buffer = await sock.downloadMediaMessage(
+            const buffer = await downloadMediaMessage(
                 { message: { stickerMessage: quotedMsg.stickerMessage } },
-                'buffer'
+                'buffer',
+                { },
+                { 
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
             );
 
             await sock.sendMessage(msg.key.remoteJid, {
@@ -88,14 +98,22 @@ const mediaCommands = {
                 text: '⏳ Converting video to audio...'
             });
 
-            const buffer = await sock.downloadMediaMessage(
+            const buffer = await downloadMediaMessage(
                 { message: { videoMessage: quotedMsg.videoMessage } },
-                'buffer'
+                'buffer',
+                { },
+                { 
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
             );
 
             // Convert video to audio using ffmpeg
             const tempInput = path.join(__dirname, '../temp', 'input.mp4');
             const tempOutput = path.join(__dirname, '../temp', 'output.mp3');
+
+            // Ensure temp directory exists
+            await fs.ensureDir(path.join(__dirname, '../temp'));
 
             await fs.writeFile(tempInput, buffer);
 
@@ -116,8 +134,8 @@ const mediaCommands = {
             });
 
             // Cleanup temp files
-            await fs.unlink(tempInput);
-            await fs.unlink(tempOutput);
+            await fs.remove(tempInput);
+            await fs.remove(tempOutput);
 
         } catch (error) {
             logger.error('Error in tomp3 command:', error);
