@@ -780,7 +780,7 @@ const funCommands = {
                 mentions: mentions
             });
 
-            await sendGifReaction(sock, msg, './media/jail.gif', '🏢', mentions);
+            await sendGifReaction(sock, msg, './media/anime-jail.gif', '🏢', mentions);
         } catch (error) {
             logger.error('Error in jail command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
