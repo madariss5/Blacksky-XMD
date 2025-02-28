@@ -32,12 +32,16 @@ async function executeCommand(sock, msg, command, args, moduleName) {
 
         // Validate module and command existence
         if (!commandModules[moduleName]) {
-            logger.warn(`Module ${moduleName} not found`);
+            logger.warn(`Module ${moduleName} not found`, { moduleName });
             return false;
         }
 
         if (!commandModules[moduleName][command]) {
-            logger.warn(`Command ${command} not found in module ${moduleName}`);
+            logger.warn(`Command ${command} not found in module ${moduleName}`, { 
+                command, 
+                moduleName,
+                availableCommands: Object.keys(commandModules[moduleName])
+            });
             return false;
         }
 
@@ -127,9 +131,16 @@ async function messageHandler(sock, msg) {
 
             let commandExecuted = false;
 
+            // Try NSFW commands first if command exists in NSFW module
+            if (commandModules.nsfw && command in commandModules.nsfw) {
+                logger.debug('Attempting to execute NSFW command:', { command });
+                commandExecuted = await executeCommand(sock, msg, command, args, 'nsfw');
+                if (commandExecuted) return;
+            }
+
             // Try each module for the command
             for (const [moduleName, module] of Object.entries(commandModules)) {
-                if (module && command in module) {
+                if (moduleName !== 'nsfw' && module && command in module) {
                     commandExecuted = await executeCommand(sock, msg, command, args, moduleName);
                     if (commandExecuted) break;
                 }

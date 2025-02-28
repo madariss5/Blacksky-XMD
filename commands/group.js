@@ -791,7 +791,51 @@ const groupCommands = {
             logger.error('Error in viewrules command:', error);
             await sock.sendMessage(msg.key.remoteJid, { text: 'Failed to view group rules: ' + error.message });
         }
-    }
+    },
+    join: async (sock, msg, args) => {
+        try {
+            if (!args[0]) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a group invite link!\nUsage: .join <link>'
+                });
+            }
+
+            // Extract invite code from the link
+            let code = args[0];
+            if (code.includes('chat.whatsapp.com/')) {
+                code = code.split('chat.whatsapp.com/')[1];
+            }
+
+            logger.info('Attempting to join group with code:', {
+                code: code,
+                user: msg.key.participant
+            });
+
+            try {
+                const response = await sock.groupAcceptInvite(code);
+                if (response) {
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        text: '✅ Successfully joined the group!'
+                    });
+                    logger.info('Successfully joined group:', {
+                        groupId: response,
+                        user: msg.key.participant
+                    });
+                } else {
+                    throw new Error('Failed to join group');
+                }
+            } catch (joinError) {
+                logger.error('Error joining group:', joinError);
+                throw new Error('Invalid invite link or group is full');
+            }
+        } catch (error) {
+            logger.error('Error in join command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to join group: ' + error.message
+            });
+        }
+    },
+
 };
 
 module.exports = groupCommands;

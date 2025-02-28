@@ -138,12 +138,12 @@ module.exports = {
         delwarn: { description: 'Remove a warning from a member', category: 'Group' },
         warnlist: { description: 'View member\'s warning list', category: 'Group' },
         del: { description: 'Delete a message (admin only)', category: 'Group' },
+        join: { description: 'Join a group via invite link', category: 'Group' },
 
         // Owner Commands
         broadcast: { description: 'Send message to all chats', category: 'Owner' },
         bc: { description: 'Broadcast to all groups', category: 'Owner' },
         bcgc: { description: 'Broadcast to specific groups', category: 'Owner' },
-        join: { description: 'Join a group via link', category: 'Owner' },
         leave: { description: 'Leave a group', category: 'Owner' },
         block: { description: 'Block a user', category: 'Owner' },
         unblock: { description: 'Unblock a user', category: 'Owner' },
@@ -192,6 +192,15 @@ module.exports = {
         // NSFW Commands
         nsfwcheck: { description: 'Check NSFW settings', category: 'NSFW' },
         setnsfw: { description: 'Toggle NSFW in group', category: 'NSFW' },
+        register: { description: 'Register for NSFW content (18+ only)', category: 'NSFW' },
+        fuck: { description: 'Get NSFW content', category: 'NSFW' },
+        cum: { description: 'Get NSFW content', category: 'NSFW' },
+        horny: { description: 'Get NSFW content', category: 'NSFW' },
+        pussy: { description: 'Get NSFW content', category: 'NSFW' },
+        dick: { description: 'Get NSFW content', category: 'NSFW' },
+        riding: { description: 'Get NSFW content', category: 'NSFW' },
+        doggy: { description: 'Get NSFW content', category: 'NSFW' },
+        sex: { description: 'Get NSFW content', category: 'NSFW' },
 
         // Debug Commands
         bugandro: { description: 'Report Android bugs', category: 'Debug' },
