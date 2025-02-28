@@ -363,6 +363,224 @@ const basicCommands = {
                 text: '❌ Error showing your profile: ' + error.message
             });
         }
+    },
+    creator: async (sock, msg) => {
+        try {
+            const text = `*👨‍💻 Bot Creator Info*\n\n` +
+                        `• Name: ${config.ownerName}\n` +
+                        `• Number: ${config.ownerNumber.split('@')[0]}\n` +
+                        `• Bot Name: ${config.botName}\n` +
+                        `• Version: 1.0.0\n` +
+                        `• Language: Node.js\n` +
+                        `• Library: @whiskeysockets/baileys\n\n` +
+                        `Contact the creator for business inquiries or support!`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text });
+            logger.info('Creator command executed successfully');
+        } catch (error) {
+            logger.error('Creator command failed:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error showing creator info: ' + error.message
+            });
+        }
+    },
+
+    sc: async (sock, msg) => {
+        try {
+            const text = `*🌟 Bot Source Code*\n\n` +
+                        `This bot is powered by BLACKSKY-MD!\n\n` +
+                        `• GitHub: https://github.com/blacksky-md/bot\n` +
+                        `• License: MIT\n\n` +
+                        `Remember to ⭐ the repository if you like it!`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text });
+            logger.info('Source code command executed successfully');
+        } catch (error) {
+            logger.error('Source code command failed:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error showing source code: ' + error.message
+            });
+        }
+    },
+
+    tqto: async (sock, msg) => {
+        try {
+            const text = `*🙏 Special Thanks To*\n\n` +
+                        `• WhiskeySockets/Baileys\n` +
+                        `• Nodejs Community\n` +
+                        `• All Bot Users\n` +
+                        `• All Contributors\n\n` +
+                        `And everyone who has supported the development!`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text });
+            logger.info('Thanks to command executed successfully');
+        } catch (error) {
+            logger.error('Thanks to command failed:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error showing credits: ' + error.message
+            });
+        }
+    },
+
+    changelog: async (sock, msg) => {
+        try {
+            const text = `*📝 Recent Updates*\n\n` +
+                        `v1.0.0 (Latest)\n` +
+                        `• Added 50+ new commands\n` +
+                        `• Improved NSFW command handling\n` +
+                        `• Enhanced group management\n` +
+                        `• Added new game modes\n` +
+                        `• Bug fixes and optimizations\n\n` +
+                        `Type ${config.prefix}menu to see all commands!`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text });
+            logger.info('Changelog command executed successfully');
+        } catch (error) {
+            logger.error('Changelog command failed:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error showing changelog: ' + error.message
+            });
+        }
+    },
+
+    dashboard: async (sock, msg) => {
+        try {
+            const store = require('../database/store');
+            const stats = {
+                users: Object.keys(store.get('users') || {}).length,
+                groups: store.get('chats')?.filter(id => id.endsWith('@g.us')).length || 0,
+                commands: Object.keys(config.commands).length,
+                uptime: process.uptime()
+            };
+
+            const text = `📊 *Bot Dashboard*\n\n` +
+                        `• Total Users: ${stats.users}\n` +
+                        `• Total Groups: ${stats.groups}\n` +
+                        `• Commands Available: ${stats.commands}\n` +
+                        `• Messages Processed: ${store.get('messageCount') || 0}\n` +
+                        `• Uptime: ${Math.floor(stats.uptime / 3600)}h ${Math.floor((stats.uptime % 3600) / 60)}m\n\n` +
+                        `Type ${config.prefix}stats for more details!`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text });
+            logger.info('Dashboard command executed successfully');
+        } catch (error) {
+            logger.error('Dashboard command failed:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error showing dashboard: ' + error.message
+            });
+        }
+    },
+
+    rank: async (sock, msg) => {
+        try {
+            const store = require('../database/store');
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const userData = await store.getUserData(userId) || {};
+
+            // Calculate level progress
+            const nextLevelXP = Math.pow((userData.level || 1) + 1, 2) * 100;
+            const progress = ((userData.xp || 0) / nextLevelXP) * 100;
+            const progressBar = '█'.repeat(Math.floor(progress / 10)) + '░'.repeat(10 - Math.floor(progress / 10));
+
+            const text = `🏆 *Your Rank*\n\n` +
+                        `• Level: ${userData.level || 1}\n` +
+                        `• XP: ${userData.xp || 0}/${nextLevelXP}\n` +
+                        `• Progress: [${progressBar}] ${Math.floor(progress)}%\n` +
+                        `• Commands Used: ${userData.commands || 0}\n` +
+                        `• Rank: #${await store.getUserRank(userId) || '??'}\n\n` +
+                        `Keep using commands to gain XP and level up!`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text });
+            logger.info('Rank command executed successfully');
+        } catch (error) {
+            logger.error('Rank command failed:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error showing rank: ' + error.message
+            });
+        }
+    },
+
+    premium: async (sock, msg) => {
+        try {
+            const store = require('../database/store');
+            const isPremium = await store.isPremiumUser(msg.key.participant || msg.key.remoteJid);
+
+            const text = `💎 *Premium Status*\n\n` +
+                        `• Status: ${isPremium ? '✅ Premium' : '❌ Free User'}\n` +
+                        `${isPremium ? '• Premium Features:\n' +
+                        '  - No command cooldowns\n' +
+                        '  - Access to premium commands\n' +
+                        '  - Priority support\n' +
+                        '  - And more!' : 
+                        '• Get Premium to unlock:\n' +
+                        '  - No command cooldowns\n' +
+                        '  - Access to premium commands\n' +
+                        '  - Priority support\n' +
+                        '  - And more!\n\n' +
+                        `Contact ${config.ownerNumber.split('@')[0]} to get Premium!`}`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text });
+            logger.info('Premium command executed successfully');
+        } catch (error) {
+            logger.error('Premium command failed:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error checking premium status: ' + error.message
+            });
+        }
+    },
+
+    about: async (sock, msg) => {
+        try {
+            const text = `📱 *About ${config.botName}*\n\n` +
+                        `${config.botName} is a sophisticated WhatsApp Multi-Device bot with resilient AI integration, featuring an advanced local response system and intelligent communication strategies.\n\n` +
+                        `*Key Features:*\n` +
+                        `• Advanced AI Integration\n` +
+                        `• Smart Response System\n` +
+                        `• Group Management\n` +
+                        `• Games & Fun Commands\n` +
+                        `• Media & Sticker Tools\n` +
+                        `• And much more!\n\n` +
+                        `*Technical Details:*\n` +
+                        `• Version: 1.0.0\n` +
+                        `• Library: @whiskeysockets/baileys\n` +
+                        `• Platform: ${os.platform()}\n` +
+                        `• Node.js: ${process.version}\n\n` +
+                        `Type ${config.prefix}menu to explore all features!`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text });
+            logger.info('About command executed successfully');
+        } catch (error) {
+            logger.error('About command failed:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error showing about info: ' + error.message
+            });
+        }
+    },
+
+    rules: async (sock, msg) => {
+        try {
+            const text = `📜 *Bot Rules*\n\n` +
+                        `1. No spam or excessive command usage\n` +
+                        `2. Respect bot owner and other users\n` +
+                        `3. Don't abuse the bot features\n` +
+                        `4. Report bugs using ${config.prefix}report\n` +
+                        `5. NSFW content only in NSFW-enabled groups\n` +
+                        `6. Follow group rules when using bot\n` +
+                        `7. Don't use bot for illegal activities\n\n` +
+                        `Breaking rules may result in:\n` +
+                        `• Temporary ban\n` +
+                        `• Permanent ban\n` +
+                        `• Group restriction\n\n` +
+                        `Enjoy using the bot responsibly! 😊`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text });
+            logger.info('Rules command executed successfully');
+        } catch (error) {
+            logger.error('Rules command failed:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error showing rules: ' + error.message
+            });
+        }
     }
 };
 

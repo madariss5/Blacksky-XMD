@@ -17,7 +17,7 @@ try {
     commandModules.anime = require('../commands/anime');       // Anime commands
     commandModules.nsfw = require('../commands/nsfw');        // NSFW commands
 } catch (error) {
-    logger.error('Error loading command modules:', error);
+    logger.error('Error loading command modules:', error.message, error.stack);
 }
 
 async function executeCommand(sock, msg, command, args, moduleName) {

@@ -23,29 +23,15 @@ const setCooldown = (userId) => {
     userCooldowns.set(userId, Date.now());
 };
 
-// Helper function to download and save image temporarily
-const downloadImage = async (imageUrl, filename) => {
-    const response = await axios({
-        method: 'get',
-        url: imageUrl,
-        responseType: 'stream'
-    });
-
-    const tempFilePath = path.join(tempDir, filename);
-    const writer = fs.createWriteStream(tempFilePath);
-
-    response.data.pipe(writer);
-
-    return new Promise((resolve, reject) => {
-        writer.on('finish', () => resolve(tempFilePath));
-        writer.on('error', reject);
-    });
-};
-
 // Base command handler with verification
 const handleNSFWCommand = async (sock, msg, endpoint) => {
     try {
         const userId = msg.key.participant || msg.key.remoteJid;
+        logger.info('Processing NSFW command', {
+            command: endpoint,
+            userId: userId,
+            messageId: msg.key.id
+        });
 
         if (isOnCooldown(userId)) {
             return await sock.sendMessage(msg.key.remoteJid, {
@@ -54,76 +40,127 @@ const handleNSFWCommand = async (sock, msg, endpoint) => {
         }
 
         // Verify age and NSFW settings
-        if (!await verifyAge(sock, msg)) return;
-        if (!await checkGroupNSFW(sock, msg)) return;
-
-        // Available NSFW endpoints from waifu.pics
-        const validEndpoints = {
-            'fuck': 'waifu',         // Using waifu endpoint for intimate content
-            'cum': 'neko',           // Using neko endpoint for cute NSFW
-            'horny': 'waifu',        // Using waifu endpoint for suggestive content
-            'pussy': 'neko',         // Using neko endpoint for intimate content
-            'dick': 'trap',          // Using trap endpoint for specific content
-            'riding': 'waifu',       // Using waifu endpoint for action content
-            'doggy': 'waifu',        // Using waifu endpoint for position content
-            'sex': 'waifu'           // Using waifu endpoint for general NSFW
-        };
-
-        const actualEndpoint = validEndpoints[endpoint] || endpoint;
-        logger.debug('Making API request to NSFW endpoint', { endpoint: actualEndpoint });
+        if (!await verifyAge(sock, msg)) {
+            logger.info('Age verification failed', { userId });
+            return;
+        }
+        if (!await checkGroupNSFW(sock, msg)) {
+            logger.info('Group NSFW check failed', { 
+                groupId: msg.key.remoteJid,
+                userId 
+            });
+            return;
+        }
 
         // Send initial message
         await sock.sendMessage(msg.key.remoteJid, {
             text: '🔄 Fetching NSFW content...'
         });
 
-        const response = await axios.get(`https://api.waifu.pics/nsfw/${actualEndpoint}`);
+        // Make API request to waifu.pics with improved error handling
+        logger.debug('Making API request', { 
+            endpoint,
+            url: `https://api.waifu.pics/nsfw/${endpoint}`
+        });
 
-        logger.debug('Sending NSFW image', { url: response.data.url });
+        const response = await axios.get(`https://api.waifu.pics/nsfw/${endpoint}`, {
+            timeout: 10000,
+            validateStatus: status => status === 200
+        });
+
+        if (!response.data || !response.data.url) {
+            throw new Error('Invalid API response structure');
+        }
+
+        logger.debug('Received API response', { 
+            url: response.data.url,
+            status: response.status
+        });
+
         await sock.sendMessage(msg.key.remoteJid, {
             image: { url: response.data.url },
             caption: `🔞 NSFW ${endpoint} content`
         });
 
         setCooldown(userId);
-        logger.info('NSFW command completed successfully');
+        logger.info('NSFW command completed successfully', { endpoint });
+
     } catch (error) {
         logger.error(`Error in ${endpoint} command:`, {
             error: error.message,
             stack: error.stack,
             response: error.response?.data,
-            status: error.response?.status
+            endpoint,
+            userId: msg.key.participant || msg.key.remoteJid
         });
+
+        let errorMessage = '❌ Failed to fetch content';
+        if (error.response?.status === 404) {
+            errorMessage = '❌ Content not found';
+        } else if (error.code === 'ECONNABORTED') {
+            errorMessage = '❌ Request timed out';
+        } else if (error.response?.status === 403) {
+            errorMessage = '❌ Access denied';
+        }
+
         await sock.sendMessage(msg.key.remoteJid, {
-            text: `❌ Error fetching content: ${error.message}`
+            text: `${errorMessage}: ${error.message}`
         });
     }
 };
 
-// Age verification helper
+// Age verification helper with improved error handling
 const verifyAge = async (sock, msg) => {
     try {
-        const user = await store.getUserInfo(msg.key.participant);
-        if (!user || !user.age || user.age < 18) {
+        const userId = msg.key.participant || msg.key.remoteJid;
+        logger.debug('Verifying age for user', { userId });
+
+        const user = await store.getUserInfo(userId);
+
+        if (!user) {
+            logger.debug('User not found in database', { userId });
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: '⚠️ This command requires age verification. Please register with !register <name> <age> first. Must be 18+.' 
+                text: '⚠️ Please register first with !register <name> <age>. Must be 18+.' 
             });
             return false;
         }
+
+        if (!user.age || user.age < 18) {
+            logger.debug('User age verification failed', { 
+                userId,
+                age: user.age || 'not set'
+            });
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '⚠️ You must be 18+ to use NSFW commands.' 
+            });
+            return false;
+        }
+
         return true;
     } catch (error) {
         logger.error('Error in age verification:', error);
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: '❌ Error verifying age. Please try again later.' 
+        });
         return false;
     }
 };
 
-// Group NSFW setting check
+// Group NSFW setting check with improved logging
 const checkGroupNSFW = async (sock, msg) => {
     try {
         // If not a group chat, NSFW is allowed
-        if (!msg.key.remoteJid.endsWith('@g.us')) return true;
+        if (!msg.key.remoteJid.endsWith('@g.us')) {
+            logger.debug('Not a group chat, NSFW allowed');
+            return true;
+        }
 
         const isNSFW = await store.isNSFWEnabled(msg.key.remoteJid);
+        logger.debug('Checking group NSFW status', {
+            groupId: msg.key.remoteJid,
+            isEnabled: isNSFW
+        });
+
         if (!isNSFW) {
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: '⚠️ NSFW commands are disabled in this group. Admins can enable them with !setnsfw on' 
@@ -133,6 +170,9 @@ const checkGroupNSFW = async (sock, msg) => {
         return true;
     } catch (error) {
         logger.error('Error checking group NSFW status:', error);
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: '❌ Error checking group settings' 
+        });
         return false;
     }
 };
@@ -141,8 +181,6 @@ const checkGroupNSFW = async (sock, msg) => {
 const nsfwCommands = {
     register: async (sock, msg, args) => {
         try {
-            logger.info('Starting register command');
-
             if (args.length < 2) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '❌ Please provide your name and age!\nUsage: !register <name> <age>'
@@ -164,10 +202,11 @@ const nsfwCommands = {
                 });
             }
 
-            await store.registerUser(msg.key.participant, name, age);
+            const userId = msg.key.participant || msg.key.remoteJid;
+            await store.registerUser(userId, name, age);
 
             logger.info('User registered successfully', {
-                user: msg.key.participant,
+                userId,
                 name,
                 age
             });
@@ -202,6 +241,12 @@ const nsfwCommands = {
 
             const status = args[0]?.toLowerCase() === 'on';
             await store.setGroupSetting(msg.key.remoteJid, 'nsfw', status);
+
+            logger.info('NSFW setting updated', {
+                groupId: msg.key.remoteJid,
+                enabled: status
+            });
+
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `✅ NSFW commands are now ${status ? 'enabled' : 'disabled'}`
             });
@@ -216,7 +261,8 @@ const nsfwCommands = {
     nsfwcheck: async (sock, msg) => {
         try {
             const isGroupChat = msg.key.remoteJid.endsWith('@g.us');
-            const user = await store.getUserInfo(msg.key.participant);
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const user = await store.getUserInfo(userId);
             const isNSFW = isGroupChat ? await store.isNSFWEnabled(msg.key.remoteJid) : true;
 
             let status = `*NSFW Status Check*\n\n`;
@@ -237,44 +283,24 @@ const nsfwCommands = {
     },
 
     // NSFW content commands
-    fuck: async (sock, msg) => {
-        logger.info('Executing fuck command');
-        await handleNSFWCommand(sock, msg, 'fuck');
+    waifu: async (sock, msg) => {
+        logger.info('Executing waifu command');
+        await handleNSFWCommand(sock, msg, 'waifu');
     },
 
-    cum: async (sock, msg) => {
-        logger.info('Executing cum command');
-        await handleNSFWCommand(sock, msg, 'cum');
+    neko: async (sock, msg) => {
+        logger.info('Executing neko command');
+        await handleNSFWCommand(sock, msg, 'neko');
     },
 
-    horny: async (sock, msg) => {
-        logger.info('Executing horny command');
-        await handleNSFWCommand(sock, msg, 'horny');
+    trap: async (sock, msg) => {
+        logger.info('Executing trap command');
+        await handleNSFWCommand(sock, msg, 'trap');
     },
 
-    pussy: async (sock, msg) => {
-        logger.info('Executing pussy command');
-        await handleNSFWCommand(sock, msg, 'pussy');
-    },
-
-    dick: async (sock, msg) => {
-        logger.info('Executing dick command');
-        await handleNSFWCommand(sock, msg, 'dick');
-    },
-
-    riding: async (sock, msg) => {
-        logger.info('Executing riding command');
-        await handleNSFWCommand(sock, msg, 'riding');
-    },
-
-    doggy: async (sock, msg) => {
-        logger.info('Executing doggy command');
-        await handleNSFWCommand(sock, msg, 'doggy');
-    },
-
-    sex: async (sock, msg) => {
-        logger.info('Executing sex command');
-        await handleNSFWCommand(sock, msg, 'sex');
+    blowjob: async (sock, msg) => {
+        logger.info('Executing blowjob command');
+        await handleNSFWCommand(sock, msg, 'blowjob');
     }
 };
 
