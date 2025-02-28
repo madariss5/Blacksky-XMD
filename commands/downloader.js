@@ -6,6 +6,10 @@ const axios = require('axios');
 const yts = require('yt-search');
 const fs = require('fs-extra');
 const path = require('path');
+const { fbdl } = require('../attached_assets/downloader-fbdl');
+const { tiktok } = require('../attached_assets/downloader-tiktok');
+const { mediafire } = require('../attached_assets/downloader-mediafire');
+const { apk } = require('../attached_assets/downloader-apk');
 
 // Create temp directory if it doesn't exist
 const tempDir = path.join(__dirname, '../temp');
@@ -185,6 +189,7 @@ const downloaderCommands = {
             });
         }
     },
+
     tiktok: async (sock, msg, args) => {
         try {
             if (!args.length) {
@@ -192,11 +197,38 @@ const downloaderCommands = {
                     text: `Please provide a TikTok URL!\nUsage: ${config.prefix}tiktok <url>`
                 });
             }
-            const result = await tiktok.download(args[0]);
+
             await sock.sendMessage(msg.key.remoteJid, {
-                video: { url: result.url },
+                text: '⏳ Processing your request...'
+            });
+
+            const result = await tiktok.download(args[0]);
+
+            // Download to temp file to handle large videos
+            const tempFile = path.join(tempDir, `tiktok_${Date.now()}.mp4`);
+            const writer = fs.createWriteStream(tempFile);
+
+            const response = await axios({
+                url: result.url,
+                method: 'GET',
+                responseType: 'stream'
+            });
+
+            response.data.pipe(writer);
+
+            await new Promise((resolve, reject) => {
+                writer.on('finish', resolve);
+                writer.on('error', reject);
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                video: { url: tempFile },
                 caption: '📱 TikTok Video'
             });
+
+            // Cleanup
+            await fs.remove(tempFile);
+
         } catch (error) {
             logger.error('Error in tiktok command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -212,11 +244,38 @@ const downloaderCommands = {
                     text: `Please provide a Facebook URL!\nUsage: ${config.prefix}facebook <url>`
                 });
             }
-            const result = await fbdl.download(args[0]);
+
             await sock.sendMessage(msg.key.remoteJid, {
-                video: { url: result.url },
-                caption: '📱 Facebook Video'
+                text: '⏳ Processing your request...'
             });
+
+            const result = await fbdl.download(args[0]);
+
+            // Download to temp file to handle large videos
+            const tempFile = path.join(tempDir, `fb_${Date.now()}.mp4`);
+            const writer = fs.createWriteStream(tempFile);
+
+            const response = await axios({
+                url: result.url,
+                method: 'GET',
+                responseType: 'stream'
+            });
+
+            response.data.pipe(writer);
+
+            await new Promise((resolve, reject) => {
+                writer.on('finish', resolve);
+                writer.on('error', reject);
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                video: { url: tempFile },
+                caption: result.title || '📱 Facebook Video'
+            });
+
+            // Cleanup
+            await fs.remove(tempFile);
+
         } catch (error) {
             logger.error('Error in facebook command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -232,12 +291,39 @@ const downloaderCommands = {
                     text: `Please provide a MediaFire URL!\nUsage: ${config.prefix}mediafire <url>`
                 });
             }
-            const result = await mediafire.download(args[0]);
+
             await sock.sendMessage(msg.key.remoteJid, {
-                document: { url: result.url },
+                text: '⏳ Processing your request...'
+            });
+
+            const result = await mediafire.download(args[0]);
+
+            // Download to temp file
+            const tempFile = path.join(tempDir, result.filename);
+            const writer = fs.createWriteStream(tempFile);
+
+            const response = await axios({
+                url: result.url,
+                method: 'GET',
+                responseType: 'stream'
+            });
+
+            response.data.pipe(writer);
+
+            await new Promise((resolve, reject) => {
+                writer.on('finish', resolve);
+                writer.on('error', reject);
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                document: { url: tempFile },
                 mimetype: result.mime,
                 fileName: result.filename
             });
+
+            // Cleanup
+            await fs.remove(tempFile);
+
         } catch (error) {
             logger.error('Error in mediafire command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -246,6 +332,7 @@ const downloaderCommands = {
         }
     },
 
+    // APK downloader command
     apk: async (sock, msg, args) => {
         try {
             if (!args.length) {
@@ -253,12 +340,39 @@ const downloaderCommands = {
                     text: `Please provide an app name!\nUsage: ${config.prefix}apk <app name>`
                 });
             }
-            const result = await apk.download(args.join(' '));
+
             await sock.sendMessage(msg.key.remoteJid, {
-                document: { url: result.url },
-                mimetype: 'application/vnd.android.package-archive',
-                fileName: result.name + '.apk'
+                text: '⏳ Processing your request...'
             });
+
+            const result = await apk.download(args.join(' '));
+
+            // Download to temp file
+            const tempFile = path.join(tempDir, `${result.name}.apk`);
+            const writer = fs.createWriteStream(tempFile);
+
+            const response = await axios({
+                url: result.url,
+                method: 'GET',
+                responseType: 'stream'
+            });
+
+            response.data.pipe(writer);
+
+            await new Promise((resolve, reject) => {
+                writer.on('finish', resolve);
+                writer.on('error', reject);
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                document: { url: tempFile },
+                mimetype: 'application/vnd.android.package-archive',
+                fileName: `${result.name}.apk`
+            });
+
+            // Cleanup
+            await fs.remove(tempFile);
+
         } catch (error) {
             logger.error('Error in apk command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -266,7 +380,6 @@ const downloaderCommands = {
             });
         }
     },
-
     lyrics: async (sock, msg, args) => {
         try {
             if (!args.length) {
