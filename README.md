@@ -48,31 +48,31 @@ OWNER_NUMBER=1234567890@s.whatsapp.net
 ## 📜 Available Commands
 
 ### Basic Commands
-- `!menu` - Show command menu
-- `!help` - Show help message
-- `!ping` - Check bot response
-- `!info` - Get bot information
+- `.menu` - Show command menu
+- `.help` - Show help message
+- `.ping` - Check bot response
+- `.info` - Get bot information
 
 ### Group Commands
-- `!kick @user` - Kick user
-- `!promote @user` - Promote to admin
-- `!demote @user` - Demote from admin
-- `!everyone` - Tag all members
+- `.kick @user` - Kick user
+- `.promote @user` - Promote to admin
+- `.demote @user` - Demote from admin
+- `.everyone` - Tag all members
 
 ### Fun Commands
-- `!slap @user` - Slap someone with sticker
-- `!hug @user` - Hug someone with sticker
-- `!pat @user` - Pat someone with sticker
-- `!dance` - Show dance sticker
-- `!rps` - Play rock, paper, scissors
-- `!meme` - Get random meme
+- `.slap @user` - Slap someone with sticker
+- `.hug @user` - Hug someone with sticker
+- `.pat @user` - Pat someone with sticker
+- `.dance` - Show dance sticker
+- `.rps` - Play rock, paper, scissors
+- `.meme` - Get random meme
 
 ### User Commands
-- `!register <name> <age>` - Register your profile
-- `!profile` - View your profile
-- `!daily` - Get daily rewards
-- `!rank` - Check your rank
-- `!inventory` - View your inventory
+- `.register <name> <age>` - Register your profile
+- `.profile` - View your profile
+- `.daily` - Get daily rewards
+- `.rank` - Check your rank
+- `.inventory` - View your inventory
 
 ## 🔧 Development
 1. Fork the repository

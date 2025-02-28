@@ -27,7 +27,7 @@
 - `LOG_LEVEL`: Logging level (default: info)
 - `NODE_ENV`: Should be set to "production"
 - `BOT_NAME`: Name for your bot (default: BlackSky-MD)
-- `PREFIX`: Command prefix (default: !)
+- `PREFIX`: Command prefix (default: .)
 - `USE_PAIRING`: Enable pairing code authentication (default: true)
 
 ## Deployment Steps

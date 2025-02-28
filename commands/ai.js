@@ -19,7 +19,7 @@ const aiCommands = {
         try {
             if (!args.length) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Please provide a prompt!\nUsage: ${config.prefix}gpt <your question>`
+                    text: `Please provide a prompt!\nUsage: .gpt <your question>`
                 });
             }
             const response = await aiGpt.getResponse(args.join(' '));
@@ -36,7 +36,7 @@ const aiCommands = {
         try {
             if (!args.length) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Please provide an image description!\nUsage: ${config.prefix}imagine <description>`
+                    text: `Please provide an image description!\nUsage: .imagine <description>`
                 });
             }
             const imageUrl = await aiImagine.generateImage(args.join(' '));
@@ -56,7 +56,7 @@ const aiCommands = {
         try {
             if (!args.length) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Chat with Lisa!\nUsage: ${config.prefix}lisa <your message>`
+                    text: `Chat with Lisa!\nUsage: .lisa <your message>`
                 });
             }
             const response = await aiLisa.chat(args.join(' '));
@@ -73,7 +73,7 @@ const aiCommands = {
         try {
             if (!args.length) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Chat with Rias!\nUsage: ${config.prefix}rias <your message>`
+                    text: `Chat with Rias!\nUsage: .rias <your message>`
                 });
             }
             const response = await aiRias.chat(args.join(' '));
@@ -90,7 +90,7 @@ const aiCommands = {
         try {
             if (!args.length) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Chat with Toxxic!\nUsage: ${config.prefix}toxxic <your message>`
+                    text: `Chat with Toxxic!\nUsage: .toxxic <your message>`
                 });
             }
             const response = await aiToxxic.chat(args.join(' '));
@@ -107,7 +107,7 @@ const aiCommands = {
         try {
             if (!args.length) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Convert text to image!\nUsage: ${config.prefix}txt2img <text>`
+                    text: `Convert text to image!\nUsage: .txt2img <text>`
                 });
             }
             const imageUrl = await aiTxt2img.generate(args.join(' '));
@@ -139,7 +139,7 @@ const aiCommands = {
         try {
             if (!args.length) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Report Android bug!\nUsage: ${config.prefix}bugandro <bug description>`
+                    text: `Report Android bug!\nUsage: .bugandro <bug description>`
                 });
             }
             const report = await bugAndro.report(msg.key.participant, args.join(' '));
@@ -156,7 +156,7 @@ const aiCommands = {
         try {
             if (!args.length) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Report iOS bug!\nUsage: ${config.prefix}bugios <bug description>`
+                    text: `Report iOS bug!\nUsage: .bugios <bug description>`
                 });
             }
             const report = await bugIos.report(msg.key.participant, args.join(' '));

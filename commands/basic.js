@@ -7,10 +7,10 @@ const basicCommands = {
             logger.debug('Executing help command');
             const text = `*${config.botName}*\n\n` +
                         `📌 *Basic Commands*:\n` +
-                        `• ${config.prefix}help - Show this help message\n` +
-                        `• ${config.prefix}ping - Check bot response\n` +
-                        `• ${config.prefix}menu - Show all commands\n\n` +
-                        `Type ${config.prefix}menu to see the full command list!`;
+                        `• .help - Show this help message\n` +
+                        `• .ping - Check bot response\n` +
+                        `• .menu - Show all commands\n\n` +
+                        `Type .menu to see the full command list!`;
 
             await sock.sendMessage(msg.key.remoteJid, { text });
             logger.info('Help command executed successfully');
@@ -51,7 +51,7 @@ const basicCommands = {
                 if (!categories[info.category]) {
                     categories[info.category] = [];
                 }
-                categories[info.category].push(`• ${config.prefix}${cmd} - ${info.description}`);
+                categories[info.category].push(`• .${cmd} - ${info.description}`);
             });
 
             // Build menu text with all categories
@@ -87,7 +87,7 @@ const basicCommands = {
                 }
             });
 
-            text += `Use ${config.prefix}help <command> for detailed info!`;
+            text += `Use .help <command> for detailed info!`;
 
             await sock.sendMessage(msg.key.remoteJid, { text });
             logger.info('Menu command executed successfully');

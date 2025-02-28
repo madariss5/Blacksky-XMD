@@ -107,7 +107,7 @@ const groupCommands = {
 
             if (!args[0]) {
                 return await sock.sendMessage(msg.key.remoteJid, { 
-                    text: `❌ Please mention a user to kick!\nUsage: ${config.prefix}kick @user` 
+                    text: `❌ Please mention a user to kick!\nUsage: .kick @user` 
                 });
             }
 
@@ -411,7 +411,7 @@ const groupCommands = {
 
             if (!args[0] || !['on', 'off'].includes(args[0].toLowerCase())) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `❌ Please specify on/off!\nUsage: ${config.prefix}antilink on/off`
+                    text: `❌ Please specify on/off!\nUsage: .antilink on/off`
                 });
             }
 
@@ -434,7 +434,7 @@ const groupCommands = {
 
             if (!args[0] || !['on', 'off'].includes(args[0].toLowerCase())) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `❌ Please specify on/off!\nUsage: ${config.prefix}antispam on/off`
+                    text: `❌ Please specify on/off!\nUsage: .antispam on/off`
                 });
             }
 
@@ -457,7 +457,7 @@ const groupCommands = {
 
             if (!args[0] || !['on', 'off'].includes(args[0].toLowerCase())) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `❌ Please specify on/off!\nUsage: ${config.prefix}antitoxic on/off`
+                    text: `❌ Please specify on/off!\nUsage: .antitoxic on/off`
                 });
             }
 
@@ -510,7 +510,7 @@ const groupCommands = {
 
             if (!args[0]) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `❌ Please mention a user to warn!\nUsage: ${config.prefix}warn @user [reason]`
+                    text: `❌ Please mention a user to warn!\nUsage: .warn @user [reason]`
                 });
             }
 
@@ -560,7 +560,7 @@ const groupCommands = {
 
             if (args.length < 2) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `❌ Please specify user and warning number!\nUsage: ${config.prefix}delwarn @user <warning_number>`
+                    text: `❌ Please specify user and warning number!\nUsage: .delwarn @user <warning_number>`
                 });
             }
 
@@ -590,7 +590,7 @@ const groupCommands = {
 
             if (!args[0]) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `❌ Please mention a user!\nUsage: ${config.prefix}warnlist @user`
+                    text: `❌ Please mention a user!\nUsage: .warnlist @user`
                 });
             }
 
@@ -657,7 +657,7 @@ const groupCommands = {
             const [question, ...options] = args;
             if (!question || options.length < 2) {
                 return await sock.sendMessage(msg.key.remoteJid, { 
-                    text: 'Please provide a question and at least 2 options!\nFormat: !poll "Question" "Option1" "Option2"' 
+                    text: 'Please provide a question and at least 2 options!\nFormat: .poll "Question" "Option1" "Option2"' 
                 });
             }
 

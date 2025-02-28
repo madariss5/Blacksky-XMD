@@ -169,7 +169,7 @@ async function sendStatusMessage(sock, status, details = '') {
                              `⏰ Time: ${timestamp}\n` +
                              `🔧 Version: ${require('./package.json').version}\n` +
                              (details ? `\n📝 Details:\n${details}\n` : '') +
-                             `\n💡 Type ${config.prefix}menu to see available commands.`;
+                             `\n💡 Type .menu to see available commands.`;
 
         // Send only to owner
         await sock.sendMessage(config.ownerNumber, { text: statusMessage });

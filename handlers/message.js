@@ -14,7 +14,7 @@ const commandModules = {
     game: require('../commands/game'),
     anime: require('../commands/anime'),
     ai: require('../commands/ai'),
-    media: require('../commands/media') // Added media commands
+    media: require('../commands/media')
 };
 
 async function executeCommand(sock, msg, command, args, moduleName) {
@@ -75,12 +75,13 @@ async function messageHandler(sock, msg) {
         logger.debug('Processing message:', {
             text,
             type: messageType,
-            from: msg.key.remoteJid
+            from: msg.key.remoteJid,
+            prefix: config.prefix
         });
 
-        // Check for commands
-        if (text.startsWith(config.prefix)) {
-            const [rawCommand, ...args] = text.slice(config.prefix.length).trim().split(/\s+/);
+        // Check for commands - Explicitly check for the dot prefix
+        if (text.startsWith('.')) {
+            const [rawCommand, ...args] = text.slice(1).trim().split(/\s+/);
             if (!rawCommand) {
                 logger.debug('Empty command received');
                 return;
@@ -115,7 +116,7 @@ async function messageHandler(sock, msg) {
             // Command not found
             logger.warn('Command not found:', command);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `Command "${command}" not found. Use ${config.prefix}help to see available commands.`
+                text: `Command "${command}" not found. Use .help to see available commands.`
             });
         }
     } catch (error) {
