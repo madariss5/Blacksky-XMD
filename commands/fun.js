@@ -3,6 +3,10 @@ const fs = require('fs-extra');
 const path = require('path');
 const logger = require('pino')();
 const ffmpeg = require('fluent-ffmpeg');
+const { exec } = require('child_process'); // Added for exec
+const downloadMediaMessage = require('./downloadMediaMessage');// Added for downloadMediaMessage.  Assumed to exist.
+const tempDir = require('os').tmpdir();// Added tempDir.  Example implementation. Adjust as needed.
+
 
 const mediaDir = path.join(__dirname, '../media');
 if (!fs.existsSync(mediaDir)) {
@@ -112,34 +116,35 @@ const funCommands = {
 11. *!wink* [@user] - Wink at someone
 12. *!punch* [@user] - Punch someone
 13. *!ponk* [@user] - Ponk someone
+14. *!trash* [@user] - Throw someone into the trash
 
 🎭 *Emote Actions:*
-14. *!dance* - Show off your dance moves
-15. *!facepalm* - Express your disappointment
+15. *!dance* - Show off your dance moves
+16. *!facepalm* - Express your disappointment
 
 🎬 *Special Effects:*
-16. *!wasted* [@user] - Apply a wasted effect
-17. *!jail* [@user] - Put someone behind bars
-18. *!rip* [@user] - Create a memorial
-19. *!kill* [@user] - Dramatically eliminate someone
-20. *!yeet* [@user] - Yeet someone into space
-21. *!insult* [@user] - Playfully insult someone
+17. *!wasted* [@user] - Apply a wasted effect
+18. *!jail* [@user] - Put someone behind bars
+19. *!rip* [@user] - Create a memorial
+20. *!kill* [@user] - Dramatically eliminate someone
+21. *!yeet* [@user] - Yeet someone into space
+22. *!insult* [@user] - Playfully insult someone
 
 🎲 *Games & Challenges:*
-22. *!coinflip* - Flip a coin
-23. *!dare* - Get a random dare challenge
-24. *!truth* - Get a random truth question
-25. *!magic8ball* [question] - Ask the magic 8 ball
-26. *!wordgame* - Play a word guessing game
+23. *!coinflip* - Flip a coin
+24. *!dare* - Get a random dare challenge
+25. *!truth* - Get a random truth question
+26. *!magic8ball* [question] - Ask the magic 8 ball
+27. *!wordgame* - Play a word guessing game
     - Use *!guess* [word] to make a guess
-27. *!trivia* - Play a trivia game
+28. *!trivia* - Play a trivia game
     - Use *!answer* [number] to answer
 
 🎨 *Fun Content:*
-28. *!joke* - Get a random funny joke
-29. *!quote* - Get an inspirational quote
-30. *!fact* - Learn an interesting fact
-31. *!emojiart* - Get a random emoji art
+29. *!joke* - Get a random funny joke
+30. *!quote* - Get an inspirational quote
+31. *!fact* - Learn an interesting fact
+32. *!emojiart* - Get a random emoji art
 
 *How to use:*
 - Commands with [@user] can tag someone
@@ -827,6 +832,76 @@ const funCommands = {
             logger.error('Error in ponk command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Failed to execute ponk command: ' + error.message
+            });
+        }
+    },
+    trash: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* throws ${target} into the trash! 🗑️`,
+                mentions: mentions
+            });
+
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                await sendGifReaction(sock, msg, './media/anime-trash.gif', '🗑️', mentions);
+                return;
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Creating anime trash effect...'
+            });
+
+            const buffer = await downloadMediaMessage(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            // Create temp file paths
+            const inputPath = path.join(tempDir, 'input.png');
+            const outputPath = path.join(tempDir, 'output.gif');
+
+            // Write buffer to file
+            await fs.writeFile(inputPath, buffer);
+
+            // Create anime trash effect using Python script
+            const pythonScript = path.join(__dirname, '../scripts/create_anime_trash.py');
+            await new Promise((resolve, reject) => {
+                exec(`python3 "${pythonScript}" "${inputPath}" "${outputPath}"`, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
+
+            // Read and send the processed image
+            const resultBuffer = await fs.readFile(outputPath);
+            await sock.sendMessage(msg.key.remoteJid, {
+                video: resultBuffer,
+                gifPlayback: true,
+                caption: `🗑️ *${msg.pushName}* threw ${target} into the trash!`,
+                mentions: mentions
+            });
+
+            // Cleanup temp files
+            await fs.remove(inputPath);
+            await fs.remove(outputPath);
+
+        } catch (error) {
+            logger.error('Error in trash command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to create trash effect: ' + error.message
             });
         }
     }

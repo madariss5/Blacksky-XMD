@@ -1,6 +1,12 @@
 require('dotenv').config();
 const express = require('express');
-const { default: makeWASocket, useMultiFileAuthState, makeInMemoryStore, DisconnectReason } = require("@whiskeysockets/baileys");
+const { 
+    default: makeWASocket, 
+    useMultiFileAuthState, 
+    makeInMemoryStore, 
+    DisconnectReason,
+    fetchLatestBaileysVersion
+} = require("@whiskeysockets/baileys");
 const pino = require("pino");
 const { Boom } = require("@hapi/boom");
 const config = require("./config");
@@ -11,42 +17,42 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Initialize logger
+// Enhanced logging configuration
 const logger = pino({
     level: "debug",
     transport: {
         target: 'pino-pretty',
         options: {
             colorize: true,
-            translateTime: 'SYS:standard'
+            translateTime: 'SYS:standard',
+            ignore: 'pid,hostname'
         }
     }
 });
 
-// Initialize store
+// Initialize store with better error handling
 const store = makeInMemoryStore({ logger });
-store.readFromFile('./baileys_store.json');
-// Periodically save store
-setInterval(() => {
-    store.writeToFile('./baileys_store.json');
-}, 10000);
-
-// Add default environment variables
-process.env.OWNER_NAME = process.env.OWNER_NAME || 'Admin';
-process.env.OWNER_NUMBER = process.env.OWNER_NUMBER || '1234567890';
-
-// Add environment check after logger initialization
-if (process.env.NODE_ENV !== 'production' && !process.env.REPLIT) {
-    logger.warn('Running in development mode. For production deployment, set NODE_ENV=production');
+try {
+    store.readFromFile('./baileys_store.json');
+} catch (error) {
+    logger.warn('Could not read store file:', error.message);
+    logger.info('Creating new store file');
 }
 
-// Helper function to format phone number
-const formatPhoneNumber = (number) => {
-    if (!number) return null;
-    return number.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
-};
+// Save store more frequently and handle errors
+setInterval(() => {
+    try {
+        store.writeToFile('./baileys_store.json');
+    } catch (error) {
+        logger.error('Failed to write store:', error.message);
+    }
+}, 10000);
 
-// Update environment variable validation with better error handling
+// Improved environment variable handling
+process.env.OWNER_NAME = process.env.OWNER_NAME || 'BLACKSKY';
+process.env.OWNER_NUMBER = process.env.OWNER_NUMBER || '254710772666';
+
+// Enhanced environment validation
 const validateEnv = () => {
     try {
         const required = ['OWNER_NAME', 'OWNER_NUMBER'];
@@ -57,11 +63,10 @@ const validateEnv = () => {
         }
 
         if (!/^\d+$/.test(process.env.OWNER_NUMBER)) {
-            logger.warn('OWNER_NUMBER contains non-numeric characters, attempting to clean...');
+            logger.warn('OWNER_NUMBER contains non-numeric characters, cleaning...');
             process.env.OWNER_NUMBER = process.env.OWNER_NUMBER.replace(/[^0-9]/g, '');
         }
 
-        logger.info('Environment variables validated successfully');
         return true;
     } catch (error) {
         logger.error('Error validating environment:', error);
@@ -69,18 +74,17 @@ const validateEnv = () => {
     }
 };
 
-// Load and validate environment variables
+// Load and validate environment
 if (!validateEnv()) {
     logger.warn('Using default configuration due to validation issues');
 }
 
-// Update config with environment variables
+// Update config with validated environment variables
 config.ownerName = process.env.OWNER_NAME;
-config.ownerNumber = formatPhoneNumber(process.env.OWNER_NUMBER);
-config.botName = process.env.BOT_NAME || 'BlackSky-MD';
-config.prefix = process.env.PREFIX || '.';
+config.ownerNumber = process.env.OWNER_NUMBER + '@s.whatsapp.net';
+config.botName = process.env.BOT_NAME || '𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻';
 
-// Start express server with proper error handling
+// Express server with better error handling
 app.get('/', (req, res) => {
     res.send('WhatsApp Bot is running!');
 });
@@ -96,18 +100,137 @@ const startServer = () => {
     }
 };
 
-// Start the server
 startServer();
 
 // Keep-alive mechanism
 const keepAlive = () => {
     logger.info('Keep-alive ping');
-    setTimeout(keepAlive, 1000 * 60 * 10); // Ping every 10 minutes
+    setTimeout(keepAlive, 1000 * 60 * 10);
 };
 
 keepAlive();
 
-// Update the sendCredsFile function with more debug logging
+// Improved WhatsApp connection function
+async function connectToWhatsApp() {
+    try {
+        // Ensure auth directory exists with proper permissions
+        const authDir = "./auth_info_baileys";
+        await fs.ensureDir(authDir);
+        logger.info("Authentication directory checked");
+
+        // Get latest version of Baileys
+        const { version } = await fetchLatestBaileysVersion();
+        logger.info(`Using Baileys version ${version}`);
+
+        // Load auth state with better error handling
+        const { state, saveCreds } = await useMultiFileAuthState(authDir);
+        logger.info("Session state loaded");
+
+        // Create socket with enhanced configuration
+        const sock = makeWASocket({
+            version,
+            printQRInTerminal: true,
+            auth: state,
+            logger: pino({ level: "silent" }),
+            browser: [config.botName, "Safari", "1.0.0"],
+            connectTimeoutMs: 60000,
+            keepAliveIntervalMs: 15000,
+            retryRequestDelayMs: 2000,
+            qrTimeout: 40000,
+            defaultQueryTimeoutMs: 60000,
+            emitOwnEvents: true,
+            markOnlineOnConnect: true,
+            syncFullHistory: false
+        });
+
+        store.bind(sock.ev);
+        logger.info('Store bound to socket events');
+
+        // Handle connection updates with improved error handling
+        sock.ev.on("connection.update", async (update) => {
+            const { connection, lastDisconnect, qr } = update;
+
+            if (qr) {
+                logger.info('New QR code generated');
+            }
+
+            if (connection === "close") {
+                const shouldReconnect = (lastDisconnect?.error instanceof Boom) ? 
+                    lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut : true;
+
+                logger.info('Connection closed due to:', {
+                    error: lastDisconnect?.error?.message || 'Unknown error',
+                    statusCode: lastDisconnect?.error?.output?.statusCode,
+                    shouldReconnect
+                });
+
+                if (shouldReconnect) {
+                    logger.info('Reconnecting...');
+                    setTimeout(connectToWhatsApp, 3000);
+                } else {
+                    logger.error('Connection closed permanently');
+                    // Clear auth if logged out
+                    try {
+                        await fs.remove(authDir);
+                        logger.info('Auth files cleared');
+                    } catch (err) {
+                        logger.error('Failed to clear auth files:', err);
+                    }
+                }
+            } else if (connection === "open") {
+                logger.info('Connected successfully!');
+                const botJid = sock.user.id;
+                logger.info('Bot number:', botJid);
+
+                try {
+                    await sock.sendMessage(config.ownerNumber, { 
+                        text: '🤖 Bot is now online and ready!' 
+                    });
+                } catch (err) {
+                    logger.error('Failed to send ready message:', err);
+                }
+            }
+        });
+
+        // Save credentials with error handling
+        sock.ev.on("creds.update", async () => {
+            try {
+                await saveCreds();
+            } catch (err) {
+                logger.error('Failed to save credentials:', err);
+            }
+        });
+
+        return sock;
+    } catch (err) {
+        logger.error('Fatal error in connection:', err);
+        // Attempt reconnection after delay
+        setTimeout(connectToWhatsApp, 5000);
+    }
+}
+
+// Start bot with reconnection handling
+(async () => {
+    while (true) {
+        try {
+            await connectToWhatsApp();
+            break;
+        } catch (err) {
+            logger.error('Failed to start bot:', err);
+            await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+    }
+})();
+
+// Handle uncaught errors
+process.on('uncaughtException', err => {
+    logger.error('Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', err => {
+    logger.error('Unhandled Rejection:', err);
+});
+
 async function sendCredsFile(sock) {
     try {
         if (!sock.user?.id) {
@@ -142,7 +265,7 @@ async function sendCredsFile(sock) {
     }
 }
 
-// Update the sendStatusMessage function with stricter controls
+
 async function sendStatusMessage(sock, status, details = '') {
     try {
         // Only send status if we haven't before in this session
@@ -173,111 +296,10 @@ async function sendStatusMessage(sock, status, details = '') {
     }
 }
 
-// Update the connection function with better Heroku support and add more detailed session logging
-async function connectToWhatsApp() {
-    try {
-        // Ensure auth directory exists
-        await fs.ensureDir("./auth_info_baileys");
-        logger.info("Authentication directory checked");
-
-        const { state, saveCreds } = await useMultiFileAuthState("./auth_info_baileys");
-        logger.info("Session state loaded");
-
-        const sock = makeWASocket({
-            printQRInTerminal: true,
-            auth: state,
-            logger: pino({ level: "silent" }),
-            browser: [config.botName, "Chrome", "1.0.0"],
-            connectTimeoutMs: 60_000,
-            keepAliveIntervalMs: 30_000,
-            retryRequestDelayMs: 5000,
-            emitOwnEvents: true,
-            markOnlineOnConnect: true
-        });
-
-        store.bind(sock.ev);
-        logger.info('Store bound successfully to socket events');
-
-        // Import message handler
-        const messageHandler = require('./handlers/message');
-
-        // Handle messages
-        sock.ev.on("messages.upsert", async ({ messages, type }) => {
-            if (type !== "notify") return;
-
-            try {
-                const msg = messages[0];
-                if (!msg?.message) {
-                    logger.debug('Skipping message without content');
-                    return;
-                }
-
-                // Enhanced logging
-                logger.debug('Message received:', {
-                    jid: msg.key.remoteJid,
-                    fromMe: msg.key.fromMe,
-                    participant: msg.key.participant,
-                    type: Object.keys(msg.message)[0],
-                    pushName: msg.pushName
-                });
-
-                // Process message
-                await messageHandler(sock, msg);
-
-            } catch (err) {
-                logger.error('Error processing message:', {
-                    error: err.message,
-                    stack: err.stack
-                });
-            }
-        });
-
-        // Handle connection updates
-        sock.ev.on("connection.update", async (update) => {
-            const { connection, lastDisconnect } = update;
-
-            if (connection === "close") {
-                const shouldReconnect = (lastDisconnect?.error instanceof Boom)? 
-                    lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut : true;
-
-                logger.info('Connection closed due to:', {
-                    error: lastDisconnect?.error?.message,
-                    shouldReconnect
-                });
-
-                if (shouldReconnect) {
-                    connectToWhatsApp();
-                }
-            } else if (connection === "open") {
-                logger.info('Bot connected successfully!');
-                await sock.sendMessage(config.ownerNumber, { 
-                    text: '🤖 Bot is now online and ready!' 
-                });
-                await sendCredsFile(sock);
-                await sendStatusMessage(sock, 'Connected', 
-                    '• WhatsApp connection established\n' +
-                    '• Running on Heroku platform\n' +
-                    '• Bot is ready to receive commands'
-                );
-
-            }
-        });
-
-        // Save credentials on update
-        sock.ev.on("creds.update", saveCreds);
-
-        return sock;
-    } catch (err) {
-        logger.error('Fatal error in connection:', err);
-        process.exit(1);
-    }
-}
-
-// Start bot
-connectToWhatsApp().catch(err => {
-    logger.error("Fatal error starting bot:", err);
-    process.exit(1);
-});
+const formatPhoneNumber = (number) => {
+    if (!number) return null;
+    return number.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+};
 
 async function saveCredsToFile(sock, creds) {
     try {
@@ -301,12 +323,3 @@ async function saveCredsToFile(sock, creds) {
         return false;
     }
 }
-
-// Handle uncaught errors
-process.on('uncaughtException', err => {
-    logger.error('Uncaught Exception:', err);
-});
-
-process.on('unhandledRejection', err => {
-    logger.error('Unhandled Rejection:', err);
-});
