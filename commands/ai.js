@@ -3,6 +3,12 @@ const logger = require('pino')();
 const fs = require('fs-extra');
 const path = require('path');
 const axios = require('axios');
+const OpenAI = require('openai');
+
+// Initialize OpenAI with API key
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+});
 
 // Create temp directory if it doesn't exist
 const tempDir = path.join(__dirname, '../temp');
@@ -22,45 +28,6 @@ const setCooldown = (userId) => {
     userCooldowns.set(userId, Date.now());
 };
 
-// Simple response templates for common queries
-const responseTemplates = {
-    greetings: [
-        "Hello! How can I help you today?",
-        "Hi there! What can I do for you?",
-        "Greetings! How may I assist you?"
-    ],
-    farewell: [
-        "Goodbye! Have a great day!",
-        "See you later! Take care!",
-        "Bye! Feel free to ask if you need anything else!"
-    ],
-    thanks: [
-        "You're welcome!",
-        "Glad I could help!",
-        "No problem at all!"
-    ],
-    unknown: [
-        "I'm not sure about that. Could you rephrase your question?",
-        "That's interesting, but I might need more context.",
-        "I'm still learning about that topic. Could you explain more?"
-    ]
-};
-
-// Helper function to get a random response
-const getRandomResponse = (category) => {
-    const responses = responseTemplates[category] || responseTemplates.unknown;
-    return responses[Math.floor(Math.random() * responses.length)];
-};
-
-// Helper function to identify message intent
-const identifyIntent = (message) => {
-    message = message.toLowerCase();
-    if (message.match(/\b(hi|hello|hey|greetings)\b/)) return 'greetings';
-    if (message.match(/\b(bye|goodbye|see you|farewell)\b/)) return 'farewell';
-    if (message.match(/\b(thanks|thank you|thx|ty)\b/)) return 'thanks';
-    return 'unknown';
-};
-
 // Helper function to download and save image temporarily
 const downloadImage = async (imageUrl, filename) => {
     const response = await axios({
@@ -78,30 +45,6 @@ const downloadImage = async (imageUrl, filename) => {
         writer.on('finish', () => resolve(tempFilePath));
         writer.on('error', reject);
     });
-};
-
-// Helper function to get topic-specific image
-const getTopicImage = async (query) => {
-    try {
-        // Using Pexels API through proxy URL
-        const searchUrl = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1`;
-        const response = await axios.get(searchUrl, {
-            headers: {
-                'Authorization': process.env.PEXELS_API_KEY || 'dummy_key'
-            }
-        });
-
-        // If Pexels fails, fallback to placeholder
-        if (!response.data || !response.data.photos || !response.data.photos.length) {
-            return `https://via.placeholder.com/800x800.png?text=${encodeURIComponent(query)}`;
-        }
-
-        return response.data.photos[0].src.large;
-    } catch (error) {
-        logger.error('Error fetching topic image:', error);
-        // Return a themed placeholder on error
-        return `https://via.placeholder.com/800x800.png?text=${encodeURIComponent(query)}`;
-    }
 };
 
 const aiCommands = {
@@ -125,14 +68,61 @@ const aiCommands = {
             await sock.sendPresenceUpdate('composing', msg.key.remoteJid);
 
             const userInput = args.join(' ');
-            const intent = identifyIntent(userInput);
-            const response = getRandomResponse(intent);
+
+            // Get response from OpenAI
+            const completion = await openai.chat.completions.create({
+                model: "gpt-3.5-turbo",
+                messages: [{ role: "user", content: userInput }],
+                max_tokens: 200
+            });
+
+            const response = completion.choices[0].message.content;
 
             setCooldown(userId);
             await sock.sendMessage(msg.key.remoteJid, { text: response });
 
         } catch (error) {
             logger.error('Error in gpt command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error processing your request: ' + error.message
+            });
+        }
+    },
+
+    gpt4: async (sock, msg, args) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+
+            if (isOnCooldown(userId)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '⏳ Please wait a few seconds before using this command again.'
+                });
+            }
+
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: 'Please provide a question!\nUsage: .gpt4 <your question>'
+                });
+            }
+
+            await sock.sendPresenceUpdate('composing', msg.key.remoteJid);
+
+            const userInput = args.join(' ');
+
+            // Use GPT-4 model
+            const completion = await openai.chat.completions.create({
+                model: "gpt-4",
+                messages: [{ role: "user", content: userInput }],
+                max_tokens: 300
+            });
+
+            const response = completion.choices[0].message.content;
+
+            setCooldown(userId);
+            await sock.sendMessage(msg.key.remoteJid, { text: response });
+
+        } catch (error) {
+            logger.error('Error in gpt4 command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error processing your request: ' + error.message
             });
@@ -160,25 +150,34 @@ const aiCommands = {
                 text: '🎨 Generating your image...'
             });
 
-            // Get topic-specific image URL
-            const imageUrl = await getTopicImage(args.join(' '));
+            const prompt = args.join(' ');
+
+            // Generate image using DALL-E
+            const response = await openai.images.generate({
+                model: "dall-e-3",
+                prompt: prompt,
+                n: 1,
+                size: "1024x1024"
+            });
+
+            const imageUrl = response.data[0].url;
 
             // Generate filename with timestamp
             const timestamp = Date.now();
-            const filename = `image_${timestamp}.jpg`;
+            const filename = `dalle_${timestamp}.jpg`;
 
-            // Download image to local file
+            // Download image
             const localImagePath = await downloadImage(imageUrl, filename);
 
             setCooldown(userId);
 
-            // Send the image from local file
+            // Send the image
             await sock.sendMessage(msg.key.remoteJid, {
                 image: fs.readFileSync(localImagePath),
-                caption: `🖼️ Here's an image of "${args.join(' ')}" for you!`
+                caption: `🖼️ Here's your DALL-E generated image for: "${prompt}"`
             });
 
-            // Clean up temporary file
+            // Clean up
             await fs.unlink(localImagePath);
 
         } catch (error) {
@@ -199,70 +198,112 @@ const aiCommands = {
         return aiCommands.dalle(sock, msg, args);
     },
 
-    lisa: async (sock, msg, args) => {
+    translate: async (sock, msg, args) => {
         try {
-            await sock.sendMessage(msg.key.remoteJid, { text: "This command is not yet implemented." });
+            const userId = msg.key.participant || msg.key.remoteJid;
+
+            if (isOnCooldown(userId)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '⏳ Please wait a few seconds before using this command again.'
+                });
+            }
+
+            if (args.length < 2) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: 'Please provide the target language and text!\nUsage: .translate <language> <text>'
+                });
+            }
+
+            const targetLang = args[0].toLowerCase();
+            const textToTranslate = args.slice(1).join(' ');
+
+            const completion = await openai.chat.completions.create({
+                model: "gpt-3.5-turbo",
+                messages: [
+                    { 
+                        role: "system", 
+                        content: `You are a translator. Translate the following text to ${targetLang}. Only respond with the translation, no explanations.` 
+                    },
+                    { 
+                        role: "user", 
+                        content: textToTranslate 
+                    }
+                ],
+                max_tokens: 200
+            });
+
+            const translation = completion.choices[0].message.content;
+
+            setCooldown(userId);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `Translation (${targetLang}):\n${translation}`
+            });
+
         } catch (error) {
-            logger.error('Error in lisa command:', error);
+            logger.error('Error in translate command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error: ' + error.message
+                text: '❌ Error translating text: ' + error.message
             });
         }
     },
 
-    rias: async (sock, msg, args) => {
-        try {
-            await sock.sendMessage(msg.key.remoteJid, { text: "This command is not yet implemented." });
-        } catch (error) {
-            logger.error('Error in rias command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error: ' + error.message
-            });
-        }
+    // Placeholder for future implementation
+    remini: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: "🚧 The remini command is currently under development."
+        });
     },
 
-    toxxic: async (sock, msg, args) => {
-        try {
-            await sock.sendMessage(msg.key.remoteJid, { text: "This command is not yet implemented." });
-        } catch (error) {
-            logger.error('Error in toxxic command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error: ' + error.message
-            });
-        }
+    colorize: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: "🚧 The colorize command is currently under development."
+        });
     },
 
+    upscale: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: "🚧 The upscale command is currently under development."
+        });
+    },
+
+    anime2d: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: "🚧 The anime2d command is currently under development."
+        });
+    },
+
+    img2txt: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: "🚧 The img2txt command is currently under development."
+        });
+    },
+
+    // Additional AI characters with placeholder messages
+    lisa: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: "👩 Lisa AI is currently taking a break. Try using .gpt instead!"
+        });
+    },
+
+    rias: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: "👩 Rias AI is currently unavailable. Try using .gpt instead!"
+        });
+    },
+
+    toxxic: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: "🤖 Toxxic AI is currently offline. Try using .gpt instead!"
+        });
+    },
     aiuser: async (sock, msg, args) => {
-        try {
-            await sock.sendMessage(msg.key.remoteJid, { text: "This command is not yet implemented." });
-        } catch (error) {
-            logger.error('Error in aiuser command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error: ' + error.message
-            });
-        }
+        await sock.sendMessage(msg.key.remoteJid, { text: "This command is not yet implemented." });
     },
-
     bugandro: async (sock, msg, args) => {
-        try {
-            await sock.sendMessage(msg.key.remoteJid, { text: "This command is not yet implemented." });
-        } catch (error) {
-            logger.error('Error in bugandro command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error: ' + error.message
-            });
-        }
+        await sock.sendMessage(msg.key.remoteJid, { text: "This command is not yet implemented." });
     },
-
     bugios: async (sock, msg, args) => {
-        try {
-            await sock.sendMessage(msg.key.remoteJid, { text: "This command is not yet implemented." });
-        } catch (error) {
-            logger.error('Error in bugios command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error: ' + error.message
-            });
-        }
+        await sock.sendMessage(msg.key.remoteJid, { text: "This command is not yet implemented." });
     }
 };
 
