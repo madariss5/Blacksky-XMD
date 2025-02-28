@@ -9,10 +9,62 @@ const openai = new OpenAI({
 const conversationHistory = new Map();
 
 // Maximum conversation history length
-const MAX_HISTORY_LENGTH = 10;
+const MAX_HISTORY_LENGTH = 4; // Reduced from 10 to save tokens
+
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 5;
+const userRateLimits = new Map();
+
+// Circuit breaker configuration
+let isCircuitOpen = false;
+let lastErrorTime = 0;
+const CIRCUIT_RESET_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
+function checkRateLimit(userId) {
+    const now = Date.now();
+    const userLimit = userRateLimits.get(userId) || { count: 0, resetTime: now + RATE_LIMIT_WINDOW };
+
+    if (now > userLimit.resetTime) {
+        userLimit.count = 0;
+        userLimit.resetTime = now + RATE_LIMIT_WINDOW;
+    }
+
+    if (userLimit.count >= MAX_REQUESTS_PER_WINDOW) {
+        return false;
+    }
+
+    userLimit.count++;
+    userRateLimits.set(userId, userLimit);
+    return true;
+}
+
+function getFallbackResponse() {
+    const responses = [
+        "I'm currently experiencing high demand. Please try again in a few minutes.",
+        "I need a quick break to recharge. Could you ask me again shortly?",
+        "My AI services are temporarily busy. I'll be back to help you soon!"
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
+}
 
 async function chatWithGPT(userId, message) {
     try {
+        // Check circuit breaker
+        if (isCircuitOpen) {
+            const now = Date.now();
+            if (now - lastErrorTime > CIRCUIT_RESET_TIMEOUT) {
+                isCircuitOpen = false;
+            } else {
+                throw new Error('Service temporarily unavailable');
+            }
+        }
+
+        // Check rate limit
+        if (!checkRateLimit(userId)) {
+            throw new Error('Rate limit exceeded. Please wait a minute before trying again.');
+        }
+
         // Get or initialize conversation history
         if (!conversationHistory.has(userId)) {
             conversationHistory.set(userId, []);
@@ -34,9 +86,7 @@ async function chatWithGPT(userId, message) {
         const messages = [
             {
                 role: 'system',
-                content: 'You are BLACKSKY-MD, a helpful and friendly WhatsApp bot assistant. ' +
-                         'Provide clear, concise, and engaging responses. ' +
-                         'Keep responses under 2000 characters.'
+                content: 'You are a helpful WhatsApp assistant. Be concise and direct.'
             },
             ...history
         ];
@@ -49,9 +99,9 @@ async function chatWithGPT(userId, message) {
         });
 
         const response = await openai.chat.completions.create({
-            model: "gpt-3.5-turbo",
+            model: "gpt-3.5-turbo-instruct",
             messages: messages,
-            max_tokens: 800,
+            max_tokens: 150, // Reduced from 800 to minimize token usage
             temperature: 0.7,
             presence_penalty: 0.6
         });
@@ -78,7 +128,15 @@ async function chatWithGPT(userId, message) {
             userId,
             stack: error.stack
         });
-        throw new Error(`OpenAI API Error: ${error.message}`);
+
+        // Update circuit breaker on API errors
+        if (error.message.includes('quota') || error.message.includes('rate_limit')) {
+            isCircuitOpen = true;
+            lastErrorTime = Date.now();
+            throw new Error(getFallbackResponse());
+        }
+
+        throw new Error(`${getFallbackResponse()} (Error: ${error.message})`);
     }
 }
 
