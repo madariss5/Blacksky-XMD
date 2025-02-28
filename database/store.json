@@ -57,7 +57,15 @@
   "groups": {
     "120363407638585565@g.us": {
       "muted": true,
-      "warnings": {}
+      "warnings": {
+        "491708887679@s.whatsapp.net": [
+          {
+            "reason": "No reason provided",
+            "warnedBy": "4915561048015@s.whatsapp.net",
+            "timestamp": 1740745293574
+          }
+        ]
+      }
     }
   },
   "banned": []

@@ -100,7 +100,6 @@ async function safeGroupParticipantUpdate(sock, groupId, participants, action) {
 }
 
 const groupCommands = {
-    // Core group commands remain unchanged but with improved error handling
     kick: async (sock, msg, args) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
@@ -231,6 +230,25 @@ const groupCommands = {
             });
         }
     },
+    everyone: async (sock, msg, args) => {
+        try {
+            const groupMetadata = await validateGroupContext(sock, msg, false);
+            if (!groupMetadata) return;
+
+            const participants = groupMetadata.participants.map(p => p.id);
+            const message = args.length > 0 ? args.join(' ') : 'Attention everyone!';
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `👥 *Group Announcement*\n\n${message}`,
+                mentions: participants
+            });
+        } catch (error) {
+            logger.error('Error in everyone command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '❌ Failed to mention everyone: ' + error.message 
+            });
+        }
+    },
     link: async (sock, msg) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
@@ -253,33 +271,13 @@ const groupCommands = {
             if (!groupMetadata) return;
 
             await sock.groupRevokeInvite(msg.key.remoteJid);
-            const newCode = await sock.groupInviteCode(msg.key.remoteJid);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '✅ Group link has been revoked and regenerated!'
+                text: '✅ Group link has been revoked.'
             });
         } catch (error) {
             logger.error('Error in revoke command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Failed to revoke group link: ' + error.message
-            });
-        }
-    },
-    everyone: async (sock, msg, args) => {
-        try {
-            const groupMetadata = await validateGroupContext(sock, msg, false);
-            if (!groupMetadata) return;
-
-            const participants = groupMetadata.participants.map(p => p.id);
-            const message = args.length > 0 ? args.join(' ') : 'Attention everyone!';
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `👥 *Group Announcement*\n\n${message}`,
-                mentions: participants
-            });
-        } catch (error) {
-            logger.error('Error in everyone command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: '❌ Failed to mention everyone: ' + error.message 
             });
         }
     },

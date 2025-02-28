@@ -8,7 +8,12 @@ const commandModules = {
     downloader: require('../commands/downloader'),
     music: require('../commands/music'),
     fun: require('../commands/fun'),
-    economy: require('../commands/economy')
+    economy: require('../commands/economy'),
+    group: require('../commands/group'), // Added group commands
+    nsfw: require('../commands/nsfw'),
+    game: require('../commands/game'),
+    anime: require('../commands/anime'),
+    ai: require('../commands/ai')
 };
 
 async function executeCommand(sock, msg, command, args, moduleName) {
@@ -65,6 +70,13 @@ async function messageHandler(sock, msg) {
             return;
         }
 
+        // Add debug logging for command processing
+        logger.debug('Processing message:', {
+            text,
+            type: messageType,
+            from: msg.key.remoteJid
+        });
+
         // Check for commands
         if (text.startsWith(config.prefix)) {
             const [rawCommand, ...args] = text.slice(config.prefix.length).trim().split(/\s+/);
@@ -89,6 +101,15 @@ async function messageHandler(sock, msg) {
                     return;
                 }
             }
+
+            // Log available commands for debugging
+            logger.debug('Available commands:', {
+                modules: Object.keys(commandModules),
+                commands: Object.entries(commandModules).reduce((acc, [module, commands]) => {
+                    acc[module] = Object.keys(commands);
+                    return acc;
+                }, {})
+            });
 
             // Command not found
             logger.warn('Command not found:', command);
