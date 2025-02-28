@@ -55,23 +55,51 @@ const musicCommands = {
                 videoId = ytdl.getVideoID(video.url);
                 logger.info('Extracted video ID:', videoId);
 
-                const info = await ytdl.getInfo(videoId);
+                const info = await ytdl.getInfo(videoId, {
+                    lang: 'en',  // Specify language to avoid region restrictions
+                    requestOptions: {
+                        headers: {
+                            // Add user-agent to avoid rate limiting
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                        }
+                    }
+                });
                 logger.info('Retrieved video info successfully');
 
-                format = ytdl.chooseFormat(info.formats, { 
+                // Try different format selections with fallbacks
+                const formats = info.formats.filter(format => format.hasAudio);
+
+                // First try: Get highest quality audio-only format
+                format = ytdl.chooseFormat(formats, { 
                     quality: 'highestaudio',
                     filter: 'audioonly'
                 });
 
                 if (!format) {
+                    // Second try: Get any audio-only format
+                    format = formats.find(f => f.audioQuality === 'AUDIO_QUALITY_MEDIUM');
+                }
+
+                if (!format) {
+                    // Third try: Get any format with audio
+                    format = formats.find(f => f.hasAudio);
+                }
+
+                if (!format) {
                     throw new Error('No suitable audio format found');
                 }
-                logger.info('Selected audio format:', format.qualityLabel);
+
+                logger.info('Selected audio format:', format.qualityLabel || 'audio only');
 
                 // Validate URL before using
                 try {
                     logger.info('Validating initial audio URL...');
-                    const response = await axios.head(format.url);
+                    const response = await axios.head(format.url, {
+                        timeout: 5000,  // Add timeout
+                        validateStatus: function (status) {
+                            return status < 500; // Accept all status codes less than 500
+                        }
+                    });
                     logger.info('URL validation response status:', response.status);
 
                     if (response.status === 404) {
@@ -82,17 +110,42 @@ const musicCommands = {
                 } catch (urlError) {
                     // If head request fails, try to get a fresh URL
                     logger.info('Initial URL validation failed, getting fresh URL...', urlError.message);
-                    const freshInfo = await ytdl.getInfo(videoId);
-                    format = ytdl.chooseFormat(freshInfo.formats, {
+                    const freshInfo = await ytdl.getInfo(videoId, {
+                        lang: 'en',
+                        requestOptions: {
+                            headers: {
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                            }
+                        }
+                    });
+
+                    // Try different format selections for the fresh URL
+                    const freshFormats = freshInfo.formats.filter(format => format.hasAudio);
+                    format = ytdl.chooseFormat(freshFormats, {
                         quality: 'highestaudio',
                         filter: 'audioonly'
-                    });
+                    }) || freshFormats.find(f => f.audioQuality === 'AUDIO_QUALITY_MEDIUM') || freshFormats.find(f => f.hasAudio);
+
+                    if (!format) {
+                        throw new Error('No suitable audio format found in refresh attempt');
+                    }
+
                     audioUrl = format.url;
                     logger.info('Successfully obtained fresh URL');
                 }
             } catch (downloadError) {
                 logger.error('Error getting video info:', downloadError);
-                throw new Error('Failed to get audio source. Please try another song.');
+
+                // More detailed error message based on the specific error
+                if (downloadError.message.includes('Status code: 429')) {
+                    throw new Error('YouTube rate limit reached. Please try again in a few minutes.');
+                } else if (downloadError.message.includes('region')) {
+                    throw new Error('This video is not available in your region.');
+                } else if (downloadError.message.includes('copyright')) {
+                    throw new Error('This video is not available due to copyright restrictions.');
+                } else {
+                    throw new Error('Failed to get audio source. Please try another song.');
+                }
             }
 
             // Store in session with comprehensive information
@@ -308,7 +361,12 @@ async function playSong(sock, chatId) {
         // Verify URL is still valid
         try {
             logger.info('Validating audio URL before playback...');
-            const response = await axios.head(audioUrl);
+            const response = await axios.head(audioUrl, {
+                timeout: 5000,
+                validateStatus: function (status) {
+                    return status < 500;
+                }
+            });
             logger.info('URL validation response:', response.status);
 
             if (response.status === 404) {
@@ -321,11 +379,20 @@ async function playSong(sock, chatId) {
             try {
                 // Use videoId to refresh the URL
                 logger.info('Attempting to refresh URL using videoId:', currentSong.videoId);
-                const videoInfo = await ytdl.getInfo(currentSong.videoId);
-                const format = ytdl.chooseFormat(videoInfo.formats, {
+                const videoInfo = await ytdl.getInfo(currentSong.videoId, {
+                    lang: 'en',
+                    requestOptions: {
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                        }
+                    }
+                });
+
+                const formats = videoInfo.formats.filter(format => format.hasAudio);
+                const format = ytdl.chooseFormat(formats, {
                     quality: 'highestaudio',
                     filter: 'audioonly'
-                });
+                }) || formats.find(f => f.audioQuality === 'AUDIO_QUALITY_MEDIUM') || formats.find(f => f.hasAudio);
 
                 if (!format) {
                     throw new Error('No suitable audio format found');
@@ -343,11 +410,21 @@ async function playSong(sock, chatId) {
                 try {
                     logger.info('Attempting final URL refresh using original video URL');
                     const videoId = ytdl.getVideoID(currentSong.url);
-                    const videoInfo = await ytdl.getInfo(videoId);
-                    const format = ytdl.chooseFormat(videoInfo.formats, {
+                    const videoInfo = await ytdl.getInfo(videoId, {
+                        lang: 'en',
+                        requestOptions: {
+                            headers: {
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                            }
+                        }
+                    });
+
+                    const formats = videoInfo.formats.filter(format => format.hasAudio);
+                    const format = ytdl.chooseFormat(formats, {
                         quality: 'highestaudio',
                         filter: 'audioonly'
-                    });
+                    }) || formats.find(f => f.audioQuality === 'AUDIO_QUALITY_MEDIUM') || formats.find(f => f.hasAudio);
+
                     audioUrl = format.url;
                     currentSong.audioUrl = audioUrl;
                     currentSong.videoId = videoId;
