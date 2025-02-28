@@ -11,7 +11,7 @@ try {
     commandModules.fun = require('../commands/fun');
     commandModules.economy = require('../commands/economy');
     commandModules.group = require('../commands/group');
-    commandModules.nsfw = require('../commands/nsfw');
+    commandModules.nsfw = require('../commands/nsfw');  // Added NSFW commands import
     commandModules.game = require('../commands/game');
     commandModules.anime = require('../commands/anime');
     commandModules.ai = require('../commands/ai');

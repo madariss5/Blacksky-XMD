@@ -51,9 +51,14 @@ const handleNSFWCommand = async (sock, msg, endpoint) => {
 
         // Available NSFW endpoints from waifu.pics
         const validEndpoints = {
-            'fuck': 'blowjob',  // Using appropriate alternative
-            'cum': 'neko',      // Using appropriate alternative
-            'horny': 'waifu'    // Using appropriate alternative
+            'fuck': 'blowjob',     // Using appropriate alternative
+            'cum': 'neko',         // Using appropriate alternative
+            'horny': 'waifu',      // Using appropriate alternative
+            'pussy': 'trap',       // Using appropriate alternative
+            'dick': 'blowjob',     // Using appropriate alternative
+            'riding': 'waifu',     // Using appropriate alternative
+            'doggy': 'blowjob',    // Using appropriate alternative
+            'sex': 'neko'          // Using appropriate alternative
         };
 
         const actualEndpoint = validEndpoints[endpoint] || endpoint;
@@ -193,6 +198,26 @@ const nsfwCommands = {
 
     horny: async (sock, msg) => {
         await handleNSFWCommand(sock, msg, 'horny');
+    },
+
+    pussy: async (sock, msg) => {
+        await handleNSFWCommand(sock, msg, 'pussy');
+    },
+
+    dick: async (sock, msg) => {
+        await handleNSFWCommand(sock, msg, 'dick');
+    },
+
+    riding: async (sock, msg) => {
+        await handleNSFWCommand(sock, msg, 'riding');
+    },
+
+    doggy: async (sock, msg) => {
+        await handleNSFWCommand(sock, msg, 'doggy');
+    },
+
+    sex: async (sock, msg) => {
+        await handleNSFWCommand(sock, msg, 'sex');
     }
 };
 
