@@ -1,5 +1,8 @@
 const config = require('../config');
 const logger = require('pino')();
+const musicCommands = require('./music'); 
+const ytdl = require('ytdl-core');
+const axios = require('axios');
 
 // Safe module import function
 const safeRequire = (path) => {
@@ -7,43 +10,9 @@ const safeRequire = (path) => {
         return require(path);
     } catch (error) {
         logger.warn(`Failed to load module ${path}: ${error.message}`);
-        return {
-            download: () => Promise.reject(new Error(`Module ${path} not available`)),
-            search: () => Promise.reject(new Error(`Module ${path} not available`))
-        };
+        return null;
     }
 };
-
-// Import downloader modules safely
-const modules = {
-    ytmp3: '../attached_assets/downloader-ytmp3',
-    ytmp4: '../attached_assets/downloader-ytmp4',
-    play: '../attached_assets/downloader-play',
-    tiktok: '../attached_assets/downloader-tiktok',
-    tiktok2: '../attached_assets/downloader-tiktok2',
-    fbdl: '../attached_assets/downloader-fbdl',
-    mediafire: '../attached_assets/downloader-mediafire',
-    apk: '../attached_assets/downloader-apk',
-    clip: '../attached_assets/downloader-clip',
-    lyrics: '../attached_assets/downloader-lyrics'
-};
-
-// Import modules with fallback
-const {
-    ytmp3,
-    ytmp4,
-    play,
-    tiktok,
-    tiktok2,
-    fbdl,
-    mediafire,
-    apk,
-    clip,
-    lyrics
-} = Object.entries(modules).reduce((acc, [key, path]) => {
-    acc[key] = safeRequire(path);
-    return acc;
-}, {});
 
 const downloaderCommands = {
     ytmp3: async (sock, msg, args) => {
@@ -53,11 +22,59 @@ const downloaderCommands = {
                     text: `Please provide a YouTube URL!\nUsage: ${config.prefix}ytmp3 <url>`
                 });
             }
-            const result = await ytmp3.download(args[0]);
+
+            // Get video info with retries
+            let videoId;
+            let audioUrl;
+            try {
+                videoId = ytdl.getVideoID(args[0]);
+                logger.info('Extracted video ID for ytmp3:', videoId);
+
+                const info = await ytdl.getInfo(videoId);
+                logger.info('Retrieved video info successfully');
+
+                const format = ytdl.chooseFormat(info.formats, {
+                    quality: 'highestaudio',
+                    filter: 'audioonly'
+                });
+
+                if (!format) {
+                    throw new Error('No suitable audio format found');
+                }
+                logger.info('Selected audio format:', format.qualityLabel);
+
+                // Validate URL before using
+                try {
+                    logger.info('Validating initial audio URL...');
+                    const response = await axios.head(format.url);
+                    logger.info('URL validation response status:', response.status);
+
+                    if (response.status === 404) {
+                        throw new Error('Initial URL invalid');
+                    }
+                    audioUrl = format.url;
+                    logger.info('Initial URL validation successful');
+                } catch (urlError) {
+                    logger.info('Initial URL validation failed, getting fresh URL...', urlError.message);
+                    const freshInfo = await ytdl.getInfo(videoId);
+                    const freshFormat = ytdl.chooseFormat(freshInfo.formats, {
+                        quality: 'highestaudio',
+                        filter: 'audioonly'
+                    });
+                    audioUrl = freshFormat.url;
+                    logger.info('Successfully obtained fresh URL');
+                }
+            } catch (error) {
+                logger.error('Error getting video info:', error);
+                throw new Error('Failed to get audio source. Please try again.');
+            }
+
+            logger.info('Sending audio message with URL:', audioUrl);
             await sock.sendMessage(msg.key.remoteJid, {
-                audio: { url: result.url },
+                audio: { url: audioUrl },
                 mimetype: 'audio/mp4'
             });
+            logger.info('Audio message sent successfully');
         } catch (error) {
             logger.error('Error in ytmp3 command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -73,11 +90,57 @@ const downloaderCommands = {
                     text: `Please provide a YouTube URL!\nUsage: ${config.prefix}ytmp4 <url>`
                 });
             }
-            const result = await ytmp4.download(args[0]);
+
+            // Get video info with retries
+            let videoId;
+            let videoUrl;
+            try {
+                videoId = ytdl.getVideoID(args[0]);
+                logger.info('Extracted video ID for ytmp4:', videoId);
+
+                const info = await ytdl.getInfo(videoId);
+                logger.info('Retrieved video info successfully');
+
+                const format = ytdl.chooseFormat(info.formats, {
+                    quality: 'highest'
+                });
+
+                if (!format) {
+                    throw new Error('No suitable video format found');
+                }
+                logger.info('Selected video format:', format.qualityLabel);
+
+                // Validate URL before using
+                try {
+                    logger.info('Validating initial video URL...');
+                    const response = await axios.head(format.url);
+                    logger.info('URL validation response status:', response.status);
+
+                    if (response.status === 404) {
+                        throw new Error('Initial URL invalid');
+                    }
+                    videoUrl = format.url;
+                    logger.info('Initial URL validation successful');
+                } catch (urlError) {
+                    logger.info('Initial URL validation failed, getting fresh URL...', urlError.message);
+                    const freshInfo = await ytdl.getInfo(videoId);
+                    const freshFormat = ytdl.chooseFormat(freshInfo.formats, {
+                        quality: 'highest'
+                    });
+                    videoUrl = freshFormat.url;
+                    logger.info('Successfully obtained fresh URL');
+                }
+            } catch (error) {
+                logger.error('Error getting video info:', error);
+                throw new Error('Failed to get video source. Please try again.');
+            }
+
+            logger.info('Sending video message with URL:', videoUrl);
             await sock.sendMessage(msg.key.remoteJid, {
-                video: { url: result.url },
-                caption: result.title
+                video: { url: videoUrl },
+                caption: info.videoDetails.title
             });
+            logger.info('Video message sent successfully');
         } catch (error) {
             logger.error('Error in ytmp4 command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -86,27 +149,17 @@ const downloaderCommands = {
         }
     },
 
+    // Redirect play command to music module
     play: async (sock, msg, args) => {
         try {
-            if (!args.length) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Please provide a song name!\nUsage: ${config.prefix}play <song name>`
-                });
-            }
-            const result = await play.search(args.join(' '));
-            await sock.sendMessage(msg.key.remoteJid, {
-                audio: { url: result.url },
-                mimetype: 'audio/mp4',
-                caption: result.title
-            });
+            return await musicCommands.play(sock, msg, args);
         } catch (error) {
-            logger.error('Error in play command:', error);
+            logger.error('Error in play command redirect:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error playing audio: ' + error.message
             });
         }
     },
-
     tiktok: async (sock, msg, args) => {
         try {
             if (!args.length) {

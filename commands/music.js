@@ -4,7 +4,7 @@ const ytdl = require('ytdl-core');
 const yts = require('yt-search');
 const fs = require('fs-extra');
 const path = require('path');
-const axios = require('axios'); // Added axios import
+const axios = require('axios');
 
 // Create media directory if it doesn't exist
 const mediaDir = path.join(__dirname, '../media');
@@ -28,11 +28,17 @@ const musicCommands = {
             const query = args.join(' ');
             logger.info('Searching for:', query);
 
-            const searchResults = await yts(query);
-            if (!searchResults.videos.length) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ No videos found!'
-                });
+            // Enhanced search with better error handling
+            let searchResults;
+            try {
+                searchResults = await yts(query);
+                if (!searchResults.videos.length) {
+                    throw new Error('No videos found!');
+                }
+                logger.info('Search successful, found video:', searchResults.videos[0].title);
+            } catch (searchError) {
+                logger.error('Search failed:', searchError);
+                throw new Error('Failed to search for the song. Please try again.');
             }
 
             const video = searchResults.videos[0];
@@ -40,10 +46,18 @@ const musicCommands = {
                 text: `🎵 *Now Playing*\n\nTitle: ${video.title}\nDuration: ${video.duration.timestamp}\nViews: ${video.views}\n\n⏳ Downloading...`
             });
 
-            // Get downloadable URL with better error handling
+            // Enhanced format selection with retries
             let format;
+            let videoId;
+            let audioUrl;
+
             try {
-                const info = await ytdl.getInfo(video.url);
+                videoId = ytdl.getVideoID(video.url);
+                logger.info('Extracted video ID:', videoId);
+
+                const info = await ytdl.getInfo(videoId);
+                logger.info('Retrieved video info successfully');
+
                 format = ytdl.chooseFormat(info.formats, { 
                     quality: 'highestaudio',
                     filter: 'audioonly'
@@ -52,12 +66,36 @@ const musicCommands = {
                 if (!format) {
                     throw new Error('No suitable audio format found');
                 }
+                logger.info('Selected audio format:', format.qualityLabel);
+
+                // Validate URL before using
+                try {
+                    logger.info('Validating initial audio URL...');
+                    const response = await axios.head(format.url);
+                    logger.info('URL validation response status:', response.status);
+
+                    if (response.status === 404) {
+                        throw new Error('Initial URL invalid');
+                    }
+                    audioUrl = format.url;
+                    logger.info('Initial URL validation successful');
+                } catch (urlError) {
+                    // If head request fails, try to get a fresh URL
+                    logger.info('Initial URL validation failed, getting fresh URL...', urlError.message);
+                    const freshInfo = await ytdl.getInfo(videoId);
+                    format = ytdl.chooseFormat(freshInfo.formats, {
+                        quality: 'highestaudio',
+                        filter: 'audioonly'
+                    });
+                    audioUrl = format.url;
+                    logger.info('Successfully obtained fresh URL');
+                }
             } catch (downloadError) {
                 logger.error('Error getting video info:', downloadError);
                 throw new Error('Failed to get audio source. Please try another song.');
             }
 
-            // Store in session
+            // Store in session with comprehensive information
             const session = musicSessions.get(msg.key.remoteJid) || {
                 playing: false,
                 queue: [],
@@ -66,10 +104,19 @@ const musicCommands = {
 
             session.queue.push({
                 title: video.title,
-                url: format.url,
+                url: video.url,
+                videoId: videoId,
+                audioUrl: audioUrl,
                 duration: video.duration.seconds,
                 thumbnail: video.thumbnail,
-                requestedBy: msg.key.participant
+                requestedBy: msg.key.participant,
+                addedAt: new Date().toISOString()
+            });
+
+            logger.info('Added song to queue:', {
+                title: video.title,
+                videoId: videoId,
+                position: session.queue.length - 1
             });
 
             musicSessions.set(msg.key.remoteJid, session);
@@ -251,28 +298,71 @@ async function playSong(sock, chatId) {
         if (!session?.queue.length || !session.playing) return;
 
         const currentSong = session.queue[session.current];
+        let audioUrl = currentSong.audioUrl;
 
-        // Verify URL is still valid before sending
+        logger.info('Starting playback of:', {
+            title: currentSong.title,
+            videoId: currentSong.videoId
+        });
+
+        // Verify URL is still valid
         try {
-            await axios.head(currentSong.url);
-        } catch (urlError) {
-            logger.error('URL no longer valid, attempting to refresh...');
+            logger.info('Validating audio URL before playback...');
+            const response = await axios.head(audioUrl);
+            logger.info('URL validation response:', response.status);
 
-            // Try to refresh the URL
+            if (response.status === 404) {
+                throw new Error('URL expired');
+            }
+            logger.info('URL validation successful');
+        } catch (urlError) {
+            logger.info('URL validation failed, attempting to refresh...', urlError.message);
+
             try {
-                const newInfo = await ytdl.getInfo(currentSong.url); //Fixed to use currentSong.url, assuming videoId is not available in original data structure.
-                const newFormat = ytdl.chooseFormat(newInfo.formats, { 
+                // Use videoId to refresh the URL
+                logger.info('Attempting to refresh URL using videoId:', currentSong.videoId);
+                const videoInfo = await ytdl.getInfo(currentSong.videoId);
+                const format = ytdl.chooseFormat(videoInfo.formats, {
                     quality: 'highestaudio',
                     filter: 'audioonly'
                 });
-                currentSong.url = newFormat.url;
+
+                if (!format) {
+                    throw new Error('No suitable audio format found');
+                }
+
+                audioUrl = format.url;
+                currentSong.audioUrl = audioUrl; // Update the URL in the queue
+                logger.info('Successfully refreshed audio URL');
             } catch (refreshError) {
-                throw new Error('Song URL expired. Please try playing the song again.');
+                logger.error('Failed to refresh URL:', refreshError);
+                await sock.sendMessage(chatId, {
+                    text: '⚠️ Audio source expired. Retrying with new URL...'
+                });
+                // Try one more time with the original video URL
+                try {
+                    logger.info('Attempting final URL refresh using original video URL');
+                    const videoId = ytdl.getVideoID(currentSong.url);
+                    const videoInfo = await ytdl.getInfo(videoId);
+                    const format = ytdl.chooseFormat(videoInfo.formats, {
+                        quality: 'highestaudio',
+                        filter: 'audioonly'
+                    });
+                    audioUrl = format.url;
+                    currentSong.audioUrl = audioUrl;
+                    currentSong.videoId = videoId;
+                    logger.info('Final URL refresh successful');
+                } catch (finalError) {
+                    logger.error('Final URL refresh attempt failed:', finalError);
+                    throw new Error('Failed to refresh audio source. Skipping to next song...');
+                }
             }
         }
 
+        // Send the audio message with the validated/refreshed URL
+        logger.info('Sending audio message with URL:', audioUrl);
         await sock.sendMessage(chatId, {
-            audio: { url: currentSong.url },
+            audio: { url: audioUrl },
             mimetype: 'audio/mp4',
             ptt: false,
             contextInfo: {
@@ -285,33 +375,37 @@ async function playSong(sock, chatId) {
                 }
             }
         });
+        logger.info('Audio message sent successfully');
+
     } catch (error) {
         logger.error('Error playing song:', error);
 
-        // Remove the problematic song from queue
+        // Handle the failed song
         const session = musicSessions.get(chatId);
         if (session) {
+            // Remove the problematic song and try to continue playback
+            logger.info('Removing failed song from queue');
             session.queue.splice(session.current, 1);
             if (session.queue.length === 0) {
                 session.playing = false;
-            } else if (session.current >= session.queue.length) {
-                session.current = 0;
+                await sock.sendMessage(chatId, {
+                    text: '❌ Queue is now empty. Use !play to add more songs.'
+                });
+            } else {
+                if (session.current >= session.queue.length) {
+                    session.current = 0;
+                }
+                await sock.sendMessage(chatId, {
+                    text: '❌ ' + (error.message || 'Error playing current song. Trying next song...')
+                });
+                musicSessions.set(chatId, session);
+                await playSong(sock, chatId); // Try playing the next song
             }
-            musicSessions.set(chatId, session);
-        }
-
-        await sock.sendMessage(chatId, {
-            text: '❌ ' + (error.message || 'Error playing current song. Skipping to next song...')
-        });
-
-        // Try to play next song if available
-        if (session?.queue.length > 0) {
-            await playSong(sock, chatId);
         }
     }
 }
 
-// Helper function to format duration remains unchanged
+// Helper function to format duration
 function formatDuration(seconds) {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
