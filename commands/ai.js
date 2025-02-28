@@ -3,14 +3,9 @@ const logger = require('pino')();
 const fs = require('fs-extra');
 const path = require('path');
 const axios = require('axios');
-const OpenAI = require('openai');
+const { chatWithGPT, clearConversation } = require('../attached_assets/ai-gpt');
 
-// Initialize OpenAI with API key
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
-});
-
-// Create temp directory if it doesn't exist
+// Initialize temp directory if it doesn't exist
 const tempDir = path.join(__dirname, '../temp');
 fs.ensureDirSync(tempDir);
 
@@ -48,7 +43,7 @@ const downloadImage = async (imageUrl, filename) => {
 };
 
 const aiCommands = {
-    gpt: async (sock, msg, args) => {
+    ask: async (sock, msg, args) => {
         try {
             const userId = msg.key.participant || msg.key.remoteJid;
 
@@ -60,7 +55,7 @@ const aiCommands = {
 
             if (!args.length) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: 'Please provide a question!\nUsage: .gpt <your question>'
+                    text: 'Please provide a question!\nUsage: .ask <your question>'
                 });
             }
 
@@ -68,63 +63,33 @@ const aiCommands = {
             await sock.sendPresenceUpdate('composing', msg.key.remoteJid);
 
             const userInput = args.join(' ');
-
-            // Get response from OpenAI
-            const completion = await openai.chat.completions.create({
-                model: "gpt-3.5-turbo",
-                messages: [{ role: "user", content: userInput }],
-                max_tokens: 200
-            });
-
-            const response = completion.choices[0].message.content;
+            const response = await chatWithGPT(userId, userInput);
 
             setCooldown(userId);
             await sock.sendMessage(msg.key.remoteJid, { text: response });
 
         } catch (error) {
-            logger.error('Error in gpt command:', error);
+            logger.error('Error in ask command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error processing your request: ' + error.message
             });
         }
     },
 
-    gpt4: async (sock, msg, args) => {
+    gpt: async (sock, msg, args) => {
+        // Alias for ask command
+        return aiCommands.ask(sock, msg, args);
+    },
+
+    cleargpt: async (sock, msg) => {
         try {
             const userId = msg.key.participant || msg.key.remoteJid;
-
-            if (isOnCooldown(userId)) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '⏳ Please wait a few seconds before using this command again.'
-                });
-            }
-
-            if (!args.length) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: 'Please provide a question!\nUsage: .gpt4 <your question>'
-                });
-            }
-
-            await sock.sendPresenceUpdate('composing', msg.key.remoteJid);
-
-            const userInput = args.join(' ');
-
-            // Use GPT-4 model
-            const completion = await openai.chat.completions.create({
-                model: "gpt-4",
-                messages: [{ role: "user", content: userInput }],
-                max_tokens: 300
-            });
-
-            const response = completion.choices[0].message.content;
-
-            setCooldown(userId);
+            const response = clearConversation(userId);
             await sock.sendMessage(msg.key.remoteJid, { text: response });
-
         } catch (error) {
-            logger.error('Error in gpt4 command:', error);
+            logger.error('Error in cleargpt command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error processing your request: ' + error.message
+                text: '❌ Error clearing conversation: ' + error.message
             });
         }
     },
@@ -217,22 +182,9 @@ const aiCommands = {
             const targetLang = args[0].toLowerCase();
             const textToTranslate = args.slice(1).join(' ');
 
-            const completion = await openai.chat.completions.create({
-                model: "gpt-3.5-turbo",
-                messages: [
-                    { 
-                        role: "system", 
-                        content: `You are a translator. Translate the following text to ${targetLang}. Only respond with the translation, no explanations.` 
-                    },
-                    { 
-                        role: "user", 
-                        content: textToTranslate 
-                    }
-                ],
-                max_tokens: 200
-            });
-
-            const translation = completion.choices[0].message.content;
+            // Use chatWithGPT for translation
+            const prompt = `Translate the following text to ${targetLang}. Only respond with the translation, no explanations: ${textToTranslate}`;
+            const translation = await chatWithGPT(userId, prompt);
 
             setCooldown(userId);
             await sock.sendMessage(msg.key.remoteJid, { 
@@ -247,7 +199,6 @@ const aiCommands = {
         }
     },
 
-    // Placeholder for future implementation
     remini: async (sock, msg) => {
         await sock.sendMessage(msg.key.remoteJid, { 
             text: "🚧 The remini command is currently under development."
