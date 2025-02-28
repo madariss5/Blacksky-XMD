@@ -266,18 +266,8 @@ const groupCommands = {
             }
 
             try {
-                // Log socket state for debugging
-                logger.info('Socket state before link generation:', {
-                    group: msg.key.remoteJid,
-                    isConnected: sock.isOnline,
-                    botId: botId
-                });
-
-                // Wait for any pending operations
-                await new Promise(resolve => setTimeout(resolve, 1000));
-
-                // Try to get the invite link using getGroupInviteLink
-                const code = await sock.getGroupInviteLink(msg.key.remoteJid);
+                // Simple direct method call to get invite code
+                const code = await sock.groupInviteCode(msg.key.remoteJid);
 
                 if (!code) {
                     logger.error('No invite code returned');
@@ -286,7 +276,7 @@ const groupCommands = {
 
                 const linkMessage = `🔗 *Group Invite Link*\n\n` +
                                   `Group: ${groupMetadata.subject}\n` +
-                                  `Link: ${code}`;
+                                  `Link: https://chat.whatsapp.com/${code}`;
 
                 await sock.sendMessage(msg.key.remoteJid, {
                     text: linkMessage
