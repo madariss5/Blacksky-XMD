@@ -10,6 +10,22 @@ const ffmpeg = require('fluent-ffmpeg');
 const tempDir = path.join(__dirname, '../temp');
 fs.ensureDirSync(tempDir);
 
+// Helper function to convert image to WebP using Python script
+const convertToWebp = async (inputPath, outputPath) => {
+    return new Promise((resolve, reject) => {
+        const pythonScript = path.join(__dirname, '../scripts/convert_sticker.py');
+        exec(`python3 "${pythonScript}" "${inputPath}" "${outputPath}"`, (error, stdout, stderr) => {
+            if (error) {
+                logger.error('Python conversion error:', error);
+                logger.error('stderr:', stderr);
+                reject(error);
+            } else {
+                resolve();
+            }
+        });
+    });
+};
+
 const mediaCommands = {
     sticker: async (sock, msg, args) => {
         try {
@@ -44,12 +60,15 @@ const mediaCommands = {
                 }
             );
 
-            // If it's a video, convert to image first
-            let imageBuffer = buffer;
-            if (isVideo) {
-                const inputPath = path.join(tempDir, 'input.mp4');
-                await fs.writeFile(inputPath, buffer);
+            // Create temp file paths
+            const inputPath = path.join(tempDir, `input.${isVideo ? 'mp4' : 'jpg'}`);
+            const outputPath = path.join(tempDir, 'output.webp');
 
+            // Write buffer to file
+            await fs.writeFile(inputPath, buffer);
+
+            // If it's a video, extract first frame
+            if (isVideo) {
                 await new Promise((resolve, reject) => {
                     ffmpeg(inputPath)
                         .screenshots({
@@ -60,19 +79,25 @@ const mediaCommands = {
                         .on('end', resolve)
                         .on('error', reject);
                 });
-
-                imageBuffer = await fs.readFile(path.join(tempDir, 'frame.jpg'));
-                await fs.remove(inputPath);
-                await fs.remove(path.join(tempDir, 'frame.jpg'));
+                await fs.unlink(inputPath);
+                await fs.move(path.join(tempDir, 'frame.jpg'), inputPath);
             }
+
+            // Convert to WebP using Python script
+            await convertToWebp(inputPath, outputPath);
+
+            // Read the WebP file
+            const webpBuffer = await fs.readFile(outputPath);
 
             // Send the sticker
             await sock.sendMessage(msg.key.remoteJid, {
-                sticker: imageBuffer,
-                mimetype: 'image/webp',
-                ptt: false,
-                ephemeralExpiration: 86400
+                sticker: webpBuffer,
+                mimetype: 'image/webp'
             });
+
+            // Cleanup temp files
+            await fs.remove(inputPath);
+            await fs.remove(outputPath);
 
         } catch (error) {
             logger.error('Error in sticker command:', error);
