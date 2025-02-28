@@ -11,9 +11,9 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Initialize logger
+// Initialize logger with more detailed options
 const logger = pino({
-    level: process.env.LOG_LEVEL || "info",
+    level: process.env.LOG_LEVEL || "debug",
     transport: {
         target: 'pino-pretty',
         options: {
@@ -225,7 +225,7 @@ async function connectToWhatsApp() {
         // Import message handler
         const messageHandler = require('./handlers/message');
 
-        // Handle messages with better error handling
+        // Handle messages with enhanced debugging
         sock.ev.on("messages.upsert", async ({ messages, type }) => {
             if (type !== "notify") return;
 
@@ -236,12 +236,29 @@ async function connectToWhatsApp() {
                     return;
                 }
 
-                // Debug log incoming message
-                logger.info('Received message:', {
-                    jid: msg.key.remoteJid,
+                // Enhanced message logging
+                logger.debug('Raw message received:', {
+                    messageTypes: Object.keys(msg.message),
+                    remoteJid: msg.key.remoteJid,
                     fromMe: msg.key.fromMe,
-                    participant: msg.key.participant,
-                    type: Object.keys(msg.message)[0]
+                    participant: msg.key.participant
+                });
+
+                // Log message content for debugging
+                const messageType = Object.keys(msg.message)[0];
+                let content = '';
+                if (messageType === 'conversation') {
+                    content = msg.message.conversation;
+                } else if (messageType === 'extendedTextMessage') {
+                    content = msg.message.extendedTextMessage.text;
+                } else if (messageType === 'imageMessage' || messageType === 'videoMessage') {
+                    content = msg.message[messageType].caption || '';
+                }
+
+                logger.debug('Message content:', {
+                    type: messageType,
+                    content: content.substring(0, 100),
+                    startsWithPrefix: content.startsWith(config.prefix)
                 });
 
                 // Process message through handler

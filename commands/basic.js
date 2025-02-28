@@ -4,12 +4,18 @@ const logger = require('pino')();
 const basicCommands = {
     help: async (sock, msg, args) => {
         try {
-            logger.info('Help command received:', { args });
-            const text = args.length === 0 
-                ? `Available commands:\n${config.prefix}menu - Show all commands\n${config.prefix}help <command> - Show command help\n${config.prefix}ping - Check bot response`
-                : `Help for ${args[0]} will be available soon.`;
+            logger.debug('Help command execution started', { args });
 
+            const text = `*Available Commands*\n\n` +
+                        `1️⃣ *Basic Commands*\n` +
+                        `• ${config.prefix}help - Show this help message\n` +
+                        `• ${config.prefix}ping - Check bot response\n` +
+                        `• ${config.prefix}menu - Show full menu\n\n` +
+                        `Type ${config.prefix}help <command> for detailed help`;
+
+            logger.debug('Sending help message');
             await sock.sendMessage(msg.key.remoteJid, { text });
+            logger.info('Help command completed successfully');
         } catch (error) {
             logger.error('Error in help command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -20,13 +26,19 @@ const basicCommands = {
 
     ping: async (sock, msg) => {
         try {
-            logger.info('Ping command received');
+            logger.debug('Ping command execution started');
+
             const start = Date.now();
-            await sock.sendMessage(msg.key.remoteJid, { text: 'Testing response...' });
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '🔄 Testing bot response...' 
+            });
             const latency = Date.now() - start;
+
+            logger.debug('Sending ping response', { latency });
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `🏓 Pong!\nResponse time: ${latency}ms`
             });
+            logger.info('Ping command completed successfully');
         } catch (error) {
             logger.error('Error in ping command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -37,13 +49,19 @@ const basicCommands = {
 
     menu: async (sock, msg) => {
         try {
-            logger.info('Menu command received');
-            const text = `*Bot Commands*\n\n` +
-                        `📌 Basic\n${config.prefix}help - Show help\n${config.prefix}ping - Check response\n\n` +
-                        `🎵 Music\n${config.prefix}play - Play a song\n${config.prefix}stop - Stop playback\n\n` +
-                        `🤖 AI\n${config.prefix}gpt - Chat with GPT\n${config.prefix}imagine - Generate image`;
+            logger.debug('Menu command execution started');
 
+            const text = `*${config.botName} Menu*\n\n` +
+                        `📌 *Basic Commands*\n` +
+                        `• ${config.prefix}help - Get help\n` +
+                        `• ${config.prefix}ping - Check bot\n` +
+                        `• ${config.prefix}menu - Show this menu\n\n` +
+                        `⚙️ *Other Commands*\n` +
+                        `Use ${config.prefix}help for more commands`;
+
+            logger.debug('Sending menu message');
             await sock.sendMessage(msg.key.remoteJid, { text });
+            logger.info('Menu command completed successfully');
         } catch (error) {
             logger.error('Error in menu command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
