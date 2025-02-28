@@ -5,28 +5,39 @@ const axios = require('axios');
 
 // Age verification helper
 const verifyAge = async (sock, msg) => {
-    const user = await store.getUserInfo(msg.key.participant);
-    if (!user || !user.age || user.age < 18) {
-        await sock.sendMessage(msg.key.remoteJid, { 
-            text: '⚠️ This command requires age verification. Please register with !register <name> <age> first. Must be 18+.' 
-        });
+    try {
+        const user = await store.getUserInfo(msg.key.participant);
+        if (!user || !user.age || user.age < 18) {
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '⚠️ This command requires age verification. Please register with !register <name> <age> first. Must be 18+.' 
+            });
+            return false;
+        }
+        return true;
+    } catch (error) {
+        logger.error('Error in age verification:', error);
         return false;
     }
-    return true;
 };
 
 // Group NSFW setting check
 const checkGroupNSFW = async (sock, msg) => {
-    if (!msg.key.remoteJid.endsWith('@g.us')) return true;
+    try {
+        // If not a group chat, NSFW is allowed
+        if (!msg.key.remoteJid.endsWith('@g.us')) return true;
 
-    const isNSFW = await store.isNSFWEnabled(msg.key.remoteJid);
-    if (!isNSFW) {
-        await sock.sendMessage(msg.key.remoteJid, { 
-            text: '⚠️ NSFW commands are disabled in this group. Admins can enable them with !setnsfw on' 
-        });
+        const isNSFW = await store.isNSFWEnabled(msg.key.remoteJid);
+        if (!isNSFW) {
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '⚠️ NSFW commands are disabled in this group. Admins can enable them with !setnsfw on' 
+            });
+            return false;
+        }
+        return true;
+    } catch (error) {
+        logger.error('Error checking group NSFW status:', error);
         return false;
     }
-    return true;
 };
 
 // Base command handler with verification
@@ -62,6 +73,53 @@ const handleNSFWCommand = async (sock, msg, endpoint) => {
 
 // Core NSFW commands
 const nsfwCommands = {
+    register: async (sock, msg, args) => {
+        try {
+            logger.info('Starting register command');
+
+            if (args.length < 2) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide your name and age!\nUsage: !register <name> <age>'
+                });
+            }
+
+            const name = args.slice(0, -1).join(' ');
+            const age = parseInt(args[args.length - 1]);
+
+            if (isNaN(age) || age < 1 || age > 100) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a valid age between 1 and 100!'
+                });
+            }
+
+            if (age < 18) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '🔞 Sorry, you must be 18 or older to register for NSFW content!'
+                });
+            }
+
+            await store.registerUser(msg.key.participant, name, age);
+
+            logger.info('User registered successfully', {
+                user: msg.key.participant,
+                name,
+                age
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Registration successful!\n\nName: ${name}\nAge: ${age}\n\nYou can now use NSFW commands.`
+            });
+        } catch (error) {
+            logger.error('Error in register command:', {
+                error: error.message,
+                stack: error.stack
+            });
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to register: ' + error.message
+            });
+        }
+    },
+
     setnsfw: async (sock, msg, args) => {
         try {
             if (!msg.key.remoteJid.endsWith('@g.us')) {
@@ -115,7 +173,7 @@ const nsfwCommands = {
         }
     },
 
-    // New NSFW commands
+    // NSFW commands
     fuck: async (sock, msg) => {
         await handleNSFWCommand(sock, msg, 'fuck');
     },

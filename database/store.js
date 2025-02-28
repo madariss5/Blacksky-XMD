@@ -633,6 +633,16 @@ class Store {
             return { success: false, error: error.message };
         }
     }
+
+    async isNSFWEnabled(groupId) {
+        try {
+            const groupSettings = await this.getGroupSettings(groupId);
+            return !!groupSettings?.nsfw; // Convert to boolean
+        } catch (error) {
+            logger.error('Error checking NSFW status:', error);
+            return false;
+        }
+    }
 }
 
 // Add XP reward amounts

@@ -102,51 +102,60 @@ const sendGifReaction = async (sock, msg, mediaPath, caption = '', mentions = []
 const funCommands = {
     menu: async (sock, msg) => {
         const commandList = `🎮 *Fun Commands Menu* 🎮\n
+🔞 *NSFW Commands:*
+1. *!register* <name> <age> - Register for NSFW access (18+ only)
+2. *!setnsfw* [on/off] - Enable/disable NSFW in groups (Admin only)
+3. *!nsfwcheck* - Check NSFW access status
+4. *!fuck* - Get NSFW content
+5. *!cum* - Get NSFW content
+6. *!horny* - Get NSFW content
+7. *!hentai* - Get NSFW anime content
+
 🎯 *Reaction Commands:*
-1. *!slap* [@user] - Slap someone with an anime gif
-2. *!hug* [@user] - Give someone a warm hug
-3. *!pat* [@user] - Pat someone gently
-4. *!highfive* [@user] - Give someone a high-five
-5. *!poke* [@user] - Poke someone playfully
-6. *!cuddle* [@user] - Cuddle with someone sweetly
-7. *!boop* [@user] - Boop someone's nose
-8. *!bonk* [@user] - Bonk someone on the head
-9. *!wave* [@user] - Wave at someone
-10. *!kiss* [@user] - Kiss someone
-11. *!wink* [@user] - Wink at someone
-12. *!punch* [@user] - Punch someone
-13. *!ponk* [@user] - Ponk someone
-14. *!trash* [@user] - Throw someone into the trash
+8. *!slap* [@user] - Slap someone with an anime gif
+9. *!hug* [@user] - Give someone a warm hug
+10. *!pat* [@user] - Pat someone gently
+11. *!highfive* [@user] - Give someone a high-five
+12. *!poke* [@user] - Poke someone playfully
+13. *!cuddle* [@user] - Cuddle with someone sweetly
+14. *!boop* [@user] - Boop someone's nose
+15. *!bonk* [@user] - Bonk someone on the head
+16. *!wave* [@user] - Wave at someone
+17. *!kiss* [@user] - Kiss someone
+18. *!wink* [@user] - Wink at someone
+19. *!punch* [@user] - Punch someone
+20. *!ponk* [@user] - Ponk someone
+21. *!trash* [@user] - Throw someone into the trash
 
 🎭 *Emote Actions:*
-15. *!dance* - Show off your dance moves
-16. *!facepalm* - Express your disappointment
+22. *!dance* - Show off your dance moves
+23. *!facepalm* - Express your disappointment
 
 🎬 *Special Effects:*
-17. *!wasted* [@user] - Apply a wasted effect
-18. *!jail* [@user] - Put someone behind bars
-19. *!rip* [@user] - Create a memorial
-20. *!kill* [@user] - Dramatically eliminate someone
-21. *!yeet* [@user] - Yeet someone into space
-22. *!insult* [@user] - Playfully insult someone
-23. *!triggered* [@user] - Trigger someone
-24. *!wanted* [@user] - Mark someone as wanted
+24. *!wasted* [@user] - Apply a wasted effect
+25. *!jail* [@user] - Put someone behind bars
+26. *!rip* [@user] - Create a memorial
+27. *!kill* [@user] - Dramatically eliminate someone
+28. *!yeet* [@user] - Yeet someone into space
+29. *!insult* [@user] - Playfully insult someone
+30. *!triggered* [@user] - Trigger someone
+31. *!wanted* [@user] - Mark someone as wanted
 
 🎲 *Games & Challenges:*
-25. *!coinflip* - Flip a coin
-26. *!dare* - Get a random dare challenge
-27. *!truth* - Get a random truth question
-28. *!magic8ball* [question] - Ask the magic 8 ball
-29. *!wordgame* - Play a word guessing game
+32. *!coinflip* - Flip a coin
+33. *!dare* - Get a random dare challenge
+34. *!truth* - Get a random truth question
+35. *!magic8ball* [question] - Ask the magic 8 ball
+36. *!wordgame* - Play a word guessing game
     - Use *!guess* [word] to make a guess
-30. *!trivia* - Play a trivia game
+37. *!trivia* - Play a trivia game
     - Use *!answer* [number] to answer
 
 🎨 *Fun Content:*
-31. *!joke* - Get a random funny joke
-32. *!quote* - Get an inspirational quote
-33. *!fact* - Learn an interesting fact
-34. *!emojiart* - Get a random emoji art
+38. *!joke* - Get a random funny joke
+39. *!quote* - Get an inspirational quote
+40. *!fact* - Learn an interesting fact
+41. *!emojiart* - Get a random emoji art
 
 *How to use:*
 - Commands with [@user] can tag someone
