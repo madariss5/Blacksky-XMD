@@ -100,22 +100,34 @@ const economyCommands = {
         }
     },
 
-    // Updated deposit command with proper module check
+    // Updated deposit command with improved error handling and balance verification
     deposit: async (sock, msg, args) => {
         try {
-            if (!depo) throw new Error('Deposit module not available');
             if (!args.length) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: `Please specify an amount!\nUsage: ${config.prefix}deposit <amount>`
                 });
             }
+
             const amount = parseInt(args[0]);
             if (isNaN(amount) || amount <= 0) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '❌ Please enter a valid amount greater than 0!'
                 });
             }
-            await depo.deposit(msg.key.participant, amount);
+
+            // First check if user has sufficient balance
+            const userBalance = await balance.getBalance(msg.key.participant);
+            if (!userBalance || userBalance.wallet < amount) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Insufficient funds in your wallet!'
+                });
+            }
+
+            // Perform the deposit
+            await balance.deductBalance(msg.key.participant, amount);
+            await balance.addBankBalance(msg.key.participant, amount);
+
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `💳 Successfully deposited $${amount} to your bank account!`
             });

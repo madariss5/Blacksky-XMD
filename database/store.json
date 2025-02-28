@@ -45,7 +45,7 @@
       "lastWeekly": 1740766515411
     },
     "4915561048015@s.whatsapp.net": {
-      "gold": 14175,
+      "gold": 13675,
       "bank": 0,
       "inventory": [],
       "lastDaily": 1740769404741,
@@ -54,6 +54,14 @@
       "lastWeekly": 1740769428797,
       "lastMonthly": 1740743512582,
       "lastWork": 1740769463469
+    },
+    "491708887679@s.whatsapp.net": {
+      "gold": 500,
+      "bank": 0,
+      "inventory": [],
+      "lastDaily": 0,
+      "level": 1,
+      "xp": 0
     }
   },
   "groups": {
