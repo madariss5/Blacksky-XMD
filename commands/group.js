@@ -266,8 +266,15 @@ const groupCommands = {
             }
 
             try {
-                // Direct method call for invite code generation
-                const code = await sock.groupInviteCode(msg.key.remoteJid);
+                // New method to generate invite code
+                await sock.sendMessage(msg.key.remoteJid, { text: '🔄 Generating group link...' });
+
+                // Using the legacy method as fallback if the new one fails
+                const code = await sock.groupInviteCode(msg.key.remoteJid).catch(async () => {
+                    // Fallback to query the group metadata again which sometimes helps
+                    const refreshedMetadata = await sock.groupMetadata(msg.key.remoteJid);
+                    return refreshedMetadata.inviteCode;
+                });
 
                 if (!code) {
                     throw new Error('Could not generate invite code');
@@ -288,7 +295,7 @@ const groupCommands = {
                 });
             } catch (error) {
                 logger.error('Error in group link generation:', error);
-                throw new Error('Could not generate group link. Please make sure I have admin rights and try again.');
+                throw new Error('Could not generate group link. Please make sure I have admin rights and try again later.');
             }
         } catch (error) {
             logger.error('Error in link command:', error);
