@@ -260,13 +260,7 @@ const basicCommands = {
                 ppUrl = 'https://raw.githubusercontent.com/WhiskeySockets/Baileys/master/src/BaileysDefaultImage.png';
             }
 
-            const userData = await store.getUserData(mentionedJid) || {
-                name: mentionedJid.split('@')[0],
-                commands: 0,
-                joinedAt: new Date().toISOString(),
-                level: 1,
-                xp: 0
-            };
+            const userData = await store.getUserData(mentionedJid) || {};
             logger.debug('Retrieved user data:', { userData });
 
             // Calculate level progress
@@ -278,10 +272,13 @@ const basicCommands = {
             const warnings = (await store.getWarnings(mentionedJid) || []).length;
             const warningDisplay = '⚠️'.repeat(warnings) + '○'.repeat(3 - warnings);
 
+            // Get WhatsApp contact name directly from the pushName property
+            const displayName = msg.pushName || mentionedJid.split('@')[0];
+
             await sock.sendMessage(msg.key.remoteJid, {
                 image: { url: ppUrl },
                 caption: `👤 *User Profile*\n\n` +
-                        `• Name: ${userData.name}\n` +
+                        `• Name: ${displayName}\n` +
                         `• Number: ${await formatPhoneNumber(mentionedJid)}\n` +
                         `• Level: ${userData.level || 1}\n` +
                         `• XP: ${userData.xp || 0}/${nextLevelXP}\n` +
@@ -289,7 +286,7 @@ const basicCommands = {
                         `• Commands Used: ${userData.commands || 0} commands\n` +
                         `• Command Activity: ${userData.commands ? '🟢 Active' : '🔴 Inactive'}\n` +
                         `• Warnings: ${warningDisplay} (${warnings}/3)\n` +
-                        `• Joined: ${new Date(userData.joinedAt).toLocaleDateString()}\n` +
+                        `• Joined: ${new Date(userData.joinedAt || Date.now()).toLocaleDateString()}\n` +
                         `• Status: ${(await store.getBannedUsers() || []).includes(mentionedJid) ? '🚫 Banned' : '✅ Active'}`,
                 mentions: [mentionedJid]
             });
@@ -326,13 +323,7 @@ const basicCommands = {
                 ppUrl = 'https://raw.githubusercontent.com/WhiskeySockets/Baileys/master/src/BaileysDefaultImage.png';
             }
 
-            const userData = await store.getUserData(userId) || {
-                name: userId.split('@')[0],
-                commands: 0,
-                joinedAt: new Date().toISOString(),
-                level: 1,
-                xp: 0
-            };
+            const userData = await store.getUserData(userId) || {};
             logger.debug('Retrieved user data:', { userData });
 
             // Calculate level progress
@@ -344,10 +335,13 @@ const basicCommands = {
             const warnings = (await store.getWarnings(userId) || []).length;
             const warningDisplay = '⚠️'.repeat(warnings) + '○'.repeat(3 - warnings);
 
+            // Get WhatsApp contact name directly from the pushName property
+            const displayName = msg.pushName || userId.split('@')[0];
+
             await sock.sendMessage(msg.key.remoteJid, {
                 image: { url: ppUrl },
                 caption: `📱 *Your Profile*\n\n` +
-                        `• Name: ${userData.name}\n` +
+                        `• Name: ${displayName}\n` +
                         `• Number: ${await formatPhoneNumber(userId)}\n` +
                         `• Level: ${userData.level || 1}\n` +
                         `• XP: ${userData.xp || 0}/${nextLevelXP}\n` +
@@ -355,7 +349,7 @@ const basicCommands = {
                         `• Commands Used: ${userData.commands || 0} commands\n` +
                         `• Command Activity: ${userData.commands ? '🟢 Active' : '🔴 Inactive'}\n` +
                         `• Warnings: ${warningDisplay} (${warnings}/3)\n` +
-                        `• Joined: ${new Date(userData.joinedAt).toLocaleDateString()}\n` +
+                        `• Joined: ${new Date(userData.joinedAt || Date.now()).toLocaleDateString()}\n` +
                         `• Status: ${(await store.getBannedUsers() || []).includes(userId) ? '🚫 Banned' : '✅ Active'}`,
                 mentions: [userId]
             });
