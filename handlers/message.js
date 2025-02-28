@@ -1,5 +1,8 @@
 const config = require('../config');
 const logger = require('pino')();
+const fs = require('fs-extra');
+const path = require('path');
+const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 
 // Load all command modules
 const commandModules = {
@@ -103,15 +106,6 @@ async function messageHandler(sock, msg) {
                     return;
                 }
             }
-
-            // Log available commands for debugging
-            logger.debug('Available commands:', {
-                modules: Object.keys(commandModules),
-                commands: Object.entries(commandModules).reduce((acc, [module, commands]) => {
-                    acc[module] = Object.keys(commands);
-                    return acc;
-                }, {})
-            });
 
             // Command not found
             logger.warn('Command not found:', command);

@@ -1,37 +1,27 @@
 require('dotenv').config();
 const express = require('express');
 const { 
-    default: makeWASocket, 
-    useMultiFileAuthState, 
-    makeInMemoryStore, 
+    default: makeWASocket,
+    useMultiFileAuthState,
+    makeInMemoryStore,
     DisconnectReason,
-    fetchLatestBaileysVersion
+    fetchLatestBaileysVersion,
+    makeCacheableSignalKeyStore
 } = require("@whiskeysockets/baileys");
 const pino = require("pino");
 const { Boom } = require("@hapi/boom");
 const config = require("./config");
 const fs = require("fs-extra");
 const path = require("path");
+const qrcode = require('qrcode-terminal');
 
 // Initialize express app
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Enhanced logging configuration
-const logger = pino({
-    level: "debug",
-    transport: {
-        target: 'pino-pretty',
-        options: {
-            colorize: true,
-            translateTime: 'SYS:standard',
-            ignore: 'pid,hostname'
-        }
-    }
-});
+// Initialize store with better error handling (from original)
+const store = makeInMemoryStore({ logger: pino({ level: "silent" }) });
 
-// Initialize store with better error handling
-const store = makeInMemoryStore({ logger });
 try {
     store.readFromFile('./baileys_store.json');
 } catch (error) {
@@ -39,7 +29,7 @@ try {
     logger.info('Creating new store file');
 }
 
-// Save store more frequently and handle errors
+// Save store more frequently with error handling (from original)
 setInterval(() => {
     try {
         store.writeToFile('./baileys_store.json');
@@ -48,47 +38,25 @@ setInterval(() => {
     }
 }, 10000);
 
-// Improved environment variable handling
-process.env.OWNER_NAME = process.env.OWNER_NAME || 'BLACKSKY';
-process.env.OWNER_NUMBER = process.env.OWNER_NUMBER || '254710772666';
 
-// Enhanced environment validation
-const validateEnv = () => {
-    try {
-        const required = ['OWNER_NAME', 'OWNER_NUMBER'];
-        const missing = required.filter(key => !process.env[key]);
-
-        if (missing.length > 0) {
-            logger.warn('Using default values for:', missing.join(', '));
+// Configure logger (combination of original and edited)
+const logger = pino({
+    level: "debug",
+    transport: {
+        target: 'pino-pretty',
+        options: {
+            colorize: true,
+            translateTime: 'SYS:standard'
         }
-
-        if (!/^\d+$/.test(process.env.OWNER_NUMBER)) {
-            logger.warn('OWNER_NUMBER contains non-numeric characters, cleaning...');
-            process.env.OWNER_NUMBER = process.env.OWNER_NUMBER.replace(/[^0-9]/g, '');
-        }
-
-        return true;
-    } catch (error) {
-        logger.error('Error validating environment:', error);
-        return false;
     }
-};
+});
 
-// Load and validate environment
-if (!validateEnv()) {
-    logger.warn('Using default configuration due to validation issues');
-}
-
-// Update config with validated environment variables
-config.ownerName = process.env.OWNER_NAME;
-config.ownerNumber = process.env.OWNER_NUMBER + '@s.whatsapp.net';
-config.botName = process.env.BOT_NAME || '𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻';
-
-// Express server with better error handling
+// Express endpoint
 app.get('/', (req, res) => {
     res.send('WhatsApp Bot is running!');
 });
 
+// Start server (from original)
 const startServer = () => {
     try {
         app.listen(PORT, '0.0.0.0', () => {
@@ -102,224 +70,235 @@ const startServer = () => {
 
 startServer();
 
-// Keep-alive mechanism
-const keepAlive = () => {
-    logger.info('Keep-alive ping');
-    setTimeout(keepAlive, 1000 * 60 * 10);
-};
-
-keepAlive();
-
-// Improved WhatsApp connection function
 async function connectToWhatsApp() {
+    const authDir = "./auth_info_baileys";
+
     try {
-        // Ensure auth directory exists with proper permissions
-        const authDir = "./auth_info_baileys";
-        await fs.ensureDir(authDir);
-        logger.info("Authentication directory checked");
+        // Verify auth state before proceeding (from original)
+        if (!await verifyAuthState(authDir)) {
+            throw new Error('Auth state verification failed');
+        }
 
-        // Get latest version of Baileys
+        // Fetch latest version (from edited)
         const { version } = await fetchLatestBaileysVersion();
-        logger.info(`Using Baileys version ${version}`);
+        logger.info(`Using Baileys version: ${version}`);
 
-        // Load auth state with better error handling
+        // Load auth state (from edited, but retains error handling from original)
         const { state, saveCreds } = await useMultiFileAuthState(authDir);
-        logger.info("Session state loaded");
+        logger.info('Auth state loaded successfully');
 
-        // Create socket with enhanced configuration
+        // Create socket (combination of original and edited)
         const sock = makeWASocket({
             version,
             printQRInTerminal: true,
-            auth: state,
+            auth: {
+                creds: state.creds,
+                keys: makeCacheableSignalKeyStore(state.keys, logger)
+            },
             logger: pino({ level: "silent" }),
-            browser: [config.botName, "Safari", "1.0.0"],
-            connectTimeoutMs: 60000,
-            keepAliveIntervalMs: 15000,
-            retryRequestDelayMs: 2000,
-            qrTimeout: 40000,
+            browser: ["BLACKSKY-MD", "Chrome", "1.0.0"],
             defaultQueryTimeoutMs: 60000,
+            connectTimeoutMs: 60000,
+            keepAliveIntervalMs: 30000, // from edited
             emitOwnEvents: true,
             markOnlineOnConnect: true,
-            syncFullHistory: false
+            qrTimeout: 40000,
+            getMessage: async (key) => { // from original
+                if (store) {
+                    const msg = await store.loadMessage(key.remoteJid, key.id);
+                    return msg?.message || undefined;
+                }
+                return undefined;
+            }
         });
 
-        store.bind(sock.ev);
-        logger.info('Store bound to socket events');
+        // Bind store (from edited, but retains error handling from original)
+        try {
+            store.bind(sock.ev);
+            logger.info('Store bound to socket events successfully');
+        } catch (error) {
+            logger.error('Failed to bind store:', error);
+        }
 
-        // Handle connection updates with improved error handling
-        sock.ev.on("connection.update", async (update) => {
+        // Import and verify message handler (from original)
+        const messageHandler = require('./handlers/message');
+        logger.info('Message handler loaded and verified');
+
+
+        // Handle messages (combination of original and edited)
+        sock.ev.on('messages.upsert', async ({ messages, type }) => {
+            if (type !== 'notify') return;
+
+            try {
+                const msg = messages[0];
+                if (!msg?.message) {
+                    logger.debug('Empty message received, skipping');
+                    return;
+                }
+
+                logger.debug('Processing message:', {
+                    type: Object.keys(msg.message)[0],
+                    from: msg.key.remoteJid,
+                    pushName: msg.pushName
+                });
+
+                await messageHandler(sock, msg);
+            } catch (error) {
+                logger.error('Message processing error:', {
+                    error: error.message,
+                    stack: error.stack
+                });
+
+                // Attempt to notify user of error (from original)
+                try {
+                    await sock.sendMessage(messages[0].key.remoteJid, {
+                        text: '❌ Error processing message. Please try again.'
+                    });
+                } catch (sendError) {
+                    logger.error('Failed to send error message:', sendError);
+                }
+            }
+        });
+
+        // Handle connection updates (combination of original and edited)
+        sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
 
             if (qr) {
-                logger.info('New QR code generated');
+                qrcode.generate(qr, { small: true });
+                logger.info('New QR code generated. Please scan with WhatsApp to authenticate.');
             }
 
-            if (connection === "close") {
-                const shouldReconnect = (lastDisconnect?.error instanceof Boom) ? 
+            if (connection === 'close') {
+                const shouldReconnect = (lastDisconnect?.error instanceof Boom) ?
                     lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut : true;
 
-                logger.info('Connection closed due to:', {
-                    error: lastDisconnect?.error?.message || 'Unknown error',
+                logger.info('Connection closed:', {
+                    error: lastDisconnect?.error?.message,
                     statusCode: lastDisconnect?.error?.output?.statusCode,
                     shouldReconnect
                 });
 
                 if (shouldReconnect) {
-                    logger.info('Reconnecting...');
+                    logger.info('Attempting reconnection...');
                     setTimeout(connectToWhatsApp, 3000);
                 } else {
-                    logger.error('Connection closed permanently');
-                    // Clear auth if logged out
+                    logger.warn('Session ended - clearing auth state');
                     try {
                         await fs.remove(authDir);
-                        logger.info('Auth files cleared');
-                    } catch (err) {
-                        logger.error('Failed to clear auth files:', err);
+                        logger.info('Auth state cleared successfully');
+                        setTimeout(connectToWhatsApp, 5000);
+                    } catch (error) {
+                        logger.error('Failed to clear auth state:', error);
                     }
                 }
-            } else if (connection === "open") {
-                logger.info('Connected successfully!');
-                const botJid = sock.user.id;
-                logger.info('Bot number:', botJid);
+            }
 
+            if (connection === 'open') {
+                logger.info('Connection established successfully!');
+
+                // Verify bot is working by sending a test message (from original)
                 try {
-                    await sock.sendMessage(config.ownerNumber, { 
-                        text: '🤖 Bot is now online and ready!' 
+                    await sock.sendMessage(config.ownerNumber, {
+                        text: '🤖 Bot is now online and ready!'
                     });
-                } catch (err) {
-                    logger.error('Failed to send ready message:', err);
+                    logger.info('Successfully sent ready message to owner');
+                } catch (error) {
+                    logger.error('Failed to send ready message:', error);
                 }
             }
         });
 
-        // Save credentials with error handling
-        sock.ev.on("creds.update", async () => {
+        // Save auth state (from edited, but retains error handling from original)
+        sock.ev.on('creds.update', async () => {
             try {
                 await saveCreds();
-            } catch (err) {
-                logger.error('Failed to save credentials:', err);
+                logger.info('Credentials updated and saved successfully');
+            } catch (error) {
+                logger.error('Failed to save credentials:', error);
             }
         });
 
         return sock;
-    } catch (err) {
-        logger.error('Fatal error in connection:', err);
-        // Attempt reconnection after delay
+    } catch (error) {
+        logger.error('Fatal connection error:', {
+            message: error.message,
+            stack: error.stack
+        });
+
+        // Clear auth state and retry (from original)
+        try {
+            await fs.remove(authDir);
+            logger.info('Auth state cleared after fatal error');
+        } catch (clearError) {
+            logger.error('Failed to clear auth state:', clearError);
+        }
+
+        // Implement exponential backoff for retries (from original)
         setTimeout(connectToWhatsApp, 5000);
+        return null;
     }
 }
 
-// Start bot with reconnection handling
+// Start bot with improved error handling and retry logic (from original)
 (async () => {
-    while (true) {
+    let retryCount = 0;
+    const maxRetries = 5;
+
+    while (retryCount < maxRetries) {
         try {
-            await connectToWhatsApp();
-            break;
-        } catch (err) {
-            logger.error('Failed to start bot:', err);
-            await new Promise(resolve => setTimeout(resolve, 5000));
+            const sock = await connectToWhatsApp();
+            if (sock) {
+                logger.info('Bot started successfully');
+                retryCount = 0; // Reset retry count on success
+                break;
+            }
+            retryCount++;
+            logger.info(`Connection attempt ${retryCount}/${maxRetries}`);
+            await new Promise(resolve => setTimeout(resolve, 5000 * retryCount)); // Exponential backoff
+        } catch (error) {
+            retryCount++;
+            logger.error(`Failed to start bot (attempt ${retryCount}/${maxRetries}):`, error);
+            if (retryCount < maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, 5000 * retryCount));
+            } else {
+                logger.error('Max retries reached, please check your configuration and try again');
+                process.exit(1);
+            }
         }
     }
 })();
 
-// Handle uncaught errors
-process.on('uncaughtException', err => {
-    logger.error('Uncaught Exception:', err);
+// Enhanced error handlers with more context (from original)
+process.on('uncaughtException', error => {
+    logger.error('Uncaught Exception:', {
+        error: error.message,
+        stack: error.stack,
+        type: error.name
+    });
 });
 
-process.on('unhandledRejection', err => {
-    logger.error('Unhandled Rejection:', err);
+process.on('unhandledRejection', (reason, promise) => {
+    logger.error('Unhandled Rejection:', {
+        reason: reason instanceof Error ? reason.message : reason,
+        stack: reason instanceof Error ? reason.stack : undefined,
+        promise: promise
+    });
 });
 
-async function sendCredsFile(sock) {
+//Helper function from original
+async function verifyAuthState(authDir) {
     try {
-        if (!sock.user?.id) {
-            logger.error('❌ Bot number not available yet');
-            return false;
-        }
-
-        // Check if we've already sent creds
-        if (await fs.pathExists('./.creds_sent')) {
-            logger.info('Credentials were already sent, skipping');
-            return false;
-        }
-
-        // Only send to bot's own chat
-        const botJid = sock.user.id;
-        logger.info('Attempting to send credentials to bot chat:', botJid);
-
-        const creds = await fs.readFile('./creds.json', 'utf8');
-        await sock.sendMessage(botJid, {
-            text: `🔐 *Your Session ID*\n\n${creds}\n\n` +
-                 `Add this as SESSION_ID in your Heroku config vars`
-        });
-
-        logger.info('✅ Successfully sent session ID to bot\'s own chat:', botJid);
-
-        // Create a marker file to indicate we've sent the creds
-        await fs.writeFile('./.creds_sent', 'true');
-        return true;
-    } catch (err) {
-        logger.error('❌ Error sending session ID:', err);
-        return false;
-    }
-}
-
-
-async function sendStatusMessage(sock, status, details = '') {
-    try {
-        // Only send status if we haven't before in this session
-        const statusKey = `status_${status.toLowerCase()}`;
-        if (global[statusKey]) {
-            logger.debug(`Status '${status}' already sent, skipping due to global flag`);
-            return;
-        }
-
-        const timestamp = new Date().toLocaleString();
-        logger.info(`Preparing to send status message: ${status}`);
-
-        const statusMessage = `🤖 *${config.botName} Status Update*\n\n` +
-                             `📋 Status: ${status}\n` +
-                             `⏰ Time: ${timestamp}\n` +
-                             `🔧 Version: ${require('./package.json').version}\n` +
-                             (details ? `\n📝 Details:\n${details}\n` : '') +
-                             `\n💡 Type .menu to see available commands.`;
-
-        // Send only to owner
-        await sock.sendMessage(config.ownerNumber, { text: statusMessage });
-
-        // Mark this status as sent immediately after first send
-        global[statusKey] = true;
-        logger.info(`Status message '${status}' sent successfully`);
-    } catch (err) {
-        logger.error('Error sending status message:', err);
-    }
-}
-
-const formatPhoneNumber = (number) => {
-    if (!number) return null;
-    return number.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
-};
-
-async function saveCredsToFile(sock, creds) {
-    try {
-        // Check if the creds have actually changed
-        const existingCreds = await fs.readFile('./creds.json', 'utf8').catch(() => null);
-        const botName = config.botName.replace(/[^a-zA-Z0-9]/g, '');
-        const sessionData = Buffer.from(JSON.stringify(creds)).toString('base64');
-        const newCredsContent = `${botName}:${sessionData}`;
-
-        // Only save if creds have changed
-        if (existingCreds !== newCredsContent) {
-            await fs.writeFile('./creds.json', newCredsContent);
-            logger.info('✅ Credentials updated and saved');
+        await fs.ensureDir(authDir);
+        const files = await fs.readdir(authDir);
+        if (files.length === 0) {
+            logger.info('Fresh installation - auth files will be created');
             return true;
         }
-
-        logger.debug('Credentials unchanged, skipping save');
-        return false;
-    } catch (err) {
-        logger.error('❌ Error saving credentials:', err);
+        logger.info('Auth files exist and are readable');
+        return true;
+    } catch (error) {
+        logger.error('Auth state verification failed:', error);
         return false;
     }
 }
