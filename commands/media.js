@@ -393,7 +393,7 @@ const mediaCommands = {
             // Encode emojis for URL
             const emoji1Encoded = encodeURIComponent(emoji1);
             const emoji2Encoded = encodeURIComponent(emoji2);
-            const searchQuery = `${emoji1Encoded}${emoji2Encoded}`;
+            const searchQuery = `${emoji1Encoded}_${emoji2Encoded} emoji mix`;
 
             logger.info(`Making Tenor API request for emoji mix: ${emoji1} + ${emoji2}`);
             logger.info(`Using search query: ${searchQuery}`);
