@@ -3,10 +3,15 @@ const logger = require('pino')();
 const fs = require('fs-extra');
 const path = require('path');
 const OpenAI = require('openai');
+const Replicate = require('replicate');
 
-// Initialize OpenAI client
+// Initialize AI clients
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
+});
+
+const replicate = new Replicate({
+    auth: process.env.REPLICATE_API_TOKEN,
 });
 
 // Create temp directory if it doesn't exist
@@ -25,6 +30,19 @@ const isOnCooldown = (userId) => {
 
 const setCooldown = (userId) => {
     userCooldowns.set(userId, Date.now());
+};
+
+// Helper function to handle OpenAI quota errors
+const handleAIResponse = async (primaryFunc, fallbackFunc) => {
+    try {
+        return await primaryFunc();
+    } catch (error) {
+        if (error.message.includes('quota') || error.message.includes('429')) {
+            logger.info('OpenAI quota exceeded, falling back to Replicate');
+            return await fallbackFunc();
+        }
+        throw error;
+    }
 };
 
 const aiCommands = {
@@ -52,24 +70,45 @@ const aiCommands = {
                 text: '🤖 Processing your request...'
             });
 
-            const completion = await openai.chat.completions.create({
-                model: "gpt-3.5-turbo",
-                messages: [
-                    {
-                        role: "system",
-                        content: "You are a helpful assistant in a WhatsApp chat. Be concise but informative."
-                    },
-                    {
-                        role: "user",
-                        content: args.join(' ')
-                    }
-                ],
-                max_tokens: 500
-            });
+            const prompt = args.join(' ');
 
-            const response = completion.choices[0].message.content;
+            const response = await handleAIResponse(
+                // OpenAI Implementation
+                async () => {
+                    const completion = await openai.chat.completions.create({
+                        model: "gpt-3.5-turbo",
+                        messages: [
+                            {
+                                role: "system",
+                                content: "You are a helpful assistant in a WhatsApp chat. Be concise but informative."
+                            },
+                            {
+                                role: "user",
+                                content: prompt
+                            }
+                        ],
+                        max_tokens: 500
+                    });
+                    return completion.choices[0].message.content;
+                },
+                // Replicate Fallback
+                async () => {
+                    const output = await replicate.run(
+                        "meta/llama-2-70b-chat:02e509c789964a7ea8736978a43525956ef40397be9033abf9fd2badfe68c9e3",
+                        {
+                            input: {
+                                prompt: prompt,
+                                max_tokens: 500,
+                                temperature: 0.75,
+                                system_prompt: "You are a helpful assistant in a WhatsApp chat. Be concise but informative."
+                            }
+                        }
+                    );
+                    return output.join('');
+                }
+            );
+
             setCooldown(userId);
-
             await sock.sendMessage(msg.key.remoteJid, { text: response });
 
         } catch (error) {
@@ -101,20 +140,42 @@ const aiCommands = {
                 text: '🎨 Generating your image...'
             });
 
-            const response = await openai.images.generate({
-                model: "dall-e-3",
-                prompt: args.join(' '),
-                n: 1,
-                size: "1024x1024",
-            });
+            const prompt = args.join(' ');
 
-            const imageUrl = response.data[0].url;
+            const imageUrl = await handleAIResponse(
+                // OpenAI Implementation
+                async () => {
+                    const response = await openai.images.generate({
+                        model: "dall-e-3",
+                        prompt: prompt,
+                        n: 1,
+                        size: "1024x1024",
+                    });
+                    return response.data[0].url;
+                },
+                // Replicate Fallback
+                async () => {
+                    const output = await replicate.run(
+                        "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+                        {
+                            input: {
+                                prompt: prompt,
+                                width: 1024,
+                                height: 1024,
+                                num_outputs: 1
+                            }
+                        }
+                    );
+                    return output[0];
+                }
+            );
+
             setCooldown(userId);
 
-            // Download and send the image
+            // Send the generated image
             await sock.sendMessage(msg.key.remoteJid, {
                 image: { url: imageUrl },
-                caption: '🖼️ Generated using DALL-E'
+                caption: '🖼️ Generated using AI'
             });
 
         } catch (error) {
@@ -134,8 +195,6 @@ const aiCommands = {
         // Another alias for dalle command
         return aiCommands.dalle(sock, msg, args);
     },
-    
-    //Retained commands with error handling, but no functionality
     lisa: async (sock, msg, args) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, { text: "This command is not yet implemented." });
