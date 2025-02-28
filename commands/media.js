@@ -134,10 +134,31 @@ const mediaCommands = {
                 }
             );
 
+            // Create temp file paths
+            const inputPath = path.join(tempDir, 'input.webp');
+            const outputPath = path.join(tempDir, 'output.png');
+
+            // Write buffer to file
+            await fs.writeFile(inputPath, buffer);
+
+            // Convert WebP to PNG using Python script
+            await new Promise((resolve, reject) => {
+                exec(`python3 -c "from PIL import Image; Image.open('${inputPath}').convert('RGBA').save('${outputPath}', 'PNG')"`, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
+
+            // Read and send the PNG file
+            const pngBuffer = await fs.readFile(outputPath);
             await sock.sendMessage(msg.key.remoteJid, {
-                image: buffer,
+                image: pngBuffer,
                 caption: '✅ Here\'s your image!'
             });
+
+            // Cleanup temp files
+            await fs.remove(inputPath);
+            await fs.remove(outputPath);
 
         } catch (error) {
             logger.error('Error in toimg command:', error);
@@ -191,8 +212,8 @@ const mediaCommands = {
 
             await sock.sendMessage(msg.key.remoteJid, {
                 audio: audioBuffer,
-                mimetype: 'audio/mp4',
-                caption: '✅ Here\'s your audio!'
+                mimetype: 'audio/mpeg',
+                ptt: false
             });
 
             // Cleanup temp files
