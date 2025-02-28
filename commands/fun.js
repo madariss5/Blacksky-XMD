@@ -812,17 +812,21 @@ const funCommands = {
                 mentions: mentions
             });
 
-            // Try to send GIF
-            try {
-                await sendGifReaction(sock, msg, path.join(__dirname, '../media/anime-ponk.gif'), '🏓', mentions);
-            } catch (gifError) {
-                logger.warn('Failed to send ponk GIF:', gifError);
+            // Verify GIF exists and log path
+            const gifPath = path.join(__dirname, '../media/anime-ponk.gif');
+            logger.info('Checking for ponk GIF at path:', gifPath);
+
+            if (!fs.existsSync(gifPath)) {
+                logger.error('Ponk GIF not found at path:', gifPath);
+                throw new Error('Ponk GIF not found');
             }
 
+            // Send the anime ponk GIF
+            await sendGifReaction(sock, msg, gifPath, '🏓', mentions);
         } catch (error) {
             logger.error('Error in ponk command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '😅 Failed to execute ponk command!'
+                text: '❌ Failed to execute ponk command: ' + error.message
             });
         }
     }

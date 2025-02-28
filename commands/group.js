@@ -1,20 +1,46 @@
 const config = require('../config');
 const store = require('../database/store');
 const logger = require('pino')();
+const path = require('path');
 
 // Helper function to validate group context and permissions
 async function validateGroupContext(sock, msg, requiresAdmin = true) {
     try {
+        logger.info('Validating group context:', {
+            messageId: msg?.key?.id,
+            remoteJid: msg?.key?.remoteJid,
+            requiresAdmin
+        });
+
+        if (!msg?.key?.remoteJid) {
+            logger.error('Invalid message format - missing remoteJid');
+            return null;
+        }
+
         // Verify it's a group chat
         if (!msg.key.remoteJid.endsWith('@g.us')) {
+            logger.info('Command used outside group chat:', msg.key.remoteJid);
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: '❌ This command can only be used in groups!' 
             });
             return null;
         }
 
-        // Get group metadata
-        const groupMetadata = await sock.groupMetadata(msg.key.remoteJid);
+        // Get group metadata with error handling
+        let groupMetadata;
+        try {
+            groupMetadata = await sock.groupMetadata(msg.key.remoteJid);
+            logger.info('Group metadata fetched successfully:', {
+                groupName: groupMetadata.subject,
+                participantCount: groupMetadata.participants.length
+            });
+        } catch (error) {
+            logger.error('Failed to fetch group metadata:', error);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '❌ Failed to fetch group information. Please try again.' 
+            });
+            return null;
+        }
 
         // Verify admin status if required
         if (requiresAdmin) {
@@ -27,7 +53,22 @@ async function validateGroupContext(sock, msg, requiresAdmin = true) {
             }
 
             const participant = groupMetadata.participants.find(p => p.id === msg.key.participant);
+            if (!participant) {
+                logger.error('Participant not found in group:', {
+                    participantId: msg.key.participant,
+                    groupId: msg.key.remoteJid
+                });
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    text: '❌ Error: You are not a member of this group' 
+                });
+                return null;
+            }
+
             const isAdmin = participant?.admin === 'admin' || participant?.admin === 'superadmin';
+            logger.info('Admin status check:', {
+                participantId: msg.key.participant,
+                isAdmin: isAdmin
+            });
 
             if (!isAdmin) {
                 await sock.sendMessage(msg.key.remoteJid, { 
@@ -41,14 +82,25 @@ async function validateGroupContext(sock, msg, requiresAdmin = true) {
     } catch (error) {
         logger.error('Group context validation error:', error);
         await sock.sendMessage(msg.key.remoteJid, { 
-            text: '❌ Error checking group permissions' 
+            text: '❌ Error checking group permissions: ' + error.message 
         });
         return null;
     }
 }
 
+// Helper function to safely update group participants
+async function safeGroupParticipantUpdate(sock, groupId, participants, action) {
+    try {
+        await sock.groupParticipantsUpdate(groupId, participants, action);
+        return true;
+    } catch (error) {
+        logger.error(`Failed to ${action} participants:`, error);
+        return false;
+    }
+}
+
 const groupCommands = {
-    // Core group commands
+    // Core group commands remain unchanged but with improved error handling
     kick: async (sock, msg, args) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
@@ -75,11 +127,15 @@ const groupCommands = {
                 });
             }
 
-            await sock.groupParticipantsUpdate(msg.key.remoteJid, [targetUser], "remove");
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: `✅ Kicked @${targetUser.split('@')[0]}`, 
-                mentions: [targetUser] 
-            });
+            const success = await safeGroupParticipantUpdate(sock, msg.key.remoteJid, [targetUser], "remove");
+            if (success) {
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    text: `✅ Kicked @${targetUser.split('@')[0]}`, 
+                    mentions: [targetUser] 
+                });
+            } else {
+                throw new Error('Failed to kick user');
+            }
         } catch (error) {
             logger.error('Kick command error:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
@@ -87,7 +143,6 @@ const groupCommands = {
             });
         }
     },
-
     promote: async (sock, msg, args) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
@@ -100,11 +155,15 @@ const groupCommands = {
             }
 
             const targetUser = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
-            await sock.groupParticipantsUpdate(msg.key.remoteJid, [targetUser], "promote");
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: `✅ Promoted @${targetUser.split('@')[0]} to admin`, 
-                mentions: [targetUser] 
-            });
+            const success = await safeGroupParticipantUpdate(sock, msg.key.remoteJid, [targetUser], "promote");
+            if (success) {
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    text: `✅ Promoted @${targetUser.split('@')[0]} to admin`, 
+                    mentions: [targetUser] 
+                });
+            } else {
+                throw new Error('Failed to promote user');
+            }
         } catch (error) {
             logger.error('Error in promote command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
@@ -112,7 +171,6 @@ const groupCommands = {
             });
         }
     },
-
     demote: async (sock, msg, args) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
@@ -125,11 +183,15 @@ const groupCommands = {
             }
 
             const targetUser = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
-            await sock.groupParticipantsUpdate(msg.key.remoteJid, [targetUser], "demote");
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: `✅ Demoted @${targetUser.split('@')[0]} from admin`, 
-                mentions: [targetUser] 
-            });
+            const success = await safeGroupParticipantUpdate(sock, msg.key.remoteJid, [targetUser], "demote");
+            if (success) {
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    text: `✅ Demoted @${targetUser.split('@')[0]} from admin`, 
+                    mentions: [targetUser] 
+                });
+            } else {
+                throw new Error('Failed to demote user');
+            }
         } catch (error) {
             logger.error('Error in demote command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
@@ -137,7 +199,6 @@ const groupCommands = {
             });
         }
     },
-
     mute: async (sock, msg) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
@@ -154,7 +215,6 @@ const groupCommands = {
             });
         }
     },
-
     unmute: async (sock, msg) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
@@ -171,7 +231,6 @@ const groupCommands = {
             });
         }
     },
-
     link: async (sock, msg) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
@@ -188,7 +247,6 @@ const groupCommands = {
             });
         }
     },
-
     revoke: async (sock, msg) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
@@ -206,7 +264,6 @@ const groupCommands = {
             });
         }
     },
-
     everyone: async (sock, msg, args) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, false);
@@ -226,7 +283,6 @@ const groupCommands = {
             });
         }
     },
-
     hidetag: async (sock, msg, args) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
@@ -246,7 +302,6 @@ const groupCommands = {
             });
         }
     },
-
     setname: async (sock, msg, args) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
@@ -270,7 +325,6 @@ const groupCommands = {
             });
         }
     },
-
     setdesc: async (sock, msg, args) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
@@ -294,7 +348,6 @@ const groupCommands = {
             });
         }
     },
-
     setwelcome: async (sock, msg, args) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
@@ -324,7 +377,6 @@ const groupCommands = {
             });
         }
     },
-
     setgoodbye: async (sock, msg, args) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
@@ -354,7 +406,6 @@ const groupCommands = {
             });
         }
     },
-
     antilink: async (sock, msg, args) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
@@ -378,7 +429,6 @@ const groupCommands = {
             });
         }
     },
-
     antispam: async (sock, msg, args) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
@@ -402,7 +452,6 @@ const groupCommands = {
             });
         }
     },
-
     antitoxic: async (sock, msg, args) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
@@ -426,7 +475,6 @@ const groupCommands = {
             });
         }
     },
-
     groupinfo: async (sock, msg) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, false);
@@ -489,7 +537,10 @@ const groupCommands = {
 
             if (warningCount >= 3) {
                 response += '\n⛔ Maximum warnings reached. User will be removed.';
-                await sock.groupParticipantsUpdate(msg.key.remoteJid, [targetUser], "remove");
+                const success = await safeGroupParticipantUpdate(sock, msg.key.remoteJid, [targetUser], "remove");
+                if (!success) {
+                    throw new Error('Failed to remove user after max warnings');
+                }
                 await store.clearWarnings(msg.key.remoteJid, targetUser);
             }
 
@@ -504,7 +555,6 @@ const groupCommands = {
             });
         }
     },
-
     delwarn: async (sock, msg, args) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
@@ -535,7 +585,6 @@ const groupCommands = {
             });
         }
     },
-
     warnlist: async (sock, msg, args) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
@@ -575,7 +624,6 @@ const groupCommands = {
             });
         }
     },
-
     del: async (sock, msg) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
