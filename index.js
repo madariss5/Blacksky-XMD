@@ -6,7 +6,7 @@ const messageHandler = require('./handlers/message');
 
 // Initialize express app
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080;
 
 // Basic middleware
 app.use(cors());
@@ -57,7 +57,7 @@ app.get('/health', (req, res) => {
 });
 
 // Create server instance separately for logging
-const server = app.listen(PORT, '0.0.0.0', async () => {
+const server = app.listen(PORT, () => {
     try {
         const address = server.address();
         logger.info('Server started with details:', {
@@ -67,8 +67,11 @@ const server = app.listen(PORT, '0.0.0.0', async () => {
         });
 
         logger.info('Server listening on port', PORT);
-        await whatsapp.initialize();
-        logger.info('WhatsApp connection initialized');
+        whatsapp.initialize().then(() => {
+            logger.info('WhatsApp connection initialized');
+        }).catch(error => {
+            logger.error('Startup error:', error);
+        });
     } catch (error) {
         logger.error('Startup error:', error);
     }
