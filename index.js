@@ -1,22 +1,17 @@
 const express = require('express');
-const pino = require("pino");
-
-// Initialize logger
-const logger = pino();
+const logger = require('pino')();
 
 // Initialize express app
 const app = express();
-const PORT = 8080;
+const PORT = 4000;
 
 // Basic route
 app.get('/', (req, res) => {
-    logger.info('Root endpoint accessed');
     res.send('WhatsApp Bot is running!');
 });
 
 // Health check
 app.get('/health', (req, res) => {
-    logger.info('Health check endpoint accessed');
     res.json({
         status: 'healthy',
         uptime: process.uptime()

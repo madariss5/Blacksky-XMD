@@ -28,7 +28,7 @@ task = "packager.installForAll"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "node index.js"
-waitForPort = 8080
+waitForPort = 4000
 
 [deployment]
 run = ["sh", "-c", "node index.js"]
@@ -36,6 +36,10 @@ run = ["sh", "-c", "node index.js"]
 [[ports]]
 localPort = 3000
 externalPort = 3000
+
+[[ports]]
+localPort = 4000
+externalPort = 3001
 
 [[ports]]
 localPort = 5000
