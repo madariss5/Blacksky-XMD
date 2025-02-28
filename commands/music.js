@@ -13,157 +13,105 @@ if (!fs.existsSync(mediaDir)) {
     logger.info('Media directory created');
 }
 
-// Store active music sessions
+// Store active music sessions and format cache
 const musicSessions = new Map();
+// Store format cache with expiration
+const formatCache = new Map();
+const CACHE_EXPIRY = 30 * 60 * 1000; // 30 minutes
 
-// YouTube API options with rate limit handling
+// YouTube API options
 const ytOptions = {
     lang: 'en',
     requestOptions: {
         headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        },
-        maxRetries: 3,
-        backoff: { inc: 500, max: 10000 }
+        }
     }
 };
+
 
 const musicCommands = {
     play: async (sock, msg, args) => {
         try {
             if (!args.length) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `🎵 Please provide a song name or URL!\nUsage: ${config.prefix}play <song name or URL>`
+                    text: `Please provide a song name or URL!\nUsage: ${config.prefix}play <song name>`
                 });
             }
 
-            const query = args.join(' ');
-            logger.info('Searching for:', query);
+            // Quick search with minimal data
+            const video = (await yts({ query: args.join(' '), pages: 1 })).videos[0];
+            if (!video) throw new Error('No videos found!');
 
-            let searchResults;
-            try {
-                searchResults = await yts(query);
-                if (!searchResults.videos.length) {
-                    throw new Error('No videos found!');
-                }
-                logger.info('Search successful, found video:', searchResults.videos[0].title);
-            } catch (searchError) {
-                logger.error('Search failed:', searchError);
-                throw new Error('Failed to search for the song. Please try again.');
-            }
-
-            const video = searchResults.videos[0];
+            // Notify user
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `🎵 *Now Playing*\n\nTitle: ${video.title}\nDuration: ${video.duration.timestamp}\nViews: ${video.views}\n\n⏳ Downloading...`
+                text: `🎵 Loading: ${video.title}`
             });
 
-            // Get audio stream URL with retries
-            let videoId;
-            let audioUrl;
             try {
-                videoId = ytdl.getVideoID(video.url);
-                logger.info('Extracted video ID:', videoId);
+                const videoId = ytdl.getVideoID(video.url);
+                let audioUrl;
 
-                const info = await ytdl.getInfo(videoId, ytOptions);
-                logger.info('Retrieved video info successfully');
+                // Check cache first
+                const cached = formatCache.get(videoId);
+                if (cached && cached.expires > Date.now()) {
+                    audioUrl = cached.url;
+                } else {
+                    // Get fresh URL
+                    const info = await ytdl.getInfo(videoId, ytOptions);
+                    const format = ytdl.filterFormats(info.formats, 'audioonly')[0];
 
-                // Get all audio formats
-                const audioFormats = ytdl.filterFormats(info.formats, 'audioonly');
-                logger.info(`Found ${audioFormats.length} audio formats`);
+                    if (!format) throw new Error('No audio format available');
 
-                if (!audioFormats.length) {
-                    throw new Error('No audio formats available');
+                    audioUrl = format.url;
+                    // Cache the URL with expiration
+                    formatCache.set(videoId, {
+                        url: audioUrl,
+                        expires: Date.now() + CACHE_EXPIRY
+                    });
                 }
 
-                // Select the best audio format with fallback
-                let format = audioFormats.reduce((prev, curr) => {
-                    if (!prev) return curr;
-                    if (!curr) return prev;
-                    const prevBitrate = prev.audioBitrate || 0;
-                    const currBitrate = curr.audioBitrate || 0;
-                    return prevBitrate > currBitrate ? prev : curr;
+                // Update session
+                const session = musicSessions.get(msg.key.remoteJid) || {
+                    playing: false,
+                    queue: [],
+                    current: 0
+                };
+
+                session.queue.push({
+                    title: video.title,
+                    url: video.url,
+                    videoId,
+                    audioUrl,
+                    duration: video.duration.seconds
                 });
 
-                audioUrl = format.url;
-                logger.info('Selected audio format with bitrate:', format.audioBitrate);
+                musicSessions.set(msg.key.remoteJid, session);
 
-                // Validate URL before using
-                try {
-                    const response = await axios.head(audioUrl, {
-                        timeout: 5000,
-                        validateStatus: (status) => status < 500
+                if (!session.playing) {
+                    session.playing = true;
+                    await playSong(sock, msg.key.remoteJid);
+                } else {
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        text: `✅ Added to queue: ${video.title}`
                     });
-                    if (response.status === 404) {
-                        throw new Error('Audio URL invalid');
-                    }
-                } catch (urlError) {
-                    // If URL validation fails, try getting a fresh URL
-                    logger.info('URL validation failed, getting fresh URL...');
-                    const freshInfo = await ytdl.getInfo(videoId, ytOptions);
-                    const freshFormats = ytdl.filterFormats(freshInfo.formats, 'audioonly');
-                    format = freshFormats.reduce((prev, curr) => {
-                        if (!prev) return curr;
-                        if (!curr) return prev;
-                        const prevBitrate = prev.audioBitrate || 0;
-                        const currBitrate = curr.audioBitrate || 0;
-                        return prevBitrate > currBitrate ? prev : curr;
-                    });
-                    audioUrl = format.url;
-                    logger.info('Successfully obtained fresh URL');
                 }
 
             } catch (error) {
-                logger.error('Error getting audio source:', error);
-                // Enhanced error handling
                 if (error.message.includes('429')) {
-                    throw new Error('YouTube rate limit reached. Please try again in a few minutes.');
-                } else if (error.message.includes('Private video') || error.message.includes('private')) {
-                    throw new Error('This video is private or unavailable.');
-                } else if (error.message.includes('Copyright') || error.message.includes('copyright')) {
-                    throw new Error('This video is not available due to copyright restrictions.');
-                } else if (error.message.includes('region') || error.message.includes('country')) {
-                    throw new Error('This video is not available in your region.');
-                } else {
-                    throw new Error('Unable to process this song. Please try another one.');
+                    throw new Error('Rate limit reached. Please try again in a few minutes.');
                 }
+                throw new Error('Unable to process this song. Please try another one.');
             }
 
-            // Store in session
-            const session = musicSessions.get(msg.key.remoteJid) || {
-                playing: false,
-                queue: [],
-                current: 0
-            };
-
-            session.queue.push({
-                title: video.title,
-                url: video.url,
-                videoId: videoId,
-                audioUrl: audioUrl,
-                duration: video.duration.seconds,
-                thumbnail: video.thumbnail,
-                requestedBy: msg.key.participant,
-                addedAt: new Date().toISOString()
-            });
-
-            musicSessions.set(msg.key.remoteJid, session);
-
-            // Start playing if not already playing
-            if (!session.playing) {
-                session.playing = true;
-                await playSong(sock, msg.key.remoteJid);
-            } else {
-                await sock.sendMessage(msg.key.remoteJid, {
-                    text: `✅ Added to queue: ${video.title}`
-                });
-            }
         } catch (error) {
             logger.error('Error in play command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ ' + (error.message || 'Error playing music. Please try again.')
+                text: '❌ ' + error.message
             });
         }
     },
+
     stop: async (sock, msg) => {
         try {
             const session = musicSessions.get(msg.key.remoteJid);
@@ -187,6 +135,7 @@ const musicCommands = {
             });
         }
     },
+
     skip: async (sock, msg) => {
         try {
             const session = musicSessions.get(msg.key.remoteJid);
@@ -317,90 +266,46 @@ const musicCommands = {
     }
 };
 
-// Helper function to play a song
+// Helper function to play song
 async function playSong(sock, chatId) {
     try {
         const session = musicSessions.get(chatId);
         if (!session?.queue.length || !session.playing) return;
 
         const currentSong = session.queue[session.current];
-        let audioUrl = currentSong.audioUrl;
 
-        logger.info('Starting playback of:', {
-            title: currentSong.title,
-            videoId: currentSong.videoId
-        });
-
-        // Verify URL is still valid
         try {
-            const response = await axios.head(audioUrl);
-            if (response.status === 404) {
-                throw new Error('URL expired');
-            }
-        } catch (urlError) {
-            logger.info('URL validation failed, refreshing...');
+            // Try sending audio directly first
+            await sock.sendMessage(chatId, {
+                audio: { url: currentSong.audioUrl },
+                mimetype: 'audio/mp4'
+            });
 
-            try {
-                const info = await ytdl.getInfo(currentSong.videoId, ytOptions);
+        } catch (error) {
+            // On failure, get fresh URL
+            const info = await ytdl.getInfo(currentSong.videoId, ytOptions);
+            const format = ytdl.filterFormats(info.formats, 'audioonly')[0];
 
-                const audioFormats = ytdl.filterFormats(info.formats, 'audioonly');
-                if (!audioFormats.length) {
-                    throw new Error('No audio formats available');
-                }
+            if (!format) throw new Error('No audio format available');
 
-                const format = audioFormats.reduce((prev, curr) => {
-                    const prevBitrate = prev.audioBitrate || 0;
-                    const currBitrate = curr.audioBitrate || 0;
-                    return prevBitrate > currBitrate ? prev : curr;
-                });
-
-                audioUrl = format.url;
-                currentSong.audioUrl = audioUrl;
-                logger.info('Successfully refreshed audio URL');
-            } catch (refreshError) {
-                logger.error('Failed to refresh URL:', refreshError);
-                throw new Error('Failed to refresh audio source. Skipping to next song...');
-            }
+            currentSong.audioUrl = format.url;
+            await sock.sendMessage(chatId, {
+                audio: { url: currentSong.audioUrl },
+                mimetype: 'audio/mp4'
+            });
         }
-
-        // Send the audio message
-        await sock.sendMessage(chatId, {
-            audio: { url: audioUrl },
-            mimetype: 'audio/mp4',
-            ptt: false,
-            contextInfo: {
-                externalAdReply: {
-                    title: currentSong.title,
-                    body: `Duration: ${formatDuration(currentSong.duration)}`,
-                    thumbnail: Buffer.from(currentSong.thumbnail, 'base64'),
-                    mediaType: 1,
-                    showAdAttribution: false
-                }
-            }
-        });
-
-        logger.info('Audio message sent successfully');
 
     } catch (error) {
         logger.error('Error playing song:', error);
-
-        // Handle the failed song
         const session = musicSessions.get(chatId);
         if (session) {
             session.queue.splice(session.current, 1);
             if (session.queue.length === 0) {
                 session.playing = false;
-                await sock.sendMessage(chatId, {
-                    text: '❌ Queue is now empty. Use !play to add more songs.'
-                });
             } else {
                 if (session.current >= session.queue.length) {
                     session.current = 0;
                 }
-                await sock.sendMessage(chatId, {
-                    text: '❌ ' + (error.message || 'Error playing current song. Trying next song...')
-                });
-                musicSessions.set(chatId, session);
                 await playSong(sock, chatId);
             }
         }
