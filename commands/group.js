@@ -270,11 +270,18 @@ const groupCommands = {
                 await sock.sendMessage(msg.key.remoteJid, { text: '🔄 Generating group link...' });
 
                 // Using the legacy method as fallback if the new one fails
-                const code = await sock.groupInviteCode(msg.key.remoteJid).catch(async () => {
-                    // Fallback to query the group metadata again which sometimes helps
+                await sock.groupRevokeInvite(msg.key.remoteJid).catch(() => {});
+
+                // Try multiple methods to get the invite code
+                let code;
+                try {
+                    code = await sock.groupInviteCode(msg.key.remoteJid);
+                } catch (e) {
+                    logger.warn('Primary invite code method failed, trying fallback');
+                    // Fallback to query the group metadata again
                     const refreshedMetadata = await sock.groupMetadata(msg.key.remoteJid);
-                    return refreshedMetadata.inviteCode;
-                });
+                    code = refreshedMetadata.inviteCode;
+                }
 
                 if (!code) {
                     throw new Error('Could not generate invite code');
