@@ -215,35 +215,42 @@ async function connectToWhatsApp() {
             connectTimeoutMs: 60_000,
             keepAliveIntervalMs: 30_000,
             retryRequestDelayMs: 5000,
-            // Remove group message filtering to allow group messages
-            shouldIgnoreJid: jid => {
-                return jid.endsWith('@notify'); // Only ignore notify messages
-            },
-            getMessage: async (key) => {
-                try {
-                    if(store) {
-                        const msg = await store.loadMessage(key.remoteJid, key.id);
-                        return msg?.message || undefined;
-                    }
-                } catch (err) {
-                    logger.error('Error getting message:', err);
-                }
-                return { conversation: "Bot Message" };
-            }
+            shouldIgnoreJid: jid => jid.endsWith('@notify')
         });
 
-        // Bind store to sock events with error handling
-        const bindStore = (sock) => {
-            try {
-                store.bind(sock.ev);
-                logger.info('Store bound successfully to socket events');
-            } catch (err) {
-                logger.error('Error binding store:', err);
-                process.exit(1);
-            }
-        };
-        bindStore(sock);
+        // Bind store to socket events
+        store.bind(sock.ev);
+        logger.info('Store bound successfully to socket events');
 
+        // Import message handler
+        const messageHandler = require('./handlers/message');
+
+        // Handle messages with better error handling
+        sock.ev.on("messages.upsert", async ({ messages, type }) => {
+            if (type !== "notify") return;
+
+            try {
+                const msg = messages[0];
+                if (!msg?.message) {
+                    logger.debug('Skipping message without content');
+                    return;
+                }
+
+                // Debug log incoming message
+                logger.info('Received message:', {
+                    jid: msg.key.remoteJid,
+                    fromMe: msg.key.fromMe,
+                    participant: msg.key.participant,
+                    type: Object.keys(msg.message)[0]
+                });
+
+                // Process message through handler
+                await messageHandler(sock, msg);
+
+            } catch (err) {
+                logger.error('Error processing message:', err);
+            }
+        });
 
         // Enhanced connection handling for Heroku
         sock.ev.on("connection.update", async (update) => {
@@ -321,84 +328,6 @@ async function connectToWhatsApp() {
             }
         });
 
-        // Handle messages
-        sock.ev.on("messages.upsert", async ({ messages, type }) => {
-            if (type !== "notify") return;
-
-            try {
-                const msg = messages[0];
-                if (!msg?.message) return;
-
-                logger.info('Processing message:', {
-                    type: type,
-                    remoteJid: msg.key.remoteJid,
-                    participant: msg.key.participant,
-                    fromMe: msg.key.fromMe
-                });
-
-                const messageType = Object.keys(msg.message)[0];
-                const messageContent = msg.message[messageType];
-
-                // Extract the text content based on message type
-                let textContent = '';
-                if (messageType === 'conversation') {
-                    textContent = messageContent;
-                } else if (messageType === 'extendedTextMessage') {
-                    textContent = messageContent.text;
-                } else if (messageType === 'imageMessage' || messageType === 'videoMessage') {
-                    textContent = messageContent.caption || '';
-                }
-
-                logger.debug('Message content:', {
-                    messageType,
-                    textContent: textContent.substring(0, 100) 
-                });
-
-                // Check if message starts with prefix
-                if (textContent.startsWith(config.prefix)) {
-                    const cmd = textContent.slice(config.prefix.length).trim().split(/ +/).shift().toLowerCase();
-                    const args = textContent.slice(config.prefix.length).trim().split(/ +/).slice(1);
-
-                    logger.info(`Command received: ${cmd}`, {
-                        args: args,
-                        from: msg.key.remoteJid
-                    });
-
-                    try {
-                        // For group messages, ensure participant is set
-                        if (msg.key.remoteJid.endsWith('@g.us')) {
-                            msg.participant = msg.key.participant;
-                        }
-
-                        // Find and execute the command
-                        let commandExecuted = false;
-                        for (const [moduleName, module] of Object.entries(commandModules)) {
-                            if (cmd in module) {
-                                logger.info(`Executing command ${cmd} from ${moduleName} module`);
-                                await module[cmd](sock, msg, args);
-                                commandExecuted = true;
-                                break;
-                            }
-                        }
-
-                        if (!commandExecuted) {
-                            logger.info(`Command not found: ${cmd}`);
-                            await sock.sendMessage(msg.key.remoteJid, { 
-                                text: `Command *${cmd}* not found. Use ${config.prefix}menu to see available commands.`
-                            });
-                        }
-
-                    } catch (err) {
-                        logger.error(`Error executing command ${cmd}:`, err);
-                        await sock.sendMessage(msg.key.remoteJid, { 
-                            text: `Error executing command ${cmd}. Please try again later.`
-                        });
-                    }
-                }
-            } catch (err) {
-                logger.error('Error processing message:', err);
-            }
-        });
 
         return sock;
     } catch (err) {
@@ -406,17 +335,6 @@ async function connectToWhatsApp() {
         process.exit(1);
     }
 }
-
-// Add error handlers for uncaught exceptions
-process.on('uncaughtException', (err) => {
-    logger.error('Uncaught Exception:', err);
-    process.exit(1);
-});
-
-process.on('unhandledRejection', (err) => {
-    logger.error('Unhandled Rejection:', err);
-    process.exit(1);
-});
 
 // Start the bot with error handling
 connectToWhatsApp().catch(err => {

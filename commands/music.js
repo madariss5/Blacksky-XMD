@@ -13,63 +13,41 @@ if (!fs.existsSync(mediaDir)) {
     logger.info('Media directory created');
 }
 
-// Store active music sessions and format cache
+// Store active music sessions
 const musicSessions = new Map();
-// Store format cache with expiration
-const formatCache = new Map();
-const CACHE_EXPIRY = 30 * 60 * 1000; // 30 minutes
-
-// YouTube API options
-const ytOptions = {
-    lang: 'en',
-    requestOptions: {
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-    }
-};
-
 
 const musicCommands = {
     play: async (sock, msg, args) => {
         try {
+            logger.info('Play command received:', { args });
+
             if (!args.length) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: `Please provide a song name or URL!\nUsage: ${config.prefix}play <song name>`
                 });
             }
 
-            // Quick search with minimal data
-            const video = (await yts({ query: args.join(' '), pages: 1 })).videos[0];
-            if (!video) throw new Error('No videos found!');
-
-            // Notify user
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `🎵 Loading: ${video.title}`
-            });
-
+            // Search for video
             try {
+                logger.info('Searching for:', args.join(' '));
+                const video = (await yts({ query: args.join(' '), pages: 1 })).videos[0];
+                if (!video) throw new Error('No videos found!');
+
+                // Send initial message
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `🎵 Found: ${video.title}\nDuration: ${video.duration.timestamp}`
+                });
+
+                // Get audio URL
                 const videoId = ytdl.getVideoID(video.url);
-                let audioUrl;
+                const info = await ytdl.getInfo(videoId);
+                const format = ytdl.filterFormats(info.formats, 'audioonly')[0];
 
-                // Check cache first
-                const cached = formatCache.get(videoId);
-                if (cached && cached.expires > Date.now()) {
-                    audioUrl = cached.url;
-                } else {
-                    // Get fresh URL
-                    const info = await ytdl.getInfo(videoId, ytOptions);
-                    const format = ytdl.filterFormats(info.formats, 'audioonly')[0];
-
-                    if (!format) throw new Error('No audio format available');
-
-                    audioUrl = format.url;
-                    // Cache the URL with expiration
-                    formatCache.set(videoId, {
-                        url: audioUrl,
-                        expires: Date.now() + CACHE_EXPIRY
-                    });
+                if (!format) {
+                    throw new Error('No audio format available');
                 }
+
+                const audioUrl = format.url;
 
                 // Update session
                 const session = musicSessions.get(msg.key.remoteJid) || {
@@ -86,22 +64,19 @@ const musicCommands = {
                     duration: video.duration.seconds
                 });
 
-                musicSessions.set(msg.key.remoteJid, session);
+                logger.info('Added to queue:', { title: video.title });
 
-                if (!session.playing) {
-                    session.playing = true;
-                    await playSong(sock, msg.key.remoteJid);
-                } else {
-                    await sock.sendMessage(msg.key.remoteJid, {
-                        text: `✅ Added to queue: ${video.title}`
-                    });
-                }
+                // Send audio
+                await sock.sendMessage(msg.key.remoteJid, {
+                    audio: { url: audioUrl },
+                    mimetype: 'audio/mp4'
+                });
+
+                logger.info('Audio sent successfully');
 
             } catch (error) {
-                if (error.message.includes('429')) {
-                    throw new Error('Rate limit reached. Please try again in a few minutes.');
-                }
-                throw new Error('Unable to process this song. Please try another one.');
+                logger.error('Error processing song:', error);
+                throw new Error('Failed to process song. Please try another one.');
             }
 
         } catch (error) {
@@ -114,6 +89,7 @@ const musicCommands = {
 
     stop: async (sock, msg) => {
         try {
+            logger.info('Stop command received');
             const session = musicSessions.get(msg.key.remoteJid);
             if (!session?.playing) {
                 return await sock.sendMessage(msg.key.remoteJid, {
@@ -124,7 +100,6 @@ const musicCommands = {
             session.queue = [];
             session.playing = false;
             musicSessions.set(msg.key.remoteJid, session);
-
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '⏹️ Music playback stopped'
             });
@@ -135,7 +110,6 @@ const musicCommands = {
             });
         }
     },
-
     skip: async (sock, msg) => {
         try {
             const session = musicSessions.get(msg.key.remoteJid);
@@ -180,12 +154,12 @@ const musicCommands = {
             session.queue.forEach((song, index) => {
                 const status = index === session.current ? '▶️ ' : `${index + 1}. `;
                 queueText += `${status}${song.title} (${formatDuration(song.duration)})\n`;
-                queueText += `👤 Requested by: @${song.requestedBy.split('@')[0]}\n\n`;
+                // queueText += `👤 Requested by: @${song.requestedBy.split('@')[0]}\n\n`; //removed as requestedBy is not defined
             });
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: queueText,
-                mentions: session.queue.map(song => song.requestedBy)
+                text: queueText
+                // mentions: session.queue.map(song => song.requestedBy) //removed as requestedBy is not defined
             });
         } catch (error) {
             logger.error('Error in queue command:', error);

@@ -12,88 +12,52 @@ const commandModules = {
     anime: require('../commands/anime'),
     music: require('../commands/music'),
     ai: require('../commands/ai'),
-    downloader: require('../commands/downloader'),  // Added downloader module
-    economy: require('../commands/economy')  // Added economy module
+    downloader: require('../commands/downloader'),
+    economy: require('../commands/economy')
 };
 
 async function executeCommand(sock, msg, command, args, moduleName) {
     try {
-        // Enhanced logging for debugging
-        logger.info('Command execution attempt:', {
+        // Enhanced logging
+        logger.info('Executing command:', {
             command,
             module: moduleName,
-            chat: msg.key.remoteJid,
-            isGroup: msg.key.remoteJid.endsWith('@g.us'),
-            participant: msg.key.participant || msg.key.remoteJid
+            args: args,
+            chat: msg.key.remoteJid
         });
 
-        // Validate message context
         if (!msg.key?.remoteJid) {
             logger.warn('Invalid message: Missing remoteJid');
             return false;
         }
 
-        // Handle group participant identification
-        if (msg.key.remoteJid.endsWith('@g.us')) {
-            if (!msg.key.participant) {
-                logger.warn('Group message missing participant ID');
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    text: 'Error: Could not identify message sender' 
-                });
-                return false;
-            }
-        } else {
-            // For private chats, participant is the remoteJid
-            msg.key.participant = msg.key.remoteJid;
-        }
+        // Set participant for both group and private chats
+        msg.key.participant = msg.key.remoteJid.endsWith('@g.us') 
+            ? msg.key.participant 
+            : msg.key.remoteJid;
 
-        // Verify command exists
+        // Check if command exists
         if (!commandModules[moduleName]?.[command]) {
             logger.warn(`Command not found: ${command} in module ${moduleName}`);
             return false;
         }
 
-        // Execute command with enhanced error handling
-        try {
-            await commandModules[moduleName][command](sock, msg, args);
-            logger.info('Command executed successfully:', {
-                command,
-                module: moduleName,
-                participant: msg.key.participant
-            });
+        // Execute command
+        await commandModules[moduleName][command](sock, msg, args);
+        logger.info('Command executed successfully:', {
+            command,
+            module: moduleName
+        });
 
-            // Handle XP rewards
-            try {
-                const xpResult = await store.addXP(msg.key.participant, store.XP_REWARDS?.command || 10);
-                if (xpResult?.levelUp) {
-                    await sock.sendMessage(msg.key.remoteJid, {
-                        text: `🎉 Congratulations @${msg.key.participant.split('@')[0]}!\nYou've reached level ${xpResult.newLevel}!`,
-                        mentions: [msg.key.participant]
-                    });
-                }
-            } catch (xpError) {
-                logger.error('XP reward error:', xpError);
-            }
-
-            return true;
-        } catch (cmdError) {
-            logger.error('Command execution failed:', {
-                command,
-                error: cmdError.message,
-                stack: cmdError.stack
-            });
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `Error executing command: ${cmdError.message}`
-            });
-            return false;
-        }
+        return true;
     } catch (error) {
-        logger.error('Fatal command execution error:', {
-            error: error.message,
-            stack: error.stack
+        logger.error('Command execution error:', {
+            command,
+            module: moduleName,
+            error: error.message
         });
         await sock.sendMessage(msg.key.remoteJid, {
-            text: 'A critical error occurred. Please try again later.'
+            text: `Error executing command: ${error.message}`
         });
         return false;
     }
@@ -106,43 +70,41 @@ async function messageHandler(sock, msg) {
             return;
         }
 
-        const messageType = Object.keys(msg.message)[0];
-        const messageContent = msg.message[messageType];
-
+        // Log incoming message
         logger.info('Message received:', {
-            type: messageType,
             chat: msg.key.remoteJid,
             isGroup: msg.key.remoteJid.endsWith('@g.us'),
-            participant: msg.key.participant || msg.key.remoteJid
+            participant: msg.key.participant
         });
 
-        // Extract text content from different message types
+        // Get message content
+        const messageType = Object.keys(msg.message)[0];
         let textContent = '';
+
         switch (messageType) {
             case 'conversation':
-                textContent = messageContent;
+                textContent = msg.message.conversation;
                 break;
             case 'extendedTextMessage':
-                textContent = messageContent.text;
+                textContent = msg.message.extendedTextMessage.text;
                 break;
             case 'imageMessage':
             case 'videoMessage':
-                textContent = messageContent.caption || '';
+                textContent = msg.message[messageType].caption || '';
                 break;
             default:
                 logger.debug(`Unhandled message type: ${messageType}`);
                 return;
         }
 
-        // Handle commands
+        // Process commands
         if (textContent.startsWith(config.prefix)) {
             const [command, ...args] = textContent.slice(config.prefix.length).trim().split(/\s+/);
             const lowercaseCommand = command.toLowerCase();
 
             logger.info('Command detected:', {
                 command: lowercaseCommand,
-                args,
-                chat: msg.key.remoteJid
+                args: args
             });
 
             // Find and execute command
@@ -161,10 +123,7 @@ async function messageHandler(sock, msg) {
             }
         }
     } catch (error) {
-        logger.error('Message handler error:', {
-            error: error.message,
-            stack: error.stack
-        });
+        logger.error('Message handler error:', error);
     }
 }
 
