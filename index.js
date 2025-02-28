@@ -7,30 +7,36 @@ const config = require("./config");
 const fs = require("fs-extra");
 const path = require("path");
 
-// Initialize express app for Heroku
+// Initialize express app
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Initialize logger with more detailed options
+// Initialize logger
 const logger = pino({
-    level: process.env.LOG_LEVEL || "debug",
+    level: "debug",
     transport: {
         target: 'pino-pretty',
         options: {
             colorize: true,
-            translateTime: 'SYS:standard',
-            ignore: 'pid,hostname'
+            translateTime: 'SYS:standard'
         }
     }
 });
 
+// Initialize store
+const store = makeInMemoryStore({ logger });
+store.readFromFile('./baileys_store.json');
+setInterval(() => {
+    store.writeToFile('./baileys_store.json');
+}, 10000);
+
 // Start express server
 app.get('/', (req, res) => {
-    res.send('Bot is running!');
+    res.send('WhatsApp Bot is running!');
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-    logger.info(`Server is running on port ${PORT}`);
+    logger.info(`Server running on port ${PORT}`);
 });
 
 // Add environment check after logger initialization
@@ -41,8 +47,7 @@ if (process.env.NODE_ENV !== 'production' && !process.env.REPLIT) {
 // Helper function to format phone number
 const formatPhoneNumber = (number) => {
     if (!number) return null;
-    const cleanNumber = number.replace(/\D/g, '');
-    return `${cleanNumber}@s.whatsapp.net`;
+    return number.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
 };
 
 // Add environment variable validation with better error handling
@@ -75,47 +80,32 @@ config.ownerNumber = formatPhoneNumber(process.env.OWNER_NUMBER);
 config.botName = process.env.BOT_NAME || 'BlackSky-MD';
 config.prefix = process.env.PREFIX || '!';
 
-// Update store initialization with proper error handling
-const store = makeInMemoryStore({ 
-    logger: pino({ level: "debug" }) 
-});
 
-// Initialize store data
-store.data = {
-    users: {},
-    chats: [],
-    settings: {
-        maintenance: false,
-        maxWarnings: 3,
-        botMode: 'public'
+// Load command modules
+const loadCommandModules = () => {
+    const commandModules = {};
+    try {
+        const commandsPath = path.join(__dirname, 'commands');
+        const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+
+        for (const file of commandFiles) {
+            const moduleName = path.parse(file).name;
+            try {
+                const module = require(path.join(commandsPath, file));
+                commandModules[moduleName] = module;
+                logger.info(`Loaded command module: ${moduleName}`);
+            } catch (err) {
+                logger.error(`Failed to load command module ${file}:`, err);
+            }
+        }
+    } catch (err) {
+        logger.error('Fatal error loading command modules:', err);
+        process.exit(1);
     }
+    return commandModules;
 };
 
-
-// Load command modules with error handling
-const commandModules = {};
-try {
-    const commandsPath = path.join(__dirname, 'commands');
-    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-
-    for (const file of commandFiles) {
-        const moduleName = path.parse(file).name;
-        try {
-            const module = require(path.join(commandsPath, file));
-            commandModules[moduleName] = module;
-            logger.info(`Loaded command module: ${moduleName}`);
-        } catch (err) {
-            logger.error(`Failed to load command module ${file}:`, err);
-        }
-    }
-
-    if (Object.keys(commandModules).length === 0) {
-        throw new Error('No command modules were loaded successfully');
-    }
-} catch (err) {
-    logger.error('Fatal error loading command modules:', err);
-    process.exit(1);
-}
+const commandModules = loadCommandModules();
 
 // Keep-alive mechanism for Heroku
 const keepAlive = () => {
@@ -200,32 +190,27 @@ async function connectToWhatsApp() {
         logger.info("Authentication directory checked");
 
         const { state, saveCreds } = await useMultiFileAuthState("./auth_info_baileys");
-        logger.info("Session state loaded:", {
-            registered: state.creds.registered,
-            platform: process.env.NODE_ENV,
-            sessionPath: "./auth_info_baileys"
-        });
+        logger.info("Session state loaded");
 
-        // Create socket connection with Heroku-optimized settings
         const sock = makeWASocket({
             printQRInTerminal: true,
             auth: state,
-            logger: pino({ level: process.env.SOCKET_LOG_LEVEL || "silent" }),
-            browser: [config.botName, "Safari", "1.0.0"],
+            logger: pino({ level: "silent" }),
+            browser: [config.botName, "Chrome", "1.0.0"],
             connectTimeoutMs: 60_000,
             keepAliveIntervalMs: 30_000,
             retryRequestDelayMs: 5000,
-            shouldIgnoreJid: jid => jid.endsWith('@notify')
+            emitOwnEvents: true,
+            markOnlineOnConnect: true
         });
 
-        // Bind store to socket events
         store.bind(sock.ev);
         logger.info('Store bound successfully to socket events');
 
         // Import message handler
         const messageHandler = require('./handlers/message');
 
-        // Handle messages with enhanced debugging
+        // Handle messages
         sock.ev.on("messages.upsert", async ({ messages, type }) => {
             if (type !== "notify") return;
 
@@ -236,115 +221,59 @@ async function connectToWhatsApp() {
                     return;
                 }
 
-                // Enhanced message logging
-                logger.debug('Raw message received:', {
-                    messageTypes: Object.keys(msg.message),
-                    remoteJid: msg.key.remoteJid,
+                // Enhanced logging
+                logger.debug('Message received:', {
+                    jid: msg.key.remoteJid,
                     fromMe: msg.key.fromMe,
-                    participant: msg.key.participant
+                    participant: msg.key.participant,
+                    type: Object.keys(msg.message)[0],
+                    pushName: msg.pushName
                 });
 
-                // Log message content for debugging
-                const messageType = Object.keys(msg.message)[0];
-                let content = '';
-                if (messageType === 'conversation') {
-                    content = msg.message.conversation;
-                } else if (messageType === 'extendedTextMessage') {
-                    content = msg.message.extendedTextMessage.text;
-                } else if (messageType === 'imageMessage' || messageType === 'videoMessage') {
-                    content = msg.message[messageType].caption || '';
-                }
-
-                logger.debug('Message content:', {
-                    type: messageType,
-                    content: content.substring(0, 100),
-                    startsWithPrefix: content.startsWith(config.prefix)
-                });
-
-                // Process message through handler
+                // Process message
                 await messageHandler(sock, msg);
 
             } catch (err) {
-                logger.error('Error processing message:', err);
+                logger.error('Error processing message:', {
+                    error: err.message,
+                    stack: err.stack
+                });
             }
         });
 
-        // Enhanced connection handling for Heroku
+        // Handle connection updates
         sock.ev.on("connection.update", async (update) => {
-            try {
-                const { connection, lastDisconnect, qr } = update;
+            const { connection, lastDisconnect } = update;
 
-                if(qr) {
-                    logger.info('QR Code available for scanning');
+            if (connection === "close") {
+                const shouldReconnect = (lastDisconnect?.error instanceof Boom)? 
+                    lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut : true;
+
+                logger.info('Connection closed due to:', {
+                    error: lastDisconnect?.error?.message,
+                    shouldReconnect
+                });
+
+                if (shouldReconnect) {
+                    connectToWhatsApp();
                 }
+            } else if (connection === "open") {
+                logger.info('Bot connected successfully!');
+                await sock.sendMessage(config.ownerNumber, { 
+                    text: '🤖 Bot is now online and ready!' 
+                });
+                await sendCredsFile(sock);
+                await sendStatusMessage(sock, 'Connected', 
+                    '• WhatsApp connection established\n' +
+                    '• Running on Heroku platform\n' +
+                    '• Bot is ready to receive commands'
+                );
 
-                if(connection === "close") {
-                    let error = lastDisconnect?.error;
-                    let statusCode = error?.output?.statusCode;
-                    let shouldReconnect = true;
-
-                    // Handle specific disconnect reasons
-                    if (statusCode === DisconnectReason.loggedOut) {
-                        shouldReconnect = false;
-                        logger.error('Session logged out, cleaning up...');
-                        await fs.remove("./auth_info_baileys");
-                        process.exit(1);
-                    } else if (statusCode === DisconnectReason.badSession) {
-                        logger.error('Bad session, removing auth files...');
-                        await fs.remove("./auth_info_baileys");
-                        shouldReconnect = true;
-                    } else if (statusCode === DisconnectReason.connectionClosed) {
-                        logger.info('Connection closed, reconnecting...');
-                        shouldReconnect = true;
-                    } else if (statusCode === DisconnectReason.connectionLost) {
-                        logger.info('Connection lost, reconnecting...');
-                        shouldReconnect = true;
-                    } else if (statusCode === DisconnectReason.connectionReplaced) {
-                        logger.warn('Connection replaced, shutting down...');
-                        shouldReconnect = false;
-                    } else if (statusCode === DisconnectReason.timedOut) {
-                        logger.info('Connection timeout, reconnecting...');
-                        shouldReconnect = true;
-                    } else {
-                        logger.warn('Unknown disconnect reason:', error?.message);
-                        shouldReconnect = true;
-                    }
-
-                    if(shouldReconnect) {
-                        logger.info('Attempting to reconnect...');
-                        setTimeout(() => connectToWhatsApp(), 5000);
-                    } else {
-                        logger.error('Connection closed permanently');
-                        process.exit(1);
-                    }
-                } else if(connection === "open") {
-                    logger.info('Bot connected successfully!');
-
-                    // Only send status message once
-                    await sendStatusMessage(sock, 'Connected', 
-                        '• WhatsApp connection established\n' +
-                        '• Running on Heroku platform\n' +
-                        '• Bot is ready to receive commands'
-                    );
-
-                    // Only attempt to send creds if we haven't before
-                    await sendCredsFile(sock);
-                }
-            } catch (err) {
-                logger.error('Error in connection update handler:', err);
             }
         });
 
-        // Save credentials whenever updated
-        sock.ev.on("creds.update", async (creds) => {
-            try {
-                await saveCreds(creds);
-                await saveCredsToFile(sock, creds);
-            } catch (err) {
-                logger.error('Error saving credentials:', err);
-            }
-        });
-
+        // Save credentials on update
+        sock.ev.on("creds.update", saveCreds);
 
         return sock;
     } catch (err) {
@@ -353,7 +282,7 @@ async function connectToWhatsApp() {
     }
 }
 
-// Start the bot with error handling
+// Start bot
 connectToWhatsApp().catch(err => {
     logger.error("Fatal error starting bot:", err);
     process.exit(1);
@@ -381,3 +310,12 @@ async function saveCredsToFile(sock, creds) {
         return false;
     }
 }
+
+// Handle uncaught errors
+process.on('uncaughtException', err => {
+    logger.error('Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', err => {
+    logger.error('Unhandled Rejection:', err);
+});

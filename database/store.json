@@ -42,6 +42,16 @@
       "bank": 0,
       "inventory": [],
       "lastDaily": 0
+    },
+    "4915561048015@s.whatsapp.net": {
+      "gold": 8356,
+      "bank": 0,
+      "inventory": [],
+      "lastDaily": 0,
+      "level": 1,
+      "xp": 0,
+      "lastWeekly": 1740743504568,
+      "lastMonthly": 1740743512582
     }
   },
   "groups": {

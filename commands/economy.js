@@ -7,10 +7,7 @@ const safeRequire = (path) => {
         return require(path);
     } catch (error) {
         logger.warn(`Failed to load module ${path}: ${error.message}`);
-        return {
-            getBalance: () => Promise.reject(new Error(`Module ${path} not available`)),
-            claim: () => Promise.reject(new Error(`Module ${path} not available`))
-        };
+        return null;
     }
 };
 
@@ -18,10 +15,13 @@ const safeRequire = (path) => {
 const modules = {
     balance: '../attached_assets/economy-balance',
     bank: '../attached_assets/economy-bank',
-    daily: '../attached_assets/economy-daily'
+    daily: '../attached_assets/economy-daily',
+    depo: '../attached_assets/economy-depo',
+    bet: '../attached_assets/economy-bet',
+    flip: '../attached_assets/economy-flip'
 };
 
-const { balance, bank, daily } = Object.entries(modules).reduce((acc, [key, path]) => {
+const { balance, bank, daily, depo, bet, flip } = Object.entries(modules).reduce((acc, [key, path]) => {
     acc[key] = safeRequire(path);
     return acc;
 }, {});
@@ -29,8 +29,10 @@ const { balance, bank, daily } = Object.entries(modules).reduce((acc, [key, path
 const store = require('../database/store');
 
 const economyCommands = {
+    // Existing balance command implementation
     balance: async (sock, msg) => {
         try {
+            if (!balance) throw new Error('Balance module not available');
             const userBalance = await balance.getBalance(msg.key.participant);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `💰 *Your Balance*\n\nWallet: $${userBalance.wallet}\nBank: $${userBalance.bank}`
@@ -43,8 +45,10 @@ const economyCommands = {
         }
     },
 
+    // Updated daily command with proper module check
     daily: async (sock, msg) => {
         try {
+            if (!daily) throw new Error('Daily rewards module not available');
             const reward = await daily.claim(msg.key.participant);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `✨ *Daily Reward*\n\nYou received: $${reward}\nCome back tomorrow!`
@@ -57,8 +61,10 @@ const economyCommands = {
         }
     },
 
+    // Updated bank command with proper module check
     bank: async (sock, msg) => {
         try {
+            if (!bank) throw new Error('Bank module not available');
             const info = await bank.getInfo(msg.key.participant);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `🏦 *Bank Information*\n\n${info}`
@@ -66,13 +72,15 @@ const economyCommands = {
         } catch (error) {
             logger.error('Error in bank command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error getting bank info: ' + error.message
+                text: '❌ ' + error.message
             });
         }
     },
 
+    // Updated deposit command with proper module check
     deposit: async (sock, msg, args) => {
         try {
+            if (!depo) throw new Error('Deposit module not available');
             if (!args.length) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: `Please specify an amount!\nUsage: ${config.prefix}deposit <amount>`
@@ -91,11 +99,70 @@ const economyCommands = {
         } catch (error) {
             logger.error('Error in deposit command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error making deposit: ' + error.message
+                text: '❌ ' + error.message
             });
         }
     },
 
+    // Updated gamble command with proper module check
+    gamble: async (sock, msg, args) => {
+        try {
+            if (!bet) throw new Error('Gambling module not available');
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `Please specify an amount!\nUsage: ${config.prefix}gamble <amount>`
+                });
+            }
+            const amount = parseInt(args[0]);
+            if (isNaN(amount) || amount <= 0) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please enter a valid amount greater than 0!'
+                });
+            }
+            const result = await bet.gamble(msg.key.participant, amount);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: result.message
+            });
+        } catch (error) {
+            logger.error('Error in gamble command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ ' + error.message
+            });
+        }
+    },
+
+    // Updated flip command with proper module check
+    flip: async (sock, msg, args) => {
+        try {
+            if (!flip) throw new Error('Flip module not available');
+            if (args.length < 2) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `Please specify choice and amount!\nUsage: ${config.prefix}flip heads/tails <amount>`
+                });
+            }
+            const choice = args[0].toLowerCase();
+            if (choice !== 'heads' && choice !== 'tails') {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please choose either heads or tails!'
+                });
+            }
+            const amount = parseInt(args[1]);
+            if (isNaN(amount) || amount <= 0) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please enter a valid amount greater than 0!'
+                });
+            }
+            const result = await flip.coinFlip(msg.key.participant, choice, amount);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: result.message
+            });
+        } catch (error) {
+            logger.error('Error in flip command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ ' + error.message
+            });
+        }
+    },
     withdraw: async (sock, msg, args) => {
         try {
             if (!args.length) {
@@ -179,63 +246,6 @@ const economyCommands = {
             });
         }
     },
-
-    gamble: async (sock, msg, args) => {
-        try {
-            if (!args.length) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Please specify an amount!\nUsage: ${config.prefix}gamble <amount>`
-                });
-            }
-            const amount = parseInt(args[0]);
-            if (isNaN(amount) || amount <= 0) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Please enter a valid amount greater than 0!'
-                });
-            }
-            const result = await bet.gamble(msg.key.participant, amount);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: result.message
-            });
-        } catch (error) {
-            logger.error('Error in gamble command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error gambling: ' + error.message
-            });
-        }
-    },
-
-    flip: async (sock, msg, args) => {
-        try {
-            if (args.length < 2) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Please specify choice and amount!\nUsage: ${config.prefix}flip heads/tails <amount>`
-                });
-            }
-            const choice = args[0].toLowerCase();
-            if (choice !== 'heads' && choice !== 'tails') {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Please choose either heads or tails!'
-                });
-            }
-            const amount = parseInt(args[1]);
-            if (isNaN(amount) || amount <= 0) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Please enter a valid amount greater than 0!'
-                });
-            }
-            const result = await flip.coinFlip(msg.key.participant, choice, amount);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: result.message
-            });
-        } catch (error) {
-            logger.error('Error in flip command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error flipping coin: ' + error.message
-            });
-        }
-    },
-
     weekly: async (sock, msg) => {
         try {
             const reward = Math.floor(Math.random() * 2000) + 1000; // 1000-3000

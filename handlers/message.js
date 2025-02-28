@@ -1,145 +1,110 @@
 const config = require('../config');
 const logger = require('pino')();
 
-// Core command modules for basic functionality
+// Load all command modules
 const commandModules = {
     basic: require('../commands/basic'),
-    owner: require('../commands/owner')
+    owner: require('../commands/owner'),
+    downloader: require('../commands/downloader'),
+    music: require('../commands/music'),
+    fun: require('../commands/fun'),
+    economy: require('../commands/economy')
 };
 
 async function executeCommand(sock, msg, command, args, moduleName) {
     try {
-        // Enhanced debug logging
-        logger.debug('Command execution details:', {
+        logger.debug('Executing command:', {
             command,
             module: moduleName,
-            args: args,
-            chat: msg.key.remoteJid,
-            messageType: Object.keys(msg.message)[0],
-            timestamp: new Date().toISOString()
+            args,
+            chat: msg.key.remoteJid
         });
 
-        if (!msg.key?.remoteJid) {
-            logger.warn('Invalid message: Missing remoteJid');
-            return false;
-        }
-
-        // Set participant for both group and private chats
-        msg.key.participant = msg.key.remoteJid.endsWith('@g.us') 
-            ? msg.key.participant 
-            : msg.key.remoteJid;
-
-        // Verify command exists
         if (!commandModules[moduleName]?.[command]) {
-            logger.warn(`Command not found: ${command} in module ${moduleName}`);
+            logger.warn(`Command ${command} not found in module ${moduleName}`);
             return false;
         }
 
-        // Execute command with try-catch
-        try {
-            await commandModules[moduleName][command](sock, msg, args);
-            logger.info('Command executed successfully:', {
-                command,
-                module: moduleName,
-                timestamp: new Date().toISOString()
-            });
-            return true;
-        } catch (cmdError) {
-            logger.error('Command execution failed:', cmdError);
-            throw cmdError;
-        }
+        await commandModules[moduleName][command](sock, msg, args);
+        logger.info(`Command ${command} executed successfully`);
+        return true;
 
     } catch (error) {
-        logger.error('Command execution error:', {
-            command,
-            module: moduleName,
-            error: error.message,
-            stack: error.stack
-        });
-        await sock.sendMessage(msg.key.remoteJid, {
-            text: `Error executing command: ${error.message}`
-        });
+        logger.error(`Error executing command ${command}:`, error);
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `Error: ${error.message}`
+            });
+        } catch (sendError) {
+            logger.error('Failed to send error message:', sendError);
+        }
         return false;
     }
 }
 
 async function messageHandler(sock, msg) {
     try {
-        if (!msg.message || !msg.key?.remoteJid) {
-            logger.debug('Skipping invalid message');
+        // Validate message
+        if (!msg?.message || !msg.key?.remoteJid) {
+            logger.debug('Invalid message structure');
             return;
         }
 
-        // Log incoming message with detailed information
-        logger.debug('Message received:', {
-            chat: msg.key.remoteJid,
-            isGroup: msg.key.remoteJid.endsWith('@g.us'),
-            participant: msg.key.participant,
-            messageType: Object.keys(msg.message)[0],
-            fromMe: msg.key.fromMe,
-            timestamp: new Date().toISOString()
-        });
-
-        // Get message content with better type handling
+        // Get message content
         const messageType = Object.keys(msg.message)[0];
-        let textContent = '';
+        let text = '';
 
-        switch (messageType) {
-            case 'conversation':
-                textContent = msg.message.conversation;
-                break;
-            case 'extendedTextMessage':
-                textContent = msg.message.extendedTextMessage.text;
-                break;
-            case 'imageMessage':
-            case 'videoMessage':
-                textContent = msg.message[messageType].caption || '';
-                break;
-            default:
-                logger.debug(`Unhandled message type: ${messageType}`);
-                return;
+        if (messageType === 'conversation') {
+            text = msg.message.conversation;
+        } else if (messageType === 'extendedTextMessage') {
+            text = msg.message.extendedTextMessage.text;
+        } else if (messageType === 'imageMessage' || messageType === 'videoMessage') {
+            text = msg.message[messageType].caption || '';
+        } else {
+            logger.debug('Unsupported message type:', messageType);
+            return;
         }
 
-        logger.debug('Extracted message content:', {
-            content: textContent,
-            startsWithPrefix: textContent.startsWith(config.prefix)
-        });
-
-        // Process commands with prefix check
-        if (textContent.startsWith(config.prefix)) {
-            const [command, ...args] = textContent.slice(config.prefix.length).trim().split(/\s+/);
-            const lowercaseCommand = command.toLowerCase();
-
-            logger.info('Command detected:', {
-                command: lowercaseCommand,
-                args: args,
-                originalText: textContent
-            });
-
-            // Try basic commands first
-            if (lowercaseCommand in commandModules.basic) {
-                await executeCommand(sock, msg, lowercaseCommand, args, 'basic');
+        // Check for commands
+        if (text.startsWith(config.prefix)) {
+            const [rawCommand, ...args] = text.slice(config.prefix.length).trim().split(/\s+/);
+            if (!rawCommand) {
+                logger.debug('Empty command received');
                 return;
             }
 
-            // Then try owner commands
-            if (lowercaseCommand in commandModules.owner) {
-                await executeCommand(sock, msg, lowercaseCommand, args, 'owner');
-                return;
+            const command = rawCommand.toLowerCase();
+
+            logger.info('Command received:', {
+                command,
+                args,
+                from: msg.key.remoteJid,
+                type: messageType
+            });
+
+            // Check each module for the command
+            for (const [moduleName, module] of Object.entries(commandModules)) {
+                if (command in module) {
+                    await executeCommand(sock, msg, command, args, moduleName);
+                    return;
+                }
             }
 
             // Command not found
-            logger.warn(`Command not found: ${lowercaseCommand}`);
+            logger.warn('Command not found:', command);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `Command *${command}* not found. Use ${config.prefix}help to see available commands.`
+                text: `Command "${command}" not found. Use ${config.prefix}help to see available commands.`
             });
         }
     } catch (error) {
-        logger.error('Message handler error:', {
-            error: error.message,
-            stack: error.stack,
-            timestamp: new Date().toISOString()
-        });
+        logger.error('Message handler error:', error);
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: 'An error occurred while processing your message.'
+            });
+        } catch (sendError) {
+            logger.error('Failed to send error message:', sendError);
+        }
     }
 }
 

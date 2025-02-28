@@ -111,34 +111,35 @@ const funCommands = {
 10. *!kiss* [@user] - Kiss someone
 11. *!wink* [@user] - Wink at someone
 12. *!punch* [@user] - Punch someone
+13. *!ponk* [@user] - Ponk someone
 
 🎭 *Emote Actions:*
-13. *!dance* - Show off your dance moves
-14. *!facepalm* - Express your disappointment
+14. *!dance* - Show off your dance moves
+15. *!facepalm* - Express your disappointment
 
 🎬 *Special Effects:*
-15. *!wasted* [@user] - Apply a wasted effect
-16. *!jail* [@user] - Put someone behind bars
-17. *!rip* [@user] - Create a memorial
-18. *!kill* [@user] - Dramatically eliminate someone
-19. *!yeet* [@user] - Yeet someone into space
-20. *!insult* [@user] - Playfully insult someone
+16. *!wasted* [@user] - Apply a wasted effect
+17. *!jail* [@user] - Put someone behind bars
+18. *!rip* [@user] - Create a memorial
+19. *!kill* [@user] - Dramatically eliminate someone
+20. *!yeet* [@user] - Yeet someone into space
+21. *!insult* [@user] - Playfully insult someone
 
 🎲 *Games & Challenges:*
-21. *!coinflip* - Flip a coin
-22. *!dare* - Get a random dare challenge
-23. *!truth* - Get a random truth question
-24. *!magic8ball* [question] - Ask the magic 8 ball
-25. *!wordgame* - Play a word guessing game
+22. *!coinflip* - Flip a coin
+23. *!dare* - Get a random dare challenge
+24. *!truth* - Get a random truth question
+25. *!magic8ball* [question] - Ask the magic 8 ball
+26. *!wordgame* - Play a word guessing game
     - Use *!guess* [word] to make a guess
-26. *!trivia* - Play a trivia game
+27. *!trivia* - Play a trivia game
     - Use *!answer* [number] to answer
 
 🎨 *Fun Content:*
-27. *!joke* - Get a random funny joke
-28. *!quote* - Get an inspirational quote
-29. *!fact* - Learn an interesting fact
-30. *!emojiart* - Get a random emoji art
+28. *!joke* - Get a random funny joke
+29. *!quote* - Get an inspirational quote
+30. *!fact* - Learn an interesting fact
+31. *!emojiart* - Get a random emoji art
 
 *How to use:*
 - Commands with [@user] can tag someone
@@ -745,7 +746,7 @@ const funCommands = {
     wasted: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
-            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const mentions = args[0] ? [args[0] + '@swhatsapp.net'] : [];
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `💀 *WASTED*\n${target} has been wasted!`,
@@ -797,7 +798,25 @@ const funCommands = {
                 text: '❌ Failed to execute rip command!'
             });
         }
-    }
+    },
+    ponk: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* ponks ${target}! 🏓`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-ponk.gif', '🏓', mentions);
+        } catch (error) {
+            logger.error('Error in ponk command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute ponk command!'
+            });
+        }
+    },
 };
 
 // Export the funCommands object
