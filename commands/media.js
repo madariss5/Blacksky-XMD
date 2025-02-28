@@ -367,6 +367,71 @@ const mediaCommands = {
                 text: '❌ Failed to create quote sticker: ' + error.message
             });
         }
+    },
+    emojimix: async (sock, msg, args) => {
+        try {
+            if (args.length !== 2) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide exactly 2 emojis!\nUsage: !emojimix 😎 🤔'
+                });
+            }
+
+            const [emoji1, emoji2] = args;
+
+            // Check if inputs are actually emojis
+            const emojiRegex = /\p{Emoji}/u;
+            if (!emojiRegex.test(emoji1) || !emojiRegex.test(emoji2)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide valid emojis!'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Mixing emojis...'
+            });
+
+            // Encode emojis for URL
+            const emoji1Encoded = encodeURIComponent(emoji1);
+            const emoji2Encoded = encodeURIComponent(emoji2);
+
+            // Get mixed emoji image
+            const response = await axios.get(
+                `https://tenor.googleapis.com/v2/featured?key=${config.tenorApiKey}&contentfilter=high&media_filter=minimal&q=${emoji1Encoded}_${emoji2Encoded}`,
+                { responseType: 'arraybuffer' }
+            );
+
+            if (!response.data) {
+                throw new Error('Failed to mix emojis');
+            }
+
+            // Save the image temporarily
+            const inputPath = path.join(tempDir, 'emoji_mix.png');
+            const outputPath = path.join(tempDir, 'emoji_mix.webp');
+
+            await fs.writeFile(inputPath, response.data);
+
+            // Convert to WebP using Python script
+            await convertToWebp(inputPath, outputPath);
+
+            // Read the WebP file
+            const webpBuffer = await fs.readFile(outputPath);
+
+            // Send as sticker
+            await sock.sendMessage(msg.key.remoteJid, {
+                sticker: webpBuffer,
+                mimetype: 'image/webp'
+            });
+
+            // Cleanup temp files
+            await fs.remove(inputPath);
+            await fs.remove(outputPath);
+
+        } catch (error) {
+            logger.error('Error in emojimix command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to mix emojis: ' + error.message
+            });
+        }
     }
 };
 
