@@ -393,15 +393,25 @@ const mediaCommands = {
             // Encode emojis for URL
             const emoji1Encoded = encodeURIComponent(emoji1);
             const emoji2Encoded = encodeURIComponent(emoji2);
-            const searchQuery = `${emoji1Encoded}_${emoji2Encoded} emoji mix`;
+            const searchQuery = `${emoji1} ${emoji2} mixed emoji sticker`;
 
             logger.info(`Making Tenor API request for emoji mix: ${emoji1} + ${emoji2}`);
             logger.info(`Using search query: ${searchQuery}`);
 
             // Get mixed emoji image from Tenor
             const response = await axios.get(
-                `https://tenor.googleapis.com/v2/search?q=${searchQuery}&key=${config.tenorApiKey}&client_key=whatsapp_bot&limit=1&media_filter=minimal`,
-                { responseType: 'json' }
+                `https://tenor.googleapis.com/v2/search`,
+                { 
+                    params: {
+                        q: searchQuery,
+                        key: config.tenorApiKey,
+                        client_key: 'whatsapp_bot',
+                        limit: 1,
+                        media_filter: 'minimal',
+                        contentfilter: 'medium'
+                    },
+                    responseType: 'json'
+                }
             );
 
             logger.info('Tenor API response received:', {
