@@ -929,7 +929,434 @@ const mediaCommands = {
                 text: '❌ Failed to create wasted effect: ' + error.message
             });
         }
-    }
+    },
+
+    gay: async (sock, msg) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !gay'
+                });
+            }
+
+            const buffer = await downloadMediaMessage(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const tempInput = path.join(tempDir, 'input.png');
+            const tempOutput = path.join(tempDir, 'output.png');
+            await fs.writeFile(tempInput, buffer);
+
+            // Create rainbow overlay effect usingImageMagick
+            await new Promise((resolve, reject) => {
+                exec(`convert "${tempInput}" \( +clone -colorspace HSB -separate +channel \) -background rainbow -compose overlay -composite "${tempOutput}"`, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
+
+            const outputBuffer = await fs.readFile(tempOutput);
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: outputBuffer,
+                caption: '🌈 Rainbow effect applied!'
+            });
+
+            // Cleanup
+            await fs.remove(tempInput);
+            await fs.remove(tempOutput);
+
+        } catch (error) {
+            logger.error('Error in gay command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to apply effect: ' + error.message
+            });
+        }
+    },
+
+    trash: async (sock, msg) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !trash'
+                });
+            }
+
+            const buffer = await downloadMediaMessage(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const tempInput = path.join(tempDir, 'input.png');
+            const tempOutput = path.join(tempDir, 'output.png');
+            const trashOverlay = path.join(__dirname, '../assets/trash_overlay.png');
+            await fs.writeFile(tempInput, buffer);
+
+            // Create trash effect using ImageMagick
+            await new Promise((resolve, reject) => {
+                exec(`convert "${tempInput}" -modulate 100,50,100 \\( "${trashOverlay}" -resize $(identify -format "%wx%h" "${tempInput}") \\) -gravity center -composite "${tempOutput}"`, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
+
+            const outputBuffer = await fs.readFile(tempOutput);
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: outputBuffer,
+                caption: '🗑️ Trash effect applied!'
+            });
+
+            // Cleanup
+            await fs.remove(tempInput);
+            await fs.remove(tempOutput);
+
+        } catch (error) {
+            logger.error('Error in trash command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to apply effect: ' + error.message
+            });
+        }
+    },
+
+    rip: async (sock, msg) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !rip'
+                });
+            }
+
+            const buffer = await downloadMediaMessage(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const tempInput = path.join(tempDir, 'input.png');
+            const tempOutput = path.join(tempDir, 'output.png');
+            const ripOverlay = path.join(__dirname, '../assets/rip_overlay.png');
+            await fs.writeFile(tempInput, buffer);
+
+            // Create RIP effect using ImageMagick
+            await new Promise((resolve, reject) => {
+                exec(`convert "${tempInput}" -colorspace gray \\( "${ripOverlay}" -resize $(identify -format "%wx%h" "${tempInput}") \\) -composite "${tempOutput}"`, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
+
+            const outputBuffer = await fs.readFile(tempOutput);
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: outputBuffer,
+                caption: '⚰️ RIP effect applied!'
+            });
+
+            // Cleanup
+            await fs.remove(tempInput);
+            await fs.remove(tempOutput);
+
+        } catch (error) {
+            logger.error('Error in rip command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to apply effect: ' + error.message
+            });
+        }
+    },
+
+    beautiful: async (sock, msg) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !beautiful'
+                });
+            }
+
+            const buffer = await downloadMediaMessage(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const tempInput = path.join(tempDir, 'input.png');
+            const tempOutput = path.join(tempDir, 'output.png');
+            const template = path.join(__dirname, '../assets/beautiful_template.png');
+            await fs.writeFile(tempInput, buffer);
+
+            // Create beautiful meme effect using ImageMagick
+            await new Promise((resolve, reject) => {
+                exec(`convert "${template}" \\( "${tempInput}" -resize 400x400^ -gravity center -extent 400x400 \\) -geometry +0+0 -composite "${tempOutput}"`, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
+
+            const outputBuffer = await fs.readFile(tempOutput);
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: outputBuffer,
+                caption: '✨ Beautiful meme created!'
+            });
+
+            // Cleanup
+            await fs.remove(tempInput);
+            await fs.remove(tempOutput);
+
+        } catch (error) {
+            logger.error('Error in beautiful command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to create meme: ' + error.message
+            });
+        }
+    },
+    invert: async (sock, msg) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !invert'
+                });
+            }
+
+            const buffer = await downloadMediaMessage(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const tempInput = path.join(tempDir, 'input.png');
+            const tempOutput = path.join(tempDir, 'output.png');
+            await fs.writeFile(tempInput, buffer);
+
+            // Create inverted effect using ImageMagick
+            await new Promise((resolve, reject) => {
+                exec(`convert "${tempInput}" -negate "${tempOutput}"`, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
+
+            const outputBuffer = await fs.readFile(tempOutput);
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: outputBuffer,
+                caption: '🔄 Colors inverted!'
+            });
+
+            // Cleanup
+            await fs.remove(tempInput);
+            await fs.remove(tempOutput);
+
+        } catch (error) {
+            logger.error('Error in invert command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to invert colors: ' + error.message
+            });
+        }
+    },
+
+    pixelate: async (sock, msg) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !pixelate'
+                });
+            }
+
+            const buffer = await downloadMediaMessage(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const tempInput = path.join(tempDir, 'input.png');
+            const tempOutput = path.join(tempDir, 'output.png');
+            await fs.writeFile(tempInput, buffer);
+
+            // Create pixelated effect using ImageMagick
+            await new Promise((resolve, reject) => {
+                exec(`convert "${tempInput}" -scale 10% -scale 1000% "${tempOutput}"`, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
+
+            const outputBuffer = await fs.readFile(tempOutput);
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: outputBuffer,
+                caption: '🔲 Image pixelated!'
+            });
+
+            // Cleanup
+            await fs.remove(tempInput);
+            await fs.remove(tempOutput);
+
+        } catch (error) {
+            logger.error('Error in pixelate command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to pixelate image: ' + error.message
+            });
+        }
+    },
+
+    sepia: async (sock, msg) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !sepia'
+                });
+            }
+
+            const buffer = await downloadMediaMessage(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const tempInput = path.join(tempDir, 'input.png');
+            const tempOutput = path.join(tempDir, 'output.png');
+            await fs.writeFile(tempInput, buffer);
+
+            // Create sepia effect using ImageMagick
+            await new Promise((resolve, reject) => {
+                exec(`convert "${tempInput}" -sepia-tone 80% "${tempOutput}"`, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
+
+            const outputBuffer = await fs.readFile(tempOutput);
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: outputBuffer,
+                caption: '🌅 Sepia effect applied!'
+            });
+
+            // Cleanup
+            await fs.remove(tempInput);
+            await fs.remove(tempOutput);
+
+        } catch (error) {
+            logger.error('Error in sepia command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to apply sepia effect: ' + error.message
+            });
+        }
+    },
+
+    wanted: async (sock, msg) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !wanted'
+                });
+            }
+
+            const buffer = await downloadMediaMessage(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const tempInput = path.join(tempDir, 'input.png');
+            const tempOutput = path.join(tempDir, 'output.png');
+            const wantedTemplate = path.join(__dirname, '../assets/wanted_template.png');
+            await fs.writeFile(tempInput, buffer);
+
+            // Create wanted poster effect using ImageMagick
+            await new Promise((resolve, reject) => {
+                exec(`convert "${tempInput}" -sepia-tone 80% \\( "${wantedTemplate}" -resize $(identify -format "%wx%h" "${tempInput}") \\) -gravity center -composite "${tempOutput}"`, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
+
+            const outputBuffer = await fs.readFile(tempOutput);
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: outputBuffer,
+                caption: '🤠 WANTED poster created!'
+            });
+
+            // Cleanup
+            await fs.remove(tempInput);
+            await fs.remove(tempOutput);
+
+        } catch (error) {
+            logger.error('Error in wanted command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to create wanted poster: ' + error.message
+            });
+        }
+    },
 };
 
 module.exports = mediaCommands;

@@ -1,4 +1,4 @@
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 import os
 import math
 
@@ -28,53 +28,105 @@ def create_trash_overlay():
     draw.polygon([(146, 126), (366, 126), (356, 156), (156, 156)], 
                 fill=(0, 0, 0, 100), outline=(0, 0, 0, 255), width=6)
 
-    # Lid highlight
-    draw.line([(146, 126), (366, 126)], fill=(255, 255, 255, 100), width=2)
-
-    # Handle on lid with 3D effect
-    draw.ellipse([236, 106, 276, 126], fill=(0, 0, 0, 150), outline=(0, 0, 0, 255), width=4)
-    draw.arc([236, 106, 276, 116], 0, 180, fill=(255, 255, 255, 100), width=2)
-
-    # Add texture lines with wave effect
-    for y in range(186, 326, 40):
-        # Wavy line effect
-        points = []
-        for x in range(186, 326, 5):
-            offset = math.sin((x - 186) / 20) * 5
-            points.append((x, y + offset))
-
-        # Draw the line with proper perspective
-        for i in range(len(points) - 1):
-            draw.line([points[i], points[i + 1]], fill=(0, 0, 0, 150), width=3)
-
-    # Add various trash elements
-    # Crumpled paper effect
-    for pos in [(196, 216), (276, 236), (236, 276)]:
-        draw.arc([pos[0], pos[1], pos[0]+40, pos[1]+40], 0, 360, fill=(0, 0, 0, 100), width=3)
-        draw.line([(pos[0]+10, pos[1]+10), (pos[0]+30, pos[1]+30)], fill=(0, 0, 0, 150), width=2)
-        draw.line([(pos[0]+30, pos[1]+10), (pos[0]+10, pos[1]+30)], fill=(0, 0, 0, 150), width=2)
-
-    # Banana peels
-    peel_points = [
-        [(276, 266), (296, 256), (306, 276), (286, 286)],
-        [(196, 296), (216, 286), (226, 306), (206, 316)]
-    ]
-    for points in peel_points:
-        draw.polygon(points, fill=(0, 0, 0, 100), outline=(0, 0, 0, 255), width=3)
-        # Add curved lines for peel texture
-        draw.arc([points[0][0], points[0][1], points[2][0], points[2][1]], 0, 180, fill=(0, 0, 0, 150), width=2)
-
-    # Add some flies circling the trash
-    for pos in [(200, 180), (300, 200), (250, 150)]:
-        # Body
-        draw.ellipse([pos[0]-5, pos[1]-5, pos[0]+5, pos[1]+5], fill=(0, 0, 0, 200))
-        # Wings
-        draw.arc([pos[0]-8, pos[1]-8, pos[0]+8, pos[1]], 0, 180, fill=(0, 0, 0, 150), width=2)
-
     # Save the overlay
     overlay_path = os.path.join(assets_dir, 'trash_overlay.png')
     img.save(overlay_path, 'PNG')
-    print(f"Created enhanced trash overlay at: {overlay_path}")
+    print(f"Created trash overlay at: {overlay_path}")
+
+def create_wanted_overlay():
+    # Create assets directory if it doesn't exist
+    assets_dir = os.path.join(os.path.dirname(__file__), 'assets')
+    os.makedirs(assets_dir, exist_ok=True)
+
+    # Create a large image for the wanted poster template
+    img = Image.new('RGBA', (800, 1000), 'antiquewhite')
+    draw = ImageDraw.Draw(img)
+
+    # Border design
+    border_width = 20
+    draw.rectangle([(0, 0), (799, 999)], outline='brown', width=border_width)
+    draw.rectangle([(40, 40), (759, 959)], outline='brown', width=2)
+
+    # Add "WANTED" text
+    font_size = 120
+    try:
+        font = ImageFont.truetype("Arial.ttf", font_size)
+    except:
+        font = ImageFont.load_default()
+
+    # Draw "WANTED" text with shadow
+    text = "WANTED"
+    text_bbox = draw.textbbox((0, 0), text, font=font)
+    text_width = text_bbox[2] - text_bbox[0]
+    x = (800 - text_width) // 2
+
+    # Draw shadow
+    draw.text((x+3, 53), text, fill='rgba(139, 69, 19, 128)', font=font)
+    # Draw main text
+    draw.text((x, 50), text, fill='brown', font=font)
+
+    # Add "DEAD OR ALIVE" text
+    font_size = 60
+    try:
+        font = ImageFont.truetype("Arial.ttf", font_size)
+    except:
+        font = ImageFont.load_default()
+
+    text = "DEAD OR ALIVE"
+    text_bbox = draw.textbbox((0, 0), text, font=font)
+    text_width = text_bbox[2] - text_bbox[0]
+    x = (800 - text_width) // 2
+    draw.text((x, 200), text, fill='brown', font=font)
+
+    # Save the overlay
+    overlay_path = os.path.join(assets_dir, 'wanted_template.png')
+    img.save(overlay_path, 'PNG')
+    print(f"Created wanted poster template at: {overlay_path}")
+
+def create_beautiful_template():
+    # Create assets directory if it doesn't exist
+    assets_dir = os.path.join(os.path.dirname(__file__), 'assets')
+    os.makedirs(assets_dir, exist_ok=True)
+
+    # Create a new image with white background
+    width = 800
+    height = 600
+    img = Image.new('RGB', (width, height), 'white')
+    draw = ImageDraw.Draw(img)
+
+    # Add decorative elements
+    # Border
+    draw.rectangle([(0, 0), (width-1, height-1)], outline='gold', width=5)
+
+    # Add text "This is Beautiful"
+    font_size = 60
+    try:
+        font = ImageFont.truetype("Arial.ttf", font_size)
+    except:
+        font = ImageFont.load_default()
+
+    text = "This is Beautiful"
+    text_bbox = draw.textbbox((0, 0), text, font=font)
+    text_width = text_bbox[2] - text_bbox[0]
+    x = (width - text_width) // 2
+
+    # Draw text with shadow
+    draw.text((x+2, 502), text, fill='rgba(218, 165, 32, 128)', font=font)
+    draw.text((x, 500), text, fill='gold', font=font)
+
+    # Add sparkles
+    for _ in range(20):
+        x = int(width * 0.1) + int(math.random() * width * 0.8)
+        y = int(height * 0.1) + int(math.random() * height * 0.6)
+        r = 5
+        draw.regular_polygon((x, y, r), 4, rotation=45, fill='gold')
+
+    # Save the template
+    template_path = os.path.join(assets_dir, 'beautiful_template.png')
+    img.save(template_path, 'PNG')
+    print(f"Created beautiful template at: {template_path}")
 
 if __name__ == "__main__":
     create_trash_overlay()
+    create_wanted_overlay()
+    create_beautiful_template()
