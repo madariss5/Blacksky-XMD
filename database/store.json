@@ -62,7 +62,10 @@
       "warnings": {},
       "antilink": true,
       "antispam": true,
-      "antitoxic": true
+      "antitoxic": true,
+      "welcomeMessage": "čau ty píčo",
+      "goodbyeMessage": "mrdka jak odchází",
+      "rules": "nic mlre"
     }
   },
   "banned": []

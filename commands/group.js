@@ -746,17 +746,32 @@ const groupCommands = {
             const groupMetadata = await validateGroupContext(sock, msg, true);
             if (!groupMetadata) return;
 
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide the rules!\nUsage: .setrules [rules text]'
+                });
+            }
+
             const rules = args.join(' ');
-            await store.setGroupRules(msg.key.remoteJid, rules);
-            await sock.sendMessage(msg.key.remoteJid, { text: 'Group rules have been updated!' });
-            logger.info('Group rules updated:', {
-                group: msg.key.remoteJid,
-                rules: rules,
-                updatedBy: msg.key.participant
-            });
+            try {
+                await store.setGroupRules(msg.key.remoteJid, rules);
+                await sock.sendMessage(msg.key.remoteJid, { 
+                    text: '✅ Group rules have been updated successfully!' 
+                });
+
+                logger.info('Group rules updated:', {
+                    group: msg.key.remoteJid,
+                    updatedBy: msg.key.participant
+                });
+            } catch (error) {
+                logger.error('Failed to save group rules:', error);
+                throw new Error('Failed to save group rules. Please try again.');
+            }
         } catch (error) {
             logger.error('Error in setrules command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { text: 'Failed to update group rules: ' + error.message });
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ ' + error.message
+            });
         }
     },
     viewrules: async (sock, msg) => {
