@@ -80,14 +80,38 @@ class Store {
         }
     }
 
+    async getDailyStatus(userId) {
+        try {
+            const userData = await this.getUserData(userId);
+            if (!userData) return { canClaim: true, timeLeft: 0 };
+
+            const lastDaily = userData.lastDaily || 0;
+            const now = Date.now();
+            const cooldown = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+            const timeLeft = Math.max(0, cooldown - (now - lastDaily));
+
+            return {
+                canClaim: timeLeft === 0,
+                timeLeft
+            };
+        } catch (error) {
+            logger.error('Error getting daily status:', error);
+            throw error;
+        }
+    }
+
     async updateDailyReward(userId, reward) {
         try {
             const userData = await this.getUserData(userId);
             if (!userData) return false;
 
-            userData.gold += reward;
+            userData.gold = (userData.gold || 0) + reward;
             userData.lastDaily = Date.now();
             await this.saveStore();
+
+            // Add XP for claiming daily reward
+            await this.addXP(userId, XP_REWARDS.daily);
+
             return true;
         } catch (error) {
             logger.error('Error updating daily reward:', error);

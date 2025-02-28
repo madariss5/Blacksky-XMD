@@ -15,13 +15,12 @@ const safeRequire = (path) => {
 const modules = {
     balance: '../attached_assets/economy-balance',
     bank: '../attached_assets/economy-bank',
-    daily: '../attached_assets/economy-daily',
     depo: '../attached_assets/economy-depo',
     bet: '../attached_assets/economy-bet',
     flip: '../attached_assets/economy-flip'
 };
 
-const { balance, bank, daily, depo, bet, flip } = Object.entries(modules).reduce((acc, [key, path]) => {
+const { balance, bank, depo, bet, flip } = Object.entries(modules).reduce((acc, [key, path]) => {
     acc[key] = safeRequire(path);
     return acc;
 }, {});
@@ -48,10 +47,34 @@ const economyCommands = {
     // Updated daily command with proper module check
     daily: async (sock, msg) => {
         try {
-            if (!daily) throw new Error('Daily rewards module not available');
-            const reward = await daily.claim(msg.key.participant);
+            const userId = msg.key.participant || msg.key.remoteJid;
+
+            // Check daily status
+            const status = await store.getDailyStatus(userId);
+            if (!status.canClaim) {
+                const hours = Math.floor(status.timeLeft / (60 * 60 * 1000));
+                const minutes = Math.floor((status.timeLeft % (60 * 60 * 1000)) / (60 * 1000));
+                throw new Error(`You can claim your daily reward again in ${hours}h ${minutes}m`);
+            }
+
+            // Generate random reward between 500-1000
+            const reward = Math.floor(Math.random() * 500) + 500;
+
+            // Update user's rewards
+            await store.updateDailyReward(userId, reward);
+
+            // Get updated balance
+            const userBalance = await store.getUserData(userId);
+
+            // Assuming XP_REWARDS is defined elsewhere
+            const XP_REWARDS = { daily: 10 }; //Example value
+
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `✨ *Daily Reward*\n\nYou received: $${reward}\nCome back tomorrow!`
+                text: `✨ *Daily Reward Claimed!*\n\n` +
+                      `💰 You received: $${reward}\n` +
+                      `💳 Current balance: $${userBalance.gold}\n` +
+                      `⭐ XP gained: +${XP_REWARDS.daily}\n\n` +
+                      `Come back tomorrow for more rewards!`
             });
         } catch (error) {
             logger.error('Error in daily command:', error);
