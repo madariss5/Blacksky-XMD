@@ -1,7 +1,7 @@
 const config = require('../config');
 const logger = require('pino')();
 const musicCommands = require('./music'); 
-const ytdl = require('ytdl-core');
+const ytdl = require('@distube/ytdl-core');
 const axios = require('axios');
 
 // Safe module import function
@@ -23,58 +23,51 @@ const downloaderCommands = {
                 });
             }
 
-            // Get video info with retries
             let videoId;
             let audioUrl;
             try {
                 videoId = ytdl.getVideoID(args[0]);
-                logger.info('Extracted video ID for ytmp3:', videoId);
+                logger.info('Extracted video ID:', videoId);
 
-                const info = await ytdl.getInfo(videoId);
+                const info = await ytdl.getInfo(videoId, {
+                    lang: 'en'
+                });
                 logger.info('Retrieved video info successfully');
 
-                const format = ytdl.chooseFormat(info.formats, {
-                    quality: 'highestaudio',
-                    filter: 'audioonly'
+                // Get all audio formats
+                const audioFormats = ytdl.filterFormats(info.formats, 'audioonly');
+                logger.info(`Found ${audioFormats.length} audio formats`);
+
+                if (!audioFormats.length) {
+                    throw new Error('No audio formats available');
+                }
+
+                // Select the best audio format
+                const format = audioFormats.reduce((prev, curr) => {
+                    const prevBitrate = prev.audioBitrate || 0;
+                    const currBitrate = curr.audioBitrate || 0;
+                    return prevBitrate > currBitrate ? prev : curr;
                 });
 
-                if (!format) {
-                    throw new Error('No suitable audio format found');
-                }
-                logger.info('Selected audio format:', format.qualityLabel);
+                audioUrl = format.url;
+                logger.info('Selected audio format with bitrate:', format.audioBitrate);
 
-                // Validate URL before using
-                try {
-                    logger.info('Validating initial audio URL...');
-                    const response = await axios.head(format.url);
-                    logger.info('URL validation response status:', response.status);
-
-                    if (response.status === 404) {
-                        throw new Error('Initial URL invalid');
-                    }
-                    audioUrl = format.url;
-                    logger.info('Initial URL validation successful');
-                } catch (urlError) {
-                    logger.info('Initial URL validation failed, getting fresh URL...', urlError.message);
-                    const freshInfo = await ytdl.getInfo(videoId);
-                    const freshFormat = ytdl.chooseFormat(freshInfo.formats, {
-                        quality: 'highestaudio',
-                        filter: 'audioonly'
-                    });
-                    audioUrl = freshFormat.url;
-                    logger.info('Successfully obtained fresh URL');
+                // Validate URL
+                const response = await axios.head(audioUrl);
+                if (response.status === 404) {
+                    throw new Error('Audio URL invalid');
                 }
+
             } catch (error) {
-                logger.error('Error getting video info:', error);
-                throw new Error('Failed to get audio source. Please try again.');
+                logger.error('Error getting audio source:', error);
+                throw new Error('Unable to process this video. Please try another one.');
             }
 
-            logger.info('Sending audio message with URL:', audioUrl);
             await sock.sendMessage(msg.key.remoteJid, {
                 audio: { url: audioUrl },
                 mimetype: 'audio/mp4'
             });
-            logger.info('Audio message sent successfully');
+
         } catch (error) {
             logger.error('Error in ytmp3 command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -91,56 +84,42 @@ const downloaderCommands = {
                 });
             }
 
-            // Get video info with retries
             let videoId;
             let videoUrl;
             try {
                 videoId = ytdl.getVideoID(args[0]);
-                logger.info('Extracted video ID for ytmp4:', videoId);
+                logger.info('Extracted video ID:', videoId);
 
-                const info = await ytdl.getInfo(videoId);
+                const info = await ytdl.getInfo(videoId, {
+                    lang: 'en'
+                });
                 logger.info('Retrieved video info successfully');
 
-                const format = ytdl.chooseFormat(info.formats, {
-                    quality: 'highest'
-                });
-
+                // Get best quality video with audio
+                const format = ytdl.chooseFormat(info.formats, { quality: 'highest' });
                 if (!format) {
                     throw new Error('No suitable video format found');
                 }
+
+                videoUrl = format.url;
                 logger.info('Selected video format:', format.qualityLabel);
 
-                // Validate URL before using
-                try {
-                    logger.info('Validating initial video URL...');
-                    const response = await axios.head(format.url);
-                    logger.info('URL validation response status:', response.status);
-
-                    if (response.status === 404) {
-                        throw new Error('Initial URL invalid');
-                    }
-                    videoUrl = format.url;
-                    logger.info('Initial URL validation successful');
-                } catch (urlError) {
-                    logger.info('Initial URL validation failed, getting fresh URL...', urlError.message);
-                    const freshInfo = await ytdl.getInfo(videoId);
-                    const freshFormat = ytdl.chooseFormat(freshInfo.formats, {
-                        quality: 'highest'
-                    });
-                    videoUrl = freshFormat.url;
-                    logger.info('Successfully obtained fresh URL');
+                // Validate URL
+                const response = await axios.head(videoUrl);
+                if (response.status === 404) {
+                    throw new Error('Video URL invalid');
                 }
+
             } catch (error) {
-                logger.error('Error getting video info:', error);
-                throw new Error('Failed to get video source. Please try again.');
+                logger.error('Error getting video source:', error);
+                throw new Error('Unable to process this video. Please try another one.');
             }
 
-            logger.info('Sending video message with URL:', videoUrl);
             await sock.sendMessage(msg.key.remoteJid, {
                 video: { url: videoUrl },
-                caption: info.videoDetails.title
+                caption: 'Downloaded using BlackSky-MD'
             });
-            logger.info('Video message sent successfully');
+
         } catch (error) {
             logger.error('Error in ytmp4 command:', error);
             await sock.sendMessage(msg.key.remoteJid, {

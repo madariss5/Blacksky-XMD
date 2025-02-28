@@ -1,6 +1,6 @@
 const config = require('../config');
 const logger = require('pino')();
-const ytdl = require('ytdl-core');
+const ytdl = require('@distube/ytdl-core');
 const yts = require('yt-search');
 const fs = require('fs-extra');
 const path = require('path');
@@ -16,6 +16,18 @@ if (!fs.existsSync(mediaDir)) {
 // Store active music sessions
 const musicSessions = new Map();
 
+// YouTube API options with rate limit handling
+const ytOptions = {
+    lang: 'en',
+    requestOptions: {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        },
+        maxRetries: 3,
+        backoff: { inc: 500, max: 10000 }
+    }
+};
+
 const musicCommands = {
     play: async (sock, msg, args) => {
         try {
@@ -28,7 +40,6 @@ const musicCommands = {
             const query = args.join(' ');
             logger.info('Searching for:', query);
 
-            // Enhanced search with better error handling
             let searchResults;
             try {
                 searchResults = await yts(query);
@@ -46,109 +57,78 @@ const musicCommands = {
                 text: `🎵 *Now Playing*\n\nTitle: ${video.title}\nDuration: ${video.duration.timestamp}\nViews: ${video.views}\n\n⏳ Downloading...`
             });
 
-            // Enhanced format selection with retries
-            let format;
+            // Get audio stream URL with retries
             let videoId;
             let audioUrl;
-
             try {
                 videoId = ytdl.getVideoID(video.url);
                 logger.info('Extracted video ID:', videoId);
 
-                const info = await ytdl.getInfo(videoId, {
-                    lang: 'en',  // Specify language to avoid region restrictions
-                    requestOptions: {
-                        headers: {
-                            // Add user-agent to avoid rate limiting
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                        }
-                    }
-                });
+                const info = await ytdl.getInfo(videoId, ytOptions);
                 logger.info('Retrieved video info successfully');
 
-                // Try different format selections with fallbacks
-                const formats = info.formats.filter(format => format.hasAudio);
+                // Get all audio formats
+                const audioFormats = ytdl.filterFormats(info.formats, 'audioonly');
+                logger.info(`Found ${audioFormats.length} audio formats`);
 
-                // First try: Get highest quality audio-only format
-                format = ytdl.chooseFormat(formats, { 
-                    quality: 'highestaudio',
-                    filter: 'audioonly'
+                if (!audioFormats.length) {
+                    throw new Error('No audio formats available');
+                }
+
+                // Select the best audio format with fallback
+                let format = audioFormats.reduce((prev, curr) => {
+                    if (!prev) return curr;
+                    if (!curr) return prev;
+                    const prevBitrate = prev.audioBitrate || 0;
+                    const currBitrate = curr.audioBitrate || 0;
+                    return prevBitrate > currBitrate ? prev : curr;
                 });
 
-                if (!format) {
-                    // Second try: Get any audio-only format
-                    format = formats.find(f => f.audioQuality === 'AUDIO_QUALITY_MEDIUM');
-                }
-
-                if (!format) {
-                    // Third try: Get any format with audio
-                    format = formats.find(f => f.hasAudio);
-                }
-
-                if (!format) {
-                    throw new Error('No suitable audio format found');
-                }
-
-                logger.info('Selected audio format:', format.qualityLabel || 'audio only');
+                audioUrl = format.url;
+                logger.info('Selected audio format with bitrate:', format.audioBitrate);
 
                 // Validate URL before using
                 try {
-                    logger.info('Validating initial audio URL...');
-                    const response = await axios.head(format.url, {
-                        timeout: 5000,  // Add timeout
-                        validateStatus: function (status) {
-                            return status < 500; // Accept all status codes less than 500
-                        }
+                    const response = await axios.head(audioUrl, {
+                        timeout: 5000,
+                        validateStatus: (status) => status < 500
                     });
-                    logger.info('URL validation response status:', response.status);
-
                     if (response.status === 404) {
-                        throw new Error('Initial URL invalid');
+                        throw new Error('Audio URL invalid');
                     }
-                    audioUrl = format.url;
-                    logger.info('Initial URL validation successful');
                 } catch (urlError) {
-                    // If head request fails, try to get a fresh URL
-                    logger.info('Initial URL validation failed, getting fresh URL...', urlError.message);
-                    const freshInfo = await ytdl.getInfo(videoId, {
-                        lang: 'en',
-                        requestOptions: {
-                            headers: {
-                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                            }
-                        }
+                    // If URL validation fails, try getting a fresh URL
+                    logger.info('URL validation failed, getting fresh URL...');
+                    const freshInfo = await ytdl.getInfo(videoId, ytOptions);
+                    const freshFormats = ytdl.filterFormats(freshInfo.formats, 'audioonly');
+                    format = freshFormats.reduce((prev, curr) => {
+                        if (!prev) return curr;
+                        if (!curr) return prev;
+                        const prevBitrate = prev.audioBitrate || 0;
+                        const currBitrate = curr.audioBitrate || 0;
+                        return prevBitrate > currBitrate ? prev : curr;
                     });
-
-                    // Try different format selections for the fresh URL
-                    const freshFormats = freshInfo.formats.filter(format => format.hasAudio);
-                    format = ytdl.chooseFormat(freshFormats, {
-                        quality: 'highestaudio',
-                        filter: 'audioonly'
-                    }) || freshFormats.find(f => f.audioQuality === 'AUDIO_QUALITY_MEDIUM') || freshFormats.find(f => f.hasAudio);
-
-                    if (!format) {
-                        throw new Error('No suitable audio format found in refresh attempt');
-                    }
-
                     audioUrl = format.url;
                     logger.info('Successfully obtained fresh URL');
                 }
-            } catch (downloadError) {
-                logger.error('Error getting video info:', downloadError);
 
-                // More detailed error message based on the specific error
-                if (downloadError.message.includes('Status code: 429')) {
+            } catch (error) {
+                logger.error('Error getting audio source:', error);
+                // Enhanced error handling
+                if (error.message.includes('429')) {
                     throw new Error('YouTube rate limit reached. Please try again in a few minutes.');
-                } else if (downloadError.message.includes('region')) {
-                    throw new Error('This video is not available in your region.');
-                } else if (downloadError.message.includes('copyright')) {
+                } else if (error.message.includes('Private video') || error.message.includes('private')) {
+                    throw new Error('This video is private or unavailable.');
+                } else if (error.message.includes('Copyright') || error.message.includes('copyright')) {
                     throw new Error('This video is not available due to copyright restrictions.');
+                } else if (error.message.includes('region') || error.message.includes('country')) {
+                    throw new Error('This video is not available in your region.');
                 } else {
-                    throw new Error('Failed to get audio source. Please try another song.');
+                    throw new Error('Unable to process this song. Please try another one.');
                 }
             }
 
-            // Store in session with comprehensive information
+            // Store in session
             const session = musicSessions.get(msg.key.remoteJid) || {
                 playing: false,
                 queue: [],
@@ -164,12 +144,6 @@ const musicCommands = {
                 thumbnail: video.thumbnail,
                 requestedBy: msg.key.participant,
                 addedAt: new Date().toISOString()
-            });
-
-            logger.info('Added song to queue:', {
-                title: video.title,
-                videoId: videoId,
-                position: session.queue.length - 1
             });
 
             musicSessions.set(msg.key.remoteJid, session);
@@ -234,7 +208,6 @@ const musicCommands = {
             }
 
             await playSong(sock, msg.key.remoteJid);
-
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '⏭️ Skipped to next song'
             });
@@ -344,7 +317,7 @@ const musicCommands = {
     }
 };
 
-// Helper function to play a song with improved error handling
+// Helper function to play a song
 async function playSong(sock, chatId) {
     try {
         const session = musicSessions.get(chatId);
@@ -360,84 +333,37 @@ async function playSong(sock, chatId) {
 
         // Verify URL is still valid
         try {
-            logger.info('Validating audio URL before playback...');
-            const response = await axios.head(audioUrl, {
-                timeout: 5000,
-                validateStatus: function (status) {
-                    return status < 500;
-                }
-            });
-            logger.info('URL validation response:', response.status);
-
+            const response = await axios.head(audioUrl);
             if (response.status === 404) {
                 throw new Error('URL expired');
             }
-            logger.info('URL validation successful');
         } catch (urlError) {
-            logger.info('URL validation failed, attempting to refresh...', urlError.message);
+            logger.info('URL validation failed, refreshing...');
 
             try {
-                // Use videoId to refresh the URL
-                logger.info('Attempting to refresh URL using videoId:', currentSong.videoId);
-                const videoInfo = await ytdl.getInfo(currentSong.videoId, {
-                    lang: 'en',
-                    requestOptions: {
-                        headers: {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                        }
-                    }
-                });
+                const info = await ytdl.getInfo(currentSong.videoId, ytOptions);
 
-                const formats = videoInfo.formats.filter(format => format.hasAudio);
-                const format = ytdl.chooseFormat(formats, {
-                    quality: 'highestaudio',
-                    filter: 'audioonly'
-                }) || formats.find(f => f.audioQuality === 'AUDIO_QUALITY_MEDIUM') || formats.find(f => f.hasAudio);
-
-                if (!format) {
-                    throw new Error('No suitable audio format found');
+                const audioFormats = ytdl.filterFormats(info.formats, 'audioonly');
+                if (!audioFormats.length) {
+                    throw new Error('No audio formats available');
                 }
 
+                const format = audioFormats.reduce((prev, curr) => {
+                    const prevBitrate = prev.audioBitrate || 0;
+                    const currBitrate = curr.audioBitrate || 0;
+                    return prevBitrate > currBitrate ? prev : curr;
+                });
+
                 audioUrl = format.url;
-                currentSong.audioUrl = audioUrl; // Update the URL in the queue
+                currentSong.audioUrl = audioUrl;
                 logger.info('Successfully refreshed audio URL');
             } catch (refreshError) {
                 logger.error('Failed to refresh URL:', refreshError);
-                await sock.sendMessage(chatId, {
-                    text: '⚠️ Audio source expired. Retrying with new URL...'
-                });
-                // Try one more time with the original video URL
-                try {
-                    logger.info('Attempting final URL refresh using original video URL');
-                    const videoId = ytdl.getVideoID(currentSong.url);
-                    const videoInfo = await ytdl.getInfo(videoId, {
-                        lang: 'en',
-                        requestOptions: {
-                            headers: {
-                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                            }
-                        }
-                    });
-
-                    const formats = videoInfo.formats.filter(format => format.hasAudio);
-                    const format = ytdl.chooseFormat(formats, {
-                        quality: 'highestaudio',
-                        filter: 'audioonly'
-                    }) || formats.find(f => f.audioQuality === 'AUDIO_QUALITY_MEDIUM') || formats.find(f => f.hasAudio);
-
-                    audioUrl = format.url;
-                    currentSong.audioUrl = audioUrl;
-                    currentSong.videoId = videoId;
-                    logger.info('Final URL refresh successful');
-                } catch (finalError) {
-                    logger.error('Final URL refresh attempt failed:', finalError);
-                    throw new Error('Failed to refresh audio source. Skipping to next song...');
-                }
+                throw new Error('Failed to refresh audio source. Skipping to next song...');
             }
         }
 
-        // Send the audio message with the validated/refreshed URL
-        logger.info('Sending audio message with URL:', audioUrl);
+        // Send the audio message
         await sock.sendMessage(chatId, {
             audio: { url: audioUrl },
             mimetype: 'audio/mp4',
@@ -452,6 +378,7 @@ async function playSong(sock, chatId) {
                 }
             }
         });
+
         logger.info('Audio message sent successfully');
 
     } catch (error) {
@@ -460,8 +387,6 @@ async function playSong(sock, chatId) {
         // Handle the failed song
         const session = musicSessions.get(chatId);
         if (session) {
-            // Remove the problematic song and try to continue playback
-            logger.info('Removing failed song from queue');
             session.queue.splice(session.current, 1);
             if (session.queue.length === 0) {
                 session.playing = false;
@@ -476,7 +401,7 @@ async function playSong(sock, chatId) {
                     text: '❌ ' + (error.message || 'Error playing current song. Trying next song...')
                 });
                 musicSessions.set(chatId, session);
-                await playSong(sock, chatId); // Try playing the next song
+                await playSong(sock, chatId);
             }
         }
     }
