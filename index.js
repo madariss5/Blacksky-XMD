@@ -39,6 +39,11 @@ fs.ensureDirSync(authDir);
 async function startWhatsApp() {
     try {
         logger.info('Starting WhatsApp initialization...');
+
+        // Clear auth directory to force new QR code
+        await fs.remove(authDir);
+        await fs.ensureDir(authDir);
+
         logger.info('Loading authentication state...');
         const { state, saveCreds } = await useMultiFileAuthState(authDir);
 
@@ -56,7 +61,7 @@ async function startWhatsApp() {
         logger.info('Creating WhatsApp socket...');
         const sock = makeWASocket({
             version,
-            logger: pino({ level: "silent" }),
+            logger: pino({ level: "debug" }),  // Set to debug for more detailed logs
             printQRInTerminal: true,
             auth: state,
             browser: ['BLACKSKY-MD', 'Safari', '1.0.0'],
@@ -93,7 +98,12 @@ async function startWhatsApp() {
         // Connection status updates
         sock.ev.on('connection.update', (update) => {
             const { connection, lastDisconnect, qr } = update;
-            logger.info('Connection status update:', { connection, hasQR: !!qr });
+            logger.info('Connection status update:', { 
+                connection, 
+                hasQR: !!qr,
+                disconnectReason: lastDisconnect?.error?.output?.statusCode,
+                fullError: lastDisconnect ? JSON.stringify(lastDisconnect.error) : null
+            });
 
             if (qr) {
                 logger.info('New QR code received, displaying in terminal...');
@@ -103,20 +113,30 @@ async function startWhatsApp() {
             if (connection === 'close') {
                 const shouldReconnect = (lastDisconnect?.error instanceof Boom)? 
                     lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut : true;
-                logger.info('Connection closed:', { shouldReconnect });
+                logger.info('Connection closed:', { 
+                    shouldReconnect,
+                    statusCode: lastDisconnect?.error?.output?.statusCode,
+                    errorMessage: lastDisconnect?.error?.message
+                });
                 if (shouldReconnect) {
                     logger.info('Attempting reconnection in 3 seconds...');
                     setTimeout(startWhatsApp, 3000);
+                } else {
+                    logger.error('Connection closed permanently:', lastDisconnect?.error);
                 }
             }
 
             if (connection === 'open') {
                 logger.info('WhatsApp connection established successfully');
+                sock.sendPresenceUpdate('available');
             }
         });
 
         // Credentials update handling
-        sock.ev.on('creds.update', saveCreds);
+        sock.ev.on('creds.update', async () => {
+            logger.info('Credentials updated, saving...');
+            await saveCreds();
+        });
         logger.info('Credentials update handler registered');
 
         return sock;
