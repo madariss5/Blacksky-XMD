@@ -3,70 +3,86 @@ const logger = require('pino')();
 const musicCommands = require('./music'); 
 const ytdl = require('@distube/ytdl-core');
 const axios = require('axios');
+const yts = require('yt-search');
+const fs = require('fs-extra');
+const path = require('path');
 
-// Safe module import function
-const safeRequire = (path) => {
-    try {
-        return require(path);
-    } catch (error) {
-        logger.warn(`Failed to load module ${path}: ${error.message}`);
-        return null;
-    }
-};
+// Create temp directory if it doesn't exist
+const tempDir = path.join(__dirname, '../temp');
+fs.ensureDirSync(tempDir);
 
 const downloaderCommands = {
     ytmp3: async (sock, msg, args) => {
         try {
             if (!args.length) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Please provide a YouTube URL!\nUsage: ${config.prefix}ytmp3 <url>`
+                    text: `Please provide a YouTube URL!\nUsage: .ytmp3 <url>`
                 });
             }
+
+            // Send processing message
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Processing your request...'
+            });
 
             let videoId;
             let audioUrl;
             try {
-                videoId = ytdl.getVideoID(args[0]);
-                logger.info('Extracted video ID:', videoId);
+                // Handle both URL and search query
+                if (ytdl.validateURL(args[0])) {
+                    videoId = ytdl.getVideoID(args[0]);
+                } else {
+                    // Search for the video if URL not provided
+                    const searchResults = await yts(args.join(' '));
+                    if (!searchResults.videos.length) {
+                        throw new Error('No videos found');
+                    }
+                    videoId = searchResults.videos[0].videoId;
+                }
 
-                const info = await ytdl.getInfo(videoId, {
-                    lang: 'en'
-                });
-                logger.info('Retrieved video info successfully');
+                logger.info('Processing video ID:', videoId);
 
-                // Get all audio formats
+                const info = await ytdl.getInfo(videoId);
                 const audioFormats = ytdl.filterFormats(info.formats, 'audioonly');
-                logger.info(`Found ${audioFormats.length} audio formats`);
 
                 if (!audioFormats.length) {
                     throw new Error('No audio formats available');
                 }
 
-                // Select the best audio format
+                // Get the best audio format
                 const format = audioFormats.reduce((prev, curr) => {
                     const prevBitrate = prev.audioBitrate || 0;
                     const currBitrate = curr.audioBitrate || 0;
                     return prevBitrate > currBitrate ? prev : curr;
                 });
 
-                audioUrl = format.url;
-                logger.info('Selected audio format with bitrate:', format.audioBitrate);
+                // Download to temp file
+                const tempFile = path.join(tempDir, `${videoId}.mp3`);
+                const writeStream = fs.createWriteStream(tempFile);
 
-                // Validate URL
-                const response = await axios.head(audioUrl);
-                if (response.status === 404) {
-                    throw new Error('Audio URL invalid');
-                }
+                ytdl(videoId, {
+                    format: format
+                }).pipe(writeStream);
+
+                await new Promise((resolve, reject) => {
+                    writeStream.on('finish', resolve);
+                    writeStream.on('error', reject);
+                });
+
+                // Send the audio file
+                await sock.sendMessage(msg.key.remoteJid, {
+                    audio: { url: tempFile },
+                    mimetype: 'audio/mp4',
+                    fileName: `${info.videoDetails.title}.mp3`
+                });
+
+                // Cleanup
+                await fs.remove(tempFile);
 
             } catch (error) {
-                logger.error('Error getting audio source:', error);
-                throw new Error('Unable to process this video. Please try another one.');
+                logger.error('Error processing YouTube video:', error);
+                throw new Error('Failed to process video: ' + error.message);
             }
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                audio: { url: audioUrl },
-                mimetype: 'audio/mp4'
-            });
 
         } catch (error) {
             logger.error('Error in ytmp3 command:', error);
@@ -80,45 +96,70 @@ const downloaderCommands = {
         try {
             if (!args.length) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Please provide a YouTube URL!\nUsage: ${config.prefix}ytmp4 <url>`
+                    text: `Please provide a YouTube URL!\nUsage: .ytmp4 <url>`
                 });
             }
 
-            let videoId;
-            let videoUrl;
-            try {
-                videoId = ytdl.getVideoID(args[0]);
-                logger.info('Extracted video ID:', videoId);
+            // Send processing message
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Processing your request...'
+            });
 
-                const info = await ytdl.getInfo(videoId, {
-                    lang: 'en'
-                });
-                logger.info('Retrieved video info successfully');
+            let videoId;
+            try {
+                // Handle both URL and search query
+                if (ytdl.validateURL(args[0])) {
+                    videoId = ytdl.getVideoID(args[0]);
+                } else {
+                    // Search for the video if URL not provided
+                    const searchResults = await yts(args.join(' '));
+                    if (!searchResults.videos.length) {
+                        throw new Error('No videos found');
+                    }
+                    videoId = searchResults.videos[0].videoId;
+                }
+
+                logger.info('Processing video ID:', videoId);
+
+                const info = await ytdl.getInfo(videoId);
 
                 // Get best quality video with audio
-                const format = ytdl.chooseFormat(info.formats, { quality: 'highest' });
+                const format = ytdl.chooseFormat(info.formats, { 
+                    quality: 'highest',
+                    filter: 'audioandvideo' 
+                });
+
                 if (!format) {
                     throw new Error('No suitable video format found');
                 }
 
-                videoUrl = format.url;
-                logger.info('Selected video format:', format.qualityLabel);
+                // Download to temp file
+                const tempFile = path.join(tempDir, `${videoId}.mp4`);
+                const writeStream = fs.createWriteStream(tempFile);
 
-                // Validate URL
-                const response = await axios.head(videoUrl);
-                if (response.status === 404) {
-                    throw new Error('Video URL invalid');
-                }
+                ytdl(videoId, {
+                    format: format
+                }).pipe(writeStream);
+
+                await new Promise((resolve, reject) => {
+                    writeStream.on('finish', resolve);
+                    writeStream.on('error', reject);
+                });
+
+                // Send the video file
+                await sock.sendMessage(msg.key.remoteJid, {
+                    video: { url: tempFile },
+                    caption: `${info.videoDetails.title}`,
+                    fileName: `${info.videoDetails.title}.mp4`
+                });
+
+                // Cleanup
+                await fs.remove(tempFile);
 
             } catch (error) {
-                logger.error('Error getting video source:', error);
-                throw new Error('Unable to process this video. Please try another one.');
+                logger.error('Error processing YouTube video:', error);
+                throw new Error('Failed to process video: ' + error.message);
             }
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                video: { url: videoUrl },
-                caption: 'Downloaded using BlackSky-MD'
-            });
 
         } catch (error) {
             logger.error('Error in ytmp4 command:', error);
@@ -131,9 +172,14 @@ const downloaderCommands = {
     // Redirect play command to music module
     play: async (sock, msg, args) => {
         try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `Please provide a song name or URL!\nUsage: .play <song name/URL>`
+                });
+            }
             return await musicCommands.play(sock, msg, args);
         } catch (error) {
-            logger.error('Error in play command redirect:', error);
+            logger.error('Error in play command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error playing audio: ' + error.message
             });

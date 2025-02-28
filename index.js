@@ -26,18 +26,14 @@ const logger = pino({
 // Initialize store
 const store = makeInMemoryStore({ logger });
 store.readFromFile('./baileys_store.json');
+// Periodically save store
 setInterval(() => {
     store.writeToFile('./baileys_store.json');
 }, 10000);
 
-// Start express server
-app.get('/', (req, res) => {
-    res.send('WhatsApp Bot is running!');
-});
-
-app.listen(PORT, '0.0.0.0', () => {
-    logger.info(`Server running on port ${PORT}`);
-});
+// Add default environment variables
+process.env.OWNER_NAME = process.env.OWNER_NAME || 'Admin';
+process.env.OWNER_NUMBER = process.env.OWNER_NUMBER || '1234567890';
 
 // Add environment check after logger initialization
 if (process.env.NODE_ENV !== 'production' && !process.env.REPLIT) {
@@ -50,70 +46,65 @@ const formatPhoneNumber = (number) => {
     return number.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
 };
 
-// Add environment variable validation with better error handling
+// Update environment variable validation with better error handling
 const validateEnv = () => {
-    const required = ['OWNER_NAME', 'OWNER_NUMBER'];
-    const missing = required.filter(key => !process.env[key]);
+    try {
+        const required = ['OWNER_NAME', 'OWNER_NUMBER'];
+        const missing = required.filter(key => !process.env[key]);
 
-    if (missing.length > 0) {
-        logger.error('Missing required environment variables:', missing.join(', '));
-        logger.error('Please set these variables in your Heroku config vars');
-        process.exit(1);
+        if (missing.length > 0) {
+            logger.warn('Using default values for:', missing.join(', '));
+        }
+
+        if (!/^\d+$/.test(process.env.OWNER_NUMBER)) {
+            logger.warn('OWNER_NUMBER contains non-numeric characters, attempting to clean...');
+            process.env.OWNER_NUMBER = process.env.OWNER_NUMBER.replace(/[^0-9]/g, '');
+        }
+
+        logger.info('Environment variables validated successfully');
+        return true;
+    } catch (error) {
+        logger.error('Error validating environment:', error);
+        return false;
     }
-
-    if (!/^\d+$/.test(process.env.OWNER_NUMBER)) {
-        logger.error('OWNER_NUMBER must contain only numbers (country code + number)');
-        logger.error('Example: 1234567890 (no special characters)');
-        process.exit(1);
-    }
-
-    logger.info('Environment variables validated successfully');
-    return true;
 };
 
 // Load and validate environment variables
-validateEnv();
+if (!validateEnv()) {
+    logger.warn('Using default configuration due to validation issues');
+}
 
 // Update config with environment variables
 config.ownerName = process.env.OWNER_NAME;
 config.ownerNumber = formatPhoneNumber(process.env.OWNER_NUMBER);
 config.botName = process.env.BOT_NAME || 'BlackSky-MD';
-config.prefix = process.env.PREFIX || '!';
+config.prefix = process.env.PREFIX || '.';
 
+// Start express server with proper error handling
+app.get('/', (req, res) => {
+    res.send('WhatsApp Bot is running!');
+});
 
-// Load command modules
-const loadCommandModules = () => {
-    const commandModules = {};
+const startServer = () => {
     try {
-        const commandsPath = path.join(__dirname, 'commands');
-        const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-
-        for (const file of commandFiles) {
-            const moduleName = path.parse(file).name;
-            try {
-                const module = require(path.join(commandsPath, file));
-                commandModules[moduleName] = module;
-                logger.info(`Loaded command module: ${moduleName}`);
-            } catch (err) {
-                logger.error(`Failed to load command module ${file}:`, err);
-            }
-        }
-    } catch (err) {
-        logger.error('Fatal error loading command modules:', err);
+        app.listen(PORT, '0.0.0.0', () => {
+            logger.info(`Server running on port ${PORT}`);
+        });
+    } catch (error) {
+        logger.error('Failed to start server:', error);
         process.exit(1);
     }
-    return commandModules;
 };
 
-const commandModules = loadCommandModules();
+// Start the server
+startServer();
 
-// Keep-alive mechanism for Heroku
+// Keep-alive mechanism
 const keepAlive = () => {
     logger.info('Keep-alive ping');
     setTimeout(keepAlive, 1000 * 60 * 10); // Ping every 10 minutes
 };
 
-// Start keep-alive for Heroku
 keepAlive();
 
 // Update the sendCredsFile function with more debug logging
