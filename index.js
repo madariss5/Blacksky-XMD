@@ -59,7 +59,13 @@ async function startWhatsApp() {
             logger: pino({ level: "silent" }),
             printQRInTerminal: true,
             auth: state,
-            browser: ['BLACKSKY-MD', 'Chrome', '1.0.0']
+            browser: ['BLACKSKY-MD', 'Safari', '1.0.0'],
+            // Add recommended settings for multi-device
+            connectTimeoutMs: 60_000,
+            defaultQueryTimeoutMs: 0,
+            keepAliveIntervalMs: 10000,
+            emitOwnEvents: true,
+            markOnlineOnConnect: true
         });
 
         logger.info('Binding store to socket events...');

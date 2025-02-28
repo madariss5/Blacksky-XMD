@@ -11,6 +11,7 @@
   "description": "",
   "dependencies": {
     "@adiwajshing/baileys": "^5.0.0",
+    "@adiwajshing/keyed-db": "^0.2.4",
     "@distube/ytdl-core": "^4.16.4",
     "@hapi/boom": "^10.0.1",
     "@whiskeysockets/baileys": "^6.7.13",
