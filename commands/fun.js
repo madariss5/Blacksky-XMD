@@ -743,7 +743,7 @@ const funCommands = {
             await sendGifReaction(sock, msg, './media/anime-wink.gif', '😉', mentions);
         } catch (error) {
             logger.error('Error in wink command:', error);
-            awaitsock.sendMessage(msg.key.remoteJid, {
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Failed to execute wink command!'
             });
         }
@@ -841,70 +841,19 @@ const funCommands = {
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `*${msg.pushName}* throws ${target} into the trash! 🗑️`,
+                text: `*${msg.pushName}* threw ${target} in the trash! 🗑️`,
                 mentions: mentions
             });
 
-            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
-            if (!quotedMsg?.imageMessage) {
-                await sendGifReaction(sock, msg, './media/anime-trash.gif', '🗑️', mentions);
-                return;
-            }
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '⏳ Creating anime trash effect...'
-            });
-
-            const buffer = await downloadMediaMessage(
-                {
-                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
-                    message: quotedMsg,
-                    messageTimestamp: msg.messageTimestamp
-                },
-                'buffer',
-                {},
-                {
-                    logger,
-                    reuploadRequest: sock.updateMediaMessage
-                }
-            );
-
-            // Create temp file paths
-            const inputPath = path.join(tempDir, 'input.png');
-            const outputPath = path.join(tempDir, 'output.gif');
-
-            // Write buffer to file
-            await fs.writeFile(inputPath, buffer);
-
-            // Create anime trash effect using Python script
-            const pythonScript = path.join(__dirname, '../scripts/create_anime_trash.py');
-            await new Promise((resolve, reject) => {
-                exec(`python3 "${pythonScript}" "${inputPath}" "${outputPath}"`, (error) => {
-                    if (error) reject(error);
-                    else resolve();
-                });
-            });
-
-            // Read and send the processed image
-            const resultBuffer = await fs.readFile(outputPath);
-            await sock.sendMessage(msg.key.remoteJid, {
-                video: resultBuffer,
-                gifPlayback: true,
-                caption: `🗑️ *${msg.pushName}* threw ${target} into the trash!`,
-                mentions: mentions
-            });
-
-            // Cleanup temp files
-            await fs.remove(inputPath);
-            await fs.remove(outputPath);
-
+            await sendGifReaction(sock, msg, './media/anime-trash.gif', '🗑️', mentions);
         } catch (error) {
             logger.error('Error in trash command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to create trash effect: ' + error.message
+                text: '😅 Failed to execute trash command!'
             });
         }
-    }
+    },
+
 };
 
 // Export the funCommands object

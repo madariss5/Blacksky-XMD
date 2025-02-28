@@ -38,10 +38,11 @@
       "name": "Martin",
       "age": 20,
       "registeredAt": "2025-02-27T15:13:32.902Z",
-      "gold": 0,
+      "gold": 3519,
       "bank": 0,
       "inventory": [],
-      "lastDaily": 0
+      "lastDaily": 0,
+      "lastWeekly": 1740766515411
     },
     "4915561048015@s.whatsapp.net": {
       "gold": 8356,
