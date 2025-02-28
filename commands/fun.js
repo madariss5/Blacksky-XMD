@@ -3,9 +3,9 @@ const fs = require('fs-extra');
 const path = require('path');
 const logger = require('pino')();
 const ffmpeg = require('fluent-ffmpeg');
-const { exec } = require('child_process'); // Added for exec
-const downloadMediaMessage = require('./downloadMediaMessage');// Added for downloadMediaMessage.  Assumed to exist.
-const tempDir = require('os').tmpdir();// Added tempDir.  Example implementation. Adjust as needed.
+const { exec } = require('child_process');
+const { downloadMediaMessage } = require('@whiskeysockets/baileys'); // Fixed import
+const tempDir = require('os').tmpdir();
 
 
 const mediaDir = path.join(__dirname, '../media');
@@ -743,7 +743,7 @@ const funCommands = {
             await sendGifReaction(sock, msg, './media/anime-wink.gif', '😉', mentions);
         } catch (error) {
             logger.error('Error in wink command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
+            awaitsock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Failed to execute wink command!'
             });
         }
