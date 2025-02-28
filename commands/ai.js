@@ -62,15 +62,47 @@ const identifyIntent = (message) => {
 };
 
 // Helper function to get an image based on search query
-const getSearchImage = async (query) => {
+const getImageUrl = async (query) => {
     try {
-        // Using Unsplash Source API which is free and doesn't require authentication
-        const searchQuery = encodeURIComponent(query);
-        return `https://source.unsplash.com/1024x1024/?${searchQuery}`;
+        // Try multiple services in order of reliability
+        const services = [
+            // Unsplash Source with multiple collections
+            async () => {
+                const searchQuery = encodeURIComponent(query);
+                const collections = ['1065976', '1163637', '928423']; // Curated collections
+                const collection = collections[Math.floor(Math.random() * collections.length)];
+                return `https://source.unsplash.com/collection/${collection}/1024x1024/?${searchQuery}`;
+            },
+            // Direct Unsplash search
+            async () => {
+                const searchQuery = encodeURIComponent(query);
+                return `https://source.unsplash.com/1024x1024/?${searchQuery}`;
+            },
+            // Fallback to AI-themed placeholder
+            async () => {
+                return `https://placehold.co/1024x1024/1a1a1a/ffffff?text=${encodeURIComponent(query)}`;
+            }
+        ];
+
+        // Try each service until one works
+        for (const getUrl of services) {
+            try {
+                const url = await getUrl();
+                // Verify the URL is accessible
+                const response = await axios.head(url);
+                if (response.status === 200) {
+                    return url;
+                }
+            } catch (err) {
+                logger.warn('Service attempt failed, trying next option');
+                continue;
+            }
+        }
+
+        throw new Error('All image services failed');
     } catch (error) {
         logger.error('Error getting image:', error);
-        // Fallback to Lorem Picsum if Unsplash fails
-        return `https://picsum.photos/1024/1024?random=${Date.now()}`;
+        throw error;
     }
 };
 
@@ -130,8 +162,8 @@ const aiCommands = {
                 text: '🎨 Generating your image...'
             });
 
-            // Get image based on search query
-            const imageUrl = await getSearchImage(args.join(' '));
+            // Get image based on search query with enhanced error handling
+            const imageUrl = await getImageUrl(args.join(' '));
             setCooldown(userId);
 
             await sock.sendMessage(msg.key.remoteJid, {
@@ -156,6 +188,7 @@ const aiCommands = {
         // Another alias for dalle command
         return aiCommands.dalle(sock, msg, args);
     },
+
     lisa: async (sock, msg, args) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, { text: "This command is not yet implemented." });
@@ -166,6 +199,7 @@ const aiCommands = {
             });
         }
     },
+
     rias: async (sock, msg, args) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, { text: "This command is not yet implemented." });
@@ -176,6 +210,7 @@ const aiCommands = {
             });
         }
     },
+
     toxxic: async (sock, msg, args) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, { text: "This command is not yet implemented." });
@@ -186,6 +221,7 @@ const aiCommands = {
             });
         }
     },
+
     aiuser: async (sock, msg, args) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, { text: "This command is not yet implemented." });
@@ -196,6 +232,7 @@ const aiCommands = {
             });
         }
     },
+
     bugandro: async (sock, msg, args) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, { text: "This command is not yet implemented." });
@@ -206,6 +243,7 @@ const aiCommands = {
             });
         }
     },
+
     bugios: async (sock, msg, args) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, { text: "This command is not yet implemented." });
