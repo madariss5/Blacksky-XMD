@@ -266,18 +266,27 @@ const groupCommands = {
             }
 
             try {
-                // Get the group code directly from Baileys without any pre-checks
-                logger.info('Attempting to generate group link for:', msg.key.remoteJid);
-                const code = await sock.groupInviteCode(msg.key.remoteJid);
+                // Log socket state for debugging
+                logger.info('Socket state before link generation:', {
+                    group: msg.key.remoteJid,
+                    isConnected: sock.isOnline,
+                    botId: botId
+                });
+
+                // Wait for any pending operations
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // Try to get the invite link using getGroupInviteLink
+                const code = await sock.getGroupInviteLink(msg.key.remoteJid);
 
                 if (!code) {
-                    logger.error('No invite code returned from Baileys');
-                    throw new Error('Could not generate invite code');
+                    logger.error('No invite code returned');
+                    throw new Error('Failed to generate invite code');
                 }
 
                 const linkMessage = `🔗 *Group Invite Link*\n\n` +
                                   `Group: ${groupMetadata.subject}\n` +
-                                  `Link: https://chat.whatsapp.com/${code}`;
+                                  `Link: ${code}`;
 
                 await sock.sendMessage(msg.key.remoteJid, {
                     text: linkMessage
@@ -289,7 +298,7 @@ const groupCommands = {
                 });
             } catch (error) {
                 logger.error('Error in group link generation:', error);
-                throw new Error('Unable to generate group invite link at this time');
+                throw new Error('Unable to generate invite link at this time. Please try again later.');
             }
         } catch (error) {
             logger.error('Error in link command:', error);
