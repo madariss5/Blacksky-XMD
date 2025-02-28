@@ -21,16 +21,16 @@ const basicCommands = {
                 }
 
                 const helpText = `*Command: ${command}*\n\n` +
-                               `📝 Description: ${commandInfo.description}\n` +
-                               `🔧 Usage: ${commandInfo.usage || `${config.prefix}${command}`}\n` +
-                               `📊 Category: ${commandInfo.category}\n` +
-                               (commandInfo.examples ? `\n💡 Examples:\n${commandInfo.examples.join('\n')}` : '');
+                                `📝 Description: ${commandInfo.description}\n` +
+                                `🔧 Usage: ${commandInfo.usage || `${config.prefix}${command}`}\n` +
+                                `📊 Category: ${commandInfo.category}\n` +
+                                (commandInfo.examples ? `\n💡 Examples:\n${commandInfo.examples.join('\n')}` : '');
 
                 return await sock.sendMessage(msg.key.remoteJid, { text: helpText });
             }
 
             // General help message with improved formatting
-            const basicCmds = ['help', 'ping', 'menu', 'info', 'runtime', 'speed']
+            const basicCmds = ['help', 'ping', 'menu', 'info', 'runtime', 'speed', 'profile', 'me']
                 .map(cmd => `• ${config.prefix}${cmd} - ${config.commands[cmd].description}`)
                 .join('\n');
 
@@ -227,7 +227,102 @@ const basicCommands = {
                 text: '❌ Error testing bot speed: ' + error.message
             });
         }
+    },
+    profile: async (sock, msg, args) => {
+        try {
+            logger.info('Starting profile command execution', {
+                sender: msg.key.remoteJid,
+                args: args
+            });
+            const store = require('../database/store');
+            logger.debug('Store module loaded successfully');
+
+            // Get target user (mentioned user or command sender)
+            const mentionedJid = args[0]?.replace('@', '') + '@s.whatsapp.net' || msg.key.remoteJid;
+            logger.debug('Profile lookup for:', { mentionedJid });
+
+            const userData = store.get('users')?.[mentionedJid] || {
+                name: mentionedJid.split('@')[0],
+                commands: 0,
+                joinedAt: new Date().toISOString()
+            };
+            logger.debug('Retrieved user data:', { userData });
+
+            const text = `👤 *User Profile*\n\n` +
+                        `• Name: ${userData.name}\n` +
+                        `• Number: @${mentionedJid.split('@')[0]}\n` +
+                        `• Commands Used: ${userData.commands || 0}\n` +
+                        `• Joined: ${new Date(userData.joinedAt).toLocaleDateString()}\n` +
+                        `• Status: ${store.getBannedUsers().includes(mentionedJid) ? '🚫 Banned' : '✅ Active'}`;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text,
+                mentions: [mentionedJid]
+            });
+            logger.info('Profile command completed successfully');
+        } catch (error) {
+            logger.error('Profile command failed:', {
+                error: error.message,
+                stack: error.stack
+            });
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error showing profile: ' + error.message
+            });
+        }
+    },
+
+    me: async (sock, msg) => {
+        try {
+            logger.info('Starting me command execution', {
+                sender: msg.key.remoteJid
+            });
+            const store = require('../database/store');
+            logger.debug('Store module loaded successfully');
+
+            // Get sender's data
+            const userId = msg.key.remoteJid;
+            logger.debug('Me command for user:', { userId });
+
+            const userData = store.get('users')?.[userId] || {
+                name: userId.split('@')[0],
+                commands: 0,
+                joinedAt: new Date().toISOString()
+            };
+            logger.debug('Retrieved user data:', { userData });
+
+            // Get additional user stats
+            const totalGroups = store.get('chats')?.filter(id => id.endsWith('@g.us')).length || 0;
+            const warnings = store.getWarnings(userId).length;
+            logger.debug('Retrieved additional stats:', {
+                totalGroups,
+                warnings
+            });
+
+            const text = `📱 *Your Profile*\n\n` +
+                        `• Name: ${userData.name}\n` +
+                        `• Number: @${userId.split('@')[0]}\n` +
+                        `• Commands Used: ${userData.commands || 0}\n` +
+                        `• Joined: ${new Date(userData.joinedAt).toLocaleDateString()}\n` +
+                        `• Warnings: ${warnings}/3\n` +
+                        `• Groups: ${totalGroups}\n` +
+                        `• Status: ${store.getBannedUsers().includes(userId) ? '🚫 Banned' : '✅ Active'}`;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text,
+                mentions: [userId]
+            });
+            logger.info('Me command completed successfully');
+        } catch (error) {
+            logger.error('Me command failed:', {
+                error: error.message,
+                stack: error.stack
+            });
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error showing your profile: ' + error.message
+            });
+        }
     }
+
 };
 
 module.exports = basicCommands;

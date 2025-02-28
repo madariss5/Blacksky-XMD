@@ -231,6 +231,122 @@ const gameCommands = {
                 text: 'Error completing quest. Please try again.'
             });
         }
+    },
+    level: async (sock, msg) => {
+        try {
+            if (!msg.key.participant) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: 'Could not identify user. Please try again.'
+                });
+            }
+
+            const userData = await store.getUserData(msg.key.participant);
+            if (!userData) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `You need to register first! Use ${config.prefix}register <name> <age> to create your profile.`
+                });
+            }
+
+            // Calculate XP needed for next level
+            const nextLevelXP = Math.pow((userData.level || 1) + 1, 2) * 100;
+            const progress = ((userData.xp || 0) / nextLevelXP) * 100;
+
+            // Create progress bar
+            const progressBar = '█'.repeat(Math.floor(progress / 10)) + '░'.repeat(10 - Math.floor(progress / 10));
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `📊 *Level Status*\n\n` +
+                      `👤 *${userData.name || 'Player'}*\n` +
+                      `📈 Level: ${userData.level || 1}\n` +
+                      `✨ XP: ${userData.xp || 0}/${nextLevelXP}\n` +
+                      `⭐ Progress: ${Math.floor(progress)}%\n` +
+                      `[${progressBar}]\n\n` +
+                      `💡 Earn XP by:\n` +
+                      `• Completing quests\n` +
+                      `• Winning battles\n` +
+                      `• Daily activities`
+            });
+
+            logger.info('Level status displayed for user:', msg.key.participant);
+        } catch (error) {
+            logger.error('Error in level command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error accessing level status. Please try again.'
+            });
+        }
+    },
+
+    leveling: async (sock, msg) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🎮 *Leveling System Guide*\n\n` +
+                      `📊 *How Leveling Works*\n` +
+                      `• Each level requires: Level² × 100 XP\n` +
+                      `• Example: Level 2 needs 400 XP\n\n` +
+                      `🎯 *XP Sources*\n` +
+                      `• Quests: 70-110 XP\n` +
+                      `• Battles: 20-50 XP\n` +
+                      `• Daily Tasks: 100 XP\n\n` +
+                      `💫 *Level Benefits*\n` +
+                      `• Higher battle power\n` +
+                      `• Better quest rewards\n` +
+                      `• Special titles\n\n` +
+                      `Use ${config.prefix}level to check your progress!`
+            });
+
+            logger.info('Leveling guide displayed');
+        } catch (error) {
+            logger.error('Error displaying leveling guide:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error showing leveling guide. Please try again.'
+            });
+        }
+    },
+
+    levelup: async (sock, msg) => {
+        try {
+            if (!msg.key.participant) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: 'Could not identify user. Please try again.'
+                });
+            }
+
+            const userData = await store.getUserData(msg.key.participant);
+            if (!userData) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `You need to register first! Use ${config.prefix}register <name> <age> to create your profile.`
+                });
+            }
+
+            // Get the top 10 players by level
+            const users = store.data.users || {};
+            const topPlayers = Object.entries(users)
+                .map(([id, data]) => ({
+                    name: data.name || id.split('@')[0],
+                    level: data.level || 1,
+                    xp: data.xp || 0
+                }))
+                .sort((a, b) => b.level - a.level || b.xp - a.xp)
+                .slice(0, 10);
+
+            let leaderboard = `🏆 *Top 10 Players*\n\n`;
+            topPlayers.forEach((player, index) => {
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '👤';
+                leaderboard += `${medal} ${index + 1}. ${player.name}\n` +
+                             `   Level ${player.level} • ${player.xp} XP\n`;
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: leaderboard
+            });
+
+            logger.info('Levelup leaderboard displayed');
+        } catch (error) {
+            logger.error('Error displaying levelup leaderboard:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error showing leaderboard. Please try again.'
+            });
+        }
     }
 };
 

@@ -64,6 +64,13 @@ module.exports = {
         roulette: { description: 'Play roulette', category: 'Game' },
         wordgame: { description: 'Play word guessing game', category: 'Game' },
         trivia: { description: 'Play trivia game', category: 'Game' },
+        rpg: { description: 'View your RPG character status', category: 'Game' },
+        battle: { description: 'Battle another player', category: 'Game' },
+        quest: { description: 'Start a new quest', category: 'Game' },
+        complete: { description: 'Complete your active quest', category: 'Game' },
+        level: { description: 'Check your current level and XP progress', category: 'Game' },
+        leveling: { description: 'View detailed information about the leveling system', category: 'Game' },
+        levelup: { description: 'View the top players leaderboard', category: 'Game' },
 
         // Downloader Commands
         ytmp3: { description: 'Download YouTube audio (High Quality)', category: 'Downloader' },
