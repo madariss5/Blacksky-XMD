@@ -1,200 +1,179 @@
 const config = require('../config');
 const logger = require('pino')();
 const axios = require('axios');
-
-// Import anime modules - check if they exist first
-const modules = {
-    animeInfo: '../attached_assets/anime-info',
-    animeCouplePP: '../attached_assets/anime-couplepp',
-    animeHentai: '../attached_assets/anime-hentai',
-    animeHNeko: '../attached_assets/anime-hneko',
-    animeHWaifu: '../attached_assets/anime-hwaifu',
-    animeNeko: '../attached_assets/anime-neko',
-    animeTrap: '../attached_assets/anime-trap',
-    animeWaifu: '../attached_assets/anime-waifu'
-};
-
-// Safely import modules
-const safeRequire = (path) => {
-    try {
-        return require(path);
-    } catch (error) {
-        logger.warn(`Failed to load module ${path}: ${error.message}`);
-        return {
-            search: () => Promise.reject(new Error(`Module ${path} not available`)),
-            getRandomImage: () => Promise.reject(new Error(`Module ${path} not available`)),
-            getRandomCouple: () => Promise.reject(new Error(`Module ${path} not available`))
-        };
-    }
-};
-
-// Import modules safely
-const {
-    animeInfo,
-    animeCouplePP,
-    animeHentai,
-    animeHNeko,
-    animeHWaifu,
-    animeNeko,
-    animeTrap,
-    animeWaifu
-} = Object.entries(modules).reduce((acc, [key, path]) => {
-    acc[key] = safeRequire(path);
-    return acc;
-}, {});
+const store = require('../database/store');
 
 const animeCommands = {
     anime: async (sock, msg, args) => {
         try {
+            logger.info('Starting anime search command', { args });
+
             if (!args.length) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: `Please provide an anime name!\nUsage: ${config.prefix}anime <name>`
                 });
             }
-            const info = await animeInfo.search(args.join(' '));
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: info
-            });
+
+            logger.debug('Making API request to Jikan', { query: args.join(' ') });
+            const response = await axios.get(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(args.join(' '))}&limit=1`);
+            const anime = response.data.data[0];
+
+            if (!anime) {
+                logger.info('No anime found for query', { query: args.join(' ') });
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ No anime found with that name!'
+                });
+            }
+
+            logger.debug('Anime data received', { title: anime.title });
+            const text = `🎬 *${anime.title}*\n\n` +
+                        `📊 Rating: ${anime.score || 'N/A'}\n` +
+                        `🎯 Type: ${anime.type || 'N/A'}\n` +
+                        `📅 Episodes: ${anime.episodes || 'N/A'}\n` +
+                        `📺 Status: ${anime.status || 'N/A'}\n\n` +
+                        `📝 Synopsis:\n${anime.synopsis || 'No synopsis available.'}\n\n` +
+                        `🔗 More info: ${anime.url}`;
+
+            if (anime.images?.jpg?.image_url) {
+                logger.debug('Sending anime info with image');
+                await sock.sendMessage(msg.key.remoteJid, {
+                    image: { url: anime.images.jpg.image_url },
+                    caption: text
+                });
+            } else {
+                logger.debug('Sending anime info without image');
+                await sock.sendMessage(msg.key.remoteJid, { text });
+            }
+            logger.info('Anime command completed successfully');
         } catch (error) {
-            logger.error('Error in anime command:', error);
+            logger.error('Error in anime command:', {
+                error: error.message,
+                stack: error.stack,
+                response: error.response?.data,
+                status: error.response?.status
+            });
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error searching anime: ' + error.message
             });
         }
     },
 
-    couplepp: async (sock, msg) => {
+    waifu: async (sock, msg) => {
         try {
-            const images = await animeCouplePP.getRandomCouple();
+            logger.info('Starting waifu command');
+            logger.debug('Making API request to waifu.pics');
+            const response = await axios.get('https://api.waifu.pics/sfw/waifu');
+
+            logger.debug('Sending waifu image', { url: response.data.url });
             await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: images.male },
-                caption: '👨 Male'
+                image: { url: response.data.url },
+                caption: '👘 Random Waifu'
             });
-            await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: images.female },
-                caption: '👩 Female'
-            });
+            logger.info('Waifu command completed successfully');
         } catch (error) {
-            logger.error('Error in couplepp command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error getting couple pictures: ' + error.message
+            logger.error('Error in waifu command:', {
+                error: error.message,
+                stack: error.stack,
+                response: error.response?.data,
+                status: error.response?.status
             });
-        }
-    },
-
-    hentai: async (sock, msg) => {
-        try {
-            const isNSFW = await store.isNSFWEnabled(msg.key.remoteJid);
-            if (!isNSFW) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '🔞 This command can only be used in NSFW-enabled chats!'
-                });
-            }
-
-            const image = await animeHentai.getRandomImage();
             await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: image },
-                caption: '🔞 NSFW content'
-            });
-        } catch (error) {
-            logger.error('Error in hentai command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error fetching content: ' + error.message
-            });
-        }
-    },
-
-    hneko: async (sock, msg) => {
-        try {
-            const isNSFW = await store.isNSFWEnabled(msg.key.remoteJid);
-            if (!isNSFW) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '🔞 This command can only be used in NSFW-enabled chats!'
-                });
-            }
-
-            const image = await animeHNeko.getRandomImage();
-            await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: image },
-                caption: '🔞 NSFW Neko'
-            });
-        } catch (error) {
-            logger.error('Error in hneko command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error fetching content: ' + error.message
-            });
-        }
-    },
-
-    hwaifu: async (sock, msg) => {
-        try {
-            const isNSFW = await store.isNSFWEnabled(msg.key.remoteJid);
-            if (!isNSFW) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '🔞 This command can only be used in NSFW-enabled chats!'
-                });
-            }
-
-            const image = await animeHWaifu.getRandomImage();
-            await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: image },
-                caption: '🔞 NSFW Waifu'
-            });
-        } catch (error) {
-            logger.error('Error in hwaifu command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error fetching content: ' + error.message
+                text: '❌ Error fetching waifu image: ' + error.message
             });
         }
     },
 
     neko: async (sock, msg) => {
         try {
-            const image = await animeNeko.getRandomImage();
+            logger.info('Starting neko command');
+            logger.debug('Making API request to waifu.pics');
+            const response = await axios.get('https://api.waifu.pics/sfw/neko');
+
+            logger.debug('Sending neko image', { url: response.data.url });
             await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: image },
+                image: { url: response.data.url },
                 caption: '😺 Random Neko'
             });
+            logger.info('Neko command completed successfully');
         } catch (error) {
-            logger.error('Error in neko command:', error);
+            logger.error('Error in neko command:', {
+                error: error.message,
+                stack: error.stack,
+                response: error.response?.data,
+                status: error.response?.status
+            });
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error fetching neko image: ' + error.message
             });
         }
     },
 
-    trap: async (sock, msg) => {
+    hentai: async (sock, msg) => {
         try {
-            const image = await animeTrap.getRandomImage();
+            logger.info('Starting hentai command');
+            const isNSFW = await store.isNSFWEnabled(msg.key.remoteJid);
+            if (!isNSFW) {
+                logger.info('NSFW not enabled for chat');
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '🔞 This command can only be used in NSFW-enabled chats!'
+                });
+            }
+
+            logger.debug('Making API request to waifu.pics NSFW endpoint');
+            const response = await axios.get('https://api.waifu.pics/nsfw/waifu');
+
+            logger.debug('Sending NSFW image');
             await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: image },
-                caption: '🎭 Random Trap'
+                image: { url: response.data.url },
+                caption: '🔞 NSFW content'
             });
+            logger.info('Hentai command completed successfully');
         } catch (error) {
-            logger.error('Error in trap command:', error);
+            logger.error('Error in hentai command:', {
+                error: error.message,
+                stack: error.stack,
+                response: error.response?.data,
+                status: error.response?.status
+            });
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error fetching trap image: ' + error.message
+                text: '❌ Error fetching content: ' + error.message
             });
         }
     },
 
-    waifu: async (sock, msg) => {
+    couplepp: async (sock, msg) => {
         try {
-            const image = await animeWaifu.getRandomImage();
+            logger.info('Starting couplepp command');
+            logger.debug('Making API requests to waifu.pics');
+            const responses = await Promise.all([
+                axios.get('https://api.waifu.pics/sfw/shinobu'),
+                axios.get('https://api.waifu.pics/sfw/shinobu')
+            ]);
+
+            logger.debug('Sending male image', { url: responses[0].data.url });
             await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: image },
-                caption: '👘 Random Waifu'
+                image: { url: responses[0].data.url },
+                caption: '👨 Male'
             });
-        } catch (error) {
-            logger.error('Error in waifu command:', error);
+
+            logger.debug('Sending female image', { url: responses[1].data.url });
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error fetching waifu image: ' + error.message
+                image: { url: responses[1].data.url },
+                caption: '👩 Female'
+            });
+            logger.info('Couplepp command completed successfully');
+        } catch (error) {
+            logger.error('Error in couplepp command:', {
+                error: error.message,
+                stack: error.stack,
+                response: error.response?.data,
+                status: error.response?.status
+            });
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error getting couple pictures: ' + error.message
             });
         }
     }
 };
-
-// Add store import
-const store = require('../database/store');
 
 module.exports = animeCommands;
