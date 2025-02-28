@@ -2,6 +2,42 @@ const config = require('../config');
 const store = require('../database/store');
 const logger = require('pino')();
 
+// Game state management
+const activeGames = new Map();
+
+// Helper function to create a TicTacToe board
+const createTicTacToeBoard = () => {
+    return Array(3).fill(null).map(() => Array(3).fill('⬜'));
+};
+
+// Helper function to check TicTacToe winner
+const checkWinner = (board) => {
+    // Check rows
+    for (let i = 0; i < 3; i++) {
+        if (board[i][0] !== '⬜' && board[i][0] === board[i][1] && board[i][1] === board[i][2]) {
+            return board[i][0];
+        }
+    }
+    // Check columns
+    for (let i = 0; i < 3; i++) {
+        if (board[0][i] !== '⬜' && board[0][i] === board[1][i] && board[1][i] === board[2][i]) {
+            return board[0][i];
+        }
+    }
+    // Check diagonals
+    if (board[0][0] !== '⬜' && board[0][0] === board[1][1] && board[1][1] === board[2][2]) {
+        return board[0][0];
+    }
+    if (board[0][2] !== '⬜' && board[0][2] === board[1][1] && board[1][1] === board[2][0]) {
+        return board[0][2];
+    }
+    // Check draw
+    if (board.every(row => row.every(cell => cell !== '⬜'))) {
+        return 'draw';
+    }
+    return null;
+};
+
 const gameCommands = {
     rpg: async (sock, msg) => {
         try {
@@ -347,6 +383,322 @@ const gameCommands = {
                 text: '❌ Error showing leaderboard. Please try again.'
             });
         }
+    },
+    tictactoe: async (sock, msg, args) => {
+        try {
+            const opponent = args[0]?.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+            if (!opponent || opponent === msg.key.participant) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please mention a player to play with!\nUsage: !tictactoe @player'
+                });
+            }
+
+            const gameId = msg.key.remoteJid;
+            if (activeGames.has(gameId)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ A game is already in progress in this chat!'
+                });
+            }
+
+            const game = {
+                board: createTicTacToeBoard(),
+                players: [msg.key.participant, opponent],
+                currentPlayer: 0,
+                started: false
+            };
+            activeGames.set(gameId, game);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🎮 *TicTacToe Challenge*\n\n` +
+                      `@${game.players[0].split('@')[0]} has challenged @${game.players[1].split('@')[0]}!\n\n` +
+                      `Type !accept to start the game or !reject to decline.`,
+                mentions: game.players
+            });
+
+            logger.info('TicTacToe game created:', { gameId, players: game.players });
+        } catch (error) {
+            logger.error('Error in tictactoe command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error starting game: ' + error.message
+            });
+        }
+    },
+
+    accept: async (sock, msg) => {
+        try {
+            const gameId = msg.key.remoteJid;
+            const game = activeGames.get(gameId);
+
+            if (!game || game.started) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ No pending game invitation!'
+                });
+            }
+
+            if (msg.key.participant !== game.players[1]) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ This invitation is not for you!'
+                });
+            }
+
+            game.started = true;
+            const boardText = game.board.map(row => row.join('')).join('\n');
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🎮 *TicTacToe Game Started*\n\n` +
+                      `@${game.players[0].split('@')[0]}: ❌\n` +
+                      `@${game.players[1].split('@')[0]}: ⭕\n\n` +
+                      `${boardText}\n\n` +
+                      `@${game.players[0].split('@')[0]}'s turn!\n` +
+                      `Use !place <1-9> to place your mark.`,
+                mentions: game.players
+            });
+
+            logger.info('TicTacToe game started:', { gameId });
+        } catch (error) {
+            logger.error('Error in accept command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error accepting game: ' + error.message
+            });
+        }
+    },
+
+    reject: async (sock, msg) => {
+        try {
+            const gameId = msg.key.remoteJid;
+            const game = activeGames.get(gameId);
+
+            if (!game || game.started) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ No pending game invitation!'
+                });
+            }
+
+            if (msg.key.participant !== game.players[1]) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ This invitation is not for you!'
+                });
+            }
+
+            activeGames.delete(gameId);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🎮 Game invitation rejected by @${game.players[1].split('@')[0]}`,
+                mentions: [game.players[1]]
+            });
+
+            logger.info('TicTacToe game rejected:', { gameId });
+        } catch (error) {
+            logger.error('Error in reject command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error rejecting game: ' + error.message
+            });
+        }
+    },
+
+    place: async (sock, msg, args) => {
+        try {
+            const gameId = msg.key.remoteJid;
+            const game = activeGames.get(gameId);
+
+            if (!game || !game.started) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ No active game in this chat!'
+                });
+            }
+
+            if (msg.key.participant !== game.players[game.currentPlayer]) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ It\'s not your turn!'
+                });
+            }
+
+            const position = parseInt(args[0]);
+            if (isNaN(position) || position < 1 || position > 9) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please enter a number between 1 and 9!'
+                });
+            }
+
+            const row = Math.floor((position - 1) / 3);
+            const col = (position - 1) % 3;
+
+            if (game.board[row][col] !== '⬜') {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ That position is already taken!'
+                });
+            }
+
+            game.board[row][col] = game.currentPlayer === 0 ? '❌' : '⭕';
+            const winner = checkWinner(game.board);
+            const boardText = game.board.map(row => row.join('')).join('\n');
+
+            if (winner) {
+                let resultText;
+                if (winner === 'draw') {
+                    resultText = `🎮 *Game Over - Draw!*\n\n${boardText}`;
+                } else {
+                    const winnerIndex = winner === '❌' ? 0 : 1;
+                    resultText = `🎮 *Game Over - Winner!*\n\n` +
+                                `@${game.players[winnerIndex].split('@')[0]} wins! 🏆\n\n${boardText}`;
+                }
+
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: resultText,
+                    mentions: game.players
+                });
+
+                activeGames.delete(gameId);
+                logger.info('TicTacToe game ended:', { gameId, winner });
+            } else {
+                game.currentPlayer = 1 - game.currentPlayer;
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `🎮 *TicTacToe*\n\n${boardText}\n\n` +
+                          `@${game.players[game.currentPlayer].split('@')[0]}'s turn!`,
+                    mentions: [game.players[game.currentPlayer]]
+                });
+            }
+        } catch (error) {
+            logger.error('Error in place command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error placing mark: ' + error.message
+            });
+        }
+    },
+
+    suit: async (sock, msg, args) => {
+        try {
+            const opponent = args[0]?.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+            if (!opponent || opponent === msg.key.participant) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please mention a player to play with!\nUsage: !suit @player'
+                });
+            }
+
+            const gameId = msg.key.remoteJid;
+            if (activeGames.has(gameId)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ A game is already in progress in this chat!'
+                });
+            }
+
+            const game = {
+                type: 'suit',
+                players: [msg.key.participant, opponent],
+                choices: {},
+                started: false
+            };
+            activeGames.set(gameId, game);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `👊 *Rock Paper Scissors Challenge*\n\n` +
+                      `@${game.players[0].split('@')[0]} has challenged @${game.players[1].split('@')[0]}!\n\n` +
+                      `Type !accept to start the game or !reject to decline.`,
+                mentions: game.players
+            });
+
+            logger.info('Suit game created:', { gameId, players: game.players });
+        } catch (error) {
+            logger.error('Error in suit command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error starting game: ' + error.message
+            });
+        }
+    },
+
+    // Stub implementations for other game commands
+    chess: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: '🚧 Chess game is under development!'
+        });
+    },
+
+    family100: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: '🚧 Family 100 quiz game is under development!'
+        });
+    },
+
+    werewolf: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: '🚧 Werewolf game is under development!'
+        });
+    },
+
+    truth: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: '🚧 Truth or Dare (Truth) is under development!'
+        });
+    },
+
+    dare: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: '🚧 Truth or Dare (Dare) is under development!'
+        });
+    },
+
+    asahotak: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: '🚧 Asah Otak quiz game is under development!'
+        });
+    },
+
+    siapakahaku: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: '🚧 Siapakah Aku game is under development!'
+        });
+    },
+
+    susunkata: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: '🚧 Susun Kata game is under development!'
+        });
+    },
+
+    tebakkata: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: '🚧 Tebak Kata game is under development!'
+        });
+    },
+
+    tebakgambar: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: '🚧 Tebak Gambar game is under development!'
+        });
+    },
+
+    tebaklirik: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: '🚧 Tebak Lirik game is under development!'
+        });
+    },
+
+    tebaklagu: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: '🚧 Tebak Lagu game is under development!'
+        });
+    },
+
+    tebakkimia: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: '🚧 Tebak Kimia game is under development!'
+        });
+    },
+
+    tebakbendera: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: '🚧 Tebak Bendera game is under development!'
+        });
+    },
+
+    tebakkabupaten: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: '🚧 Tebak Kabupaten game is under development!'
+        });
+    },
+
+    caklontong: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: '🚧 Cak Lontong quiz game is under development!'
+        });
     }
 };
 

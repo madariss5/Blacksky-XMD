@@ -16,17 +16,32 @@ const gifs = {
     'anime-poke.gif': 'https://waifu.pics/api/sfw/poke',
     'anime-cuddle.gif': 'https://waifu.pics/api/sfw/cuddle',
     'anime-yeet.gif': 'https://waifu.pics/api/sfw/yeet',
-    'anime-boop.gif': 'https://waifu.pics/api/sfw/poke', // Using poke as alternative
+    'anime-boop.gif': 'https://waifu.pics/api/sfw/poke',
     'anime-bonk.gif': 'https://waifu.pics/api/sfw/bonk',
     'anime-wave.gif': 'https://waifu.pics/api/sfw/wave',
     'anime-kiss.gif': 'https://waifu.pics/api/sfw/kiss',
     'anime-punch.gif': 'https://waifu.pics/api/sfw/kick',
     'anime-wink.gif': 'https://waifu.pics/api/sfw/wink',
+    // New reaction GIFs
+    'anime-cry.gif': 'https://waifu.pics/api/sfw/cry',
+    'anime-bully.gif': 'https://waifu.pics/api/sfw/bully',
+    'anime-awoo.gif': 'https://waifu.pics/api/sfw/dance', // Using dance as fallback
+    'anime-lick.gif': 'https://waifu.pics/api/sfw/lick',
+    'anime-smug.gif': 'https://waifu.pics/api/sfw/smug',
+    'anime-bite.gif': 'https://waifu.pics/api/sfw/bite',
+    'anime-nom.gif': 'https://waifu.pics/api/sfw/nom',
+    'anime-glomp.gif': 'https://waifu.pics/api/sfw/glomp',
+    'anime-happy.gif': 'https://waifu.pics/api/sfw/happy',
+    'anime-cringe.gif': 'https://waifu.pics/api/sfw/cringe',
+    'anime-blush.gif': 'https://waifu.pics/api/sfw/blush',
+    'anime-smile.gif': 'https://waifu.pics/api/sfw/smile',
+    'anime-handhold.gif': 'https://waifu.pics/api/sfw/handhold',
+    'anime-baka.gif': 'https://waifu.pics/api/sfw/kick', // Using kick as fallback
+    'anime-neko.gif': 'https://waifu.pics/api/sfw/smile', // Using smile as fallback
     // Special effect GIFs using alternative emotional reactions
     'wasted.gif': 'https://waifu.pics/api/sfw/cry',
     'jail.gif': 'https://waifu.pics/api/sfw/handhold',
     'rip.gif': 'https://waifu.pics/api/sfw/cry'
-    // Temporarily removed triggered.gif until we find a working alternative
 };
 
 const downloadGif = async (endpoint, filename) => {

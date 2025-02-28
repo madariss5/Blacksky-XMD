@@ -419,6 +419,516 @@ const mediaCommands = {
                 text: '❌ Failed to mix emojis: ' + error.message
             });
         }
+    },
+
+    colong: async (sock, msg) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.stickerMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to a sticker with !colong'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Processing sticker...'
+            });
+
+            const buffer = await downloadMediaMessage(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            // Send the sticker with default metadata
+            await sock.sendMessage(msg.key.remoteJid, {
+                sticker: buffer,
+                mimetype: 'image/webp'
+            });
+
+        } catch (error) {
+            logger.error('Error in colong command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to process sticker: ' + error.message
+            });
+        }
+    },
+
+    take: async (sock, msg, args) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.stickerMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to a sticker with !take [name] [author]'
+                });
+            }
+
+            const packname = args[0] || config.botName;
+            const author = args[1] || config.ownerName;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Processing sticker...'
+            });
+
+            const buffer = await downloadMediaMessage(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const tempInput = path.join(tempDir, 'input.webp');
+            const tempOutput = path.join(tempDir, 'output.webp');
+            await fs.writeFile(tempInput, buffer);
+
+            // Add metadata using exiftool
+            await new Promise((resolve, reject) => {
+                exec(`exiftool -overwrite_original -PackageName="${packname}" -Author="${author}" "${tempInput}" -o "${tempOutput}"`, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
+
+            const outputBuffer = await fs.readFile(tempOutput);
+            await sock.sendMessage(msg.key.remoteJid, {
+                sticker: outputBuffer,
+                mimetype: 'image/webp'
+            });
+
+            // Cleanup
+            await fs.remove(tempInput);
+            await fs.remove(tempOutput);
+
+        } catch (error) {
+            logger.error('Error in take command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to process sticker: ' + error.message
+            });
+        }
+    },
+
+    smeme: async (sock, msg, args) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage || !args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !smeme text1|text2'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Creating meme sticker...'
+            });
+
+            const [topText, bottomText = ''] = args.join(' ').split('|');
+
+            const buffer = await downloadMediaMessage(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const tempInput = path.join(tempDir, 'input.jpg');
+            const tempOutput = path.join(tempDir, 'output.webp');
+            await fs.writeFile(tempInput, buffer);
+
+            // Generate meme using ImageMagick
+            await new Promise((resolve, reject) => {
+                exec(`convert "${tempInput}" -font Impact -pointsize 50 -gravity north -annotate +0+20 "${topText}" -gravity south -annotate +0+20 "${bottomText}" "${tempOutput}"`, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
+
+            const outputBuffer = await fs.readFile(tempOutput);
+            await sock.sendMessage(msg.key.remoteJid, {
+                sticker: outputBuffer,
+                mimetype: 'image/webp'
+            });
+
+            // Cleanup
+            await fs.remove(tempInput);
+            await fs.remove(tempOutput);
+
+        } catch (error) {
+            logger.error('Error in smeme command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to create meme sticker: ' + error.message
+            });
+        }
+    },
+
+    ttp: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide text!\nUsage: !ttp text'
+                });
+            }
+
+            const text = args.join(' ');
+            const tempOutput = path.join(tempDir, 'output.webp');
+
+            // Generate text image using ImageMagick
+            await new Promise((resolve, reject) => {
+                exec(`convert -size 512x512 xc:transparent -font Arial -pointsize 72 -gravity center -fill white -annotate +0+0 "${text}" "${tempOutput}"`, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
+
+            const outputBuffer = await fs.readFile(tempOutput);
+            await sock.sendMessage(msg.key.remoteJid, {
+                sticker: outputBuffer,
+                mimetype: 'image/webp'
+            });
+
+            await fs.remove(tempOutput);
+
+        } catch (error) {
+            logger.error('Error in ttp command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to create text sticker: ' + error.message
+            });
+        }
+    },
+
+    attp: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide text!\nUsage: !attp text'
+                });
+            }
+
+            const text = args.join(' ');
+            const tempDir = path.join(__dirname, '../temp');
+            const framesDir = path.join(tempDir, 'frames');
+            await fs.ensureDir(framesDir);
+
+            // Generate animated text frames using ImageMagick
+            await new Promise((resolve, reject) => {
+                exec(`convert -size 512x512 -font Arial -pointsize 72 -gravity center -fill white ( +clone -background none -fill white -annotate +0+0 "${text}" ) -compose over -composite -dispose previous -delay 10 -loop 0 "${path.join(framesDir, 'frame%d.gif')}"`, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
+
+            // Combine frames into animated WebP
+            const outputPath = path.join(tempDir, 'output.webp');
+            await new Promise((resolve, reject) => {
+                exec(`ffmpeg -i "${path.join(framesDir, 'frame%d.gif')}" -vf "scale=512:512" -c:v libwebp -lossless 1 -q:v 60 -preset default -loop 0 -an -vsync 0 "${outputPath}"`, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
+
+            const outputBuffer = await fs.readFile(outputPath);
+            await sock.sendMessage(msg.key.remoteJid, {
+                sticker: outputBuffer,
+                mimetype: 'image/webp'
+            });
+
+            // Cleanup
+            await fs.remove(framesDir);
+            await fs.remove(outputPath);
+
+        } catch (error) {
+            logger.error('Error in attp command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to create animated text sticker: ' + error.message
+            });
+        }
+    },
+
+    blur: async (sock, msg) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !blur'
+                });
+            }
+
+            const buffer = await downloadMediaMessage(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const tempInput = path.join(tempDir, 'input.jpg');
+            const tempOutput = path.join(tempDir, 'output.jpg');
+            await fs.writeFile(tempInput, buffer);
+
+            // Apply blur effect using ImageMagick
+            await new Promise((resolve, reject) => {
+                exec(`convert "${tempInput}" -blur 0x8 "${tempOutput}"`, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
+
+            const outputBuffer = await fs.readFile(tempOutput);
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: outputBuffer,
+                caption: '✨ Image blurred!'
+            });
+
+            // Cleanup
+            await fs.remove(tempInput);
+            await fs.remove(tempOutput);
+
+        } catch (error) {
+            logger.error('Error in blur command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to blur image: ' + error.message
+            });
+        }
+    },
+
+    circle: async (sock, msg) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !circle'
+                });
+            }
+
+            const buffer = await downloadMediaMessage(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const tempInput = path.join(tempDir, 'input.png');
+            const tempOutput = path.join(tempDir, 'output.png');
+            await fs.writeFile(tempInput, buffer);
+
+            // Create circular mask using ImageMagick
+            await new Promise((resolve, reject) => {
+                exec(`convert "${tempInput}" ( +clone -alpha extract -draw 'circle 50%,50% 50%,0' ) -alpha off -compose CopyOpacity -composite "${tempOutput}"`, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
+
+            const outputBuffer = await fs.readFile(tempOutput);
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: outputBuffer,
+                caption: '✨ Image circled!'
+            });
+
+            // Cleanup
+            await fs.remove(tempInput);
+            await fs.remove(tempOutput);
+
+        } catch (error) {
+            logger.error('Error in circle command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to circle image: ' + error.message
+            });
+        }
+    },
+    jail: async (sock, msg) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !jail'
+                });
+            }
+
+            const buffer = await downloadMediaMessage(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const tempInput = path.join(tempDir, 'input.jpg');
+            const tempOutput = path.join(tempDir, 'output.jpg');
+            const jailOverlay = path.join(__dirname, '../assets/jail_bars.png');
+            await fs.writeFile(tempInput, buffer);
+
+            // Apply jail effect using ImageMagick
+            await new Promise((resolve, reject) => {
+                exec(`convert "${tempInput}" -colorspace gray \\( "${jailOverlay}" -resize $(identify -format "%wx%h" "${tempInput}") \\) -composite "${tempOutput}"`, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
+
+            const outputBuffer = await fs.readFile(tempOutput);
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: outputBuffer,
+                caption: '🏢 Behind bars!'
+            });
+
+            // Cleanup
+            await fs.remove(tempInput);
+            await fs.remove(tempOutput);
+
+        } catch (error) {
+            logger.error('Error in jail command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to jail image: ' + error.message
+            });
+        }
+    },
+
+    triggered: async (sock, msg) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !triggered'
+                });
+            }
+
+            const buffer = await downloadMediaMessage(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const tempInput = path.join(tempDir, 'input.jpg');
+            const tempOutput = path.join(tempDir, 'output.gif');
+            await fs.writeFile(tempInput, buffer);
+
+            // Create triggered animation using ImageMagick
+            await new Promise((resolve, reject) => {
+                exec(`convert "${tempInput}" -resize 512x512 -duplicate 15 -evaluate sine 5 -colorspace RGB -fill "#ff000033" -tint 100 -set option:distort:viewport "%[fx:w]x%[fx:h]+%[fx:rand()*10-5]+%[fx:rand()*10-5]" -distort SRT 0 +repage -set delay 2 -loop 0 "${tempOutput}"`, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
+
+            const outputBuffer = await fs.readFile(tempOutput);
+            await sock.sendMessage(msg.key.remoteJid, {
+                video: outputBuffer,
+                gifPlayback: true,
+                caption: '💢 TRIGGERED!'
+            });
+
+            // Cleanup
+            await fs.remove(tempInput);
+            await fs.remove(tempOutput);
+
+        } catch (error) {
+            logger.error('Error in triggered command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to create triggered effect: ' + error.message
+            });
+        }
+    },
+
+    wasted: async (sock, msg) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !wasted'
+                });
+            }
+
+            const buffer = await downloadMediaMessage(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const tempInput = path.join(tempDir, 'input.jpg');
+            const tempOutput = path.join(tempDir, 'output.jpg');
+            const wastedOverlay = path.join(__dirname, '../assets/wasted.png');
+            await fs.writeFile(tempInput, buffer);
+
+            // Apply wasted effect using ImageMagick
+            await new Promise((resolve, reject) => {
+                exec(`convert "${tempInput}" -colorspace gray -fill red -tint 50 \\( "${wastedOverlay}" -resize $(identify -format "%wx%h" "${tempInput}") \\) -composite "${tempOutput}"`, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
+
+            const outputBuffer = await fs.readFile(tempOutput);
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: outputBuffer,
+                caption: '💀 WASTED!'
+            });
+
+            // Cleanup
+            await fs.remove(tempInput);
+            await fs.remove(tempOutput);
+
+        } catch (error) {
+            logger.error('Error in wasted command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to create wasted effect: ' + error.message
+            });
+        }
     }
 };
 

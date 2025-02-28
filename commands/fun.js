@@ -4,7 +4,7 @@ const path = require('path');
 const logger = require('pino')();
 const ffmpeg = require('fluent-ffmpeg');
 const { exec } = require('child_process');
-const { downloadMediaMessage } = require('@whiskeysockets/baileys'); // Fixed import
+const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 const tempDir = require('os').tmpdir();
 
 
@@ -895,9 +895,255 @@ const funCommands = {
                 text: '❌ Failed to execute wanted command!'
             });
         }
-    }
+    },
+    cry: async (sock, msg) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* is crying! 😢`
+            });
 
+            await sendGifReaction(sock, msg, './media/anime-cry.gif', '😢');
+        } catch (error) {
+            logger.error('Error in cry command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute cry command!'
+            });
+        }
+    },
+
+    bully: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* bullies ${target}! 😈`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-bully.gif', '😈', mentions);
+        } catch (error) {
+            logger.error('Error in bully command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute bully command!'
+            });
+        }
+    },
+
+    awoo: async (sock, msg) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* goes awoo! 🐺`
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-awoo.gif', '🐺');
+        } catch (error) {
+            logger.error('Error in awoo command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute awoo command!'
+            });
+        }
+    },
+
+    lick: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* licks ${target}! 👅`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-lick.gif', '👅', mentions);
+        } catch (error) {
+            logger.error('Error in lick command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute lick command!'
+            });
+        }
+    },
+
+    smug: async (sock, msg) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* looks smug! 😏`
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-smug.gif', '😏');
+        } catch (error) {
+            logger.error('Error in smug command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute smug command!'
+            });
+        }
+    },
+
+    bite: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* bites ${target}! 🦷`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-bite.gif', '🦷', mentions);
+        } catch (error) {
+            logger.error('Error in bite command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute bite command!'
+            });
+        }
+    },
+
+    nom: async (sock, msg) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* is eating! 🍴`
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-nom.gif', '🍴');
+        } catch (error) {
+            logger.error('Error in nom command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute nom command!'
+            });
+        }
+    },
+
+    glomp: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* glomps ${target}! 🤗`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-glomp.gif', '🤗', mentions);
+        } catch (error) {
+            logger.error('Error in glomp command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute glomp command!'
+            });
+        }
+    },
+
+    happy: async (sock, msg) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* is happy! 😊`
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-happy.gif', '😊');
+        } catch (error) {
+            logger.error('Error in happy command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute happy command!'
+            });
+        }
+    },
+
+    cringe: async (sock, msg) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* cringes! 😬`
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-cringe.gif', '😬');
+        } catch (error) {
+            logger.error('Error in cringe command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute cringe command!'
+            });
+        }
+    },
+
+    blush: async (sock, msg) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* blushes! 😳`
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-blush.gif', '😳');
+        } catch (error) {
+            logger.error('Error in blush command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute blush command!'
+            });
+        }
+    },
+
+    smile: async (sock, msg) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* smiles! 😄`
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-smile.gif', '😄');
+        } catch (error) {
+            logger.error('Error in smile command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute smile command!'
+            });
+        }
+    },
+
+    handhold: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* holds hands with ${target}! 🤝`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-handhold.gif', '🤝', mentions);
+        } catch (error) {
+            logger.error('Error in handhold command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute handhold command!'
+            });
+        }
+    },
+
+    baka: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'everyone';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* calls ${target} baka! 🤪`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-baka.gif', '🤪', mentions);
+        } catch (error) {
+            logger.error('Error in baka command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute baka command!'
+            });
+        }
+    },
+
+    neko: async (sock, msg) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* shows a cute neko! 🐱`
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-neko.gif', '🐱');
+        } catch (error) {
+            logger.error('Error in neko command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute neko command!'
+            });
+        }
+    }
 };
 
-// Export the funCommands object
 module.exports = funCommands;
