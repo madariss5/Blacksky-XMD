@@ -3,7 +3,7 @@ const logger = require('pino')();
 
 // Initialize express app
 const app = express();
-const PORT = 4000;
+const PORT = 5000;  // Using port 5000 which is mapped to 80 in .replit
 
 // Basic route
 app.get('/', (req, res) => {
