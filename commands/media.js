@@ -423,12 +423,12 @@ const mediaCommands = {
             const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
             if (!quotedMsg?.imageMessage) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Please reply to an image with !trash'
+                    text: '❌ Please reply to an image with .trash'
                 });
             }
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '⏳ Creating trash effect...'
+                text: '⏳ Creating anime trash effect...'
             });
 
             const buffer = await downloadMediaMessage(
@@ -447,13 +447,13 @@ const mediaCommands = {
 
             // Create temp file paths
             const inputPath = path.join(tempDir, 'input.png');
-            const outputPath = path.join(tempDir, 'output.webp');
+            const outputPath = path.join(tempDir, 'output.gif');
 
             // Write buffer to file
             await fs.writeFile(inputPath, buffer);
 
-            // Create trash effect using Python script
-            const pythonScript = path.join(__dirname, '../scripts/create_trash.py');
+            // Create anime trash effect using Python script
+            const pythonScript = path.join(__dirname, '../scripts/create_anime_trash.py');
             await new Promise((resolve, reject) => {
                 exec(`python3 "${pythonScript}" "${inputPath}" "${outputPath}"`, (error) => {
                     if (error) reject(error);
@@ -464,8 +464,9 @@ const mediaCommands = {
             // Read and send the processed image
             const resultBuffer = await fs.readFile(outputPath);
             await sock.sendMessage(msg.key.remoteJid, {
-                sticker: resultBuffer,
-                mimetype: 'image/webp'
+                video: resultBuffer,
+                gifPlayback: true,
+                caption: '🗑️ Here\'s your anime trash GIF!'
             });
 
             // Cleanup temp files
