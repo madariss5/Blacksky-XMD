@@ -1,7 +1,8 @@
 const OpenAI = require('openai');
 const logger = require('pino')();
 
-// Initialize OpenAI with API key from environment
+// the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
+// do not change this unless explicitly requested by the user
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
 });
@@ -42,9 +43,15 @@ async function chatWithGPT(userId, message) {
             ...history
         ];
 
-        // Make API request
+        // Make API request with enhanced logging
+        logger.info('Making OpenAI API request:', {
+            userId,
+            messageLength: message.length,
+            historyLength: history.length
+        });
+
         const response = await openai.chat.completions.create({
-            model: "gpt-4",
+            model: "gpt-4o", // Latest model as of May 2024
             messages: messages,
             max_tokens: 500,
             temperature: 0.7,
@@ -60,10 +67,19 @@ async function chatWithGPT(userId, message) {
             content: assistantResponse
         });
 
+        logger.info('Received OpenAI response:', {
+            userId,
+            responseLength: assistantResponse.length
+        });
+
         return assistantResponse;
 
     } catch (error) {
-        logger.error('Error in chatWithGPT:', error);
+        logger.error('Error in chatWithGPT:', {
+            error: error.message,
+            userId,
+            stack: error.stack
+        });
         throw new Error('Failed to process your message. Please try again later.');
     }
 }
