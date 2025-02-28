@@ -1,6 +1,6 @@
 const express = require('express');
 const pino = require('pino');
-const logger = pino();
+const logger = require('pino')();
 const { 
     default: makeWASocket,
     useMultiFileAuthState,
@@ -40,7 +40,7 @@ async function startWhatsApp() {
     try {
         logger.info('Starting WhatsApp initialization...');
 
-        // Clear auth directory to force new QR code
+        // Clear existing auth info to force new QR code
         await fs.remove(authDir);
         await fs.ensureDir(authDir);
 
@@ -61,7 +61,7 @@ async function startWhatsApp() {
         logger.info('Creating WhatsApp socket...');
         const sock = makeWASocket({
             version,
-            logger: pino({ level: "debug" }),  // Set to debug for more detailed logs
+            logger: pino({ level: "debug" }), // Set to debug for more detailed logs
             printQRInTerminal: true,
             auth: state,
             browser: ['BLACKSKY-MD', 'Safari', '1.0.0'],
@@ -73,7 +73,6 @@ async function startWhatsApp() {
             markOnlineOnConnect: true
         });
 
-        logger.info('Binding store to socket events...');
         store.bind(sock.ev);
 
         logger.info('Loading message handler...');
