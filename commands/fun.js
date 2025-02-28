@@ -129,22 +129,24 @@ const funCommands = {
 20. *!kill* [@user] - Dramatically eliminate someone
 21. *!yeet* [@user] - Yeet someone into space
 22. *!insult* [@user] - Playfully insult someone
+23. *!triggered* [@user] - Trigger someone
+24. *!wanted* [@user] - Mark someone as wanted
 
 🎲 *Games & Challenges:*
-23. *!coinflip* - Flip a coin
-24. *!dare* - Get a random dare challenge
-25. *!truth* - Get a random truth question
-26. *!magic8ball* [question] - Ask the magic 8 ball
-27. *!wordgame* - Play a word guessing game
+25. *!coinflip* - Flip a coin
+26. *!dare* - Get a random dare challenge
+27. *!truth* - Get a random truth question
+28. *!magic8ball* [question] - Ask the magic 8 ball
+29. *!wordgame* - Play a word guessing game
     - Use *!guess* [word] to make a guess
-28. *!trivia* - Play a trivia game
+30. *!trivia* - Play a trivia game
     - Use *!answer* [number] to answer
 
 🎨 *Fun Content:*
-29. *!joke* - Get a random funny joke
-30. *!quote* - Get an inspirational quote
-31. *!fact* - Learn an interesting fact
-32. *!emojiart* - Get a random emoji art
+31. *!joke* - Get a random funny joke
+32. *!quote* - Get an inspirational quote
+33. *!fact* - Learn an interesting fact
+34. *!emojiart* - Get a random emoji art
 
 *How to use:*
 - Commands with [@user] can tag someone
@@ -748,10 +750,11 @@ const funCommands = {
             });
         }
     },
+
     wasted: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
-            const mentions = args[0] ? [args[0] + '@swhatsapp.net'] : [];
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `💀 *WASTED*\n${target} has been wasted!`,
@@ -804,6 +807,43 @@ const funCommands = {
             });
         }
     },
+    triggered: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `💢 *TRIGGERED*\n${target} is triggered!`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/triggered.gif', '💢', mentions);
+        } catch (error) {
+            logger.error('Error in triggered command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to execute triggered command!'
+            });
+        }
+    },
+
+    wanted: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🤠 *WANTED*\n${target} is now wanted! Dead or alive!`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/wanted.gif', '🤠', mentions);
+        } catch (error) {
+            logger.error('Error in wanted command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to execute wanted command!'
+            });
+        }
+    },
     ponk: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
@@ -853,6 +893,43 @@ const funCommands = {
             });
         }
     },
+    triggered: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `💢 *TRIGGERED*\n${target} is triggered!`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/triggered.gif', '💢', mentions);
+        } catch (error) {
+            logger.error('Error in triggered command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to execute triggered command!'
+            });
+        }
+    },
+
+    wanted: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🤠 *WANTED*\n${target} is now wanted! Dead or alive!`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/wanted.gif', '🤠', mentions);
+        } catch (error) {
+            logger.error('Error in wanted command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to execute wanted command!'
+            });
+        }
+    }
 
 };
 

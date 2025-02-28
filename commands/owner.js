@@ -1,6 +1,12 @@
 const config = require('../config');
 const store = require('../database/store');
 const os = require('os');
+const QRCode = require('qrcode');
+const QRReader = require('qrcode-reader');
+const Jimp = require('jimp');
+const fs = require('fs-extra');
+const path = require('path');
+const tempDir = os.tmpdir();
 
 const ownerCommands = {
     broadcast: async (sock, msg, args) => {
@@ -149,18 +155,45 @@ const ownerCommands = {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
         }
-        const stats = {
-            users: Object.keys(store.get('users') || {}).length,
-            groups: store.get('chats')?.filter(id => id.endsWith('@g.us')).length || 0,
-            banned: store.getBannedUsers().length,
-            bannedGroups: store.getBannedGroups().length
-        };
-        const statsText = `*Bot Statistics*\n\n` +
-                         `• Total Users: ${stats.users}\n` +
-                         `• Total Groups: ${stats.groups}\n` +
-                         `• Banned Users: ${stats.banned}\n` +
-                         `• Banned Groups: ${stats.bannedGroups}\n`;
-        await sock.sendMessage(msg.key.remoteJid, { text: statsText });
+
+        try {
+            const stats = {
+                users: Object.keys(store.get('users') || {}).length,
+                groups: store.get('chats')?.filter(id => id.endsWith('@g.us')).length || 0,
+                banned: store.getBannedUsers().length,
+                bannedGroups: store.getBannedGroups().length,
+                system: {
+                    platform: os.platform(),
+                    arch: os.arch(),
+                    cpus: os.cpus().length,
+                    totalMem: (os.totalmem() / (1024 * 1024 * 1024)).toFixed(2) + ' GB',
+                    freeMem: (os.freemem() / (1024 * 1024 * 1024)).toFixed(2) + ' GB',
+                    uptime: Math.floor(os.uptime() / 3600) + 'h ' + Math.floor((os.uptime() % 3600) / 60) + 'm',
+                    botUptime: Math.floor(process.uptime() / 3600) + 'h ' + Math.floor((process.uptime() % 3600) / 60) + 'm'
+                }
+            };
+
+            const statsText = `📊 *Bot Statistics*\n\n` +
+                          `👥 Users: ${stats.users}\n` +
+                          `👥 Groups: ${stats.groups}\n` +
+                          `🚫 Banned Users: ${stats.banned}\n` +
+                          `🚫 Banned Groups: ${stats.bannedGroups}\n\n` +
+                          `💻 *System Information*\n\n` +
+                          `• Platform: ${stats.system.platform}\n` +
+                          `• Architecture: ${stats.system.arch}\n` +
+                          `• CPUs: ${stats.system.cpus}\n` +
+                          `• Total Memory: ${stats.system.totalMem}\n` +
+                          `• Free Memory: ${stats.system.freeMem}\n` +
+                          `• System Uptime: ${stats.system.uptime}\n` +
+                          `• Bot Uptime: ${stats.system.botUptime}`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text: statsText });
+        } catch (error) {
+            logger.error('Error in stats command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to get stats: ' + error.message
+            });
+        }
     },
 
     clearcache: async (sock, msg) => {
@@ -350,6 +383,74 @@ const ownerCommands = {
         await sock.sendMessage(msg.key.remoteJid, { 
             text: `Bot mode set to ${mode}`
         });
+    },
+    qrmaker: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+
+        const text = args.join(' ');
+        if (!text) {
+            return await sock.sendMessage(msg.key.remoteJid, { 
+                text: '❌ Please provide text to convert to QR code!' 
+            });
+        }
+
+        try {
+            const qrPath = path.join(tempDir, 'qr_output.png');
+            await QRCode.toFile(qrPath, text, {
+                color: {
+                    dark: '#000000',
+                    light: '#FFFFFF'
+                },
+                width: 512,
+                margin: 1
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: qrPath },
+                caption: '✅ Here is your QR code!'
+            });
+
+            await fs.remove(qrPath);
+        } catch (error) {
+            logger.error('Error in qrmaker command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to generate QR code: ' + error.message
+            });
+        }
+    },
+
+    qrreader: async (sock, msg) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+
+        if (!msg.message.imageMessage) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Please send an image containing a QR code!'
+            });
+        }
+
+        try {
+            const buffer = await sock.downloadMediaMessage(msg);
+            const image = await Jimp.read(buffer);
+
+            const qr = new QRReader();
+            const value = await new Promise((resolve, reject) => {
+                qr.callback = (err, v) => err != null ? reject(err) : resolve(v);
+                qr.decode(image.bitmap);
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `📱 QR Code Content:\n\n${value.result}`
+            });
+        } catch (error) {
+            logger.error('Error in qrreader command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to read QR code: ' + error.message
+            });
+        }
     }
 };
 
