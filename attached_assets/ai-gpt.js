@@ -21,6 +21,46 @@ let isCircuitOpen = false;
 let lastErrorTime = 0;
 const CIRCUIT_RESET_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
+// Simple local response patterns
+const localResponses = {
+    greetings: {
+        patterns: ['hello', 'hi', 'hey', 'how are you'],
+        responses: [
+            "Hello! I'm your WhatsApp assistant. How can I help you today?",
+            "Hi there! I'm here to help. What can I do for you?",
+            "Hey! I'm ready to assist you. What would you like to know?"
+        ]
+    },
+    thanks: {
+        patterns: ['thank', 'thanks', 'appreciate'],
+        responses: [
+            "You're welcome! Let me know if you need anything else.",
+            "Glad I could help! Feel free to ask more questions.",
+            "Anytime! I'm here if you need further assistance."
+        ]
+    },
+    help: {
+        patterns: ['help', 'what can you do', 'commands'],
+        responses: [
+            "I can help with various tasks! Try asking me questions, or use commands like .daily for rewards.",
+            "I'm here to assist! You can ask me questions or use economy commands like .work and .daily.",
+            "Need help? I can answer questions and help you with game features. Just ask!"
+        ]
+    }
+};
+
+function getLocalResponse(message) {
+    message = message.toLowerCase();
+
+    for (const [category, data] of Object.entries(localResponses)) {
+        if (data.patterns.some(pattern => message.includes(pattern))) {
+            return data.responses[Math.floor(Math.random() * data.responses.length)];
+        }
+    }
+
+    return null;
+}
+
 function checkRateLimit(userId) {
     const now = Date.now();
     const userLimit = userRateLimits.get(userId) || { count: 0, resetTime: now + RATE_LIMIT_WINDOW };
@@ -41,28 +81,34 @@ function checkRateLimit(userId) {
 
 function getFallbackResponse() {
     const responses = [
-        "I'm currently experiencing high demand. Please try again in a few minutes.",
-        "I need a quick break to recharge. Could you ask me again shortly?",
-        "My AI services are temporarily busy. I'll be back to help you soon!"
+        "I'm currently in local mode. I can help with basic queries!",
+        "I'm operating offline right now, but I'll try my best to help!",
+        "My advanced AI is taking a break, but I can still assist with simple questions!"
     ];
     return responses[Math.floor(Math.random() * responses.length)];
 }
 
 async function chatWithGPT(userId, message) {
     try {
+        // Try local response first
+        const localResponse = getLocalResponse(message);
+        if (localResponse) {
+            return localResponse;
+        }
+
         // Check circuit breaker
         if (isCircuitOpen) {
             const now = Date.now();
             if (now - lastErrorTime > CIRCUIT_RESET_TIMEOUT) {
                 isCircuitOpen = false;
             } else {
-                throw new Error('Service temporarily unavailable');
+                return getFallbackResponse();
             }
         }
 
         // Check rate limit
         if (!checkRateLimit(userId)) {
-            throw new Error('Rate limit exceeded. Please wait a minute before trying again.');
+            return "I'm getting too many requests. Please wait a minute before trying again.";
         }
 
         // Get or initialize conversation history
@@ -101,7 +147,7 @@ async function chatWithGPT(userId, message) {
         const response = await openai.chat.completions.create({
             model: "gpt-3.5-turbo-instruct",
             messages: messages,
-            max_tokens: 150, // Reduced from 800 to minimize token usage
+            max_tokens: 150,
             temperature: 0.7,
             presence_penalty: 0.6
         });
@@ -133,14 +179,13 @@ async function chatWithGPT(userId, message) {
         if (error.message.includes('quota') || error.message.includes('rate_limit')) {
             isCircuitOpen = true;
             lastErrorTime = Date.now();
-            throw new Error(getFallbackResponse());
+            return getFallbackResponse();
         }
 
-        throw new Error(`${getFallbackResponse()} (Error: ${error.message})`);
+        return getFallbackResponse() + "\nTry asking something simple like 'hello' or 'help'!";
     }
 }
 
-// Function to clear conversation history
 function clearConversation(userId) {
     conversationHistory.delete(userId);
     return "Conversation history cleared! Let's start fresh.";
