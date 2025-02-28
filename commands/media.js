@@ -393,43 +393,64 @@ const mediaCommands = {
             // Encode emojis for URL
             const emoji1Encoded = encodeURIComponent(emoji1);
             const emoji2Encoded = encodeURIComponent(emoji2);
+            const searchQuery = `${emoji1Encoded}${emoji2Encoded}`;
 
-            // Get mixed emoji image
+            logger.info(`Making Tenor API request for emoji mix: ${emoji1} + ${emoji2}`);
+            logger.info(`Using search query: ${searchQuery}`);
+
+            // Get mixed emoji image from Tenor
             const response = await axios.get(
-                `https://tenor.googleapis.com/v2/featured?key=${config.tenorApiKey}&contentfilter=high&media_filter=minimal&q=${emoji1Encoded}_${emoji2Encoded}`,
-                { responseType: 'arraybuffer' }
+                `https://tenor.googleapis.com/v2/search?q=${searchQuery}&key=${config.tenorApiKey}&client_key=whatsapp_bot&limit=1&media_filter=minimal`,
+                { responseType: 'json' }
             );
 
-            if (!response.data) {
-                throw new Error('Failed to mix emojis');
+            logger.info('Tenor API response received:', {
+                status: response.status,
+                hasResults: !!response.data?.results?.length,
+                resultCount: response.data?.results?.length
+            });
+
+            if (!response.data?.results?.[0]?.media_formats?.webp?.url) {
+                throw new Error('No emoji mix found');
             }
 
-            // Save the image temporarily
-            const inputPath = path.join(tempDir, 'emoji_mix.png');
-            const outputPath = path.join(tempDir, 'emoji_mix.webp');
+            const webpUrl = response.data.results[0].media_formats.webp.url;
+            logger.info(`Found WebP URL: ${webpUrl}`);
 
-            await fs.writeFile(inputPath, response.data);
+            // Download the webp file
+            const webpResponse = await axios.get(webpUrl, {
+                responseType: 'arraybuffer'
+            });
 
-            // Convert to WebP using Python script
-            await convertToWebp(inputPath, outputPath);
+            logger.info('Successfully downloaded WebP image');
 
-            // Read the WebP file
-            const webpBuffer = await fs.readFile(outputPath);
-
-            // Send as sticker
+            // Save as sticker
+            const stickerBuffer = Buffer.from(webpResponse.data);
             await sock.sendMessage(msg.key.remoteJid, {
-                sticker: webpBuffer,
+                sticker: stickerBuffer,
                 mimetype: 'image/webp'
             });
 
-            // Cleanup temp files
-            await fs.remove(inputPath);
-            await fs.remove(outputPath);
-
         } catch (error) {
-            logger.error('Error in emojimix command:', error);
+            logger.error('Error in emojimix command:', {
+                error: error.message,
+                response: error.response?.data,
+                status: error.response?.status
+            });
+
+            let errorMessage = '❌ Failed to mix emojis';
+            if (error.response?.status === 400) {
+                errorMessage += ': Invalid emoji combination';
+            } else if (error.response?.status === 429) {
+                errorMessage += ': Too many requests, please try again later';
+            } else if (error.message === 'No emoji mix found') {
+                errorMessage += ': This emoji combination is not available';
+            } else {
+                errorMessage += `: ${error.message}`;
+            }
+
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to mix emojis: ' + error.message
+                text: errorMessage
             });
         }
     }
