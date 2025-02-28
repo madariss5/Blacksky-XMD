@@ -9,11 +9,12 @@ const commandModules = {
     music: require('../commands/music'),
     fun: require('../commands/fun'),
     economy: require('../commands/economy'),
-    group: require('../commands/group'), // Added group commands
+    group: require('../commands/group'),
     nsfw: require('../commands/nsfw'),
     game: require('../commands/game'),
     anime: require('../commands/anime'),
-    ai: require('../commands/ai')
+    ai: require('../commands/ai'),
+    media: require('../commands/media') // Added media commands
 };
 
 async function executeCommand(sock, msg, command, args, moduleName) {
