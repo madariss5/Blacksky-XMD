@@ -12,16 +12,24 @@ app.get('/', (req, res) => {
     res.send('WhatsApp Bot is running!');
 });
 
-// Enhanced health check
+// Enhanced health check endpoint
 app.get('/health', (req, res) => {
-    res.json({
-        status: 'healthy',
-        uptime: process.uptime(),
-        timestamp: new Date().toISOString(),
-        whatsappConnected: whatsapp.isSocketConnected(),
-        serverConnected: true,
-        port: PORT
-    });
+    try {
+        res.json({
+            status: 'healthy',
+            uptime: process.uptime(),
+            timestamp: new Date().toISOString(),
+            whatsappConnected: whatsapp.isSocketConnected(),
+            serverConnected: true,
+            port: PORT,
+            environment: process.env.NODE_ENV || 'development'
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            error: error.message
+        });
+    }
 });
 
 // Start server with improved error handling and auto-restart

@@ -28,8 +28,109 @@ const convertToWebp = async (inputPath, outputPath) => {
     });
 };
 
+// Add enhanced logging to downloadMediaMessage function 
+const downloadMediaMessageWithLogging = async (messageInfo, type, options, downloadOptions) => {
+    logger.info('Starting media download:', {
+        type: type,
+        messageType: Object.keys(messageInfo.message)[0],
+        messageTimestamp: messageInfo.messageTimestamp
+    });
+
+    try {
+        const buffer = await downloadMediaMessage(
+            messageInfo,
+            type,
+            options,
+            downloadOptions
+        );
+        logger.info('Media download completed successfully', {
+            bufferSize: buffer.length
+        });
+        return buffer;
+    } catch (error) {
+        logger.error('Media download failed:', {
+            error: error.message,
+            stack: error.stack,
+            messageInfo: {
+                type: type,
+                messageType: Object.keys(messageInfo.message)[0]
+            }
+        });
+        throw error;
+    }
+};
+
+// Add enhanced logging to ImageMagick execution
+const executeImageMagick = async (command, inputPath, outputPath) => {
+    logger.info('Executing ImageMagick command:', {
+        command: command,
+        input: inputPath,
+        output: outputPath,
+        timestamp: new Date().toISOString()
+    });
+
+    try {
+        await new Promise((resolve, reject) => {
+            const startTime = Date.now();
+            exec(command, (error, stdout, stderr) => {
+                const duration = Date.now() - startTime;
+                if (error) {
+                    logger.error('ImageMagick execution failed:', {
+                        error: error,
+                        stdout: stdout,
+                        stderr: stderr,
+                        duration: duration,
+                        command: command
+                    });
+                    reject(error);
+                } else {
+                    logger.info('ImageMagick execution completed successfully', {
+                        duration: duration,
+                        hasStdout: !!stdout,
+                        hasStderr: !!stderr
+                    });
+                    resolve();
+                }
+            });
+        });
+    } catch (error) {
+        logger.error('ImageMagick execution error:', {
+            error: error.message,
+            stack: error.stack,
+            command: command
+        });
+        throw error;
+    }
+};
+
+// Add file cleanup helper with logging
+async function cleanupTempFiles(...filePaths) {
+    logger.info('Starting cleanup of temporary files:', {
+        files: filePaths
+    });
+
+    try {
+        for (const filePath of filePaths) {
+            if (await fs.pathExists(filePath)) {
+                await fs.remove(filePath);
+                logger.info('Successfully removed temp file:', {
+                    file: filePath
+                });
+            }
+        }
+    } catch (error) {
+        logger.error('Error during file cleanup:', {
+            error: error.message,
+            stack: error.stack,
+            files: filePaths
+        });
+        // Don't throw - we don't want cleanup failures to affect command response
+    }
+}
+
 const mediaCommands = {
     sticker: async (sock, msg, args) => {
+        const tempFiles = [];
         try {
             // Check if media is attached
             const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
@@ -47,8 +148,8 @@ const mediaCommands = {
             const isVideo = !!quotedMsg.videoMessage;
             const messageType = isVideo ? 'videoMessage' : 'imageMessage';
 
-            // Download media using Baileys downloadMediaMessage
-            const buffer = await downloadMediaMessage(
+            // Download media using enhanced logging
+            const buffer = await downloadMediaMessageWithLogging(
                 {
                     key: msg.message.extendedTextMessage.contextInfo.stanzaId,
                     message: quotedMsg,
@@ -65,12 +166,15 @@ const mediaCommands = {
             // Create temp file paths
             const inputPath = path.join(tempDir, `input.${isVideo ? 'mp4' : 'jpg'}`);
             const outputPath = path.join(tempDir, 'output.webp');
+            tempFiles.push(inputPath, outputPath);
 
             // Write buffer to file
             await fs.writeFile(inputPath, buffer);
 
             // If it's a video, extract first frame
             if (isVideo) {
+                const framePath = path.join(tempDir, 'frame.jpg');
+                tempFiles.push(framePath);
                 await new Promise((resolve, reject) => {
                     ffmpeg(inputPath)
                         .screenshots({
@@ -82,7 +186,7 @@ const mediaCommands = {
                         .on('error', reject);
                 });
                 await fs.unlink(inputPath);
-                await fs.move(path.join(tempDir, 'frame.jpg'), inputPath);
+                await fs.move(framePath, inputPath);
             }
 
             // Convert to WebP using Python script
@@ -98,11 +202,15 @@ const mediaCommands = {
             });
 
             // Cleanup temp files
-            await fs.remove(inputPath);
-            await fs.remove(outputPath);
+            await cleanupTempFiles(...tempFiles);
 
         } catch (error) {
-            logger.error('Error in sticker command:', error);
+            logger.error('Error in sticker command:', {
+                error: error.message,
+                stack: error.stack
+            });
+            // Attempt cleanup even on error
+            await cleanupTempFiles(...tempFiles);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Failed to create sticker: ' + error.message
             });
@@ -143,13 +251,12 @@ const mediaCommands = {
             // Write buffer to file
             await fs.writeFile(inputPath, buffer);
 
-            // Convert WebP to PNG using Python script
-            await new Promise((resolve, reject) => {
-                exec(`python3 -c "from PIL import Image; Image.open('${inputPath}').convert('RGBA').save('${outputPath}', 'PNG')"`, (error) => {
-                    if (error) reject(error);
-                    else resolve();
-                });
-            });
+            // Convert WebP to PNG using Python script with enhanced logging
+            await executeImageMagick(
+                `python3 -c "from PIL import Image; Image.open('${inputPath}').convert('RGBA').save('${outputPath}', 'PNG')"`, 
+                inputPath, 
+                outputPath
+            );
 
             // Read and send the PNG file
             const pngBuffer = await fs.readFile(outputPath);
@@ -537,13 +644,12 @@ const mediaCommands = {
             const tempOutput = path.join(tempDir, 'output.webp');
             await fs.writeFile(tempInput, buffer);
 
-            // Add metadata using exiftool
-            await new Promise((resolve, reject) => {
-                exec(`exiftool -overwrite_original -PackageName="${packname}" -Author="${author}" "${tempInput}" -o "${tempOutput}"`, (error) => {
-                    if (error) reject(error);
-                    else resolve();
-                });
-            });
+            // Add metadata using exiftool with enhanced logging
+            await executeImageMagick(
+                `exiftool -overwrite_original -PackageName="${packname}" -Author="${author}" "${tempInput}" -o "${tempOutput}"`,
+                tempInput,
+                tempOutput
+            );
 
             const outputBuffer = await fs.readFile(tempOutput);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -596,13 +702,12 @@ const mediaCommands = {
             const tempOutput = path.join(tempDir, 'output.webp');
             await fs.writeFile(tempInput, buffer);
 
-            // Generate meme using ImageMagick
-            await new Promise((resolve, reject) => {
-                exec(`convert "${tempInput}" -font Impact -pointsize 50 -gravity north -annotate +0+20 "${topText}" -gravity south -annotate +0+20 "${bottomText}" "${tempOutput}"`, (error) => {
-                    if (error) reject(error);
-                    else resolve();
-                });
-            });
+            // Generate meme using ImageMagick with enhanced logging
+            await executeImageMagick(
+                `convert "${tempInput}" -font Impact -pointsize 50 -gravity north -annotate +0+20 "${topText}" -gravity south -annotate +0+20 "${bottomText}" "${tempOutput}"`,
+                tempInput,
+                tempOutput
+            );
 
             const outputBuffer = await fs.readFile(tempOutput);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -633,13 +738,12 @@ const mediaCommands = {
             const text = args.join(' ');
             const tempOutput = path.join(tempDir, 'output.webp');
 
-            // Generate text image using ImageMagick
-            await new Promise((resolve, reject) => {
-                exec(`convert -size 512x512 xc:transparent -font Arial -pointsize 72 -gravity center -fill white -annotate +0+0 "${text}" "${tempOutput}"`, (error) => {
-                    if (error) reject(error);
-                    else resolve();
-                });
-            });
+            // Generate text image using ImageMagick with enhanced logging
+            await executeImageMagick(
+                `convert -size 512x512 xc:transparent -font Arial -pointsize 72 -gravity center -fill white -annotate +0+0 "${text}" "${tempOutput}"`,
+                null,
+                tempOutput
+            );
 
             const outputBuffer = await fs.readFile(tempOutput);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -732,13 +836,12 @@ const mediaCommands = {
             const tempOutput = path.join(tempDir, 'output.jpg');
             await fs.writeFile(tempInput, buffer);
 
-            // Apply blur effect using ImageMagick
-            await new Promise((resolve, reject) => {
-                exec(`convert "${tempInput}" -blur 0x8 "${tempOutput}"`, (error) => {
-                    if (error) reject(error);
-                    else resolve();
-                });
-            });
+            // Apply blur effect using ImageMagick with enhanced logging
+            await executeImageMagick(
+                `convert "${tempInput}" -blur 0x8 "${tempOutput}"`,
+                tempInput,
+                tempOutput
+            );
 
             const outputBuffer = await fs.readFile(tempOutput);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -819,6 +922,16 @@ const mediaCommands = {
                 'kiss', 'wink', 'punch'
             ];
 
+            logger.info('GIF command called with args:', {
+                args: args,
+                validGifs: validGifs,
+                messageInfo: {
+                    remoteJid: msg.key.remoteJid,
+                    participant: msg.key.participant,
+                    pushName: msg.pushName
+                }
+            });
+
             if (!args.length || !validGifs.includes(args[0].toLowerCase())) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: `❌ Please specify a valid GIF type!\nAvailable types: ${validGifs.join(', ')}\nUsage: !gif <type> [mention]`
@@ -830,7 +943,18 @@ const mediaCommands = {
                                 msg.message.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
 
             const gifPath = path.join(__dirname, `../media/anime-${gifType}.gif`);
+            
+            logger.info('Attempting to load GIF:', {
+                gifType: gifType,
+                gifPath: gifPath,
+                mentionedJid: mentionedJid
+            });
+
             if (!fs.existsSync(gifPath)) {
+                logger.error('GIF file not found:', {
+                    gifType: gifType,
+                    gifPath: gifPath
+                });
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '❌ GIF not found!'
                 });
@@ -843,15 +967,27 @@ const mediaCommands = {
                 caption = `*${senderName}* ${gifType}s @${mentionedJid.split('@')[0]}`;
             }
 
+            const gifBuffer = fs.readFileSync(gifPath);
+            logger.info('Successfully loaded GIF:', {
+                gifType: gifType,
+                gifSize: gifBuffer.length,
+                hasCaption: !!caption
+            });
+
             await sock.sendMessage(msg.key.remoteJid, {
-                video: fs.readFileSync(gifPath),
+                video: gifBuffer,
                 caption: caption,
                 gifPlayback: true,
                 mentions: mentionedJid ? [mentionedJid] : undefined
             });
 
+            logger.info('GIF sent successfully');
+
         } catch (error) {
-            logger.error('Error in gif command:', error);
+            logger.error('Error in gif command:', error, {
+                stack: error.stack,
+                args: args
+            });
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Failed to send GIF: ' + error.message
             });
@@ -1064,7 +1200,7 @@ const mediaCommands = {
             const tempOutput = path.join(tempDir, 'output.jpg');
             await fs.writeFile(tempInput, buffer);
 
-            // Apply filter effect using ImageMagick
+            // Apply filter effect using ImageMagick with enhanced logging
             const filterCommands = {
                 sepia: `-sepia-tone 80%`,
                 grayscale: `-colorspace gray`,
@@ -1072,12 +1208,11 @@ const mediaCommands = {
                 vintage: `-modulate 100,50,100 -colorize 20,0,20`
             };
 
-            await new Promise((resolve, reject) => {
-                exec(`convert "${tempInput}" ${filterCommands[filterType]} "${tempOutput}"`, (error) => {
-                    if (error) reject(error);
-                    else resolve();
-                });
-            });
+            await executeImageMagick(
+                `convert "${tempInput}" ${filterCommands[filterType]} "${tempOutput}"`,
+                tempInput,
+                tempOutput
+            );
 
             const outputBuffer = await fs.readFile(tempOutput);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -1176,13 +1311,12 @@ const mediaCommands = {
             const tempOutput = path.join(tempDir, 'output.png');
             await fs.writeFile(tempInput, buffer);
 
-            // Create rainbow overlay effect usingImageMagick
-            await new Promise((resolve, reject) => {
-                exec(`convert "${tempInput}" \( +clone -colorspace HSB -separate +channel \) -background rainbow -compose overlay -composite "${tempOutput}"`, (error) => {
-                    if (error) reject(error);
-                    else resolve();
-                });
-            });
+            // Create rainbow overlay effect using ImageMagick with enhanced logging
+            await executeImageMagick(
+                `convert "${tempInput}" \( +clone -colorspace HSB -separate +channel \) -background rainbow -compose overlay -composite "${tempOutput}"`,
+                tempInput,
+                tempOutput
+            );
 
             const outputBuffer = await fs.readFile(tempOutput);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -1230,13 +1364,12 @@ const mediaCommands = {
             const trashOverlay = path.join(__dirname, '../assets/trash_overlay.png');
             await fs.writeFile(tempInput, buffer);
 
-            // Create trash effect using ImageMagick
-            await new Promise((resolve, reject) => {
-                exec(`convert "${tempInput}" -modulate 100,50,100 \\( "${trashOverlay}" -resize $(identify -format "%wx%h" "${tempInput}") \\) -gravity center -composite "${tempOutput}"`, (error) => {
-                    if (error) reject(error);
-                    else resolve();
-                });
-            });
+            // Create trash effect using ImageMagick with enhanced logging
+            await executeImageMagick(
+                `convert "${tempInput}" -modulate 100,50,100 \\( "${trashOverlay}" -resize $(identify -format "%wx%h" "${tempInput}") \\) -gravity center -composite "${tempOutput}"`,
+                tempInput,
+                tempOutput
+            );
 
             const outputBuffer = await fs.readFile(tempOutput);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -1284,13 +1417,12 @@ const mediaCommands = {
             const ripOverlay = path.join(__dirname, '../assets/rip_overlay.png');
             await fs.writeFile(tempInput, buffer);
 
-            // Create RIP effect using ImageMagick
-            await new Promise((resolve, reject) => {
-                exec(`convert "${tempInput}" -colorspace gray \\( "${ripOverlay}" -resize $(identify -format "%wx%h" "${tempInput}") \\) -composite "${tempOutput}"`, (error) => {
-                    if (error) reject(error);
-                    else resolve();
-                });
-            });
+            // Create RIP effect using ImageMagick with enhanced logging
+            await executeImageMagick(
+                `convert "${tempInput}" -colorspace gray \\( "${ripOverlay}" -resize $(identify -format "%wx%h" "${tempInput}") \\) -composite "${tempOutput}"`,
+                tempInput,
+                tempOutput
+            );
 
             const outputBuffer = await fs.readFile(tempOutput);
             await sock.sendMessage(msg.key.remoteJid, {
