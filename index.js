@@ -34,13 +34,27 @@ try {
                 try {
                     const msg = messages[0];
                     if (!msg?.message) return;
-                    logger.info('Processing new message:', {
+
+                    // Add more detailed logging
+                    logger.info('Received message:', {
                         from: msg.key.remoteJid,
-                        type: Object.keys(msg.message)[0]
+                        type: Object.keys(msg.message)[0],
+                        messageContent: msg.message?.conversation || msg.message?.extendedTextMessage?.text || 'No text content',
+                        participant: msg.key.participant,
+                        pushName: msg.pushName
                     });
+
                     await messageHandler(sock, msg);
                 } catch (error) {
                     logger.error('Message handling error:', error);
+                    // Try to send error message back to user
+                    try {
+                        await sock.sendMessage(msg.key.remoteJid, {
+                            text: '❌ Error processing your message. Please try again.'
+                        });
+                    } catch (sendError) {
+                        logger.error('Failed to send error message:', sendError);
+                    }
                 }
             });
 
