@@ -266,20 +266,18 @@ const groupCommands = {
             }
 
             try {
-                // Notify user about link generation
-                await sock.sendMessage(msg.key.remoteJid, { text: '🔄 Generating group link...' });
-
-                // Try to get the invite code
+                // Get the group code directly from Baileys without any pre-checks
+                logger.info('Attempting to generate group link for:', msg.key.remoteJid);
                 const code = await sock.groupInviteCode(msg.key.remoteJid);
 
                 if (!code) {
+                    logger.error('No invite code returned from Baileys');
                     throw new Error('Could not generate invite code');
                 }
 
                 const linkMessage = `🔗 *Group Invite Link*\n\n` +
                                   `Group: ${groupMetadata.subject}\n` +
-                                  `Link: https://chat.whatsapp.com/${code}\n\n` +
-                                  `Note: This link can be revoked using ${config.prefix}revoke`;
+                                  `Link: https://chat.whatsapp.com/${code}`;
 
                 await sock.sendMessage(msg.key.remoteJid, {
                     text: linkMessage
@@ -291,7 +289,7 @@ const groupCommands = {
                 });
             } catch (error) {
                 logger.error('Error in group link generation:', error);
-                throw new Error('Could not generate invite code. Please try again later.');
+                throw new Error('Unable to generate group invite link at this time');
             }
         } catch (error) {
             logger.error('Error in link command:', error);
