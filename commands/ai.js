@@ -80,6 +80,30 @@ const downloadImage = async (imageUrl, filename) => {
     });
 };
 
+// Helper function to get topic-specific image
+const getTopicImage = async (query) => {
+    try {
+        // Using Pexels API through proxy URL
+        const searchUrl = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1`;
+        const response = await axios.get(searchUrl, {
+            headers: {
+                'Authorization': process.env.PEXELS_API_KEY || 'dummy_key'
+            }
+        });
+
+        // If Pexels fails, fallback to placeholder
+        if (!response.data || !response.data.photos || !response.data.photos.length) {
+            return `https://via.placeholder.com/800x800.png?text=${encodeURIComponent(query)}`;
+        }
+
+        return response.data.photos[0].src.large;
+    } catch (error) {
+        logger.error('Error fetching topic image:', error);
+        // Return a themed placeholder on error
+        return `https://via.placeholder.com/800x800.png?text=${encodeURIComponent(query)}`;
+    }
+};
+
 const aiCommands = {
     gpt: async (sock, msg, args) => {
         try {
@@ -136,13 +160,14 @@ const aiCommands = {
                 text: '🎨 Generating your image...'
             });
 
-            // Generate a unique identifier for this request
-            const timestamp = Date.now();
-            const seed = Math.floor(Math.random() * 1000);
-            const imageUrl = `https://picsum.photos/seed/${seed}/800/800`;
+            // Get topic-specific image URL
+            const imageUrl = await getTopicImage(args.join(' '));
 
-            // Download the image first
+            // Generate filename with timestamp
+            const timestamp = Date.now();
             const filename = `image_${timestamp}.jpg`;
+
+            // Download image to local file
             const localImagePath = await downloadImage(imageUrl, filename);
 
             setCooldown(userId);
@@ -150,10 +175,10 @@ const aiCommands = {
             // Send the image from local file
             await sock.sendMessage(msg.key.remoteJid, {
                 image: fs.readFileSync(localImagePath),
-                caption: '🖼️ Here\'s an artistic image for you!'
+                caption: `🖼️ Here's an image of "${args.join(' ')}" for you!`
             });
 
-            // Clean up the temporary file
+            // Clean up temporary file
             await fs.unlink(localImagePath);
 
         } catch (error) {
