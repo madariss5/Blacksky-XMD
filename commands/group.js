@@ -235,17 +235,33 @@ const groupCommands = {
             const groupMetadata = await validateGroupContext(sock, msg, false);
             if (!groupMetadata) return;
 
+            // Get all participants' JIDs
             const participants = groupMetadata.participants.map(p => p.id);
+
+            // Construct message with mentions
             const message = args.length > 0 ? args.join(' ') : 'Attention everyone!';
 
+            // Create mention tags for each participant
+            const mentionTags = participants.map(jid => `@${jid.split('@')[0]}`).join(' ');
+
+            // Send message with visible mentions
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `👥 *Group Announcement*\n\n${message}`,
-                mentions: participants
+                text: `👥 *Group Announcement*\n\n${message}\n\n${mentionTags}`,
+                mentions: participants,
+                contextInfo: {
+                    mentionedJid: participants
+                }
+            });
+
+            logger.info('Everyone mentioned:', {
+                group: msg.key.remoteJid,
+                sender: msg.key.participant,
+                participants: participants.length
             });
         } catch (error) {
             logger.error('Error in everyone command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: '❌ Failed to mention everyone: ' + error.message 
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to mention everyone: ' + error.message
             });
         }
     },
@@ -318,12 +334,26 @@ const groupCommands = {
             const groupMetadata = await validateGroupContext(sock, msg, true);
             if (!groupMetadata) return;
 
+            // Get all participants' JIDs
             const participants = groupMetadata.participants.map(p => p.id);
+
+            // Construct message with hidden mentions
             const message = args.length > 0 ? args.join(' ') : 'Hidden announcement';
 
+            // Send message with hidden mentions
             await sock.sendMessage(msg.key.remoteJid, {
                 text: message,
-                mentions: participants
+                mentions: participants,
+                contextInfo: {
+                    mentionedJid: participants,
+                    isHiddenTag: true // Add this flag for hidden tags
+                }
+            });
+
+            logger.info('Hidden tag sent:', {
+                group: msg.key.remoteJid,
+                sender: msg.key.participant,
+                participants: participants.length
             });
         } catch (error) {
             logger.error('Error in hidetag command:', error);
