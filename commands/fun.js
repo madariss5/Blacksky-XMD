@@ -750,7 +750,6 @@ const funCommands = {
             });
         }
     },
-
     wasted: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
@@ -769,26 +768,6 @@ const funCommands = {
             });
         }
     },
-
-    jail: async (sock, msg, args) => {
-        try {
-            const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
-            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `🏢 *JAIL*\n${target} is now behind bars!`,
-                mentions: mentions
-            });
-
-            await sendGifReaction(sock, msg, './media/anime-jail.gif', '🏢', mentions);
-        } catch (error) {
-            logger.error('Error in jail command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to execute jail command!'
-            });
-        }
-    },
-
     rip: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
@@ -825,22 +804,21 @@ const funCommands = {
             });
         }
     },
-
-    wanted: async (sock, msg, args) => {
+    jail: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `🤠 *WANTED*\n${target} is now wanted! Dead or alive!`,
+                text: `🏢 *JAIL*\n${target} is now behind bars!`,
                 mentions: mentions
             });
 
-            await sendGifReaction(sock, msg, './media/wanted.gif', '🤠', mentions);
+            await sendGifReaction(sock, msg, './media/jail.gif', '🏢', mentions);
         } catch (error) {
-            logger.error('Error in wanted command:', error);
+            logger.error('Error in jail command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to execute wanted command!'
+                text: '❌ Failed to execute jail command!'
             });
         }
     },
@@ -922,7 +900,7 @@ const funCommands = {
                 mentions: mentions
             });
 
-            await sendGifReaction(sock, msg, './media/wanted.gif', '🤠', mentions);
+            await sendGifReaction(sock, msg, './media/anime-wanted.gif', '🤠', mentions);
         } catch (error) {
             logger.error('Error in wanted command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
