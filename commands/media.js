@@ -410,6 +410,10 @@ const mediaCommands = {
                         media_filter: 'minimal',
                         contentfilter: 'medium'
                     },
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
                     responseType: 'json'
                 }
             );
@@ -451,6 +455,8 @@ const mediaCommands = {
             let errorMessage = '❌ Failed to mix emojis';
             if (error.response?.status === 400) {
                 errorMessage += ': Invalid emoji combination';
+            } else if (error.response?.status === 403) {
+                errorMessage += ': API authentication failed';
             } else if (error.response?.status === 429) {
                 errorMessage += ': Too many requests, please try again later';
             } else if (error.message === 'No emoji mix found') {
