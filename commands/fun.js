@@ -102,49 +102,81 @@ const sendGifReaction = async (sock, msg, mediaPath, caption = '', mentions = []
 const funCommands = {
     menu: async (sock, msg) => {
         const commandList = `🎮 *Fun Commands Menu* 🎮\n
-🎯 *Reaction Commands:*
-1. *!slap* [@user] - Slap someone with an anime gif
-2. *!hug* [@user] - Give someone a warm hug
-3. *!pat* [@user] - Pat someone gently
-4. *!highfive* [@user] - Give someone a high-five
-5. *!poke* [@user] - Poke someone playfully
-6. *!cuddle* [@user] - Cuddle with someone sweetly
-7. *!boop* [@user] - Boop someone's nose
-8. *!bonk* [@user] - Bonk someone on the head
-9. *!wave* [@user] - Wave at someone
+🎯 *Interactive Games:*
+1. *!rps* <choice> - Play Rock Paper Scissors
+2. *!magic8ball* <question> - Ask the Magic 8 Ball
+3. *!coinflip* - Flip a coin
+4. *!roll* [max] - Roll a dice (default: 6)
+5. *!wordgame* - Play word guessing game
+6. *!trivia* - Play trivia quiz
+
+🌟 *Reaction Commands:*
+7. *!slap* [@user] - Slap someone
+8. *!hug* [@user] - Give someone a hug
+9. *!pat* [@user] - Pat someone gently
 10. *!kiss* [@user] - Kiss someone
-11. *!wink* [@user] - Wink at someone
-12. *!punch* [@user] - Punch someone
-13. *!trash* [@user] - Throw someone into the trash
+11. *!punch* [@user] - Punch someone
+12. *!bonk* [@user] - Bonk someone
 
-🎭 *Emote Actions:*
-14. *!dance* - Show off your dance moves
-15. *!facepalm* - Express your disappointment
+😊 *Emotional Reactions:*
+13. *!blush* - Show blushing reaction
+14. *!happy* - Show happy reaction
+15. *!smile* - Show smiling reaction
+16. *!smug* - Show smug reaction
+17. *!cry* - Show crying reaction
 
-🎬 *Special Effects:*
-16. *!wasted* [@user] - Apply a wasted effect
-17. *!jail* [@user] - Put someone behind bars
-18. *!rip* [@user] - Create a memorial
-19. *!kill* [@user] - Dramatically eliminate someone
-20. *!yeet* [@user] - Yeet someone into space
-21. *!insult* [@user] - Playfully insult someone
-22. *!triggered* [@user] - Trigger someone
+🎭 *Fun Reactions:*
+18. *!bully* [@user] - Bully someone (playfully)
+19. *!lick* [@user] - Lick someone
+20. *!bite* [@user] - Bite someone
+21. *!nom* [@user] - Nom on someone
+22. *!glomp* [@user] - Tackle-hug someone
 
-🎨 *Fun Content:*
-23. *!joke* - Get a random funny joke
-24. *!quote* - Get an inspirational quote
-25. *!fact* - Learn an interesting fact
-26. *!emojiart* - Get a random emoji art
+🎬 *Action Commands:*
+23. *!dance* - Show off your dance moves
+24. *!highfive* [@user] - Give a high-five
+25. *!wave* [@user] - Wave at someone
+26. *!wink* [@user] - Wink at someone
+27. *!yeet* [@user] - Yeet someone
+28. *!poke* [@user] - Poke someone
+29. *!facepalm* - Express disappointment
+
+:✨ *Special Effects:*
+30. *!wasted* [@user] - Apply wasted effect
+31. *!jail* [@user] - Put behind bars
+32. *!triggered* [@user] - Show triggered reaction
+33. *!rip* [@user] - Create a memorial
+
+*Game Commands:*
+• Use !guess [word] to answer word game
+• Use !answer [number] to answer trivia
 
 *How to use:*
-- Commands with [@user] can tag someone
-- Have fun and be respectful! 😊`;
+• Commands with [@user] can tag someone
+• [max] means optional number
+• <choice/question> means required text
+• Have fun and be respectful! 😊`;
 
         await sock.sendMessage(msg.key.remoteJid, { text: commandList });
     },
     coinflip: async (sock, msg) => {
-        const result = Math.random() < 0.5 ? 'Heads' : 'Tails';
-        await sock.sendMessage(msg.key.remoteJid, { text: `🎲 Coin flip result: *${result}*` });
+        try {
+            const result = Math.random() < 0.5;
+            const text = result ? 'Heads! 👑' : 'Tails! 🪙';
+            const gif = result ? './media/anime-happy.gif' : './media/anime-smile.gif';
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🎲 *Coin Flip*\n\n${text}`
+            });
+
+            await sendGifReaction(sock, msg, gif);
+
+        } catch (error) {
+            logger.error('Error in coinflip command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to flip the coin!'
+            });
+        }
     },
     slap: async (sock, msg, args) => {
         try {
@@ -263,29 +295,38 @@ const funCommands = {
         });
     },
     magic8ball: async (sock, msg, args) => {
-        const responses = [
-            "It is certain! ✨",
-            "Without a doubt! 💫",
-            "Most likely! 🌟",
-            "Better not tell you now... 🤫",
-            "Cannot predict now... 🤔",
-            "Don't count on it! 🚫",
-            "My sources say no! ❌",
-            "Outlook not so good! 😕",
-            "Signs point to yes! ✅",
-            "Ask again later! 🕐"
-        ];
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '🎱 Please ask a question! Example: !magic8ball will it rain today?'
+                });
+            }
 
-        if (!args.length) {
-            return await sock.sendMessage(msg.key.remoteJid, {
-                text: "🎱 Please ask a question! For example: !magic8ball will it rain today?"
+            const responses = [
+                { text: "It is certain! ✨", gif: './media/anime-happy.gif' },
+                { text: "Without a doubt! 💫", gif: './media/anime-smile.gif' },
+                { text: "Most likely! 🌟", gif: './media/anime-smug.gif' },
+                { text: "Better not tell you now... 🤫", gif: './media/anime-shush.gif' },
+                { text: "Cannot predict now... 🤔", gif: './media/anime-think.gif' },
+                { text: "Don't count on it! 🚫", gif: './media/anime-no.gif' },
+                { text: "My sources say no! ❌", gif: './media/anime-cry.gif' },
+                { text: "Outlook not so good! 😕", gif: './media/anime-sad.gif' }
+            ];
+
+            const response = responses[Math.floor(Math.random() * responses.length)];
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🎱 *Magic 8 Ball*\n\nQ: ${args.join(' ')}\nA: ${response.text}`
+            });
+
+            await sendGifReaction(sock, msg, response.gif);
+
+        } catch (error) {
+            logger.error('Error in magic8ball command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to consult the Magic 8 Ball!'
             });
         }
-
-        const response = responses[Math.floor(Math.random() * responses.length)];
-        await sock.sendMessage(msg.key.remoteJid, {
-            text: `🎱 *Magic 8 Ball*\n\nQ: ${args.join(' ')}\nA: ${response}`
-        });
     },
     dare: async (sock, msg) => {
         const dares = [
@@ -346,9 +387,12 @@ const funCommands = {
             const words = {
                 'HAPPY': 'Feeling or showing pleasure or contentment',
                 'SMILE': 'Form one\'s features into a pleased expression',
-                'LAUGH': 'Make the spontaneous sounds and movements of the face and body that are instinctive expressions of lively amusement',
+                'LAUGH': 'Make spontaneous sounds and movements of joy',
                 'DANCE': 'Move rhythmically to music',
-                'PARTY': 'A social gathering of invited guests'
+                'PARTY': 'A social gathering of invited guests',
+                'DREAM': 'A series of thoughts, images, and sensations occurring in sleep',
+                'MAGIC': 'The power of apparently influencing events by supernatural forces',
+                'PEACE': 'Freedom from disturbance; tranquility'
             };
 
             const wordList = Object.keys(words);
@@ -356,15 +400,19 @@ const funCommands = {
             const hint = words[selectedWord];
             const hidden = selectedWord.replace(/[A-Z]/g, '_ ');
 
-            // Store the word in memory for later checking
+            // Store the word for checking
             if (!global.wordGameAnswers) global.wordGameAnswers = {};
             global.wordGameAnswers[msg.key.remoteJid] = selectedWord;
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `🎮 *Word Game*\n\nGuess this word: ${hidden}\n\n💡 Hint: ${hint}\n\nReply with !guess [your answer] to play!`
+                text: `🎮 *Word Guessing Game*\n\nGuess this word: ${hidden}\n\n💡 Hint: ${hint}\n\nReply with !guess [your answer] to play!`
             });
+
+            // Add start game reaction
+            await sendGifReaction(sock, msg, './media/anime-happy.gif', '🎮 Game started!');
+
         } catch (error) {
-            console.error('Error in wordgame:', error);
+            logger.error('Error in wordgame:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Oops! Something went wrong with the word game!'
             });
@@ -387,18 +435,27 @@ const funCommands = {
                 });
             }
 
-            if (userGuess === correctWord) {
+            const isCorrect = userGuess === correctWord;
+
+            // Clear the stored word if correct
+            if (isCorrect) {
                 delete global.wordGameAnswers[msg.key.remoteJid];
-                await sock.sendMessage(msg.key.remoteJid, {
-                    text: `🎉 Congratulations! You got it right!\nThe word was: ${correctWord}`
-                });
-            } else {
-                await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Wrong guess! Try again!'
-                });
             }
+
+            // Send result message with appropriate GIF reaction
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: isCorrect
+                    ? `🎉 *Congratulations!*\nYou got it right!\nThe word was: ${correctWord}`
+                    : `❌ Wrong guess! Try again!${userGuess.length !== correctWord.length ? `\n💡 Hint: The word has ${correctWord.length} letters` : ''}`
+            });
+
+            await sendGifReaction(sock, msg,
+                isCorrect ? './media/anime-happy.gif' : './media/anime-cry.gif',
+                isCorrect ? '🎉' : '😢'
+            );
+
         } catch (error) {
-            console.error('Error in guess command:', error);
+            logger.error('Error in guess command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Oops! Something went wrong while checking your guess!'
             });
@@ -421,22 +478,18 @@ const funCommands = {
                     q: "What is the closest star to Earth?",
                     a: "The Sun",
                     options: ["Proxima Centauri", "The Sun", "Alpha Centauri", "Sirius"]
-                },
-                {
-                    q: "Which animal can sleep for 3 years?",
-                    a: "Snail",
-                    options: ["Bear", "Snail", "Sloth", "Koala"]
                 }
             ];
 
             const question = questions[Math.floor(Math.random() * questions.length)];
-
-            // Store the answer for checking
-            if (!global.triviaAnswers) global.triviaAnswers = {};
-            global.triviaAnswers[msg.key.remoteJid] = question.a;
-
-            // Randomize options order
             const shuffledOptions = question.options.sort(() => Math.random() - 0.5);
+
+            // Store both the answer and the selected options for checking
+            if (!global.triviaAnswers) global.triviaAnswers = {};
+            global.triviaAnswers[msg.key.remoteJid] = {
+                answer: question.a,
+                options: shuffledOptions
+            };
 
             const questionText = `🤔 *Trivia Time!*\n\nQuestion: ${question.q}\n\nOptions:\n${
                 shuffledOptions.map((opt, i) => `${i + 1}. ${opt}`).join('\n')
@@ -445,13 +498,18 @@ const funCommands = {
             await sock.sendMessage(msg.key.remoteJid, {
                 text: questionText
             });
+
+            // Add start game reaction
+            await sendGifReaction(sock, msg, './media/anime-happy.gif', '🎮 Game started!');
+
         } catch (error) {
-            console.error('Error in trivia command:', error);
+            logger.error('Error in trivia command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Oops! Something went wrong with the trivia game!'
             });
         }
     },
+
     answer: async (sock, msg, args) => {
         try {
             if (!args.length) {
@@ -460,8 +518,8 @@ const funCommands = {
                 });
             }
 
-            const correctAnswer = global.triviaAnswers?.[msg.key.remoteJid];
-            if (!correctAnswer) {
+            const triviaData = global.triviaAnswers?.[msg.key.remoteJid];
+            if (!triviaData) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '❌ No active trivia question! Start one with !trivia'
                 });
@@ -474,16 +532,27 @@ const funCommands = {
                 });
             }
 
-            delete global.triviaAnswers[msg.key.remoteJid];
-            const isCorrect = correctAnswer === userAnswer;
+            // Check answer using the stored options
+            const selectedOption = triviaData.options[userAnswer - 1];
+            const isCorrect = selectedOption === triviaData.answer;
 
+            // Clear the stored answer
+            delete global.triviaAnswers[msg.key.remoteJid];
+
+            // Send result message with appropriate GIF reaction
             await sock.sendMessage(msg.key.remoteJid, {
                 text: isCorrect
-                    ? `🎉 Correct! The answer was ${correctAnswer}`
-                    : `❌ Wrong! The correct answer was ${correctAnswer}`
+                    ? `🎉 *Correct!*\nThe answer was "${triviaData.answer}"`
+                    : `❌ *Wrong!*\nThe correct answer was "${triviaData.answer}"`
             });
+
+            await sendGifReaction(sock, msg, 
+                isCorrect ? './media/anime-happy.gif' : './media/anime-cry.gif',
+                isCorrect ? '🎉' : '😢'
+            );
+
         } catch (error) {
-            console.error('Error in answer command:', error);
+            logger.error('Error in answer command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Oops! Something went wrong while checking your answer!'
             });
@@ -684,8 +753,7 @@ const funCommands = {
         }
     },
     kiss: async (sock, msg, args) => {
-        try {
-            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+        try {const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
             await sock.sendMessage(msg.key.remoteJid, {
@@ -704,14 +772,14 @@ const funCommands = {
     punch: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
-            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const mentions = args[0] ? [args[0] + '@swhatsapp.net'] : [];
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `*${msg.pushName}* punches ${target}! 👊`,
                 mentions: mentions
             });
 
-            await sendGifReaction(sock, msg, './media/anime-punch.gif', '👊', mentions);
+            await sendGifReaction(sock, msg, './media/anime-punch.gif','👊', mentions);
         } catch (error) {
             logger.error('Error in punch command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -963,7 +1031,6 @@ const funCommands = {
             });
         }
     },
-
     smug: async (sock, msg) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, {
@@ -978,7 +1045,6 @@ const funCommands = {
             });
         }
     },
-
     bite: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
@@ -997,14 +1063,17 @@ const funCommands = {
             });
         }
     },
-
-    nom: async (sock, msg) => {
+    nom: async (sock, msg, args) => {
         try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `*${msg.pushName}* is eating! 🍴`
+                text: `*${msg.pushName}* noms ${target}! 😋`,
+                mentions: mentions
             });
 
-            await sendGifReaction(sock, msg, './media/anime-nom.gif', '🍴');
+            await sendGifReaction(sock, msg, './media/anime-nom.gif', '😋', mentions);
         } catch (error) {
             logger.error('Error in nom command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -1012,7 +1081,6 @@ const funCommands = {
             });
         }
     },
-
     glomp: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
@@ -1031,14 +1099,13 @@ const funCommands = {
             });
         }
     },
-
     happy: async (sock, msg) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `*${msg.pushName}* is happy! 😊`
+                text: `*${msg.pushName}* is very happy! 😄`
             });
 
-            await sendGifReaction(sock, msg, './media/anime-happy.gif', '😊');
+            await sendGifReaction(sock, msg, './media/anime-happy.gif', '😄');
         } catch (error) {
             logger.error('Error in happy command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -1046,7 +1113,6 @@ const funCommands = {
             });
         }
     },
-
     cringe: async (sock, msg) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, {
@@ -1061,14 +1127,13 @@ const funCommands = {
             });
         }
     },
-
     blush: async (sock, msg) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `*${msg.pushName}* blushes! 😳`
+                text: `*${msg.pushName}* blushes! 😊`
             });
 
-            await sendGifReaction(sock, msg, './media/anime-blush.gif', '😳');
+            await sendGifReaction(sock, msg, './media/anime-blush.gif', '😊');
         } catch (error) {
             logger.error('Error in blush command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -1076,14 +1141,13 @@ const funCommands = {
             });
         }
     },
-
     smile: async (sock, msg) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `*${msg.pushName}* smiles! 😄`
+                text: `*${msg.pushName}* smiles! 😊`
             });
 
-            await sendGifReaction(sock, msg, './media/anime-smile.gif', '😄');
+            await sendGifReaction(sock, msg, './media/anime-smile.gif', '😊');
         } catch (error) {
             logger.error('Error in smile command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -1091,7 +1155,6 @@ const funCommands = {
             });
         }
     },
-
     handhold: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
@@ -1110,7 +1173,6 @@ const funCommands = {
             });
         }
     },
-
     baka: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'everyone';
@@ -1129,7 +1191,6 @@ const funCommands = {
             });
         }
     },
-
     neko: async (sock, msg) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, {
@@ -1141,6 +1202,253 @@ const funCommands = {
             logger.error('Error in neko command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Failed to execute neko command!'
+            });
+        }
+    },
+    rps: async (sock, msg, args) => {
+        try {
+            const choices = ['rock', 'paper', 'scissors'];
+            const userChoice = args[0]?.toLowerCase();
+
+            if (!userChoice || !choices.includes(userChoice)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '🎮 *Rock Paper Scissors*\nUse: !rps <choice>\nChoices: rock, paper, scissors'
+                });
+            }
+
+            const botChoice = choices[Math.floor(Math.random() * choices.length)];
+            let result;
+
+            if (userChoice === botChoice) {
+                result = 'It\'s a tie! 🤝';
+            } else if (
+                (userChoice === 'rock' && botChoice === 'scissors') ||
+                (userChoice === 'paper' && botChoice === 'rock') ||
+                (userChoice === 'scissors' && botChoice === 'paper')
+            ) {
+                result = 'You win! 🎉';
+            } else {
+                result = 'I win! 😎';
+            }
+
+            // Use appropriate reaction GIF based on result
+            const reactionGif = result.includes('win') ? './media/anime-happy.gif' : 
+                              result.includes('tie') ? './media/anime-smile.gif' : 
+                              './media/anime-smug.gif';
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🎮 *Rock Paper Scissors*\n\nYou chose: ${userChoice}\nI chose: ${botChoice}\n\n${result}`
+            });
+
+            await sendGifReaction(sock, msg, reactionGif);
+
+        } catch (error) {
+            logger.error('Error in rps command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to play Rock Paper Scissors!'
+            });
+        }
+    },
+    roll: async (sock, msg, args) => {
+        try {
+            const max = parseInt(args[0]) || 6;
+            if (max < 1 || max > 100) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please specify a number between 1 and 100'
+                });
+            }
+
+            const result = Math.floor(Math.random() * max) + 1;
+            const gif = result === max ? './media/anime-happy.gif' : 
+                       result === 1 ? './media/anime-cry.gif' : 
+                       './media/anime-smile.gif';
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🎲 *Dice Roll*\n\nYou rolled a ${result} (1-${max})`
+            });
+
+            await sendGifReaction(sock, msg, gif);
+
+        } catch (error) {
+            logger.error('Error in roll command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to roll the dice!'
+            });
+        }
+    },
+    wordgame: async (sock, msg) => {
+        try {
+            const words = {
+                'HAPPY': 'Feeling or showing pleasure or contentment',
+                'SMILE': 'Form one\'s features into a pleased expression',
+                'LAUGH': 'Make spontaneous sounds and movements of joy',
+                'DANCE': 'Move rhythmically to music',
+                'PARTY': 'A social gathering of invited guests',
+                'DREAM': 'A series of thoughts, images, and sensations occurring in sleep',
+                'MAGIC': 'The power of apparently influencing events by supernatural forces',
+                'PEACE': 'Freedom from disturbance; tranquility'
+            };
+
+            const wordList = Object.keys(words);
+            const selectedWord = wordList[Math.floor(Math.random() * wordList.length)];
+            const hint = words[selectedWord];
+            const hidden = selectedWord.replace(/[A-Z]/g, '_ ');
+
+            // Store the word for checking
+            if (!global.wordGameAnswers) global.wordGameAnswers = {};
+            global.wordGameAnswers[msg.key.remoteJid] = selectedWord;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🎮 *Word Guessing Game*\n\nGuess this word: ${hidden}\n\n💡 Hint: ${hint}\n\nReply with !guess [your answer] to play!`
+            });
+
+            // Add start game reaction
+            await sendGifReaction(sock, msg, './media/anime-happy.gif', '🎮 Game started!');
+
+        } catch (error) {
+            logger.error('Error in wordgame:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Oops! Something went wrong with the word game!'
+            });
+        }
+    },
+    guess: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide your guess! Example: !guess HAPPY'
+                });
+            }
+
+            const userGuess = args[0].toUpperCase();
+            const correctWord = global.wordGameAnswers?.[msg.key.remoteJid];
+
+            if (!correctWord) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ No active word game! Start one with !wordgame'
+                });
+            }
+
+            const isCorrect = userGuess === correctWord;
+
+            // Clear the stored word if correct
+            if (isCorrect) {
+                delete global.wordGameAnswers[msg.key.remoteJid];
+            }
+
+            // Send result message with appropriate GIF reaction
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: isCorrect
+                    ? `🎉 *Congratulations!*\nYou got it right!\nThe word was: ${correctWord}`
+                    : `❌ Wrong guess! Try again!${userGuess.length !== correctWord.length ? `\n💡 Hint: The word has ${correctWord.length} letters` : ''}`
+            });
+
+            await sendGifReaction(sock, msg,
+                isCorrect ? './media/anime-happy.gif' : './media/anime-cry.gif',
+                isCorrect ? '🎉' : '😢'
+            );
+
+        } catch (error) {
+            logger.error('Error in guess command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Oops! Something went wrong while checking your guess!'
+            });
+        }
+    },
+    trivia: async (sock, msg) => {
+        try {
+            const questions = [
+                {
+                    q: "What planet is known as the Red Planet?",
+                    a: "Mars",
+                    options: ["Venus", "Mars", "Jupiter", "Mercury"]
+                },
+                {
+                    q: "What is the largest planet in our solar system?",
+                    a: "Jupiter",
+                    options: ["Saturn", "Neptune", "Jupiter", "Uranus"]
+                },
+                {
+                    q: "What is the closest star to Earth?",
+                    a: "The Sun",
+                    options: ["Proxima Centauri", "The Sun", "Alpha Centauri", "Sirius"]
+                }
+            ];
+
+            const question = questions[Math.floor(Math.random() * questions.length)];
+            const shuffledOptions = question.options.sort(() => Math.random() - 0.5);
+
+            // Store both the answer and the selected options for checking
+            if (!global.triviaAnswers) global.triviaAnswers = {};
+            global.triviaAnswers[msg.key.remoteJid] = {
+                answer: question.a,
+                options: shuffledOptions
+            };
+
+            const questionText = `🤔 *Trivia Time!*\n\nQuestion: ${question.q}\n\nOptions:\n${
+                shuffledOptions.map((opt, i) => `${i + 1}. ${opt}`).join('\n')
+            }\n\nReply with !answer [number] to submit your answer!`;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: questionText
+            });
+
+            // Add start game reaction
+            await sendGifReaction(sock, msg, './media/anime-happy.gif', '🎮 Game started!');
+
+        } catch (error) {
+            logger.error('Error in trivia command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Oops! Something went wrong with the trivia game!'
+            });
+        }
+    },
+
+    answer: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide your answer number! Example: !answer 2'
+                });
+            }
+
+            const triviaData = global.triviaAnswers?.[msg.key.remoteJid];
+            if (!triviaData) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ No active trivia question! Start one with !trivia'
+                });
+            }
+
+            const userAnswer = parseInt(args[0]);
+            if (isNaN(userAnswer) || userAnswer < 1 || userAnswer > 4) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a valid answer number (1-4)!'
+                });
+            }
+
+            // Check answer using the stored options
+            const selectedOption = triviaData.options[userAnswer - 1];
+            const isCorrect = selectedOption === triviaData.answer;
+
+            // Clear the stored answer
+            delete global.triviaAnswers[msg.key.remoteJid];
+
+            // Send result message with appropriate GIF reaction
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: isCorrect
+                    ? `🎉 *Correct!*\nThe answer was "${triviaData.answer}"`
+                    : `❌ *Wrong!*\nThe correct answer was "${triviaData.answer}"`
+            });
+
+            await sendGifReaction(sock, msg, 
+                isCorrect ? './media/anime-happy.gif' : './media/anime-cry.gif',
+                isCorrect ? '🎉' : '😢'
+            );
+
+        } catch (error) {
+            logger.error('Error in answer command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Oops! Something went wrong while checking your answer!'
             });
         }
     }
