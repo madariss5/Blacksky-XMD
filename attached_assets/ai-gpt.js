@@ -49,9 +49,9 @@ async function chatWithGPT(userId, message) {
         });
 
         const response = await openai.chat.completions.create({
-            model: "gpt-4", // Use standard GPT-4 model
+            model: "gpt-3.5-turbo",
             messages: messages,
-            max_tokens: 500,
+            max_tokens: 800,
             temperature: 0.7,
             presence_penalty: 0.6
         });
