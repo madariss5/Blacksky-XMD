@@ -417,8 +417,68 @@ const mediaCommands = {
                 text: '❌ Failed to mix emojis: ' + error.message
             });
         }
-    }
+    },
+    trash: async (sock, msg) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !trash'
+                });
+            }
 
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Creating trash effect...'
+            });
+
+            const buffer = await downloadMediaMessage(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            // Create temp file paths
+            const inputPath = path.join(tempDir, 'input.png');
+            const outputPath = path.join(tempDir, 'output.webp');
+
+            // Write buffer to file
+            await fs.writeFile(inputPath, buffer);
+
+            // Create trash effect using Python script
+            const pythonScript = path.join(__dirname, '../scripts/create_trash.py');
+            await new Promise((resolve, reject) => {
+                exec(`python3 "${pythonScript}" "${inputPath}" "${outputPath}"`, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
+
+            // Read and send the processed image
+            const resultBuffer = await fs.readFile(outputPath);
+            await sock.sendMessage(msg.key.remoteJid, {
+                sticker: resultBuffer,
+                mimetype: 'image/webp'
+            });
+
+            // Cleanup temp files
+            await fs.remove(inputPath);
+            await fs.remove(outputPath);
+
+        } catch (error) {
+            logger.error('Error in trash command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to create trash effect: ' + error.message
+            });
+        }
+    },
 };
 
 module.exports = mediaCommands;
