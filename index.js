@@ -26,111 +26,53 @@ const logger = pino({
     }
 });
 
-// Initialize express app and routes first
+// Initialize express app with basic routes
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 app.get('/', (req, res) => {
     res.send('WhatsApp Bot is running!');
 });
 
-app.get('/status', (req, res) => {
+app.get('/health', (req, res) => {
     res.json({
-        status: 'running',
-        timestamp: new Date().toISOString()
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        port: PORT
     });
 });
 
-// Start express server with proper error handling
-const startServer = () => {
-    return new Promise((resolve, reject) => {
-        // First check if port is in use
-        const net = require('net');
-        const tester = net.createServer()
-            .once('error', err => {
-                if (err.code === 'EADDRINUSE') {
-                    logger.error(`Port ${PORT} is already in use`);
-                    reject(new Error(`Port ${PORT} is already in use`));
-                } else {
-                    logger.error('Port check failed:', err);
-                    reject(err);
-                }
-            })
-            .once('listening', () => {
-                tester.close(() => {
-                    // Port is free, start express server
-                    const server = app.listen(PORT, '0.0.0.0', () => {
-                        logger.info(`Express server running on port ${PORT}`);
-                        resolve(server);
-                    });
-
-                    server.on('error', (error) => {
-                        logger.error('Express server error:', error);
-                        reject(error);
-                    });
-                });
-            })
-            .listen(PORT);
-    });
-};
-
-// Initialize store and directories
-const authDir = path.join(__dirname, 'auth_info_baileys');
-const storeFile = path.join(__dirname, 'baileys_store.json');
-fs.ensureDirSync(authDir);
-
+// Initialize store and auth directory
 const store = makeInMemoryStore({ logger: pino({ level: "silent" }) });
-
-// Load store data if exists
-if (fs.existsSync(storeFile)) {
-    store.readFromFile(storeFile);
-    logger.info('Store data loaded successfully');
-}
-
-// Save store periodically
-setInterval(() => {
-    try {
-        store.writeToFile(storeFile);
-    } catch (error) {
-        logger.error('Failed to write store:', error.message);
-    }
-}, 10000);
+const authDir = path.join(__dirname, 'auth_info_baileys');
+fs.ensureDirSync(authDir);
 
 // Initialize WhatsApp connection
 async function startWhatsApp() {
     try {
-        // Reset auth state for fresh start
+        // Reset auth state
         await fs.remove(authDir);
         await fs.ensureDir(authDir);
 
         const { state, saveCreds } = await useMultiFileAuthState(authDir);
-        if (!state) {
-            throw new Error('Failed to initialize auth state');
-        }
-
         const { version } = await fetchLatestBaileysVersion();
-        logger.info('Using Baileys version:', version);
+
+        logger.info('Starting WhatsApp with version:', version);
 
         const sock = makeWASocket({
             version,
             logger: pino({ level: "silent" }),
             printQRInTerminal: true,
             auth: state,
-            browser: ['BLACKSKY-MD', 'Chrome', '1.0.0'],
-            connectTimeoutMs: 60000,
-            defaultQueryTimeoutMs: 60000,
-            emitOwnEvents: true,
-            markOnlineOnConnect: true
+            browser: ['BLACKSKY-MD', 'Chrome', '1.0.0']
         });
 
         store.bind(sock.ev);
-        logger.info('Store bound to socket events');
 
         const messageHandler = require('./handlers/message');
 
         sock.ev.on('messages.upsert', async ({ messages, type }) => {
             if (type !== 'notify') return;
-
             try {
                 const msg = messages[0];
                 if (!msg?.message) return;
@@ -140,43 +82,27 @@ async function startWhatsApp() {
             }
         });
 
-        sock.ev.on('connection.update', async (update) => {
+        sock.ev.on('connection.update', (update) => {
             const { connection, lastDisconnect, qr } = update;
 
             if (qr) {
-                console.log('\nQR Code received, please scan:');
+                logger.info('New QR code received');
                 qrcode.generate(qr, { small: true });
-                logger.info('New QR code generated');
             }
 
             if (connection === 'close') {
                 const shouldReconnect = (lastDisconnect?.error instanceof Boom)? 
                     lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut : true;
 
-                logger.info('Connection closed:', {
-                    error: lastDisconnect?.error?.message,
-                    shouldReconnect
-                });
+                logger.info('Connection closed:', { shouldReconnect });
 
                 if (shouldReconnect) {
-                    logger.info('Attempting reconnection...');
                     setTimeout(startWhatsApp, 3000);
-                } else {
-                    logger.warn('Session ended - clearing auth state');
-                    await fs.remove(authDir);
-                    setTimeout(startWhatsApp, 5000);
                 }
             }
 
             if (connection === 'open') {
-                logger.info('Connection established successfully!');
-                try {
-                    await sock.sendMessage(config.ownerNumber, {
-                        text: '🤖 Bot is now online and ready!'
-                    });
-                } catch (error) {
-                    logger.error('Failed to send ready message:', error);
-                }
+                logger.info('Connected successfully');
             }
         });
 
@@ -184,32 +110,40 @@ async function startWhatsApp() {
 
         return sock;
     } catch (error) {
-        logger.error('Fatal error in WhatsApp connection:', error);
+        logger.error('WhatsApp initialization error:', error);
         throw error;
     }
 }
 
-// Main startup sequence
+// Start server and WhatsApp bot
 async function main() {
     try {
-        // Start server first
-        logger.info('Starting express server...');
-        await startServer();
-        logger.info('Express server started successfully');
+        // Start express server
+        const server = await new Promise((resolve, reject) => {
+            const server = app.listen(PORT, '0.0.0.0', () => {
+                logger.info(`Server listening on port ${PORT}`);
+                resolve(server);
+            });
 
-        // Then start WhatsApp connection
-        logger.info('Initializing WhatsApp connection...');
+            server.on('error', (error) => {
+                logger.error(`Server error: ${error.message}`);
+                reject(error);
+            });
+        });
+
+        // Initialize WhatsApp
         await startWhatsApp();
         logger.info('WhatsApp bot initialized successfully');
+
     } catch (error) {
-        logger.error('Fatal startup error:', error);
+        logger.error('Startup error:', error);
         process.exit(1);
     }
 }
 
-// Start application
+// Start the application
 main().catch(error => {
-    logger.error('Application startup failed:', error);
+    logger.error('Fatal error:', error);
     process.exit(1);
 });
 
@@ -218,9 +152,6 @@ process.on('uncaughtException', error => {
     logger.error('Uncaught Exception:', error);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-    logger.error('Unhandled Rejection:', {
-        reason: reason instanceof Error ? reason.message : reason,
-        stack: reason instanceof Error ? reason.stack : undefined
-    });
+process.on('unhandledRejection', error => {
+    logger.error('Unhandled Rejection:', error);
 });
