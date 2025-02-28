@@ -61,49 +61,23 @@ const identifyIntent = (message) => {
     return 'unknown';
 };
 
-// Helper function to get an image based on search query
-const getImageUrl = async (query) => {
-    try {
-        // Try multiple services in order of reliability
-        const services = [
-            // Unsplash Source with multiple collections
-            async () => {
-                const searchQuery = encodeURIComponent(query);
-                const collections = ['1065976', '1163637', '928423']; // Curated collections
-                const collection = collections[Math.floor(Math.random() * collections.length)];
-                return `https://source.unsplash.com/collection/${collection}/1024x1024/?${searchQuery}`;
-            },
-            // Direct Unsplash search
-            async () => {
-                const searchQuery = encodeURIComponent(query);
-                return `https://source.unsplash.com/1024x1024/?${searchQuery}`;
-            },
-            // Fallback to AI-themed placeholder
-            async () => {
-                return `https://placehold.co/1024x1024/1a1a1a/ffffff?text=${encodeURIComponent(query)}`;
-            }
-        ];
+// Helper function to download and save image temporarily
+const downloadImage = async (imageUrl, filename) => {
+    const response = await axios({
+        method: 'get',
+        url: imageUrl,
+        responseType: 'stream'
+    });
 
-        // Try each service until one works
-        for (const getUrl of services) {
-            try {
-                const url = await getUrl();
-                // Verify the URL is accessible
-                const response = await axios.head(url);
-                if (response.status === 200) {
-                    return url;
-                }
-            } catch (err) {
-                logger.warn('Service attempt failed, trying next option');
-                continue;
-            }
-        }
+    const tempFilePath = path.join(tempDir, filename);
+    const writer = fs.createWriteStream(tempFilePath);
 
-        throw new Error('All image services failed');
-    } catch (error) {
-        logger.error('Error getting image:', error);
-        throw error;
-    }
+    response.data.pipe(writer);
+
+    return new Promise((resolve, reject) => {
+        writer.on('finish', () => resolve(tempFilePath));
+        writer.on('error', reject);
+    });
 };
 
 const aiCommands = {
@@ -162,14 +136,25 @@ const aiCommands = {
                 text: '🎨 Generating your image...'
             });
 
-            // Get image based on search query with enhanced error handling
-            const imageUrl = await getImageUrl(args.join(' '));
+            // Generate a unique identifier for this request
+            const timestamp = Date.now();
+            const seed = Math.floor(Math.random() * 1000);
+            const imageUrl = `https://picsum.photos/seed/${seed}/800/800`;
+
+            // Download the image first
+            const filename = `image_${timestamp}.jpg`;
+            const localImagePath = await downloadImage(imageUrl, filename);
+
             setCooldown(userId);
 
+            // Send the image from local file
             await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: imageUrl },
-                caption: '🖼️ Here\'s an image based on your description!'
+                image: fs.readFileSync(localImagePath),
+                caption: '🖼️ Here\'s an artistic image for you!'
             });
+
+            // Clean up the temporary file
+            await fs.unlink(localImagePath);
 
         } catch (error) {
             logger.error('Error in dalle command:', error);
