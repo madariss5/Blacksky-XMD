@@ -46,7 +46,7 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node index.js"
+args = "PORT=5000 node index.js"
 waitForPort = 5000
 
 [deployment]
