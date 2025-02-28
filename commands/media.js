@@ -25,6 +25,7 @@ const mediaCommands = {
                 text: '⏳ Creating sticker...'
             });
 
+            // Get the message type and quoted message
             const isVideo = !!quotedMsg.videoMessage;
             const messageType = isVideo ? 'videoMessage' : 'imageMessage';
 
@@ -33,7 +34,7 @@ const mediaCommands = {
                 {
                     key: msg.message.extendedTextMessage.contextInfo.stanzaId,
                     message: quotedMsg,
-                    messageType
+                    messageTimestamp: msg.messageTimestamp
                 },
                 'buffer',
                 {},
@@ -43,13 +44,12 @@ const mediaCommands = {
                 }
             );
 
-            // Create temp file paths
-            const inputPath = path.join(tempDir, `input.${isVideo ? 'mp4' : 'jpg'}`);
-            await fs.writeFile(inputPath, buffer);
-
-            // If it's a video, extract first frame
+            // If it's a video, convert to image first
             let imageBuffer = buffer;
             if (isVideo) {
+                const inputPath = path.join(tempDir, 'input.mp4');
+                await fs.writeFile(inputPath, buffer);
+
                 await new Promise((resolve, reject) => {
                     ffmpeg(inputPath)
                         .screenshots({
@@ -60,27 +60,19 @@ const mediaCommands = {
                         .on('end', resolve)
                         .on('error', reject);
                 });
+
                 imageBuffer = await fs.readFile(path.join(tempDir, 'frame.jpg'));
-            }
-
-            // Send as sticker using Baileys' built-in method
-            await sock.sendMessage(msg.key.remoteJid, {
-                sticker: imageBuffer,
-                contextInfo: {
-                    externalAdReply: {
-                        title: config.botName,
-                        body: config.ownerName,
-                        mediaType: 1,
-                        renderLargerThumbnail: true
-                    }
-                }
-            });
-
-            // Cleanup temp files
-            await fs.remove(inputPath);
-            if (isVideo) {
+                await fs.remove(inputPath);
                 await fs.remove(path.join(tempDir, 'frame.jpg'));
             }
+
+            // Send the sticker
+            await sock.sendMessage(msg.key.remoteJid, {
+                sticker: imageBuffer,
+                mimetype: 'image/webp',
+                ptt: false,
+                ephemeralExpiration: 86400
+            });
 
         } catch (error) {
             logger.error('Error in sticker command:', error);
@@ -107,7 +99,7 @@ const mediaCommands = {
                 {
                     key: msg.message.extendedTextMessage.contextInfo.stanzaId,
                     message: quotedMsg,
-                    messageType: 'stickerMessage'
+                    messageTimestamp: msg.messageTimestamp
                 },
                 'buffer',
                 {},
@@ -147,7 +139,7 @@ const mediaCommands = {
                 {
                     key: msg.message.extendedTextMessage.contextInfo.stanzaId,
                     message: quotedMsg,
-                    messageType: 'videoMessage'
+                    messageTimestamp: msg.messageTimestamp
                 },
                 'buffer',
                 {},
@@ -157,7 +149,6 @@ const mediaCommands = {
                 }
             );
 
-            // Convert video to audio using ffmpeg
             const tempInput = path.join(tempDir, 'input.mp4');
             const tempOutput = path.join(tempDir, 'output.mp3');
 
