@@ -61,6 +61,19 @@ const identifyIntent = (message) => {
     return 'unknown';
 };
 
+// Helper function to get an image based on search query
+const getSearchImage = async (query) => {
+    try {
+        // Using Unsplash Source API which is free and doesn't require authentication
+        const searchQuery = encodeURIComponent(query);
+        return `https://source.unsplash.com/1024x1024/?${searchQuery}`;
+    } catch (error) {
+        logger.error('Error getting image:', error);
+        // Fallback to Lorem Picsum if Unsplash fails
+        return `https://picsum.photos/1024/1024?random=${Date.now()}`;
+    }
+};
+
 const aiCommands = {
     gpt: async (sock, msg, args) => {
         try {
@@ -117,13 +130,13 @@ const aiCommands = {
                 text: '🎨 Generating your image...'
             });
 
-            // Use Lorem Picsum for random images
-            const imageUrl = `https://picsum.photos/1024/1024?random=${Date.now()}`;
+            // Get image based on search query
+            const imageUrl = await getSearchImage(args.join(' '));
             setCooldown(userId);
 
             await sock.sendMessage(msg.key.remoteJid, {
                 image: { url: imageUrl },
-                caption: '🖼️ Here\'s a random artistic image for you!'
+                caption: '🖼️ Here\'s an image based on your description!'
             });
 
         } catch (error) {
