@@ -76,7 +76,8 @@
       "antitoxic": true,
       "welcomeMessage": "čau ty píčo",
       "goodbyeMessage": "mrdka jak odchází",
-      "rules": "nic mlre"
+      "rules": "nic mlre",
+      "nsfw": true
     }
   },
   "banned": [],

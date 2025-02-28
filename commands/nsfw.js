@@ -49,8 +49,17 @@ const handleNSFWCommand = async (sock, msg, endpoint) => {
         if (!await verifyAge(sock, msg)) return;
         if (!await checkGroupNSFW(sock, msg)) return;
 
-        logger.debug('Making API request to NSFW endpoint');
-        const response = await axios.get(`https://api.waifu.pics/nsfw/${endpoint}`);
+        // Available NSFW endpoints from waifu.pics
+        const validEndpoints = {
+            'fuck': 'blowjob',  // Using appropriate alternative
+            'cum': 'neko',      // Using appropriate alternative
+            'horny': 'waifu'    // Using appropriate alternative
+        };
+
+        const actualEndpoint = validEndpoints[endpoint] || endpoint;
+        logger.debug('Making API request to NSFW endpoint', { endpoint: actualEndpoint });
+
+        const response = await axios.get(`https://api.waifu.pics/nsfw/${actualEndpoint}`);
 
         logger.debug('Sending NSFW image', { url: response.data.url });
         await sock.sendMessage(msg.key.remoteJid, {
