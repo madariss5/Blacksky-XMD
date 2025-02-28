@@ -1,6 +1,7 @@
 from PIL import Image, ImageDraw, ImageFont
 import os
 import math
+import random
 
 def create_trash_overlay():
     # Create assets directory if it doesn't exist
@@ -11,7 +12,6 @@ def create_trash_overlay():
     img = Image.new('RGBA', (512, 512), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    # Draw enhanced trash can
     # Draw shadow first
     shadow_polygon = [(166, 366), (336, 366), (346, 376), (156, 376)]
     draw.polygon(shadow_polygon, fill=(0, 0, 0, 80))
@@ -116,8 +116,8 @@ def create_beautiful_template():
 
     # Add sparkles
     for _ in range(20):
-        x = int(width * 0.1) + int(math.random() * width * 0.8)
-        y = int(height * 0.1) + int(math.random() * height * 0.6)
+        x = int(width * 0.1) + int(random.random() * width * 0.8)
+        y = int(height * 0.1) + int(random.random() * height * 0.6)
         r = 5
         draw.regular_polygon((x, y, r), 4, rotation=45, fill='gold')
 
