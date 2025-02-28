@@ -59,7 +59,10 @@
   "groups": {
     "120363407638585565@g.us": {
       "muted": true,
-      "warnings": {}
+      "warnings": {},
+      "antilink": true,
+      "antispam": true,
+      "antitoxic": true
     }
   },
   "banned": []
