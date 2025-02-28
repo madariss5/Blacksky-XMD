@@ -251,22 +251,30 @@ const groupCommands = {
     },
     link: async (sock, msg) => {
         try {
+            // First verify basic group context
             const groupMetadata = await validateGroupContext(sock, msg, true);
             if (!groupMetadata) return;
 
-            try {
-                // Get group info first to verify the bot has sufficient permissions
-                const groupInfo = await sock.groupMetadata(msg.key.remoteJid);
+            // Additional checks for bot's admin status
+            const botId = sock.user.id.split(':')[0] + '@s.whatsapp.net';
+            const botParticipant = groupMetadata.participants.find(p => p.id === botId);
 
-                // Use the correct Baileys method to generate invite code
+            if (!botParticipant?.admin) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ I need to be an admin to generate the group link!'
+                });
+            }
+
+            try {
+                // Direct method call for invite code generation
                 const code = await sock.groupInviteCode(msg.key.remoteJid);
 
                 if (!code) {
-                    throw new Error('Failed to generate invite code');
+                    throw new Error('Could not generate invite code');
                 }
 
                 const linkMessage = `🔗 *Group Invite Link*\n\n` +
-                                  `Group: ${groupInfo.subject}\n` +
+                                  `Group: ${groupMetadata.subject}\n` +
                                   `Link: https://chat.whatsapp.com/${code}\n\n` +
                                   `Note: This link can be revoked using ${config.prefix}revoke`;
 
@@ -274,13 +282,13 @@ const groupCommands = {
                     text: linkMessage
                 });
 
-                logger.info('Group link generated:', {
+                logger.info('Group link generated successfully:', {
                     group: msg.key.remoteJid,
                     generatedBy: msg.key.participant
                 });
             } catch (error) {
-                logger.error('Error generating group link:', error);
-                throw new Error('Failed to generate group link. Make sure I have the required permissions.');
+                logger.error('Error in group link generation:', error);
+                throw new Error('Could not generate group link. Please make sure I have admin rights and try again.');
             }
         } catch (error) {
             logger.error('Error in link command:', error);
