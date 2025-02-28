@@ -386,12 +386,26 @@ const gameCommands = {
     },
     tictactoe: async (sock, msg, args) => {
         try {
-            const opponent = args[0]?.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
-            if (!opponent || opponent === msg.key.participant) {
+            if (!args[0]) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '❌ Please mention a player to play with!\nUsage: !tictactoe @player'
                 });
             }
+
+            const challenger = msg.key.participant || msg.key.remoteJid;
+            const opponent = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+
+            if (challenger === opponent) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ You cannot play against yourself!'
+                });
+            }
+
+            logger.info('Starting TicTacToe game:', {
+                challenger,
+                opponent,
+                chatId: msg.key.remoteJid
+            });
 
             const gameId = msg.key.remoteJid;
             if (activeGames.has(gameId)) {
@@ -402,20 +416,28 @@ const gameCommands = {
 
             const game = {
                 board: createTicTacToeBoard(),
-                players: [msg.key.participant, opponent],
+                players: [challenger, opponent],
                 currentPlayer: 0,
                 started: false
             };
             activeGames.set(gameId, game);
 
+            const challengerName = challenger.split('@')[0];
+            const opponentName = opponent.split('@')[0];
+
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `🎮 *TicTacToe Challenge*\n\n` +
-                      `@${game.players[0].split('@')[0]} has challenged @${game.players[1].split('@')[0]}!\n\n` +
+                      `@${challengerName} has challenged @${opponentName}!\n\n` +
                       `Type !accept to start the game or !reject to decline.`,
                 mentions: game.players
             });
 
-            logger.info('TicTacToe game created:', { gameId, players: game.players });
+            logger.info('TicTacToe game created:', { 
+                gameId,
+                challenger: challengerName,
+                opponent: opponentName
+            });
+
         } catch (error) {
             logger.error('Error in tictactoe command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -428,6 +450,7 @@ const gameCommands = {
         try {
             const gameId = msg.key.remoteJid;
             const game = activeGames.get(gameId);
+            const player = msg.key.participant || msg.key.remoteJid;
 
             if (!game || game.started) {
                 return await sock.sendMessage(msg.key.remoteJid, {
@@ -435,7 +458,7 @@ const gameCommands = {
                 });
             }
 
-            if (msg.key.participant !== game.players[1]) {
+            if (player !== game.players[1]) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '❌ This invitation is not for you!'
                 });
@@ -443,17 +466,26 @@ const gameCommands = {
 
             game.started = true;
             const boardText = game.board.map(row => row.join('')).join('\n');
+
+            const player1Name = game.players[0].split('@')[0];
+            const player2Name = game.players[1].split('@')[0];
+
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `🎮 *TicTacToe Game Started*\n\n` +
-                      `@${game.players[0].split('@')[0]}: ❌\n` +
-                      `@${game.players[1].split('@')[0]}: ⭕\n\n` +
+                      `@${player1Name}: ❌\n` +
+                      `@${player2Name}: ⭕\n\n` +
                       `${boardText}\n\n` +
-                      `@${game.players[0].split('@')[0]}'s turn!\n` +
+                      `@${player1Name}'s turn!\n` +
                       `Use !place <1-9> to place your mark.`,
                 mentions: game.players
             });
 
-            logger.info('TicTacToe game started:', { gameId });
+            logger.info('TicTacToe game started:', { 
+                gameId,
+                player1: player1Name,
+                player2: player2Name
+            });
+
         } catch (error) {
             logger.error('Error in accept command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -566,10 +598,18 @@ const gameCommands = {
 
     suit: async (sock, msg, args) => {
         try {
-            const opponent = args[0]?.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
-            if (!opponent || opponent === msg.key.participant) {
+            if (!args[0]) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '❌ Please mention a player to play with!\nUsage: !suit @player'
+                });
+            }
+
+            const challenger = msg.key.participant || msg.key.remoteJid;
+            const opponent = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+
+            if (challenger === opponent) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ You cannot play against yourself!'
                 });
             }
 
@@ -580,22 +620,36 @@ const gameCommands = {
                 });
             }
 
+            logger.info('Starting Suit game:', {
+                challenger,
+                opponent,
+                chatId: msg.key.remoteJid
+            });
+
             const game = {
                 type: 'suit',
-                players: [msg.key.participant, opponent],
+                players: [challenger, opponent],
                 choices: {},
                 started: false
             };
             activeGames.set(gameId, game);
 
+            const challengerName = challenger.split('@')[0];
+            const opponentName = opponent.split('@')[0];
+
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `👊 *Rock Paper Scissors Challenge*\n\n` +
-                      `@${game.players[0].split('@')[0]} has challenged @${game.players[1].split('@')[0]}!\n\n` +
+                      `@${challengerName} has challenged @${opponentName}!\n\n` +
                       `Type !accept to start the game or !reject to decline.`,
                 mentions: game.players
             });
 
-            logger.info('Suit game created:', { gameId, players: game.players });
+            logger.info('Suit game created:', { 
+                gameId, 
+                challenger: challengerName, 
+                opponent: opponentName 
+            });
+
         } catch (error) {
             logger.error('Error in suit command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -604,7 +658,98 @@ const gameCommands = {
         }
     },
 
-    // Stub implementations for other game commands
+    choose: async (sock, msg, args) => {
+        try {
+            const gameId = msg.key.remoteJid;
+            const game = activeGames.get(gameId);
+            const player = msg.key.participant || msg.key.remoteJid;
+
+            if (!game || !game.started || game.type !== 'suit') {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ No active Rock Paper Scissors game in this chat!'
+                });
+            }
+
+            if (!game.players.includes(player)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ You are not part of this game!'
+                });
+            }
+
+            const choice = args[0]?.toLowerCase();
+            if (!['rock', 'paper', 'scissors'].includes(choice)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please choose rock, paper, or scissors!'
+                });
+            }
+
+            // Store player's choice
+            game.choices[player] = choice;
+            logger.info('Player made choice:', { 
+                gameId, 
+                player: player.split('@')[0], 
+                choice 
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ @${player.split('@')[0]} has made their choice!`,
+                mentions: [player]
+            });
+
+            // Check if both players have made their choices
+            if (Object.keys(game.choices).length === 2) {
+                const choices = game.players.map(p => ({
+                    player: p,
+                    choice: game.choices[p]
+                }));
+
+                // Determine winner
+                let result;
+                if (choices[0].choice === choices[1].choice) {
+                    result = 'draw';
+                } else if (
+                    (choices[0].choice === 'rock' && choices[1].choice === 'scissors') ||
+                    (choices[0].choice === 'paper' && choices[1].choice === 'rock') ||
+                    (choices[0].choice === 'scissors' && choices[1].choice === 'paper')
+                ) {
+                    result = 'player1';
+                } else {
+                    result = 'player2';
+                }
+
+                // Send result message
+                let resultText = `🎮 *Game Results*\n\n` +
+                               `@${choices[0].player.split('@')[0]}: ${choices[0].choice}\n` +
+                               `@${choices[1].player.split('@')[0]}: ${choices[1].choice}\n\n`;
+
+                if (result === 'draw') {
+                    resultText += `It's a draw! 🤝`;
+                } else {
+                    const winner = result === 'player1' ? choices[0].player : choices[1].player;
+                    resultText += `@${winner.split('@')[0]} wins! 🏆`;
+                }
+
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: resultText,
+                    mentions: game.players
+                });
+
+                // Clean up game state
+                activeGames.delete(gameId);
+                logger.info('Suit game ended:', { 
+                    gameId, 
+                    result,
+                    choices: game.choices
+                });
+            }
+
+        } catch (error) {
+            logger.error('Error in choose command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error making choice: ' + error.message
+            });
+        }
+    },
     chess: async (sock, msg) => {
         await sock.sendMessage(msg.key.remoteJid, {
             text: '🚧 Chess game is under development!'
@@ -673,7 +818,7 @@ const gameCommands = {
 
     tebaklagu: async (sock, msg) => {
         await sock.sendMessage(msg.key.remoteJid, {
-            text: '🚧 Tebak Lagu game is under development!'
+                        text: '🚧 Tebak Lagu game is under development!'
         });
     },
 
