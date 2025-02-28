@@ -13,6 +13,8 @@ module.exports = {
         info: { description: 'View bot information and stats', category: 'Basic' },
         runtime: { description: 'Check bot uptime', category: 'Basic' },
         speed: { description: 'Test bot response speed', category: 'Basic' },
+        profile: { description: 'View user profile', category: 'Basic' },
+        me: { description: 'View your profile', category: 'Basic' },
 
         // Media & Sticker Commands
         sticker: { description: 'Create sticker from image/video', category: 'Media' },
@@ -23,20 +25,6 @@ module.exports = {
         emojimix: { description: 'Mix two emojis into one sticker', category: 'Media' },
         quotely: { description: 'Create quote sticker', category: 'Media' },
         tts: { description: 'Convert text to speech', category: 'Media' },
-
-        // Image Effect Commands
-        blur: { description: 'Add blur effect to image', category: 'Media' },
-        circle: { description: 'Make image circular', category: 'Media' },
-        jail: { description: 'Add jail bars effect', category: 'Media' },
-        triggered: { description: 'Create triggered effect', category: 'Media' },
-        wasted: { description: 'Add GTA wasted effect', category: 'Media' },
-        rip: { description: 'Create RIP memorial effect', category: 'Media' },
-        trash: { description: 'Create trash effect', category: 'Media' },
-        rainbow: { description: 'Create rainbow effect', category: 'Media' },
-        invert: { description: 'Create invert effect', category: 'Media' },
-        pixelate: { description: 'Create pixel effect', category: 'Media' },
-        sepia: { description: 'Create sepia effect', category: 'Media' },
-        wanted: { description: 'Create wanted poster', category: 'Media' },
 
         // Fun & Reaction Commands
         slap: { description: 'Slap someone with anime gif', category: 'Fun' },
@@ -75,7 +63,6 @@ module.exports = {
         // Downloader Commands
         ytmp3: { description: 'Download YouTube audio (High Quality)', category: 'Downloader' },
         ytmp4: { description: 'Download YouTube video (HD)', category: 'Downloader' },
-        play: { description: 'Search and play YouTube audio', category: 'Music' },
         video: { description: 'Search and play YouTube video', category: 'Downloader' },
         tiktok: { description: 'Download TikTok video without watermark', category: 'Downloader' },
         instagram: { description: 'Download Instagram posts/reels', category: 'Downloader' },
@@ -88,6 +75,7 @@ module.exports = {
         apk: { description: 'Download Android apps', category: 'Downloader' },
 
         // Music Commands
+        play: { description: 'Search and play YouTube audio', category: 'Music' },
         playlist: { description: 'Manage music playlists', category: 'Music' },
         queue: { description: 'View current music queue', category: 'Music' },
         lyrics: { description: 'Find song lyrics', category: 'Music' },
@@ -99,7 +87,7 @@ module.exports = {
         resume: { description: 'Resume paused playback', category: 'Music' },
 
 
-        // AI & Generation Commands
+        // AI Commands
         gpt: { description: 'Chat with GPT AI', category: 'AI' },
         gpt4: { description: 'Chat with GPT-4 AI', category: 'AI' },
         dalle: { description: 'Generate images with DALL-E', category: 'AI' },
@@ -155,31 +143,27 @@ module.exports = {
         restart: { description: 'Restart bot system', category: 'Owner' },
 
         // Utility Commands
-        profile: { description: 'View user profile', category: 'Utility' },
-        me: { description: 'View your profile', category: 'Utility' },
         stats: { description: 'View bot statistics', category: 'Utility' },
         report: { description: 'Report an issue to owner', category: 'Utility' },
         donate: { description: 'View donation information', category: 'Utility' },
         qrmaker: { description: 'Create QR codes', category: 'Utility' },
         qrreader: { description: 'Read QR codes', category: 'Utility' },
-
-        // Economy Commands
-        balance: { description: 'Check wallet balance', category: 'Economy' },
-        daily: { description: 'Claim daily rewards', category: 'Economy' },
-        weekly: { description: 'Claim weekly rewards', category: 'Economy' },
-        monthly: { description: 'Claim monthly rewards', category: 'Economy' },
-        transfer: { description: 'Transfer money to users', category: 'Economy' },
-        shop: { description: 'View item shop', category: 'Economy' },
-        buy: { description: 'Buy items from shop', category: 'Economy' },
-        sell: { description: 'Sell items for money', category: 'Economy' },
-        inventory: { description: 'View your inventory', category: 'Economy' },
-        work: { description: 'Work to earn money', category: 'Economy' },
-        rob: { description: 'Rob other users (risky)', category: 'Economy' },
-        gamble: { description: 'Gamble your money', category: 'Economy' },
-        heist: { description: 'Organize bank heist', category: 'Economy' },
-        mine: { description: 'Mine for resources', category: 'Economy' },
-        fish: { description: 'Go fishing', category: 'Economy' },
-        hunt: { description: 'Go hunting', category: 'Economy' },
+        balance: { description: 'Check wallet balance', category: 'Utility' },
+        daily: { description: 'Claim daily rewards', category: 'Utility' },
+        weekly: { description: 'Claim weekly rewards', category: 'Utility' },
+        monthly: { description: 'Claim monthly rewards', category: 'Utility' },
+        transfer: { description: 'Transfer money to users', category: 'Utility' },
+        shop: { description: 'View item shop', category: 'Utility' },
+        buy: { description: 'Buy items from shop', category: 'Utility' },
+        sell: { description: 'Sell items for money', category: 'Utility' },
+        inventory: { description: 'View your inventory', category: 'Utility' },
+        work: { description: 'Work to earn money', category: 'Utility' },
+        rob: { description: 'Rob other users (risky)', category: 'Utility' },
+        gamble: { description: 'Gamble your money', category: 'Utility' },
+        heist: { description: 'Organize bank heist', category: 'Utility' },
+        mine: { description: 'Mine for resources', category: 'Utility' },
+        fish: { description: 'Go fishing', category: 'Utility' },
+        hunt: { description: 'Go hunting', category: 'Utility' },
 
         // Anime Commands
         waifu: { description: 'Get random waifu image', category: 'Anime' },

@@ -4,18 +4,18 @@ const logger = require('pino')();
 // Initialize command modules with better error handling
 const commandModules = {};
 try {
-    commandModules.basic = require('../commands/basic');
-    commandModules.owner = require('../commands/owner');
-    commandModules.downloader = require('../commands/downloader');
-    commandModules.music = require('../commands/music');
-    commandModules.fun = require('../commands/fun');
-    commandModules.economy = require('../commands/economy');
-    commandModules.group = require('../commands/group');
-    commandModules.nsfw = require('../commands/nsfw');  // Added NSFW commands import
-    commandModules.game = require('../commands/game');
-    commandModules.anime = require('../commands/anime');
-    commandModules.ai = require('../commands/ai');
-    commandModules.media = require('../commands/media');
+    commandModules.basic = require('../commands/basic');        // Basic commands
+    commandModules.media = require('../commands/media');        // Media & sticker commands
+    commandModules.fun = require('../commands/fun');           // Fun & reaction commands
+    commandModules.game = require('../commands/game');         // Game commands
+    commandModules.downloader = require('../commands/downloader'); // Downloader commands
+    commandModules.music = require('../commands/music');       // Music commands
+    commandModules.ai = require('../commands/ai');            // AI commands
+    commandModules.group = require('../commands/group');       // Group management
+    commandModules.owner = require('../commands/owner');       // Owner commands
+    commandModules.utility = require('../commands/utility');   // Utility commands
+    commandModules.anime = require('../commands/anime');       // Anime commands
+    commandModules.nsfw = require('../commands/nsfw');        // NSFW commands
 } catch (error) {
     logger.error('Error loading command modules:', error);
 }

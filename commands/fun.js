@@ -102,68 +102,42 @@ const sendGifReaction = async (sock, msg, mediaPath, caption = '', mentions = []
 const funCommands = {
     menu: async (sock, msg) => {
         const commandList = `🎮 *Fun Commands Menu* 🎮\n
-🔞 *NSFW Commands:*
-1. *!register* <name> <age> - Register for NSFW access (18+ only)
-2. *!setnsfw* [on/off] - Enable/disable NSFW in groups (Admin only)
-3. *!nsfwcheck* - Check NSFW access status
-4. *!fuck* - Get NSFW content
-5. *!cum* - Get NSFW content
-6. *!horny* - Get NSFW content
-7. *!pussy* - Get NSFW content
-8. *!dick* - Get NSFW content
-9. *!riding* - Get NSFW content
-10. *!doggy* - Get NSFW content
-11. *!sex* - Get NSFW content
-
 🎯 *Reaction Commands:*
-13. *!slap* [@user] - Slap someone with an anime gif
-14. *!hug* [@user] - Give someone a warm hug
-15. *!pat* [@user] - Pat someone gently
-16. *!highfive* [@user] - Give someone a high-five
-17. *!poke* [@user] - Poke someone playfully
-18. *!cuddle* [@user] - Cuddle with someone sweetly
-19. *!boop* [@user] - Boop someone's nose
-20. *!bonk* [@user] - Bonk someone on the head
-21. *!wave* [@user] - Wave at someone
-22. *!kiss* [@user] - Kiss someone
-23. *!wink* [@user] - Wink at someone
-24. *!punch* [@user] - Punch someone
-25. *!ponk* [@user] - Ponk someone
-26. *!trash* [@user] - Throw someone into the trash
+1. *!slap* [@user] - Slap someone with an anime gif
+2. *!hug* [@user] - Give someone a warm hug
+3. *!pat* [@user] - Pat someone gently
+4. *!highfive* [@user] - Give someone a high-five
+5. *!poke* [@user] - Poke someone playfully
+6. *!cuddle* [@user] - Cuddle with someone sweetly
+7. *!boop* [@user] - Boop someone's nose
+8. *!bonk* [@user] - Bonk someone on the head
+9. *!wave* [@user] - Wave at someone
+10. *!kiss* [@user] - Kiss someone
+11. *!wink* [@user] - Wink at someone
+12. *!punch* [@user] - Punch someone
+13. *!trash* [@user] - Throw someone into the trash
 
 🎭 *Emote Actions:*
-27. *!dance* - Show off your dance moves
-28. *!facepalm* - Express your disappointment
+14. *!dance* - Show off your dance moves
+15. *!facepalm* - Express your disappointment
 
 🎬 *Special Effects:*
-29. *!wasted* [@user] - Apply a wasted effect
-30. *!jail* [@user] - Put someone behind bars
-31. *!rip* [@user] - Create a memorial
-32. *!kill* [@user] - Dramatically eliminate someone
-33. *!yeet* [@user] - Yeet someone into space
-34. *!insult* [@user] - Playfully insult someone
-35. *!triggered* [@user] - Trigger someone
-36. *!wanted* [@user] - Mark someone as wanted
-
-🎲 *Games & Challenges:*
-37. *!coinflip* - Flip a coin
-38. *!dare* - Get a random dare challenge
-39. *!truth* - Get a random truth question
-40. *!magic8ball* [question] - Ask the magic 8 ball
-41. *!wordgame* - Play a word guessing game
-    - Use *!guess* [word] to make a guess
-42. *!trivia* - Play a trivia game
-    - Use *!answer* [number] to answer
+16. *!wasted* [@user] - Apply a wasted effect
+17. *!jail* [@user] - Put someone behind bars
+18. *!rip* [@user] - Create a memorial
+19. *!kill* [@user] - Dramatically eliminate someone
+20. *!yeet* [@user] - Yeet someone into space
+21. *!insult* [@user] - Playfully insult someone
+22. *!triggered* [@user] - Trigger someone
 
 🎨 *Fun Content:*
-43. *!joke* - Get a random funny joke
-44. *!quote* - Get an inspirational quote
-45. *!fact* - Learn an interesting fact
-46. *!emojiart* - Get a random emoji art
+23. *!joke* - Get a random funny joke
+24. *!quote* - Get an inspirational quote
+25. *!fact* - Learn an interesting fact
+26. *!emojiart* - Get a random emoji art
 
 *How to use:*
 - Commands with [@user] can tag someone
-- For games, follow the instructions given
 - Have fun and be respectful! 😊`;
 
         await sock.sendMessage(msg.key.remoteJid, { text: commandList });
@@ -914,7 +888,7 @@ const funCommands = {
                 mentions: mentions
             });
 
-            await sendGifReaction(sock, msg, './media/anime-wanted.gif', '🤠', mentions);
+            await sendGifReaction(sock, msg, './media/anime-wanted.gif', '🤠', mentions)
         } catch (error) {
             logger.error('Error in wanted command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
