@@ -5,43 +5,18 @@ const {
     useMultiFileAuthState,
     makeInMemoryStore,
     DisconnectReason,
-    fetchLatestBaileysVersion,
-    makeCacheableSignalKeyStore
+    fetchLatestBaileysVersion
 } = require("@whiskeysockets/baileys");
 const pino = require("pino");
 const { Boom } = require("@hapi/boom");
-const config = require("./config");
-const fs = require("fs-extra");
-const path = require("path");
 const qrcode = require('qrcode-terminal');
+const fs = require('fs-extra');
+const path = require('path');
+const config = require('./config');
 
-// Initialize express app
-const app = express();
-const PORT = process.env.PORT || 5000;
-
-// Initialize store with better error handling (from original)
-const store = makeInMemoryStore({ logger: pino({ level: "silent" }) });
-
-try {
-    store.readFromFile('./baileys_store.json');
-} catch (error) {
-    logger.warn('Could not read store file:', error.message);
-    logger.info('Creating new store file');
-}
-
-// Save store more frequently with error handling (from original)
-setInterval(() => {
-    try {
-        store.writeToFile('./baileys_store.json');
-    } catch (error) {
-        logger.error('Failed to write store:', error.message);
-    }
-}, 10000);
-
-
-// Configure logger (combination of original and edited)
+// Initialize logger
 const logger = pino({
-    level: "debug",
+    level: 'info',
     transport: {
         target: 'pino-pretty',
         options: {
@@ -51,254 +26,201 @@ const logger = pino({
     }
 });
 
-// Express endpoint
+// Initialize express app and routes first
+const app = express();
+const PORT = 5000;
+
 app.get('/', (req, res) => {
     res.send('WhatsApp Bot is running!');
 });
 
-// Start server (from original)
+app.get('/status', (req, res) => {
+    res.json({
+        status: 'running',
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Start express server with proper error handling
 const startServer = () => {
-    try {
-        app.listen(PORT, '0.0.0.0', () => {
-            logger.info(`Server running on port ${PORT}`);
-        });
-    } catch (error) {
-        logger.error('Failed to start server:', error);
-        process.exit(1);
-    }
+    return new Promise((resolve, reject) => {
+        // First check if port is in use
+        const net = require('net');
+        const tester = net.createServer()
+            .once('error', err => {
+                if (err.code === 'EADDRINUSE') {
+                    logger.error(`Port ${PORT} is already in use`);
+                    reject(new Error(`Port ${PORT} is already in use`));
+                } else {
+                    logger.error('Port check failed:', err);
+                    reject(err);
+                }
+            })
+            .once('listening', () => {
+                tester.close(() => {
+                    // Port is free, start express server
+                    const server = app.listen(PORT, '0.0.0.0', () => {
+                        logger.info(`Express server running on port ${PORT}`);
+                        resolve(server);
+                    });
+
+                    server.on('error', (error) => {
+                        logger.error('Express server error:', error);
+                        reject(error);
+                    });
+                });
+            })
+            .listen(PORT);
+    });
 };
 
-startServer();
+// Initialize store and directories
+const authDir = path.join(__dirname, 'auth_info_baileys');
+const storeFile = path.join(__dirname, 'baileys_store.json');
+fs.ensureDirSync(authDir);
 
-async function connectToWhatsApp() {
-    const authDir = "./auth_info_baileys";
+const store = makeInMemoryStore({ logger: pino({ level: "silent" }) });
 
+// Load store data if exists
+if (fs.existsSync(storeFile)) {
+    store.readFromFile(storeFile);
+    logger.info('Store data loaded successfully');
+}
+
+// Save store periodically
+setInterval(() => {
     try {
-        // Verify auth state before proceeding (from original)
-        if (!await verifyAuthState(authDir)) {
-            throw new Error('Auth state verification failed');
+        store.writeToFile(storeFile);
+    } catch (error) {
+        logger.error('Failed to write store:', error.message);
+    }
+}, 10000);
+
+// Initialize WhatsApp connection
+async function startWhatsApp() {
+    try {
+        // Reset auth state for fresh start
+        await fs.remove(authDir);
+        await fs.ensureDir(authDir);
+
+        const { state, saveCreds } = await useMultiFileAuthState(authDir);
+        if (!state) {
+            throw new Error('Failed to initialize auth state');
         }
 
-        // Fetch latest version (from edited)
         const { version } = await fetchLatestBaileysVersion();
-        logger.info(`Using Baileys version: ${version}`);
+        logger.info('Using Baileys version:', version);
 
-        // Load auth state (from edited, but retains error handling from original)
-        const { state, saveCreds } = await useMultiFileAuthState(authDir);
-        logger.info('Auth state loaded successfully');
-
-        // Create socket (combination of original and edited)
         const sock = makeWASocket({
             version,
-            printQRInTerminal: true,
-            auth: {
-                creds: state.creds,
-                keys: makeCacheableSignalKeyStore(state.keys, logger)
-            },
             logger: pino({ level: "silent" }),
-            browser: ["BLACKSKY-MD", "Chrome", "1.0.0"],
-            defaultQueryTimeoutMs: 60000,
+            printQRInTerminal: true,
+            auth: state,
+            browser: ['BLACKSKY-MD', 'Chrome', '1.0.0'],
             connectTimeoutMs: 60000,
-            keepAliveIntervalMs: 30000, // from edited
+            defaultQueryTimeoutMs: 60000,
             emitOwnEvents: true,
-            markOnlineOnConnect: true,
-            qrTimeout: 40000,
-            getMessage: async (key) => { // from original
-                if (store) {
-                    const msg = await store.loadMessage(key.remoteJid, key.id);
-                    return msg?.message || undefined;
-                }
-                return undefined;
-            }
+            markOnlineOnConnect: true
         });
 
-        // Bind store (from edited, but retains error handling from original)
-        try {
-            store.bind(sock.ev);
-            logger.info('Store bound to socket events successfully');
-        } catch (error) {
-            logger.error('Failed to bind store:', error);
-        }
+        store.bind(sock.ev);
+        logger.info('Store bound to socket events');
 
-        // Import and verify message handler (from original)
         const messageHandler = require('./handlers/message');
-        logger.info('Message handler loaded and verified');
 
-
-        // Handle messages (combination of original and edited)
         sock.ev.on('messages.upsert', async ({ messages, type }) => {
             if (type !== 'notify') return;
 
             try {
                 const msg = messages[0];
-                if (!msg?.message) {
-                    logger.debug('Empty message received, skipping');
-                    return;
-                }
-
-                logger.debug('Processing message:', {
-                    type: Object.keys(msg.message)[0],
-                    from: msg.key.remoteJid,
-                    pushName: msg.pushName
-                });
-
+                if (!msg?.message) return;
                 await messageHandler(sock, msg);
             } catch (error) {
-                logger.error('Message processing error:', {
-                    error: error.message,
-                    stack: error.stack
-                });
-
-                // Attempt to notify user of error (from original)
-                try {
-                    await sock.sendMessage(messages[0].key.remoteJid, {
-                        text: '❌ Error processing message. Please try again.'
-                    });
-                } catch (sendError) {
-                    logger.error('Failed to send error message:', sendError);
-                }
+                logger.error('Message handling error:', error);
             }
         });
 
-        // Handle connection updates (combination of original and edited)
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
 
             if (qr) {
+                console.log('\nQR Code received, please scan:');
                 qrcode.generate(qr, { small: true });
-                logger.info('New QR code generated. Please scan with WhatsApp to authenticate.');
+                logger.info('New QR code generated');
             }
 
             if (connection === 'close') {
-                const shouldReconnect = (lastDisconnect?.error instanceof Boom) ?
+                const shouldReconnect = (lastDisconnect?.error instanceof Boom)? 
                     lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut : true;
 
                 logger.info('Connection closed:', {
                     error: lastDisconnect?.error?.message,
-                    statusCode: lastDisconnect?.error?.output?.statusCode,
                     shouldReconnect
                 });
 
                 if (shouldReconnect) {
                     logger.info('Attempting reconnection...');
-                    setTimeout(connectToWhatsApp, 3000);
+                    setTimeout(startWhatsApp, 3000);
                 } else {
                     logger.warn('Session ended - clearing auth state');
-                    try {
-                        await fs.remove(authDir);
-                        logger.info('Auth state cleared successfully');
-                        setTimeout(connectToWhatsApp, 5000);
-                    } catch (error) {
-                        logger.error('Failed to clear auth state:', error);
-                    }
+                    await fs.remove(authDir);
+                    setTimeout(startWhatsApp, 5000);
                 }
             }
 
             if (connection === 'open') {
                 logger.info('Connection established successfully!');
-
-                // Verify bot is working by sending a test message (from original)
                 try {
                     await sock.sendMessage(config.ownerNumber, {
                         text: '🤖 Bot is now online and ready!'
                     });
-                    logger.info('Successfully sent ready message to owner');
                 } catch (error) {
                     logger.error('Failed to send ready message:', error);
                 }
             }
         });
 
-        // Save auth state (from edited, but retains error handling from original)
-        sock.ev.on('creds.update', async () => {
-            try {
-                await saveCreds();
-                logger.info('Credentials updated and saved successfully');
-            } catch (error) {
-                logger.error('Failed to save credentials:', error);
-            }
-        });
+        sock.ev.on('creds.update', saveCreds);
 
         return sock;
     } catch (error) {
-        logger.error('Fatal connection error:', {
-            message: error.message,
-            stack: error.stack
-        });
-
-        // Clear auth state and retry (from original)
-        try {
-            await fs.remove(authDir);
-            logger.info('Auth state cleared after fatal error');
-        } catch (clearError) {
-            logger.error('Failed to clear auth state:', clearError);
-        }
-
-        // Implement exponential backoff for retries (from original)
-        setTimeout(connectToWhatsApp, 5000);
-        return null;
+        logger.error('Fatal error in WhatsApp connection:', error);
+        throw error;
     }
 }
 
-// Start bot with improved error handling and retry logic (from original)
-(async () => {
-    let retryCount = 0;
-    const maxRetries = 5;
+// Main startup sequence
+async function main() {
+    try {
+        // Start server first
+        logger.info('Starting express server...');
+        await startServer();
+        logger.info('Express server started successfully');
 
-    while (retryCount < maxRetries) {
-        try {
-            const sock = await connectToWhatsApp();
-            if (sock) {
-                logger.info('Bot started successfully');
-                retryCount = 0; // Reset retry count on success
-                break;
-            }
-            retryCount++;
-            logger.info(`Connection attempt ${retryCount}/${maxRetries}`);
-            await new Promise(resolve => setTimeout(resolve, 5000 * retryCount)); // Exponential backoff
-        } catch (error) {
-            retryCount++;
-            logger.error(`Failed to start bot (attempt ${retryCount}/${maxRetries}):`, error);
-            if (retryCount < maxRetries) {
-                await new Promise(resolve => setTimeout(resolve, 5000 * retryCount));
-            } else {
-                logger.error('Max retries reached, please check your configuration and try again');
-                process.exit(1);
-            }
-        }
+        // Then start WhatsApp connection
+        logger.info('Initializing WhatsApp connection...');
+        await startWhatsApp();
+        logger.info('WhatsApp bot initialized successfully');
+    } catch (error) {
+        logger.error('Fatal startup error:', error);
+        process.exit(1);
     }
-})();
+}
 
-// Enhanced error handlers with more context (from original)
+// Start application
+main().catch(error => {
+    logger.error('Application startup failed:', error);
+    process.exit(1);
+});
+
+// Error handlers
 process.on('uncaughtException', error => {
-    logger.error('Uncaught Exception:', {
-        error: error.message,
-        stack: error.stack,
-        type: error.name
-    });
+    logger.error('Uncaught Exception:', error);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
     logger.error('Unhandled Rejection:', {
         reason: reason instanceof Error ? reason.message : reason,
-        stack: reason instanceof Error ? reason.stack : undefined,
-        promise: promise
+        stack: reason instanceof Error ? reason.stack : undefined
     });
 });
-
-//Helper function from original
-async function verifyAuthState(authDir) {
-    try {
-        await fs.ensureDir(authDir);
-        const files = await fs.readdir(authDir);
-        if (files.length === 0) {
-            logger.info('Fresh installation - auth files will be created');
-            return true;
-        }
-        logger.info('Auth files exist and are readable');
-        return true;
-    } catch (error) {
-        logger.error('Auth state verification failed:', error);
-        return false;
-    }
-}
