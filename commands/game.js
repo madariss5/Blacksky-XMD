@@ -11,7 +11,7 @@ const gameCommands = {
                 });
             }
 
-            const userData = store.getUserData(msg.key.participant);
+            const userData = await store.getUserData(msg.key.participant);
             if (!userData) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: `You need to register first! Use ${config.prefix}register <name> <age> to create your profile.`
@@ -20,11 +20,16 @@ const gameCommands = {
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `🎮 *RPG Status*\n\n` +
+                      `📊 *Player Info*\n` +
+                      `• Name: ${userData.name || 'Anonymous'}\n` +
                       `• Level: ${userData.level || 1}\n` +
+                      `• XP: ${userData.xp || 0}/${Math.pow((userData.level || 1) + 1, 2) * 100}\n\n` +
+                      `💪 *Stats*\n` +
                       `• HP: ${userData.hp || 100}/100\n` +
                       `• MP: ${userData.mp || 100}/100\n` +
-                      `• Gold: ${userData.gold || 0}\n` +
-                      `• XP: ${userData.xp || 0}\n\n` +
+                      `• Gold: ${userData.gold || 0} 💰\n\n` +
+                      `💎 *Inventory*\n` +
+                      `${Object.entries(userData.inventory || {}).map(([item, count]) => `• ${item}: ${count}`).join('\n') || '• Empty'}\n\n` +
                       `Use ${config.prefix}quest to start an adventure!`
             });
 
@@ -32,7 +37,7 @@ const gameCommands = {
         } catch (error) {
             logger.error('Error in rpg command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: 'Error accessing RPG status. Please try again.'
+                text: '❌ Error accessing RPG status. Please try again.'
             });
         }
     },
@@ -61,8 +66,8 @@ const gameCommands = {
             }
 
             // Get challenger and opponent data
-            const challengerData = store.getUserData(challenger);
-            const opponentData = store.getUserData(opponent);
+            const challengerData = await store.getUserData(challenger);
+            const opponentData = await store.getUserData(opponent);
 
             if (!challengerData || !opponentData) {
                 return await sock.sendMessage(msg.key.remoteJid, {
@@ -70,26 +75,31 @@ const gameCommands = {
                 });
             }
 
-            // Battle logic
-            const challengerRoll = Math.floor(Math.random() * 100) + (challengerData.level || 1);
-            const opponentRoll = Math.floor(Math.random() * 100) + (opponentData.level || 1);
+            // Battle mechanics with level consideration
+            const challengerPower = Math.floor(Math.random() * 100) + (challengerData.level || 1) * 10;
+            const opponentPower = Math.floor(Math.random() * 100) + (opponentData.level || 1) * 10;
 
-            const winner = challengerRoll > opponentRoll ? challenger : opponent;
+            const winner = challengerPower > opponentPower ? challenger : opponent;
             const loser = winner === challenger ? opponent : challenger;
-            const reward = 100;
+            const reward = Math.floor(Math.random() * 100) + 100; // Random reward between 100-200 gold
 
-            // Update winner's gold
-            const currentGold = (winner === challenger ? challengerData : opponentData).gold || 0;
-            await store.updateUserGold(winner, currentGold + reward);
+            // Update winner's gold and XP
+            const winnerData = winner === challenger ? challengerData : opponentData;
+            await store.updateUserGold(winner, (winnerData.gold || 0) + reward);
+            await store.addXP(winner, 50); // Add XP for winning
+
+            // Add some XP to loser for participating
+            await store.addXP(loser, 20);
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `⚔️ *Battle Results*\n\n` +
                       `${challengerData.name || 'Challenger'} vs ${opponentData.name || 'Opponent'}\n\n` +
                       `🏆 Winner: @${winner.split('@')[0]}\n` +
-                      `💰 Reward: ${reward} gold\n\n` +
+                      `💰 Reward: ${reward} gold\n` +
+                      `✨ XP Gained: Winner +50, Loser +20\n\n` +
                       `Battle Stats:\n` +
-                      `🎲 ${challengerData.name}: ${challengerRoll}\n` +
-                      `🎲 ${opponentData.name}: ${opponentRoll}`,
+                      `🎲 ${challengerData.name}: ${challengerPower}\n` +
+                      `🎲 ${opponentData.name}: ${opponentPower}`,
                 mentions: [winner, loser]
             });
 
@@ -110,7 +120,7 @@ const gameCommands = {
                 });
             }
 
-            const userData = store.getUserData(msg.key.participant);
+            const userData = await store.getUserData(msg.key.participant);
             if (!userData) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: `You need to register first! Use ${config.prefix}register <name> <age> to create your profile.`
@@ -125,32 +135,33 @@ const gameCommands = {
             }
 
             const quests = [
-                'Defeat the Dragon',
-                'Find the Lost Treasure',
-                'Save the Village',
-                'Clear the Dungeon',
-                'Hunt Monsters'
+                { name: 'Defeat the Dragon', reward: { gold: 150, xp: 100 } },
+                { name: 'Find the Lost Treasure', reward: { gold: 200, xp: 80 } },
+                { name: 'Save the Village', reward: { gold: 120, xp: 90 } },
+                { name: 'Clear the Dungeon', reward: { gold: 180, xp: 110 } },
+                { name: 'Hunt Monsters', reward: { gold: 100, xp: 70 } }
             ];
 
             const randomQuest = quests[Math.floor(Math.random() * quests.length)];
-            const reward = Math.floor(Math.random() * 50) + 50;
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `🗺️ *New Quest*\n\n` +
-                      `Quest: ${randomQuest}\n` +
-                      `Reward: ${reward} gold\n\n` +
+                      `Quest: ${randomQuest.name}\n` +
+                      `Rewards:\n` +
+                      `• Gold: ${randomQuest.reward.gold} 💰\n` +
+                      `• XP: ${randomQuest.reward.xp} ✨\n\n` +
                       `Type ${config.prefix}complete to finish the quest!`
             });
 
             // Store active quest
             if (!global.activeQuests) global.activeQuests = new Map();
             global.activeQuests.set(msg.key.participant, {
-                quest: randomQuest,
-                reward: reward,
+                quest: randomQuest.name,
+                reward: randomQuest.reward,
                 timestamp: Date.now()
             });
 
-            logger.info('New quest started:', { user: msg.key.participant, quest: randomQuest, reward });
+            logger.info('New quest started:', { user: msg.key.participant, quest: randomQuest });
         } catch (error) {
             logger.error('Error in quest command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -183,27 +194,36 @@ const gameCommands = {
                 });
             }
 
-            // Update user's gold
-            const userData = store.getUserData(msg.key.participant);
+            // Update user's gold and XP
+            const userData = await store.getUserData(msg.key.participant);
             const currentGold = userData?.gold || 0;
-            const success = await store.updateUserGold(msg.key.participant, currentGold + quest.reward);
 
-            if (!success) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: 'Failed to update rewards. Please try again.'
-                });
+            await store.updateUserGold(msg.key.participant, currentGold + quest.reward.gold);
+            const xpResult = await store.addXP(msg.key.participant, quest.reward.xp);
+
+            let completionMessage = `🎉 *Quest Completed*\n\n` +
+                                  `Quest: ${quest.quest}\n` +
+                                  `Rewards:\n` +
+                                  `• Gold: +${quest.reward.gold} 💰\n` +
+                                  `• XP: +${quest.reward.xp} ✨\n\n` +
+                                  `Current Gold: ${currentGold + quest.reward.gold}`;
+
+            if (xpResult.levelUp) {
+                completionMessage += `\n\n🎊 *LEVEL UP!*\n` +
+                                   `You've reached level ${xpResult.newLevel}!`;
             }
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `🎉 *Quest Completed*\n\n` +
-                      `Quest: ${quest.quest}\n` +
-                      `Reward: ${quest.reward} gold\n\n` +
-                      `Current Gold: ${currentGold + quest.reward}`
+                text: completionMessage
             });
 
             // Clear completed quest
             global.activeQuests.delete(msg.key.participant);
-            logger.info('Quest completed:', { user: msg.key.participant, quest: quest.quest, reward: quest.reward });
+            logger.info('Quest completed:', { 
+                user: msg.key.participant, 
+                quest: quest.quest, 
+                rewards: quest.reward 
+            });
 
         } catch (error) {
             logger.error('Error in complete command:', error);
