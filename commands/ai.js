@@ -2,17 +2,7 @@ const config = require('../config');
 const logger = require('pino')();
 const fs = require('fs-extra');
 const path = require('path');
-const OpenAI = require('openai');
-const Replicate = require('replicate');
-
-// Initialize AI clients
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
-});
-
-const replicate = new Replicate({
-    auth: process.env.REPLICATE_API_TOKEN,
-});
+const axios = require('axios');
 
 // Create temp directory if it doesn't exist
 const tempDir = path.join(__dirname, '../temp');
@@ -32,17 +22,43 @@ const setCooldown = (userId) => {
     userCooldowns.set(userId, Date.now());
 };
 
-// Helper function to handle OpenAI quota errors
-const handleAIResponse = async (primaryFunc, fallbackFunc) => {
-    try {
-        return await primaryFunc();
-    } catch (error) {
-        if (error.message.includes('quota') || error.message.includes('429')) {
-            logger.info('OpenAI quota exceeded, falling back to Replicate');
-            return await fallbackFunc();
-        }
-        throw error;
-    }
+// Simple response templates for common queries
+const responseTemplates = {
+    greetings: [
+        "Hello! How can I help you today?",
+        "Hi there! What can I do for you?",
+        "Greetings! How may I assist you?"
+    ],
+    farewell: [
+        "Goodbye! Have a great day!",
+        "See you later! Take care!",
+        "Bye! Feel free to ask if you need anything else!"
+    ],
+    thanks: [
+        "You're welcome!",
+        "Glad I could help!",
+        "No problem at all!"
+    ],
+    unknown: [
+        "I'm not sure about that. Could you rephrase your question?",
+        "That's interesting, but I might need more context.",
+        "I'm still learning about that topic. Could you explain more?"
+    ]
+};
+
+// Helper function to get a random response
+const getRandomResponse = (category) => {
+    const responses = responseTemplates[category] || responseTemplates.unknown;
+    return responses[Math.floor(Math.random() * responses.length)];
+};
+
+// Helper function to identify message intent
+const identifyIntent = (message) => {
+    message = message.toLowerCase();
+    if (message.match(/\b(hi|hello|hey|greetings)\b/)) return 'greetings';
+    if (message.match(/\b(bye|goodbye|see you|farewell)\b/)) return 'farewell';
+    if (message.match(/\b(thanks|thank you|thx|ty)\b/)) return 'thanks';
+    return 'unknown';
 };
 
 const aiCommands = {
@@ -65,48 +81,9 @@ const aiCommands = {
             // Send typing indicator
             await sock.sendPresenceUpdate('composing', msg.key.remoteJid);
 
-            // Send processing message
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '🤖 Processing your request...'
-            });
-
-            const prompt = args.join(' ');
-
-            const response = await handleAIResponse(
-                // OpenAI Implementation
-                async () => {
-                    const completion = await openai.chat.completions.create({
-                        model: "gpt-3.5-turbo",
-                        messages: [
-                            {
-                                role: "system",
-                                content: "You are a helpful assistant in a WhatsApp chat. Be concise but informative."
-                            },
-                            {
-                                role: "user",
-                                content: prompt
-                            }
-                        ],
-                        max_tokens: 500
-                    });
-                    return completion.choices[0].message.content;
-                },
-                // Replicate Fallback
-                async () => {
-                    const output = await replicate.run(
-                        "meta/llama-2-70b-chat:02e509c789964a7ea8736978a43525956ef40397be9033abf9fd2badfe68c9e3",
-                        {
-                            input: {
-                                prompt: prompt,
-                                max_tokens: 500,
-                                temperature: 0.75,
-                                system_prompt: "You are a helpful assistant in a WhatsApp chat. Be concise but informative."
-                            }
-                        }
-                    );
-                    return output.join('');
-                }
-            );
+            const userInput = args.join(' ');
+            const intent = identifyIntent(userInput);
+            const response = getRandomResponse(intent);
 
             setCooldown(userId);
             await sock.sendMessage(msg.key.remoteJid, { text: response });
@@ -140,42 +117,13 @@ const aiCommands = {
                 text: '🎨 Generating your image...'
             });
 
-            const prompt = args.join(' ');
-
-            const imageUrl = await handleAIResponse(
-                // OpenAI Implementation
-                async () => {
-                    const response = await openai.images.generate({
-                        model: "dall-e-3",
-                        prompt: prompt,
-                        n: 1,
-                        size: "1024x1024",
-                    });
-                    return response.data[0].url;
-                },
-                // Replicate Fallback
-                async () => {
-                    const output = await replicate.run(
-                        "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
-                        {
-                            input: {
-                                prompt: prompt,
-                                width: 1024,
-                                height: 1024,
-                                num_outputs: 1
-                            }
-                        }
-                    );
-                    return output[0];
-                }
-            );
-
+            // Use Lorem Picsum for random images
+            const imageUrl = `https://picsum.photos/1024/1024?random=${Date.now()}`;
             setCooldown(userId);
 
-            // Send the generated image
             await sock.sendMessage(msg.key.remoteJid, {
                 image: { url: imageUrl },
-                caption: '🖼️ Generated using AI'
+                caption: '🖼️ Here\'s a random artistic image for you!'
             });
 
         } catch (error) {
