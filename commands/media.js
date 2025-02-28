@@ -24,19 +24,24 @@ const mediaCommands = {
             const isVideo = !!quotedMsg.videoMessage;
             const messageType = isVideo ? 'videoMessage' : 'imageMessage';
 
-            // Download media using downloadMediaMessage from Baileys
+            // Download media using Baileys downloadMediaMessage
             const buffer = await downloadMediaMessage(
-                { message: { [messageType]: quotedMsg[messageType] } },
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageType
+                },
                 'buffer',
-                { },
-                { 
+                {},
+                {
                     logger,
                     reuploadRequest: sock.updateMediaMessage
                 }
             );
 
-            // Convert to WebP and send as sticker
-            await sock.sendImageAsSticker(msg.key.remoteJid, buffer, {
+            // Send as sticker
+            await sock.sendMessage(msg.key.remoteJid, {
+                sticker: buffer,
                 packname: config.botName,
                 author: config.ownerName
             });
@@ -63,10 +68,14 @@ const mediaCommands = {
             });
 
             const buffer = await downloadMediaMessage(
-                { message: { stickerMessage: quotedMsg.stickerMessage } },
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageType: 'stickerMessage'
+                },
                 'buffer',
-                { },
-                { 
+                {},
+                {
                     logger,
                     reuploadRequest: sock.updateMediaMessage
                 }
@@ -99,10 +108,14 @@ const mediaCommands = {
             });
 
             const buffer = await downloadMediaMessage(
-                { message: { videoMessage: quotedMsg.videoMessage } },
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageType: 'videoMessage'
+                },
                 'buffer',
-                { },
-                { 
+                {},
+                {
                     logger,
                     reuploadRequest: sock.updateMediaMessage
                 }
