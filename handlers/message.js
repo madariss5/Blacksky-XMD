@@ -1,24 +1,24 @@
 const config = require('../config');
 const logger = require('pino')();
-const fs = require('fs-extra');
-const path = require('path');
-const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 
-// Load all command modules
-const commandModules = {
-    basic: require('../commands/basic'),
-    owner: require('../commands/owner'),
-    downloader: require('../commands/downloader'),
-    music: require('../commands/music'),
-    fun: require('../commands/fun'),
-    economy: require('../commands/economy'),
-    group: require('../commands/group'),
-    nsfw: require('../commands/nsfw'),
-    game: require('../commands/game'),
-    anime: require('../commands/anime'),
-    ai: require('../commands/ai'),
-    media: require('../commands/media')
-};
+// Initialize command modules with better error handling
+const commandModules = {};
+try {
+    commandModules.basic = require('../commands/basic');
+    commandModules.owner = require('../commands/owner');
+    commandModules.downloader = require('../commands/downloader');
+    commandModules.music = require('../commands/music');
+    commandModules.fun = require('../commands/fun');
+    commandModules.economy = require('../commands/economy');
+    commandModules.group = require('../commands/group');
+    commandModules.nsfw = require('../commands/nsfw');
+    commandModules.game = require('../commands/game');
+    commandModules.anime = require('../commands/anime');
+    commandModules.ai = require('../commands/ai');
+    commandModules.media = require('../commands/media');
+} catch (error) {
+    logger.error('Error loading command modules:', error);
+}
 
 async function executeCommand(sock, msg, command, args, moduleName) {
     try {
@@ -30,12 +30,20 @@ async function executeCommand(sock, msg, command, args, moduleName) {
             messageId: msg.key.id
         });
 
-        if (!commandModules[moduleName]?.[command]) {
+        // Validate module and command existence
+        if (!commandModules[moduleName]) {
+            logger.warn(`Module ${moduleName} not found`);
+            return false;
+        }
+
+        if (!commandModules[moduleName][command]) {
             logger.warn(`Command ${command} not found in module ${moduleName}`);
             return false;
         }
 
+        // Execute command with enhanced error handling
         await commandModules[moduleName][command](sock, msg, args);
+
         logger.info(`Command ${command} executed successfully`, {
             messageId: msg.key.id,
             participant: msg.key.participant
@@ -50,7 +58,7 @@ async function executeCommand(sock, msg, command, args, moduleName) {
         });
         try {
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `Error: ${error.message}`
+                text: `❌ Error executing ${command}: ${error.message}`
             });
         } catch (sendError) {
             logger.error('Failed to send error message:', sendError);
@@ -71,7 +79,7 @@ async function messageHandler(sock, msg) {
             return;
         }
 
-        // Get message content with enhanced logging
+        // Get message content with enhanced validation
         const messageType = Object.keys(msg.message)[0];
         let text = '';
 
@@ -97,9 +105,9 @@ async function messageHandler(sock, msg) {
             return;
         }
 
-        // Check for commands with improved logging
-        if (text.startsWith('.')) {
-            const [rawCommand, ...args] = text.slice(1).trim().split(/\s+/);
+        // Check for commands with improved validation
+        if (text.startsWith(config.prefix)) {
+            const [rawCommand, ...args] = text.slice(config.prefix.length).trim().split(/\s+/);
             if (!rawCommand) {
                 logger.debug('Empty command received', {
                     messageId: msg.key.id
@@ -117,22 +125,26 @@ async function messageHandler(sock, msg) {
                 messageId: msg.key.id
             });
 
-            // Check each module for the command
+            let commandExecuted = false;
+
+            // Try each module for the command
             for (const [moduleName, module] of Object.entries(commandModules)) {
-                if (command in module) {
-                    await executeCommand(sock, msg, command, args, moduleName);
-                    return;
+                if (module && command in module) {
+                    commandExecuted = await executeCommand(sock, msg, command, args, moduleName);
+                    if (commandExecuted) break;
                 }
             }
 
             // Command not found
-            logger.warn('Command not found:', {
-                command,
-                messageId: msg.key.id
-            });
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `Command "${command}" not found. Use .help to see available commands.`
-            });
+            if (!commandExecuted) {
+                logger.warn('Command not found:', {
+                    command,
+                    messageId: msg.key.id
+                });
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `Command "${command}" not found. Use ${config.prefix}help to see available commands.`
+                });
+            }
         }
     } catch (error) {
         logger.error('Message handler error:', {
