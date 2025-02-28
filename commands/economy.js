@@ -100,7 +100,7 @@ const economyCommands = {
         }
     },
 
-    // Updated deposit command with correct store methods
+    // Updated deposit command with the correct store methods
     deposit: async (sock, msg, args) => {
         try {
             if (!args.length) {
@@ -118,17 +118,18 @@ const economyCommands = {
 
             // Get user's current balance
             const userData = await store.getUserData(msg.key.participant);
-            if (!userData || userData.wallet < amount) {
+            if (!userData || userData.gold < amount) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '❌ Insufficient funds in your wallet!'
                 });
             }
 
-            // Perform the deposit transaction
-            await store.updateUserBalance(msg.key.participant, {
-                wallet: userData.wallet - amount,
-                bank: userData.bank + amount
-            });
+            // Update wallet (gold) balance
+            await store.updateUserGold(msg.key.participant, userData.gold - amount);
+
+            // Update bank balance
+            userData.bank = (userData.bank || 0) + amount;
+            await store.set(`users.${msg.key.participant}.bank`, userData.bank);
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `💳 Successfully deposited $${amount} to your bank account!`
