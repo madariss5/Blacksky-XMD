@@ -100,7 +100,7 @@ const economyCommands = {
         }
     },
 
-    // Updated deposit command with improved error handling and balance verification
+    // Updated deposit command with improved error handling and store integration
     deposit: async (sock, msg, args) => {
         try {
             if (!args.length) {
@@ -116,17 +116,17 @@ const economyCommands = {
                 });
             }
 
-            // First check if user has sufficient balance
-            const userBalance = await balance.getBalance(msg.key.participant);
-            if (!userBalance || userBalance.wallet < amount) {
+            // Get user's current balance
+            const userData = await store.getUserData(msg.key.participant);
+            if (!userData || userData.wallet < amount) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '❌ Insufficient funds in your wallet!'
                 });
             }
 
-            // Perform the deposit
-            await balance.deductBalance(msg.key.participant, amount);
-            await balance.addBankBalance(msg.key.participant, amount);
+            // Perform the deposit using store methods
+            await store.updateWalletBalance(msg.key.participant, -amount); // Deduct from wallet
+            await store.updateBankBalance(msg.key.participant, amount); // Add to bank
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `💳 Successfully deposited $${amount} to your bank account!`
@@ -134,7 +134,7 @@ const economyCommands = {
         } catch (error) {
             logger.error('Error in deposit command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ ' + error.message
+                text: '❌ Error making deposit: ' + error.message
             });
         }
     },
