@@ -390,86 +390,35 @@ const mediaCommands = {
                 text: '⏳ Mixing emojis...'
             });
 
-            // Encode emojis for URL
-            const emoji1Encoded = encodeURIComponent(emoji1);
-            const emoji2Encoded = encodeURIComponent(emoji2);
-            const searchQuery = `${emoji1} ${emoji2} mixed emoji sticker`;
+            // Use local Python script to mix emojis
+            const outputPath = path.join(tempDir, 'emoji_mix.webp');
+            const pythonScript = path.join(__dirname, '../scripts/mix_emojis.py');
 
-            logger.info(`Making Tenor API request for emoji mix: ${emoji1} + ${emoji2}`);
-            logger.info(`Using search query: ${searchQuery}`);
-
-            // Get mixed emoji image from Tenor
-            const response = await axios.get(
-                `https://tenor.googleapis.com/v2/search`,
-                { 
-                    params: {
-                        q: searchQuery,
-                        key: config.tenorApiKey,
-                        client_key: 'whatsapp_bot',
-                        limit: 1,
-                        media_filter: 'minimal',
-                        contentfilter: 'medium'
-                    },
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    },
-                    responseType: 'json'
-                }
-            );
-
-            logger.info('Tenor API response received:', {
-                status: response.status,
-                hasResults: !!response.data?.results?.length,
-                resultCount: response.data?.results?.length
+            await new Promise((resolve, reject) => {
+                exec(`python3 "${pythonScript}" "${emoji1}" "${emoji2}" "${outputPath}"`, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
             });
 
-            if (!response.data?.results?.[0]?.media_formats?.webp?.url) {
-                throw new Error('No emoji mix found');
-            }
-
-            const webpUrl = response.data.results[0].media_formats.webp.url;
-            logger.info(`Found WebP URL: ${webpUrl}`);
-
-            // Download the webp file
-            const webpResponse = await axios.get(webpUrl, {
-                responseType: 'arraybuffer'
-            });
-
-            logger.info('Successfully downloaded WebP image');
-
-            // Save as sticker
-            const stickerBuffer = Buffer.from(webpResponse.data);
+            // Read and send the mixed emoji sticker
+            const stickerBuffer = await fs.readFile(outputPath);
             await sock.sendMessage(msg.key.remoteJid, {
                 sticker: stickerBuffer,
                 mimetype: 'image/webp'
             });
 
+            // Cleanup
+            await fs.remove(outputPath);
+
         } catch (error) {
-            logger.error('Error in emojimix command:', {
-                error: error.message,
-                response: error.response?.data,
-                status: error.response?.status
-            });
-
-            let errorMessage = '❌ Failed to mix emojis';
-            if (error.response?.status === 400) {
-                errorMessage += ': Invalid emoji combination';
-            } else if (error.response?.status === 403) {
-                errorMessage += ': API authentication failed';
-            } else if (error.response?.status === 429) {
-                errorMessage += ': Too many requests, please try again later';
-            } else if (error.message === 'No emoji mix found') {
-                errorMessage += ': This emoji combination is not available';
-            } else {
-                errorMessage += `: ${error.message}`;
-            }
-
+            logger.error('Error in emojimix command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: errorMessage
+                text: '❌ Failed to mix emojis: ' + error.message
             });
         }
     }
+
 };
 
 module.exports = mediaCommands;
