@@ -254,14 +254,38 @@ const groupCommands = {
             const groupMetadata = await validateGroupContext(sock, msg, true);
             if (!groupMetadata) return;
 
-            const code = await sock.groupInviteCode(msg.key.remoteJid);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `🔗 Group Link:\nhttps://chat.whatsapp.com/${code}`
-            });
+            try {
+                // Get group info first to verify the bot has sufficient permissions
+                const groupInfo = await sock.groupMetadata(msg.key.remoteJid);
+
+                // Use the correct Baileys method to generate invite code
+                const code = await sock.groupInviteCode(msg.key.remoteJid);
+
+                if (!code) {
+                    throw new Error('Failed to generate invite code');
+                }
+
+                const linkMessage = `🔗 *Group Invite Link*\n\n` +
+                                  `Group: ${groupInfo.subject}\n` +
+                                  `Link: https://chat.whatsapp.com/${code}\n\n` +
+                                  `Note: This link can be revoked using ${config.prefix}revoke`;
+
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: linkMessage
+                });
+
+                logger.info('Group link generated:', {
+                    group: msg.key.remoteJid,
+                    generatedBy: msg.key.participant
+                });
+            } catch (error) {
+                logger.error('Error generating group link:', error);
+                throw new Error('Failed to generate group link. Make sure I have the required permissions.');
+            }
         } catch (error) {
             logger.error('Error in link command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to get group link: ' + error.message
+                text: '❌ ' + error.message
             });
         }
     },
