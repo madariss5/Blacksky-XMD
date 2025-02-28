@@ -45,8 +45,8 @@
       "lastWeekly": 1740766515411
     },
     "4915561048015@s.whatsapp.net": {
-      "gold": 10675,
-      "bank": 0,
+      "gold": 10575,
+      "bank": 100,
       "inventory": [],
       "lastDaily": 1740769404741,
       "level": 1,
@@ -76,5 +76,6 @@
       "rules": "nic mlre"
     }
   },
-  "banned": []
+  "banned": [],
+  "users.4915561048015@s.whatsapp.net.bank": 100
 }
