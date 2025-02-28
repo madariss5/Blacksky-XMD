@@ -100,7 +100,7 @@ const economyCommands = {
         }
     },
 
-    // Updated deposit command with improved error handling and store integration
+    // Updated deposit command with correct store methods
     deposit: async (sock, msg, args) => {
         try {
             if (!args.length) {
@@ -124,9 +124,11 @@ const economyCommands = {
                 });
             }
 
-            // Perform the deposit using store methods
-            await store.updateWalletBalance(msg.key.participant, -amount); // Deduct from wallet
-            await store.updateBankBalance(msg.key.participant, amount); // Add to bank
+            // Perform the deposit transaction
+            await store.updateUserBalance(msg.key.participant, {
+                wallet: userData.wallet - amount,
+                bank: userData.bank + amount
+            });
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `💳 Successfully deposited $${amount} to your bank account!`
