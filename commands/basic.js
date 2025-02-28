@@ -2,7 +2,11 @@ const config = require('../config');
 const logger = require('pino')();
 const os = require('os');
 
-const startTime = Date.now(); // Track bot start time
+const startTime = Date.now();
+
+async function formatPhoneNumber(jid) {
+    return jid.split('@')[0].replace(/(\d{2})(\d{3})(\d{3})(\d{4})/, '+$1 $2 $3 $4');
+}
 
 const basicCommands = {
     help: async (sock, msg, args) => {
@@ -230,33 +234,63 @@ const basicCommands = {
     },
     profile: async (sock, msg, args) => {
         try {
+            if (!msg.key.participant) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: 'Could not identify user. Please try again.'
+                });
+            }
+
             logger.info('Starting profile command execution', {
-                sender: msg.key.remoteJid,
+                sender: msg.key.participant || msg.key.remoteJid,
                 args: args
             });
             const store = require('../database/store');
             logger.debug('Store module loaded successfully');
 
             // Get target user (mentioned user or command sender)
-            const mentionedJid = args[0]?.replace('@', '') + '@s.whatsapp.net' || msg.key.remoteJid;
+            const mentionedJid = args[0]?.replace('@', '') + '@s.whatsapp.net' || msg.key.participant || msg.key.remoteJid;
             logger.debug('Profile lookup for:', { mentionedJid });
 
-            const userData = store.get('users')?.[mentionedJid] || {
+            // Get user's profile picture URL
+            let ppUrl;
+            try {
+                ppUrl = await sock.profilePictureUrl(mentionedJid, 'image');
+            } catch (error) {
+                logger.warn('Failed to fetch profile picture:', error);
+                ppUrl = 'https://raw.githubusercontent.com/WhiskeySockets/Baileys/master/src/BaileysDefaultImage.png';
+            }
+
+            const userData = await store.getUserData(mentionedJid) || {
                 name: mentionedJid.split('@')[0],
                 commands: 0,
-                joinedAt: new Date().toISOString()
+                joinedAt: new Date().toISOString(),
+                level: 1,
+                xp: 0
             };
             logger.debug('Retrieved user data:', { userData });
 
-            const text = `👤 *User Profile*\n\n` +
-                        `• Name: ${userData.name}\n` +
-                        `• Number: @${mentionedJid.split('@')[0]}\n` +
-                        `• Commands Used: ${userData.commands || 0}\n` +
-                        `• Joined: ${new Date(userData.joinedAt).toLocaleDateString()}\n` +
-                        `• Status: ${store.getBannedUsers().includes(mentionedJid) ? '🚫 Banned' : '✅ Active'}`;
+            // Calculate level progress
+            const nextLevelXP = Math.pow((userData.level || 1) + 1, 2) * 100;
+            const progress = ((userData.xp || 0) / nextLevelXP) * 100;
+            const progressBar = '█'.repeat(Math.floor(progress / 10)) + '░'.repeat(10 - Math.floor(progress / 10));
+
+            // Get warnings count and format warning display
+            const warnings = (await store.getWarnings(mentionedJid) || []).length;
+            const warningDisplay = '⚠️'.repeat(warnings) + '○'.repeat(3 - warnings);
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text,
+                image: { url: ppUrl },
+                caption: `👤 *User Profile*\n\n` +
+                        `• Name: ${userData.name}\n` +
+                        `• Number: ${await formatPhoneNumber(mentionedJid)}\n` +
+                        `• Level: ${userData.level || 1}\n` +
+                        `• XP: ${userData.xp || 0}/${nextLevelXP}\n` +
+                        `• Progress: [${progressBar}] ${Math.floor(progress)}%\n` +
+                        `• Commands Used: ${userData.commands || 0} commands\n` +
+                        `• Command Activity: ${userData.commands ? '🟢 Active' : '🔴 Inactive'}\n` +
+                        `• Warnings: ${warningDisplay} (${warnings}/3)\n` +
+                        `• Joined: ${new Date(userData.joinedAt).toLocaleDateString()}\n` +
+                        `• Status: ${(await store.getBannedUsers() || []).includes(mentionedJid) ? '🚫 Banned' : '✅ Active'}`,
                 mentions: [mentionedJid]
             });
             logger.info('Profile command completed successfully');
@@ -280,35 +314,49 @@ const basicCommands = {
             logger.debug('Store module loaded successfully');
 
             // Get sender's data
-            const userId = msg.key.remoteJid;
+            const userId = msg.key.participant || msg.key.remoteJid;
             logger.debug('Me command for user:', { userId });
 
-            const userData = store.get('users')?.[userId] || {
+            // Get user's profile picture URL
+            let ppUrl;
+            try {
+                ppUrl = await sock.profilePictureUrl(userId, 'image');
+            } catch (error) {
+                logger.warn('Failed to fetch profile picture:', error);
+                ppUrl = 'https://raw.githubusercontent.com/WhiskeySockets/Baileys/master/src/BaileysDefaultImage.png';
+            }
+
+            const userData = await store.getUserData(userId) || {
                 name: userId.split('@')[0],
                 commands: 0,
-                joinedAt: new Date().toISOString()
+                joinedAt: new Date().toISOString(),
+                level: 1,
+                xp: 0
             };
             logger.debug('Retrieved user data:', { userData });
 
-            // Get additional user stats
-            const totalGroups = store.get('chats')?.filter(id => id.endsWith('@g.us')).length || 0;
-            const warnings = store.getWarnings(userId).length;
-            logger.debug('Retrieved additional stats:', {
-                totalGroups,
-                warnings
-            });
+            // Calculate level progress
+            const nextLevelXP = Math.pow((userData.level || 1) + 1, 2) * 100;
+            const progress = ((userData.xp || 0) / nextLevelXP) * 100;
+            const progressBar = '█'.repeat(Math.floor(progress / 10)) + '░'.repeat(10 - Math.floor(progress / 10));
 
-            const text = `📱 *Your Profile*\n\n` +
-                        `• Name: ${userData.name}\n` +
-                        `• Number: @${userId.split('@')[0]}\n` +
-                        `• Commands Used: ${userData.commands || 0}\n` +
-                        `• Joined: ${new Date(userData.joinedAt).toLocaleDateString()}\n` +
-                        `• Warnings: ${warnings}/3\n` +
-                        `• Groups: ${totalGroups}\n` +
-                        `• Status: ${store.getBannedUsers().includes(userId) ? '🚫 Banned' : '✅ Active'}`;
+            // Get warnings count and format warning display
+            const warnings = (await store.getWarnings(userId) || []).length;
+            const warningDisplay = '⚠️'.repeat(warnings) + '○'.repeat(3 - warnings);
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text,
+                image: { url: ppUrl },
+                caption: `📱 *Your Profile*\n\n` +
+                        `• Name: ${userData.name}\n` +
+                        `• Number: ${await formatPhoneNumber(userId)}\n` +
+                        `• Level: ${userData.level || 1}\n` +
+                        `• XP: ${userData.xp || 0}/${nextLevelXP}\n` +
+                        `• Progress: [${progressBar}] ${Math.floor(progress)}%\n` +
+                        `• Commands Used: ${userData.commands || 0} commands\n` +
+                        `• Command Activity: ${userData.commands ? '🟢 Active' : '🔴 Inactive'}\n` +
+                        `• Warnings: ${warningDisplay} (${warnings}/3)\n` +
+                        `• Joined: ${new Date(userData.joinedAt).toLocaleDateString()}\n` +
+                        `• Status: ${(await store.getBannedUsers() || []).includes(userId) ? '🚫 Banned' : '✅ Active'}`,
                 mentions: [userId]
             });
             logger.info('Me command completed successfully');
@@ -322,7 +370,6 @@ const basicCommands = {
             });
         }
     }
-
 };
 
 module.exports = basicCommands;
