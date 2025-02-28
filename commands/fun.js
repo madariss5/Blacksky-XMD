@@ -804,19 +804,28 @@ const funCommands = {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
+            // Send message first
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `*${msg.pushName}* ponks ${target}! 🏓`,
+                text: `*${msg.pushName}* playfully ponks ${target}!\n\n` +
+                      `🏓 *PONK!*\n` +
+                      `(　＾∀＾) ⟶ 🏓 ⟶ ${target}`,
                 mentions: mentions
             });
 
-            await sendGifReaction(sock, msg, './media/anime-ponk.gif', '🏓', mentions);
+            // Try to send GIF
+            try {
+                await sendGifReaction(sock, msg, path.join(__dirname, '../media/anime-ponk.gif'), '🏓', mentions);
+            } catch (gifError) {
+                logger.warn('Failed to send ponk GIF:', gifError);
+            }
+
         } catch (error) {
             logger.error('Error in ponk command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '😅 Failed to execute ponk command!'
             });
         }
-    },
+    }
 };
 
 // Export the funCommands object
