@@ -16,30 +16,28 @@ const basicCommands = {
 
                 if (!commandInfo) {
                     return await sock.sendMessage(msg.key.remoteJid, {
-                        text: `❌ Command "${command}" not found. Use .help to see all commands.`
+                        text: `❌ Command "${command}" not found. Use ${config.prefix}help to see all commands.`
                     });
                 }
 
                 const helpText = `*Command: ${command}*\n\n` +
                                `📝 Description: ${commandInfo.description}\n` +
-                               `🔧 Usage: ${commandInfo.usage || `.${command}`}\n` +
+                               `🔧 Usage: ${commandInfo.usage || `${config.prefix}${command}`}\n` +
                                `📊 Category: ${commandInfo.category}\n` +
                                (commandInfo.examples ? `\n💡 Examples:\n${commandInfo.examples.join('\n')}` : '');
 
                 return await sock.sendMessage(msg.key.remoteJid, { text: helpText });
             }
 
-            // General help message
+            // General help message with improved formatting
+            const basicCmds = ['help', 'ping', 'menu', 'info', 'runtime', 'speed']
+                .map(cmd => `• ${config.prefix}${cmd} - ${config.commands[cmd].description}`)
+                .join('\n');
+
             const text = `*${config.botName} Help*\n\n` +
-                        `📌 *Basic Commands*:\n` +
-                        `• .help - Show this help message\n` +
-                        `• .ping - Check bot response\n` +
-                        `• .menu - Show all commands\n` +
-                        `• .info - Bot information\n` +
-                        `• .runtime - Check uptime\n` +
-                        `• .speed - Test response speed\n\n` +
-                        `Type .menu to see the full command list!\n` +
-                        `For detailed help on a command, type .help <command>`;
+                        `📌 *Basic Commands*\n${basicCmds}\n\n` +
+                        `Type ${config.prefix}menu to see the full command list!\n` +
+                        `For detailed help on a command, type ${config.prefix}help <command>`;
 
             await sock.sendMessage(msg.key.remoteJid, { text });
             logger.info('Help command executed successfully');
@@ -59,17 +57,17 @@ const basicCommands = {
             const loadAvg = os.loadavg();
             const memUsage = process.memoryUsage();
 
+            // Send initial message and measure response time
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: 'Testing bot response...' 
+                text: '🏓 Testing bot response...' 
             });
 
             const latency = Date.now() - start;
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `🤖 *Bot Status*\n\n` +
-                      `📡 Response Time: ${latency}ms\n` +
-                      `🔄 Connection: Active\n` +
+                text: `🏓 *Pong!*\n\n` +
+                      `🕒 Response: ${latency}ms\n` +
                       `💻 System Load: ${loadAvg[0].toFixed(2)}%\n` +
-                      `💾 Memory Usage: ${(memUsage.heapUsed / 1024 / 1024).toFixed(2)} MB`
+                      `💾 Memory: ${(memUsage.heapUsed / 1024 / 1024).toFixed(2)} MB`
             });
 
             logger.info('Ping command executed successfully', { latency });
@@ -88,10 +86,11 @@ const basicCommands = {
             // Group commands by category
             const categories = {};
             Object.entries(config.commands).forEach(([cmd, info]) => {
-                if (!categories[info.category]) {
-                    categories[info.category] = [];
+                const category = info.category || 'Uncategorized';
+                if (!categories[category]) {
+                    categories[category] = [];
                 }
-                categories[info.category].push(`• .${cmd} - ${info.description}`);
+                categories[category].push(`• ${config.prefix}${cmd} - ${info.description}`);
             });
 
             // Build menu text with all categories
@@ -104,6 +103,7 @@ const basicCommands = {
 
             // Then other categories with icons
             const categoryIcons = {
+                'Basic': '📌',
                 'Media': '🎨',
                 'Downloader': '📥',
                 'Music': '🎵',
@@ -119,7 +119,6 @@ const basicCommands = {
                 'Debug': '🐛'
             };
 
-            // Add other categories
             Object.entries(categories).forEach(([category, commands]) => {
                 if (category !== 'Basic' && commands.length > 0) {
                     const icon = categoryIcons[category] || '📌';
@@ -127,7 +126,7 @@ const basicCommands = {
                 }
             });
 
-            text += `Use .help <command> for detailed info!`;
+            text += `💡 Use ${config.prefix}help <command> for detailed info!`;
 
             await sock.sendMessage(msg.key.remoteJid, { text });
             logger.info('Menu command executed successfully');
@@ -152,7 +151,6 @@ const basicCommands = {
             const text = `*${config.botName} Information*\n\n` +
                         `🤖 *Bot Details*\n` +
                         `• Name: ${config.botName}\n` +
-                        `• Version: ${config.version}\n` +
                         `• Owner: ${config.ownerName}\n` +
                         `• Prefix: ${config.prefix}\n\n` +
                         `⚙️ *System Info*\n` +
@@ -205,7 +203,7 @@ const basicCommands = {
             logger.debug('Executing speed command');
             const start = Date.now();
 
-            // Test message sending speed
+            // Send initial message
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: '🚀 Testing bot speed...' 
             });
