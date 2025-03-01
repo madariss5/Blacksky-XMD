@@ -1,223 +1,190 @@
-const express = require('express');
-const cors = require('cors');
-const logger = require('pino')();
-const { default: makeWASocket, useMultiFileAuthState, Browsers, DisconnectReason } = require('@whiskeysockets/baileys');
+const {
+    default: makeWASocket,
+    useMultiFileAuthState,
+    DisconnectReason,
+    fetchLatestBaileysVersion,
+    jidDecode,
+    proto,
+    getContentType,
+    Browsers
+} = require("@whiskeysockets/baileys");
 const { Boom } = require('@hapi/boom');
 const qrcode = require('qrcode-terminal');
 const path = require('path');
-const SessionManager = require('./utils/session');
-const utilityCommands = require('./commands/utility');
-const commandHandler = require('./handlers/command_handler');
+const pino = require('pino');
+const fs = require('fs-extra');
+const chalk = require('chalk');
+const figlet = require('figlet');
+const _ = require('lodash');
+const config = require('./config');
 
-// Initialize express app
-const app = express();
-const PORT = process.env.PORT || 5000;
-const sessionManager = new SessionManager(path.join(__dirname, 'sessions'));
+// Logger setup
+const logger = pino({ level: 'silent' });
 
-// Basic middleware setup
-app.use(cors({
-    origin: [
-        'https://*.replit.dev',
-        'https://*.replit.app',
-        'https://*.repl.co'
-    ],
-    credentials: true
-}));
-app.use(express.json());
-app.set('trust proxy', true);
+// Auth file path
+const AUTH_FOLDER = './auth_info';
 
-// Request logging middleware
-app.use((req, res, next) => {
-    logger.info('Incoming request:', {
-        method: req.method,
-        path: req.path,
-        ip: req.ip,
-        headers: req.headers
-    });
-    next();
-});
-
-// Basic ping endpoint
-app.get('/ping', (req, res) => {
-    logger.info('Ping request received');
-    res.json({ status: 'ok', time: new Date().toISOString() });
-});
-
-// Initialize WhatsApp connection
-async function connectToWhatsApp() {
+const startBot = async() => {
     try {
-        logger.info('Starting WhatsApp connection initialization...');
+        console.log(chalk.yellow(figlet.textSync('BLACKSKY-MD', {
+            font: 'Standard',
+            horizontalLayout: 'default',
+            verticalLayout: 'default',
+            width: 80,
+            whitespaceBreak: true
+        })));
+        console.log(chalk.yellow('\n\nStarting Bot...\n'));
 
-        // Initialize session manager
-        await sessionManager.initialize();
-        logger.info('Session manager initialized');
+        // Auth state
+        const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
+        const { version, isLatest } = await fetchLatestBaileysVersion();
+        console.log(`Using WA v${version.join('.')}, isLatest: ${isLatest}`);
 
-        // Initialize session state
-        const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
-        logger.info('Auth state loaded successfully');
-
-        // Create WhatsApp socket connection
+        // Socket config
         const sock = makeWASocket({
-            auth: state,
-            printQRInTerminal: false, // We'll handle QR code display ourselves
-            browser: Browsers.ubuntu('Chrome'),
+            version,
             logger,
-            connectTimeoutMs: 60000, // Increase timeout to 60 seconds
-            markOnlineOnConnect: true // Mark the bot as online when connected
-        });
-
-        // Handle incoming messages
-        sock.ev.on('messages.upsert', async ({ messages }) => {
-            try {
-                for (const message of messages) {
-                    if (message.key.fromMe) continue; // Skip messages sent by the bot
-
-                    // Log incoming message for debugging
-                    logger.info('Received message:', {
-                        from: message.key.remoteJid,
-                        type: message.message ? Object.keys(message.message)[0] : 'unknown'
-                    });
-
-                    // Process message through command handler
-                    await commandHandler.handleMessage(sock, message);
-                }
-            } catch (error) {
-                logger.error('Error processing message:', error);
+            printQRInTerminal: true,
+            auth: state,
+            browser: Browsers.macOS('Desktop'),
+            getMessage: async key => {
+                return {
+                    conversation: 'An Error Occurred, Repeat Command!'
+                };
             }
         });
 
         // Connection update handling
-        sock.ev.on('connection.update', async (update) => {
-            const { connection, lastDisconnect, qr } = update;
-
-            logger.info('Connection update received:', {
-                connection,
-                disconnectReason: lastDisconnect?.error?.output?.statusCode,
-                hasQR: !!qr,
-                fullUpdate: update // Log the full update object for debugging
-            });
-
-            if (qr) {
-                // Display QR code in the terminal
-                qrcode.generate(qr, { small: true });
-                logger.info('New QR code generated. Please scan with WhatsApp.');
-            }
-
+        sock.ev.on('connection.update', async(update) => {
+            const { connection, lastDisconnect } = update;
             if (connection === 'close') {
                 const shouldReconnect = (lastDisconnect?.error instanceof Boom) ?
                     lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut : true;
-
-                logger.info('Connection closed due to ', lastDisconnect?.error, ', reconnecting ', shouldReconnect);
-
+                console.log('Connection closed due to:', lastDisconnect?.error, 'Reconnecting:', shouldReconnect);
                 if (shouldReconnect) {
-                    connectToWhatsApp();
+                    await startBot();
                 }
             } else if (connection === 'open') {
-                logger.info('WhatsApp connection opened successfully');
-
-                // Send startup message
-                const startupMessage = '🤖 *WhatsApp Bot is Online!*\n\n' +
-                                        'Send !menu to see available commands\n\n' +
-                                        'Quick commands:\n' +
-                                        '!stats - Show bot statistics\n' +
-                                        '!help - Show help menu\n' +
-                                        '!report <issue> - Report an issue';
-
-                // If OWNER_NUMBER is set, send startup notification
-                if (process.env.OWNER_NUMBER) {
-                    try {
-                        await sock.sendMessage(`${process.env.OWNER_NUMBER}@s.whatsapp.net`, {
-                            text: startupMessage
-                        });
-                        logger.info('Startup message sent to owner');
-                    } catch (error) {
-                        logger.error('Failed to send startup message:', error);
-                    }
-                }
+                console.log(chalk.green('\nBot connected!'));
+                console.log(chalk.yellow('Connected to WhatsApp Web\n'));
+                console.log(chalk.cyan('• Bot Status: Online'));
+                console.log(chalk.cyan(`• Bot Name: ${config.botName}`));
+                console.log(chalk.cyan('• Type .menu to see available commands\n'));
             }
         });
 
-        // Credentials update handling
+        // Credentials update
         sock.ev.on('creds.update', saveCreds);
-        logger.info('Credentials update handler registered');
+
+        // Helper function to format menu
+        const formatMenu = (commands) => {
+            const categories = {};
+            Object.entries(commands).forEach(([cmd, info]) => {
+                if (!categories[info.category]) {
+                    categories[info.category] = [];
+                }
+                categories[info.category].push(`${config.prefix}${cmd} - ${info.description}`);
+            });
+
+            let menu = `╭─「 ${config.botName} 」\n`;
+            menu += `│\n`;
+            menu += `│ 👋 Hello!\n`;
+            menu += `│ 🤖 Bot Name: ${config.botName}\n`;
+            menu += `│ 👑 Owner: ${config.ownerName}\n`;
+            menu += `│ ⚡ Prefix: ${config.prefix}\n`;
+            menu += `│\n`;
+
+            Object.entries(categories).forEach(([category, cmds]) => {
+                menu += `│ 📑 *${category} Commands*\n`;
+                cmds.forEach(cmd => {
+                    menu += `│ • ${cmd}\n`;
+                });
+                menu += `│\n`;
+            });
+
+            menu += `╰────\n\n`;
+            menu += `_Send ${config.prefix}help <command> for detailed info_`;
+
+            return menu;
+        };
+
+        // Messages handling
+        sock.ev.on('messages.upsert', async(m) => {
+            try {
+                const msg = m.messages[0];
+                if (!msg.message) return;
+                if (msg.key && msg.key.remoteJid === 'status@broadcast') return;
+
+                const type = getContentType(msg.message);
+                const messageText = (type === 'conversation') ?
+                    msg.message.conversation :
+                    (type === 'extendedTextMessage') ?
+                    msg.message.extendedTextMessage.text : '';
+
+                if (!messageText.startsWith(config.prefix)) return;
+                const args = messageText.slice(config.prefix.length).trim().split(/ +/);
+                const command = args.shift().toLowerCase();
+
+                // Basic command handler
+                switch (command) {
+                    case 'menu':
+                    case 'help':
+                        const menuText = formatMenu(config.commands);
+                        await sock.sendMessage(msg.key.remoteJid, { 
+                            text: menuText,
+                            contextInfo: {
+                                externalAdReply: {
+                                    title: config.botName,
+                                    body: "WhatsApp Bot",
+                                    thumbnailUrl: config.menuImage,
+                                    sourceUrl: "https://wa.me/" + config.ownerNumber
+                                }
+                            }
+                        });
+                        break;
+
+                    case 'ping':
+                        const start = Date.now();
+                        await sock.sendMessage(msg.key.remoteJid, { text: 'Testing ping...' });
+                        const end = Date.now();
+                        await sock.sendMessage(msg.key.remoteJid, { 
+                            text: `🏓 Pong!\n📶 Response Speed: ${end - start}ms` 
+                        });
+                        break;
+
+                    case 'owner':
+                        const ownerContact = `*${config.botName} Owner*\n\n` +
+                                          `👤 Name: ${config.ownerName}\n` +
+                                          `📞 Number: wa.me/${config.ownerNumber.split('@')[0]}\n\n` +
+                                          `_For bug reports and features_`;
+                        await sock.sendMessage(msg.key.remoteJid, { text: ownerContact });
+                        break;
+
+                    default:
+                        if (config.commands[command]) {
+                            await sock.sendMessage(msg.key.remoteJid, {
+                                text: `⚠️ Command "${command}" is under development`
+                            });
+                        } else {
+                            await sock.sendMessage(msg.key.remoteJid, {
+                                text: `❌ Unknown command: ${command}\nUse ${config.prefix}menu to see available commands.`
+                            });
+                        }
+                }
+            } catch (error) {
+                console.error('Error processing message:', error);
+            }
+        });
 
         return sock;
     } catch (error) {
-        logger.error('Error in WhatsApp connection setup:', error);
-        throw error;
+        console.error('Error in startBot:', error);
     }
-}
+};
 
-// Start WhatsApp connection
-connectToWhatsApp()
-    .then(() => logger.info('WhatsApp initialization started'))
-    .catch(err => {
-        logger.error('WhatsApp initialization failed:', err);
-        process.exit(1); // Exit if WhatsApp initialization fails
-    });
+// Start bot
+startBot();
 
-// Basic routes
-app.get('/', (req, res) => {
-    res.json({
-        status: 'online',
-        service: 'WhatsApp Bot',
-        timestamp: new Date().toISOString()
-    });
-});
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-    try {
-        const status = {
-            status: 'healthy',
-            uptime: process.uptime(),
-            timestamp: new Date().toISOString(),
-            port: PORT
-        };
-        logger.info('Health check succeeded:', status);
-        res.json(status);
-    } catch (error) {
-        logger.error('Health check failed:', error);
-        res.status(500).json({ status: 'error', error: error.message });
-    }
-});
-
-// Create server with explicit error handling
-const server = app.listen(PORT, '0.0.0.0', () => {
-    const address = server.address();
-    logger.info('Server started successfully:', {
-        address: address.address,
-        port: address.port,
-        family: address.family,
-        environment: {
-            port: process.env.PORT,
-            replSlug: process.env.REPL_SLUG,
-            replId: process.env.REPL_ID,
-            replOwner: process.env.REPL_OWNER,
-            nodeEnv: process.env.NODE_ENV
-        }
-    });
-});
-
-// Error handling
-server.on('error', (error) => {
-    logger.error('Server error:', error);
-    if (error.code === 'EADDRINUSE') {
-        logger.error(`Port ${PORT} is already in use`);
-        process.exit(1);
-    }
-});
-
-// Keepalive configuration
-server.keepAliveTimeout = 65000;
-server.headersTimeout = 66000;
-
-// Global error handling
-process.on('uncaughtException', (error) => {
-    logger.error('Uncaught Exception:', error);
-    process.exit(1);
-});
-
-process.on('unhandledRejection', (error) => {
-    logger.error('Unhandled Rejection:', error);
-});
+// Handle process termination gracefully
+process.on('uncaughtException', console.error);
+process.on('unhandledRejection', console.error);
