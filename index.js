@@ -13,7 +13,6 @@ const pino = require('pino');
 const { Boom } = require('@hapi/boom');
 const fs = require('fs-extra');
 const chalk = require('chalk');
-const FileType = require('file-type');
 const path = require('path');
 const axios = require('axios');
 const NodeCache = require('node-cache');
@@ -21,15 +20,11 @@ const moment = require('moment-timezone');
 const express = require('express');
 const { exec, spawn, execSync } = require('child_process');
 const ffmpeg = require('fluent-ffmpeg');
-const { smsg } = require('./lib/simple'); // We'll create this helper later
+const { smsg } = require('./lib/simple');
 
 // Initialize Express server
 const app = express();
-const port = process.env.PORT || 5000;
-app.listen(port, () => console.log(`Server running on port ${port}`));
-
-const store = makeInMemoryStore({ logger: pino().child({ level: 'silent', stream: 'store' }) });
-const msgRetryCounterCache = new NodeCache();
+const PORT = process.env.PORT || 5000;
 
 // Bot configuration
 const owner = ['254710772666']; // Replace with your number
@@ -37,9 +32,38 @@ const sessionName = "shaban-md"; // Session name
 const botName = "SHABAN-MD"; // Bot name
 const TIME_ZONE = "Africa/Nairobi"; // Adjust to your timezone
 
+const store = makeInMemoryStore({ logger: pino().child({ level: 'silent', stream: 'store' }) });
+const msgRetryCounterCache = new NodeCache();
+
+// Start server with port handling
+const startServer = () => {
+    app.get('/', (req, res) => {
+        res.json({ status: 'WhatsApp Bot Server Running' });
+    });
+
+    return new Promise((resolve, reject) => {
+        const server = app.listen(PORT, '0.0.0.0')
+            .once('error', (err) => {
+                if (err.code === 'EADDRINUSE') {
+                    console.log(chalk.yellow(`Port ${PORT} is busy. Server could not start.`));
+                    resolve(false);
+                } else {
+                    reject(err);
+                }
+            })
+            .once('listening', () => {
+                console.log(chalk.green(`Server started on port ${PORT}`));
+                resolve(true);
+            });
+    });
+};
+
 async function startHANS() {
     try {
-        console.log(chalk.yellow('Loading session...'));
+        // Try to start the server first
+        await startServer();
+
+        console.log(chalk.yellow('Loading WhatsApp session...'));
 
         const { state, saveCreds } = await useMultiFileAuthState(`./auth_info_baileys`);
         const { version, isLatest } = await fetchLatestBaileysVersion();
@@ -83,42 +107,49 @@ async function startHANS() {
             const { connection, lastDisconnect, qr } = update;
 
             if (qr) {
-                console.log(chalk.yellow('Please scan QR code to connect...'));
+                console.log(chalk.cyan('\nScan this QR code to connect:'));
             }
 
             if (connection === 'close') {
-                let reason = new Boom(lastDisconnect?.error)?.output.statusCode;
+                let reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
+                console.log(chalk.red('Connection closed due to ', reason));
+
                 if (reason === DisconnectReason.badSession) {
                     console.log(chalk.red('Bad Session File, Please Delete Session and Scan Again'));
-                    startHANS();
+                    process.exit(1);
                 } else if (reason === DisconnectReason.connectionClosed) {
-                    console.log(chalk.red('Connection closed, reconnecting....'));
+                    console.log(chalk.yellow('Connection closed, reconnecting....'));
                     startHANS();
                 } else if (reason === DisconnectReason.connectionLost) {
-                    console.log(chalk.red('Connection Lost from Server, reconnecting...'));
+                    console.log(chalk.yellow('Connection Lost from Server, reconnecting...'));
                     startHANS();
                 } else if (reason === DisconnectReason.connectionReplaced) {
-                    console.log(chalk.red('Connection Replaced, Another New Session Opened, Please Close Current Session First'));
-                    hans.logout();
+                    console.log(chalk.red('Connection Replaced, Please Close Current Session First'));
+                    process.exit(1);
                 } else if (reason === DisconnectReason.loggedOut) {
-                    console.log(chalk.red('Device Logged Out, Please Scan Again And Run.'));
-                    hans.logout();
+                    console.log(chalk.red('Device Logged Out, Please Delete Session and Scan Again.'));
+                    process.exit(1);
                 } else if (reason === DisconnectReason.restartRequired) {
                     console.log(chalk.yellow('Restart Required, Restarting...'));
                     startHANS();
                 } else if (reason === DisconnectReason.timedOut) {
-                    console.log(chalk.red('Connection TimedOut, Reconnecting...'));
+                    console.log(chalk.yellow('Connection TimedOut, Reconnecting...'));
                     startHANS();
                 } else {
-                    hans.end(`Unknown DisconnectReason: ${reason}|${connection}`);
+                    console.log(chalk.red(`Unknown DisconnectReason: ${reason}|${connection}`));
+                    process.exit(1);
                 }
             }
 
             if (connection === 'open') {
-                console.log(chalk.green('Successfully connected to WhatsApp'));
+                console.log(chalk.green('\n✓ Successfully connected to WhatsApp\n'));
+                console.log(chalk.cyan('• Bot Status: Online'));
+                console.log(chalk.cyan('• Type !menu to see available commands\n'));
 
                 // Send info message to bot number
-                hans.sendMessage(hans.user.id, { text: `🟢 Bot is now active!\n\n${botName} is ready to use.` });
+                hans.sendMessage(hans.user.id, { 
+                    text: `🟢 ${botName} is now active and ready to use!`
+                });
             }
         });
 
@@ -131,7 +162,10 @@ async function startHANS() {
                 let msg = JSON.parse(JSON.stringify(chatUpdate.messages[0]));
                 if (!msg.message) return;
 
-                msg.message = (Object.keys(msg.message)[0] === 'ephemeralMessage') ? msg.message.ephemeralMessage.message : msg.message;
+                msg.message = (Object.keys(msg.message)[0] === 'ephemeralMessage') 
+                    ? msg.message.ephemeralMessage.message 
+                    : msg.message;
+
                 if (msg.key && msg.key.remoteJid === 'status@broadcast') return;
 
                 const m = smsg(hans, msg, store);
@@ -148,7 +182,6 @@ async function startHANS() {
                 let participants = grp.participants;
 
                 for (let num of participants) {
-                    // Welcome message implementation will go here
                     const welcomeMessage = `Welcome @${num.split('@')[0]} to ${metadata.subject}! 🎉`;
                     if (grp.action == 'add') {
                         hans.sendMessage(grp.id, { 
@@ -172,17 +205,30 @@ async function startHANS() {
             // Message delete handling implementation
         });
 
-        // Add more features and command handlers here
-
         return hans;
     } catch (err) {
-        console.error('Error in startHANS: ', err);
+        console.error('Fatal error in startHANS: ', err);
+        process.exit(1);
     }
 }
 
 // Start the bot
-startHANS();
+startHANS().catch(err => {
+    console.error('Fatal error:', err);
+    process.exit(1);
+});
 
-// Catch uncaught errors
-process.on('uncaughtException', console.error);
-process.on('unhandledRejection', console.error);
+// Handle uncaught errors
+process.on('uncaughtException', err => {
+    console.error('Uncaught Exception:', err);
+    if (err.code !== 'EADDRINUSE') {
+        process.exit(1);
+    }
+});
+
+process.on('unhandledRejection', err => {
+    console.error('Unhandled Promise Rejection:', err);
+    if (err.code !== 'EADDRINUSE') {
+        process.exit(1);
+    }
+});
