@@ -47,12 +47,13 @@ async function testWhatsApp() {
             logger: pino({ level: "debug" }), // Set to debug for more detailed logs
             printQRInTerminal: true,
             auth: state,
-            browser: ['BLACKSKY-MD', 'Safari', '1.0.0'],
+            browser: ['Chrome (Linux)', 'Chrome', '112.0.5615.49'],
             connectTimeoutMs: 60_000,
             defaultQueryTimeoutMs: 0,
             keepAliveIntervalMs: 10000,
             emitOwnEvents: true,
-            markOnlineOnConnect: true
+            markOnlineOnConnect: true,
+            retryRequestDelayMs: 2000
         });
 
         store.bind(sock.ev);
