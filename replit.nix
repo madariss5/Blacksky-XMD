@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.libuuid
     pkgs.pango
     pkgs.expat
     pkgs.dbus
