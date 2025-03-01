@@ -98,18 +98,14 @@ const ownerCommands = {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
         }
         try {
-            // Clear temporary files
             const tempFiles = await fs.readdir(tempDir);
             for (const file of tempFiles) {
                 if (file.startsWith('wa-')) {
                     await fs.remove(path.join(tempDir, file));
                 }
             }
-
-            // Clear store data
             store.data = {};
             await store.saveStore();
-
             await sock.sendMessage(msg.key.remoteJid, { text: '✅ Cache cleared successfully!' });
         } catch (error) {
             await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to clear cache: ' + error.message });
@@ -122,7 +118,7 @@ const ownerCommands = {
         }
         try {
             await sock.sendMessage(msg.key.remoteJid, { text: '🔄 Restarting bot...' });
-            process.exit(0); // Process will be restarted by the process manager
+            process.exit(0); 
         } catch (error) {
             await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to restart: ' + error.message });
         }
@@ -184,16 +180,13 @@ const ownerCommands = {
                 store: store.data,
                 config: config
             };
-
             const backupPath = path.join(tempDir, 'backup.json');
             await fs.writeJSON(backupPath, data, { spaces: 2 });
-
             await sock.sendMessage(msg.key.remoteJid, {
                 document: { url: backupPath },
                 mimetype: 'application/json',
                 fileName: `backup_${new Date().toISOString()}.json`
             });
-
             await fs.remove(backupPath);
         } catch (error) {
             await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to create backup: ' + error.message });
@@ -212,10 +205,8 @@ const ownerCommands = {
         try {
             const buffer = await downloadMediaMessage(msg, 'buffer', {}, { logger });
             const data = JSON.parse(buffer.toString());
-
             if (data.store) store.data = data.store;
             if (data.config) Object.assign(config, data.config);
-
             await store.saveStore();
             await sock.sendMessage(msg.key.remoteJid, { text: '✅ Backup restored successfully!' });
         } catch (error) {
@@ -280,7 +271,6 @@ const ownerCommands = {
                 nodeVersion: process.version,
                 v8Version: process.versions.v8
             };
-
             const systemInfo = `💻 *System Information*\n\n` +
                                `• Platform: ${system.platform}\n` +
                                `• Architecture: ${system.arch}\n` +
@@ -292,7 +282,6 @@ const ownerCommands = {
                                `• Heap Total: ${system.heapTotal}\n` +
                                `• Node.js: ${system.nodeVersion}\n` +
                                `• V8: ${system.v8Version}`;
-
             await sock.sendMessage(msg.key.remoteJid, { text: systemInfo });
         } catch (error) {
             await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to get system info: ' + error.message });
@@ -407,61 +396,18 @@ const ownerCommands = {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
         }
-        const text = args.join(' ');
-        if (!text) {
-            return await sock.sendMessage(msg.key.remoteJid, { 
-                text: '❌ Please provide text to convert to QR code!' 
-            });
-        }
-        try {
-            const qrPath = path.join(tempDir, 'qr_output.png');
-            await QRCode.toFile(qrPath, text, {
-                color: {
-                    dark: '#000000',
-                    light: '#FFFFFF'
-                },
-                width: 512,
-                margin: 1
-            });
-            await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: qrPath },
-                caption: '✅ Here is your QR code!'
-            });
-            await fs.remove(qrPath);
-        } catch (error) {
-            logger.error('Error in qrmaker command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to generate QR code: ' + error.message
-            });
-        }
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: '⚠️ QR code generation is temporarily unavailable. This feature will be enabled in a future update.'
+        });
     },
 
     qrreader: async (sock, msg) => {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
         }
-        if (!msg.message.imageMessage) {
-            return await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Please send an image containing a QR code!'
-            });
-        }
-        try {
-            const buffer = await downloadMediaMessage(msg, 'buffer', {}, { logger });
-            const image = await Jimp.read(buffer);
-            const qr = new QRReader();
-            const value = await new Promise((resolve, reject) => {
-                qr.callback = (err, v) => err != null ? reject(err) : resolve(v);
-                qr.decode(image.bitmap);
-            });
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `📱 QR Code Content:\n\n${value.result}`
-            });
-        } catch (error) {
-            logger.error('Error in qrreader command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to read QR code: ' + error.message
-            });
-        }
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: '⚠️ QR code reading is temporarily unavailable. This feature will be enabled in a future update.'
+        });
     },
     setbotname: async (sock, msg, args) => {
         if (msg.key.remoteJid !== config.ownerNumber) {

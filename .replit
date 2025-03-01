@@ -21,7 +21,7 @@ args = "WhatsApp Core"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "WhatsApp Bot"
+args = "Express Server"
 
 [[workflows.workflow]]
 name = "WhatsApp Test"
@@ -53,7 +53,7 @@ task = "shell.exec"
 args = "node whatsapp_core.js"
 
 [[workflows.workflow]]
-name = "WhatsApp Bot"
+name = "Express Server"
 author = "agent"
 
 [workflows.workflow.metadata]

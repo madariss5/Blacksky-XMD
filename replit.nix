@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.nodejs
     pkgs.exiftool
     pkgs.imagemagick
     pkgs.ffmpeg
