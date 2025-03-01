@@ -1,21 +1,56 @@
 const config = require('../config');
 const store = require('../database/store');
 const logger = require('pino')();
+const fs = require('fs-extra');
+const path = require('path');
+
+// Add debug logging to monitor game state
+const logGameState = (gameId, action, game) => {
+    logger.info(`Game State [${action}] for ${gameId}:`, {
+        type: game?.type,
+        timeLeft: game ? (game.timeLimit - (Date.now() - game.startTime)) : null,
+        attempts: game?.attempts,
+        solved: game?.solved
+    });
+};
+
+// Add this at the start of the file, after the initial requires
+const validateGameState = (gameId, game) => {
+    try {
+        const validTypes = ['family100', 'quiz', 'asahotak', 'tebakkata', 'tebaklagu', 'tebakkimia', 'picture'];
+        if (!validTypes.includes(game.type)) {
+            logger.warn(`Invalid game type: ${game.type} for game ${gameId}`);
+            return false;
+        }
+        if (!game.startTime || !game.timeLimit) {
+            logger.warn(`Missing time properties for game ${gameId}`);
+            return false;
+        }
+        return true;
+    } catch (error) {
+        logger.error('Error validating game state:', error);
+        return false;
+    }
+};
 
 // Game state management
 const activeGames = new Map();
 const gameScores = new Map();
 
 // Helper function to create game state
-const createGameState = (type, data) => ({
-    type,
-    data,
-    startTime: Date.now(),
-    timeLimit: 60000, // Default 60 seconds
-    attempts: 0,
-    maxAttempts: 3,
-    solved: false
-});
+const createGameState = (type, data) => {
+    const state = {
+        type,
+        data,
+        startTime: Date.now(),
+        timeLimit: 60000, // Default 60 seconds
+        attempts: 0,
+        maxAttempts: 3,
+        solved: false
+    };
+    logger.info(`Created new game state:`, { type, timeLimit: state.timeLimit });
+    return state;
+};
 
 // Rate limiting for games
 const userCooldowns = new Map();
@@ -23,12 +58,13 @@ const COOLDOWN_PERIOD = 30000; // 30 seconds
 
 const isOnCooldown = (userId) => {
     if (!userCooldowns.has(userId)) return false;
-    const lastUsage = userCooldowns.get(userId);
-    return Date.now() - lastUsage < COOLDOWN_PERIOD;
+    const timeLeft = COOLDOWN_PERIOD - (Date.now() - userCooldowns.get(userId));
+    return timeLeft > 0;
 };
 
 const setCooldown = (userId) => {
     userCooldowns.set(userId, Date.now());
+    logger.debug(`Set cooldown for user: ${userId}`);
 };
 
 // Game-specific data storage
@@ -38,7 +74,6 @@ const truthQuestions = [
     "What's your biggest secret?",
     "What's your worst lie you've ever told?",
     "What's your biggest regret?",
-    // Add more truth questions
 ];
 
 const dareActions = [
@@ -47,7 +82,6 @@ const dareActions = [
     "Sing a song",
     "Tell a joke",
     "Dance for 30 seconds",
-    // Add more dare actions
 ];
 
 const familyQuestions = [
@@ -56,7 +90,6 @@ const familyQuestions = [
         answers: ["Sleep", "Watch TV", "Play games", "Eat", "Browse phone", "Read", "Exercise"],
         points: [30, 25, 20, 15, 10, 5, 5]
     },
-    // Add more family quiz questions
 ];
 
 const quizQuestions = [
@@ -70,7 +103,6 @@ const quizQuestions = [
         answers: ["Iron"],
         category: "Chemistry"
     },
-    // Add more quiz questions
 ];
 
 const asahOtakQuestions = [
@@ -111,6 +143,7 @@ const imageQuizzes = [
 ];
 
 const gameCommands = {
+    // Main game command implementations
     rpg: async (sock, msg) => {
         try {
             if (!msg.key.participant) {
@@ -806,7 +839,7 @@ const gameCommands = {
                     mentions: game.players
                 });
 
-                // Clean up game state
+                                // Clean up game state
                 activeGames.delete(gameId);
                 logger.info('Suit game ended:', { 
                     gameId, 
@@ -844,48 +877,25 @@ const gameCommands = {
 
     family100: async (sock, msg) => {
         try {
-            const gameId = msg.key.remoteJid;
-
-            if (activeGames.has(gameId)) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    ```javascript
-                    text: '❌ A game is already in progress in this chat!'
-                });
-            }
-
-            const randomQuestion = familyQuestions[Math.floor(Math.random() * familyQuestions.length)];
-            const game = {
-                type: 'family100',
-                question: randomQuestion.question,
-                answers: randomQuestion.answers,
-                points: randomQuestion.points,
-                foundAnswers: new Set(),
-                startTime: Date.now(),
-                timeLimit: 60000 // 60 seconds
-            };
-
-            activeGames.set(gameId, game);
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `👨‍👩‍👧‍👦 *Family 100*\n\n${game.question}\n\n⏳ You have 60 seconds to guess! Type your answers.`
+            const game = await modifyGameStart(sock, msg, 'family100', () => {
+                const randomQuestion = familyQuestions[Math.floor(Math.random() * familyQuestions.length)];
+                return {
+                    type: 'family100',
+                    question: randomQuestion.question,
+                    answers: randomQuestion.answers,
+                    points: randomQuestion.points,
+                    foundAnswers: new Set(),
+                    startTime: Date.now(),
+                    timeLimit: 60000,
+                    solved: false
+                };
             });
 
-            // Set timeout to end game
-            setTimeout(async () => {
-                if (activeGames.has(gameId)) {
-                    const game = activeGames.get(gameId);
-                    const remainingAnswers = game.answers.filter(answer => !game.foundAnswers.has(answer));
-
-                    await sock.sendMessage(msg.key.remoteJid, {
-                        text: `⌛ Time's up!\n\nFound answers: ${Array.from(game.foundAnswers).join(', ')}\n\nMissed answers: ${remainingAnswers.join(', ')}`
-                    });
-
-                    activeGames.delete(gameId);
-                }
-            }, game.timeLimit);
-
-            logger.info('Family100 game started in chat:', gameId);
-
+            if (game) {
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `👨‍👩‍👧‍👦 *Family 100*\n\n${game.question}\n\n⏳ You have 60 seconds to find all answers!`
+                });
+            }
         } catch (error) {
             logger.error('Error in family100 command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -894,536 +904,13 @@ const gameCommands = {
         }
     },
 
-    truth: async (sock, msg) => {
-        try {
-            const userId = msg.key.participant || msg.key.remoteJid;
-
-            if (isOnCooldown(userId)) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '⏳ Please wait before starting another game!'
-                });
-            }
-
-            const randomQuestion = truthQuestions[Math.floor(Math.random() * truthQuestions.length)];
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `🤔 *Truth Question*\n\n${randomQuestion}\n\n@${userId.split('@')[0]}, answer honestly!`,
-                mentions: [userId]
-            });
-
-            setCooldown(userId);
-            logger.info('Truth command executed for user:', userId);
-
-        } catch (error) {
-            logger.error('Error in truth command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error starting truth game'
-            });
-        }
-    },
-
-    dare: async (sock, msg) => {
-        try {
-            const userId = msg.key.participant || msg.key.remoteJid;
-
-            if (isOnCooldown(userId)) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '⏳ Please wait before starting another game!'
-                });
-            }
-
-            const randomDare = dareActions[Math.floor(Math.random() * dareActions.length)];
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `😈 *Dare Challenge*\n\n${randomDare}\n\n@${userId.split('@')[0]}, you must complete this dare!`,
-                mentions: [userId]
-            });
-
-            setCooldown(userId);
-            logger.info('Dare command executed for user:', userId);
-
-        } catch (error) {
-            logger.error('Error in dare command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error starting dare game'
-            });
-        }
-    },
-
-    werewolf: async (sock, msg) => {
-        await sock.sendMessage(msg.key.remoteJid, {
-            text: '🚧 Werewolf game is under development!'
-        });
-    },
-    asahotak: async (sock, msg) => {
-        try {
-            const gameId = msg.key.remoteJid;
-            if (activeGames.has(gameId)) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ A game is already in progress in this chat!'
-                });
-            }
-
-            const randomQuiz = asahOtakQuestions[Math.floor(Math.random() * asahOtakQuestions.length)];
-
-            const game = {
-                type: 'asahotak',
-                question: randomQuiz.question,
-                answers: randomQuiz.answers,
-                hint: randomQuiz.hint,
-                attempts: 0,
-                maxAttempts: 3,
-                startTime: Date.now(),
-                timeLimit: 60000, // 60 seconds
-                solved: false
-            };
-
-            activeGames.set(gameId, game);
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `🧩 *Asah Otak*\n\n${game.question}\n\n💡 Hint: ${game.hint}\n\n⏳ You have 60 seconds and 3 attempts!`
-            });
-
-            // Set timeout to end game
-            setTimeout(async () => {
-                if (activeGames.has(gameId)) {
-                    const game = activeGames.get(gameId);
-                    if (!game.solved) {
-                        await sock.sendMessage(msg.key.remoteJid, {
-                            text: `⌛ Time's up!\n\nPossible answers were: ${game.answers.join(', ')}`
-                        });
-                        activeGames.delete(gameId);
-                    }
-                }
-            }, game.timeLimit);
-
-        } catch (error) {
-            logger.error('Error in asahotak command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error starting Asah Otak quiz'
-            });
-        }
-    },
-
-    siapakahaku: async (sock, msg) => {
-        await sock.sendMessage(msg.key.remoteJid, {
-            text: '🚧 Siapakah Aku game is under development!'
-        });
-    },
-
-    susunkata: async (sock, msg) => {
-        await sock.sendMessage(msg.key.remoteJid, {
-            text: '🚧 Susun Kata game is under development!'
-        });
-    },
-
-    tebakkata: async (sock, msg) => {
-        try {
-            const gameId = msg.key.remoteJid;
-            if (activeGames.has(gameId)) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ A game is already in progress in this chat!'
-                });
-            }
-
-            const randomWord = wordQuestions[Math.floor(Math.random() * wordQuestions.length)];
-
-            const game = {
-                type: 'tebakkata',
-                word: randomWord.word.toLowerCase(),
-                hint: randomWord.hint,
-                guessedLetters: new Set(),
-                attempts: 0,
-                maxAttempts: 6,
-                startTime: Date.now(),
-                timeLimit: 120000, // 120 seconds
-                solved: false
-            };
-
-            activeGames.set(gameId, game);
-
-            const displayWord = game.word
-                .split('')
-                .map(letter => letter === ' ' ? ' ' : '_')
-                .join(' ');
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `📝 *Word Guessing Game*\n\n${displayWord}\n\n💡 Hint: ${game.hint}\n\n⏳ You have 120 seconds and 6 attempts!`
-            });
-
-            // Set timeout to end game
-            setTimeout(async () => {
-                if (activeGames.has(gameId)) {
-                    const game = activeGames.get(gameId);
-                    if (!game.solved) {
-                        await sock.sendMessage(msg.key.remoteJid, {
-                            text: `⌛ Time's up!\n\nThe word was: ${game.word}`
-                        });
-                        activeGames.delete(gameId);
-                    }
-                }
-            }, game.timeLimit);
-
-        } catch (error) {
-            logger.error('Error in tebakkata command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error starting word guessing game'
-            });
-        }
-    },
-
-    tebakgambar: async (sock, msg) => {
-        try {
-            const gameId = msg.key.remoteJid;
-            if (activeGames.has(gameId)) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ A game is already in progress in this chat!'
-                });
-            }
-
-            // Select random image quiz
-            const quiz = imageQuizzes[Math.floor(Math.random() * imageQuizzes.length)];
-
-            // Create game state
-            const game = createGameState('picture', {
-                image: quiz.image,
-                answer: quiz.answer.toLowerCase(),
-                category: quiz.category,
-                timeLimit: 90000 // 90 seconds for picture quizzes
-            });
-
-            activeGames.set(gameId, game);
-
-            // Send the image and question
-            await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: `./assets/quiz/${quiz.image}` },
-                caption: `🖼️ *Picture Quiz*\n\nCategory: ${quiz.category}\n\n` +
-                        `What or where is this?\n\n` +
-                        `⏳ You have 90 seconds and 3 attempts to answer!` +
-                        `\n\nUse ${config.prefix}answer <your answer> to respond`
-            });
-
-            // Set timeout to end game
-            setTimeout(async () => {
-                const currentGame = activeGames.get(gameId);
-                if (currentGame && !currentGame.solved) {
-                    await sock.sendMessage(msg.key.remoteJid, {
-                        text: `⌛ Time's up!\n\nThe correct answer was: ${game.data.answer}`
-                    });
-                    activeGames.delete(gameId);
-                }
-            }, game.timeLimit);
-
-        } catch (error) {
-            logger.error('Error in tebakgambar command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error starting picture quiz'
-            });
-        }
-    },
-
-    tebaklirik: async (sock, msg) => {
-        try {
-            const gameId = msg.key.remoteJid;
-            if (activeGames.has(gameId)) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ A game is already in progress in this chat!'
-                });
-            }
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '🎵 *Lyrics Quiz*\n\n' +
-                      'Complete the missing lyrics:\n\n' +
-                      '[Coming Soon]\n' +
-                      'We are preparing a comprehensive lyrics database.\n' +
-                      'This feature will be available in the next update!'
-            });
-
-        } catch (error) {
-            logger.error('Error in tebaklirik command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error starting lyrics quiz'
-            });
-        }
-    },
-
-    tebaklagu: async (sock, msg) => {
-        try {
-            const gameId = msg.key.remoteJid;
-            if (activeGames.has(gameId)) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ A game is already in progress in this chat!'
-                });
-            }
-
-            const songQuizzes = [
-                {
-                    audio: "song1.mp3",
-                    title: "Shape of You",
-                    artist: "Ed Sheeran"
-                },
-                {
-                    audio: "song2.mp3",
-                    title: "Perfect",
-                    artist: "Ed Sheeran"
-                }
-            ];
-
-            const randomSong = songQuizzes[Math.floor(Math.random() * songQuizzes.length)];
-            const game = createGameState('tebaklagu', {
-                audio: randomSong.audio,
-                title: randomSong.title.toLowerCase(),
-                artist: randomSong.artist,
-                timeLimit: 30000 // 30 seconds
-            });
-
-            activeGames.set(gameId, game);
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                audio: { url: `./assets/audio/${game.data.audio}` },
-                mimetype: 'audio/mp4',
-                ptt: true, // Play as voice note
-                caption: `🎵 *Guess the Song*\n\n` +
-                        `Listen to the audio clip and guess the song title!\n\n` +
-                        `⏳ You have 30 seconds and 3 attempts!\n` +
-                        `Use ${config.prefix}answer <song title> to respond`
-            });
-
-            // Set timeout to end game
-            setTimeout(async () => {
-                const currentGame = activeGames.get(gameId);
-                if (currentGame && !currentGame.solved) {
-                    await sock.sendMessage(msg.key.remoteJid, {
-                        text: `⌛ Time's up!\n\n` +
-                              `The song was: ${game.data.title}\n` +
-                              `Artist: ${game.data.artist}`
-                    });
-                    activeGames.delete(gameId);
-                }
-            }, game.timeLimit);
-
-        } catch (error) {
-            logger.error('Error in tebaklagu command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error starting song quiz'
-            });
-        }
-    },
-
-    tebakkimia: async (sock, msg) => {
-        try {
-            const gameId = msg.key.remoteJid;
-            if (activeGames.has(gameId)) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ A game is already in progress in this chat!'
-                });
-            }
-
-            const elements = [
-                { symbol: 'Na', name: 'Sodium' },
-                { symbol: 'K', name: 'Potassium' },
-                { symbol: 'Fe', name: 'Iron' },
-                { symbol: 'Au', name: 'Gold' },
-                { symbol: 'Ag', name: 'Silver' },
-                { symbol: 'Cu', name: 'Copper' },
-                { symbol: 'Pb', name: 'Lead' },
-                { symbol: 'Hg', name: 'Mercury' }
-            ];
-
-            const randomElement = elements[Math.floor(Math.random() * elements.length)];
-
-            const game = {
-                type: 'tebakkimia',
-                symbol: randomElement.symbol,
-                answer: randomElement.name.toLowerCase(),
-                attempts: 0,
-                maxAttempts: 3,
-                startTime: Date.now(),
-                timeLimit: 60000, // 60 seconds
-                solved: false
-            };
-
-            activeGames.set(gameId, game);
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `⚗️ *Chemistry Quiz*\n\n` +
-                      `What is the name of the element with symbol "${game.symbol}"?\n\n` +
-                      `⏳ You have 60 seconds and 3 attempts to answer!`
-            });
-
-            // Set timeout to end game
-            setTimeout(async () => {
-                if (activeGames.has(gameId)) {
-                    const game = activeGames.get(gameId);
-                    if (!game.solved) {
-                        await sock.sendMessage(msg.key.remoteJid, {
-                            text: `⌛ Time's up!\n\nThe correct answer was: ${game.answer}`
-                        });
-                        activeGames.delete(gameId);
-                    }
-                }
-            }, game.timeLimit);
-
-        } catch (error) {
-            logger.error('Error in tebakkimia command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error starting chemistry quiz'
-            });
-        }
-    },
-
-    tebakbendera: async (sock, msg) => {
-        try {
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '🎯 *Flag Quiz*\n\n' +
-                      'Coming Soon!\n\n' +
-                      'Features will include:\n' +
-                      '• Country flags from all continents\n' +
-                      '• Multiple difficulty levels\n' +
-                      '• Score tracking\n' +
-                      '• Regional flags option\n\n' +
-                      'Stay tuned for the next update!'
-            });
-        } catch (error) {
-            logger.error('Error in tebakbendera command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error showing flag quiz info'
-            });
-        }
-    },
-
-    tebakkabupaten: async (sock, msg) => {
-        try {
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '🗺️ *Region Quiz*\n\n' +
-                      'Coming Soon!\n\n' +
-                      'Features will include:\n' +
-                      '• Indonesian regions and districts\n' +
-                      '• Regional characteristics\n' +
-                      '• Cultural facts\n' +
-                      '• Geographic information\n\n' +
-                      'Stay tuned for the next update!'
-            });
-        } catch (error) {
-            logger.error('Error in tebakkabupaten command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error showing region quiz info'
-            });
-        }
-    },
-
-    caklontong: async (sock, msg) => {
-        try {
-            const gameId = msg.key.remoteJid;
-            if (activeGames.has(gameId)) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ A game is already in progress in this chat!'
-                });
-            }
-
-            const cakLontongQuestions = [
-                {
-                    question: "Kalau haus minum...",
-                    answer: "air",
-                    explanation: "Ketika haus, minuman terbaik adalah air putih"
-                },
-                {
-                    question: "Burung terbang menggunakan...",
-                    answer: "sayap",
-                    explanation: "Burung menggunakan sayap untuk terbang di udara"
-                }
-            ];
-
-            const randomQuiz = cakLontongQuestions[Math.floor(Math.random() * cakLontongQuestions.length)];
-            const game = createGameState('caklontong', {
-                question: randomQuiz.question,
-                answer: randomQuiz.answer.toLowerCase(),
-                explanation: randomQuiz.explanation,
-                timeLimit: 60000 // 60 seconds
-            });
-
-            activeGames.set(gameId, game);
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `🎯 *Cak Lontong Quiz*\n\n` +
-                      `Question: ${game.data.question}\n\n` +
-                      `⏳ You have 60 seconds and 3 attempts to answer!\n` +
-                      `Use ${config.prefix}answer <your answer> to respond`
-            });
-
-            // Set timeout to end game
-            setTimeout(async () => {
-                const currentGame = activeGames.get(gameId);
-                if (currentGame && !currentGame.solved) {
-                    await sock.sendMessage(msg.key.remoteJid, {
-                        text: `⌛ Time's up!\n\n` +
-                              `Answer: ${game.data.answer}\n` +
-                              `Explanation: ${game.data.explanation}`
-                    });
-                    activeGames.delete(gameId);
-                }
-            }, game.timeLimit);
-
-        } catch (error) {
-            logger.error('Error in caklontong command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error starting Cak Lontong quiz'
-            });
-        }
-    },
-    quiz: async (sock, msg) => {
-        try {
-            const randomQuiz = quizQuestions[Math.floor(Math.random() * quizQuestions.length)];
-
-            const gameId = msg.key.remoteJid;
-            if (activeGames.has(gameId)) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ A game is already in progress in this chat!'
-                });
-            }
-
-            const game = {
-                type: 'quiz',
-                question: randomQuiz.question,
-                answer: randomQuiz.answers[0],
-                attempts: 0,
-                maxAttempts: 3,
-                startTime: Date.now(),
-                timeLimit: 60000, // 60 seconds
-                solved: false
-            };
-
-            activeGames.set(gameId, game);
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `🎯 *Quiz Time*\n\n${game.question}\n\n⏳ You have 60 seconds and 3 attempts to answer!`
-            });
-
-            // Set timeout to end game
-            setTimeout(async () => {
-                if (activeGames.has(gameId)) {
-                    const game = activeGames.get(gameId);
-                    if (!game.solved) {
-                        await sock.sendMessage(msg.key.remoteJid, {
-                            text: `⌛ Time's up!\n\nThe correct answer was: ${game.answer}`
-                        });
-                        activeGames.delete(gameId);
-                    }
-                }
-            }, game.timeLimit);
-
-        } catch (error) {
-            logger.error('Error in quiz command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error starting quiz'
-            });
-        }
-    },
-
     answer: async (sock, msg, args) => {
         try {
             const gameId = msg.key.remoteJid;
             const game = activeGames.get(gameId);
+            const userId = msg.key.participant || msg.key.remoteJid;
+
+            logger.info(`Processing answer for game in chat: ${gameId}, user: ${userId}`);
 
             if (!game) {
                 return await sock.sendMessage(msg.key.remoteJid, {
@@ -1438,228 +925,262 @@ const gameCommands = {
             }
 
             const userAnswer = args.join(' ').toLowerCase();
+            logGameState(gameId, 'ANSWER_ATTEMPT', game);
 
-            // Handle different game types
             switch (game.type) {
-                case 'picture':
-                    if (userAnswer === game.data.answer) {
-                        game.solved = true;
-                        await handleGameWin(sock, msg, game, game.data.answer);
-                        activeGames.delete(gameId);
-                    } else {
-                        await handleWrongAnswer(sock, msg, game);
-                    }
-                    break;
-
-                case 'caklontong':
-                    if (userAnswer === game.data.answer) {
-                        game.solved = true;
-                        const rewardText = `🎉 Correct!\n\n` +
-                                         `Answer: ${game.data.answer}\n` +
-                                         `Explanation: ${game.data.explanation}`;
-                        await handleGameWin(sock, msg, game, rewardText);
-                        activeGames.delete(gameId);
-                    } else {
-                        await handleWrongAnswer(sock, msg, game);
-                    }
-                    break;
-
-                case 'tebaklagu':
-                    if (userAnswer === game.data.title) {
-                        game.solved = true;
-                        const rewardText = `🎉 Correct!\n\n` +
-                                         `Song: ${game.data.title}\n` +
-                                         `Artist: ${game.data.artist}`;
-                        await handleGameWin(sock, msg, game, rewardText);
-                        activeGames.delete(gameId);
-                    } else {
-                        await handleWrongAnswer(sock, msg, game);
-                    }
-                    break;
-                case 'asahotak':
-                    if (game.answers.includes(userAnswer)) {
-                        game.solved = true;
-                        await handleGameWin(sock, msg, game, userAnswer);
-                        activeGames.delete(gameId);
-                    } else {
-                        await handleWrongAnswer(sock, msg, game);
-                    }
-                    break;
-                case 'tebakkata':
-                    if (userAnswer === game.word) {
-                        game.solved = true;
-                        await handleGameWin(sock, msg, game, game.word);
-                        activeGames.delete(gameId);
-                    } else {
-                        await handleWrongAnswer(sock, msg, game);
-                    }
-                    break;
-                case 'quiz':
-                    if (userAnswer === game.answer) {
-                        game.solved = true;
-                        await handleGameWin(sock, msg, game, game.answer);
-                        activeGames.delete(gameId);
-                    } else {
-                        await handleWrongAnswer(sock, msg, game);
-                    }
-                    break;
-                case 'tebakkimia':
-                    if (userAnswer === game.answer) {
-                        game.solved = true;
-                        await handleGameWin(sock, msg, game, game.answer);
-                        activeGames.delete(gameId);
-                    } else {
-                        await handleWrongAnswer(sock, msg, game);
-                    }
-                    break;
                 case 'family100':
-                    if (game.answers.includes(userAnswer) && !game.foundAnswers.has(userAnswer)) {
-                        game.foundAnswers.add(userAnswer);
-                        const points = game.points[game.answers.indexOf(userAnswer)];
-                        const rewardText = `🎉 Correct!\n\n` +
-                                            `Answer: ${userAnswer}\n` +
-                                            `Points: +${points}`;
-                        await sock.sendMessage(msg.key.remoteJid, { text: rewardText });
-                    } else {
-                        await sock.sendMessage(msg.key.remoteJid, { text: '❌ Incorrect answer' });
+                    const matchedAnswer = game.answers.find(ans => 
+                        ans.toLowerCase() === userAnswer && !game.foundAnswers.has(ans)
+                    );
+
+                    if (matchedAnswer) {
+                        game.foundAnswers.add(matchedAnswer);
+                        const points = game.points[game.answers.indexOf(matchedAnswer)];
+
+                        await sock.sendMessage(msg.key.remoteJid, {
+                            text: `✅ Correct! "${matchedAnswer}" (+${points} points)\n\n` +
+                                  `Found: ${game.foundAnswers.size}/${game.answers.length}`
+                        });
+
+                        if (game.foundAnswers.size === game.answers.length) {
+                            game.solved = true;
+                            await sock.sendMessage(msg.key.remoteJid, {
+                                text: '🎉 Congratulations! All answers found!'
+                            });
+                            cleanupGame(gameId);
+                            logGameState(gameId, 'COMPLETE', game);
+                        }
                     }
                     break;
-                default:
-                    if (userAnswer === game.data.answer) {
+
+                case 'quiz':
+                case 'asahotak':
+                case 'tebakkata':
+                    if (userAnswer === game.answer?.toLowerCase()) {
                         game.solved = true;
-                        await handleGameWin(sock, msg, game, game.data.answer);
-                        activeGames.delete(gameId);
+                        await handleGameWin(sock, msg, game, game.answer);
+                        cleanupGame(gameId);
+                        logGameState(gameId, 'WIN', game);
                     } else {
                         await handleWrongAnswer(sock, msg, game);
                     }
+                    break;
+
+                default:
+                    logger.warn(`Unknown game type: ${game.type}`);
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        text: '❌ Unknown game type'
+                    });
+                    cleanupGame(gameId);
             }
 
         } catch (error) {
-            logger.error('Error in answer command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error processing answer'
+            logger.error('Error in answer command:', {
+                error: error.message,
+                gameId,
+                gameType: game?.type,
+                attempts: game?.attempts
             });
-        }
-    },
-
-    werewolf: async (sock, msg) => {
-        try {
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '🐺 *Werewolf Game*\n\n' +
-                      'This feature is coming soon!\n\n' +
-                      'The Werewolf game will include:\n' +
-                      '• Multiple roles (Werewolf, Villager, Seer, etc.)\n' +
-                      '• Day/Night cycle\n' +
-                      '• Voting system\n' +
-                      '• Private role conversations\n\n' +
-                      'Stay tuned for updates!'
+                text: '❌ Error processing answer. The game has been reset.'
             });
-        } catch (error) {
-            logger.error('Error in werewolf command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error showing werewolf info'
-            });
+            cleanupGame(msg.key.remoteJid);
         }
     }
 };
 
-// Add these helper functions at the bottom of the file
+// Helper functions
 const updateScore = (userId, points) => {
-    const currentScore = gameScores.get(userId) || { points: 0, wins: 0 };
-    gameScores.set(userId, {
-        points: currentScore.points + points,
-        wins: currentScore.wins + 1
-    });
+    try {
+        const currentScore = gameScores.get(userId) || { points: 0, wins: 0 };
+        gameScores.set(userId, {
+            points: currentScore.points + points,
+            wins: currentScore.wins + 1
+        });
+        logger.info(`Updated score for user ${userId}:`, { points, totalPoints: currentScore.points + points });
+    } catch (error) {
+        logger.error('Error updating score:', error);
+        throw error;
+    }
+};
+
+const cleanupGame = (gameId) => {
+    try {
+        if (activeGames.has(gameId)) {
+            const game = activeGames.get(gameId);
+            logGameState(gameId, 'CLEANUP', game);
+            activeGames.delete(gameId);
+        }
+    } catch (error) {
+        logger.error('Error in cleanupGame:', error);
+    }
+};
+
+const verifyGameAssets = async (game) => {
+    try {
+        switch (game.type) {
+            case 'tebaklagu':
+                const audioPath = path.join(__dirname, '..', 'assets', 'audio', game.data.audio);
+                return await fs.pathExists(audioPath);
+            case 'tebakgambar':
+                const imagePath = path.join(__dirname, '..', 'assets', 'quiz', game.data.image);
+                return await fs.pathExists(imagePath);
+            default:
+                return true;
+        }
+    } catch (error) {
+        logger.error('Error verifying game assets:', error);
+        return false;
+    }
+};
+
+const setupGameTimeout = (gameId, game, sock) => {
+    try {
+        setTimeout(async () => {
+            try {
+                if (activeGames.has(gameId)) {
+                    const currentGame = activeGames.get(gameId);
+                    if (!currentGame.solved) {
+                        let timeoutMessage = '⌛ Time\'s up!\n\n';
+
+                        switch (currentGame.type) {
+                            case 'family100':
+                                const foundAnswers = Array.from(currentGame.foundAnswers).join(', ') || 'None';
+                                const missedAnswers = currentGame.answers.filter(a => !currentGame.foundAnswers.has(a));
+                                timeoutMessage += `Found answers: ${foundAnswers}\nMissed answers: ${missedAnswers.join(', ')}`;
+                                break;
+                            case 'tebaklagu':
+                                timeoutMessage += `The song was: ${currentGame.data.title}\nArtist: ${currentGame.data.artist}`;
+                                break;
+                            default:
+                                timeoutMessage += `The correct answer was: ${currentGame.data?.answer || currentGame.answer}`;
+                        }
+
+                        await sock.sendMessage(gameId, { text: timeoutMessage });
+                        cleanupGame(gameId);
+                    }
+                }
+            } catch (error) {
+                logger.error('Error in game timeout handler:', error);
+                cleanupGame(gameId);
+            }
+        }, game.timeLimit);
+    } catch (error) {
+        logger.error('Error setting up game timeout:', error);
+        throw error;
+    }
 };
 
 const handleGameWin = async (sock, msg, game, answer) => {
-    const userId = msg.key.participant || msg.key.remoteJid;
-    const points = Math.max(10, Math.floor((game.timeLimit - (Date.now() - game.startTime)) / 1000));
+    try {
+        const userId = msg.key.participant || msg.key.remoteJid;
+        const points = Math.max(10, Math.floor((game.timeLimit - (Date.now() - game.startTime)) / 1000));
 
-    updateScore(userId, points);
+        updateScore(userId, points);
+        logGameState(msg.key.remoteJid, 'WIN_HANDLED', game);
 
-    await sock.sendMessage(msg.key.remoteJid, {
-        text: `🎉 Correct!\n\n` +
-              `🎯 Answer: ${answer}\n` +
-              `✨ Points: +${points}\n\n` +
-              `Use ${config.prefix}leaderboard to see rankings!`
-    });
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: `🎉 Correct!\n\n` +
+                  `🎯 Answer: ${answer}\n` +
+                  `✨ Points: +${points}\n\n` +
+                  `Use ${config.prefix}leaderboard to see rankings!`
+        });
+
+        cleanupGame(msg.key.remoteJid);
+    } catch (error) {
+        logger.error('Error in handleGameWin:', error);
+        cleanupGame(msg.key.remoteJid);
+        throw error;
+    }
 };
 
 const handleWrongAnswer = async (sock, msg, game) => {
-    game.attempts++;
-    if (game.attempts >= game.maxAttempts) {
-        let gameOverText = `❌ Game Over!`;
-        if (game.type === 'picture') gameOverText += `\nThe correct answer was: ${game.data.answer}`;
-        else if (game.type === 'caklontong') gameOverText += `\nThe correct answer was: ${game.data.answer}\nExplanation: ${game.data.explanation}`;
-        else if (game.type === 'tebaklagu') gameOverText += `\nThe song was: ${game.data.title}\nArtist: ${game.data.artist}`;
-        else if (game.type === 'asahotak') gameOverText += `\nPossible answers were: ${game.answers.join(', ')}`;
-        else if (game.type === 'tebakkata') gameOverText += `\nThe word was: ${game.word}`;
-        else if (game.type === 'quiz') gameOverText += `\nThe correct answer was: ${game.answer}`;
-        else if (game.type === 'tebakkimia') gameOverText += `\nThe correct answer was: ${game.answer}`;
-        await sock.sendMessage(msg.key.remoteJid, { text: gameOverText });
-        activeGames.delete(msg.key.remoteJid);
-    } else {
-        await sock.sendMessage(msg.key.remoteJid, {
-            text: `❌ Wrong answer!\n${game.maxAttempts - game.attempts} attempts left`
-        });
+    try {
+        game.attempts++;
+        if (game.attempts >= game.maxAttempts) {
+            let gameOverText = `❌ Game Over!\n`;
+
+            switch (game.type) {
+                case 'picture':
+                    gameOverText += `The correct answer was: ${game.data.answer}`;
+                    break;
+                case 'caklontong':
+                    gameOverText += `The correct answer was: ${game.data.answer}\nExplanation: ${game.data.explanation}`;
+                    break;
+                case 'tebaklagu':
+                    gameOverText += `The song was: ${game.data.title}\nArtist: ${game.data.artist}`;
+                    break;
+                case 'asahotak':
+                    gameOverText += `Possible answers were: ${game.answers.join(', ')}`;
+                    break;
+                case 'tebakkata':
+                    gameOverText += `The word was: ${game.word}`;
+                    break;
+                case 'quiz':
+                    gameOverText += `The correct answer was: ${game.answer}`;
+                    break;
+                default:
+                    gameOverText += `The correct answer was: ${game.answer || game.data?.answer || 'Not available'}`;
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, { text: gameOverText });
+            cleanupGame(msg.key.remoteJid);
+            logGameState(msg.key.remoteJid, 'GAME_OVER', game);
+        } else {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `❌ Wrong answer!\n${game.maxAttempts - game.attempts} attempts left`
+            });
+            logGameState(msg.key.remoteJid, 'WRONG_ANSWER', game);
+        }
+    } catch (error) {
+        logger.error('Error in handleWrongAnswer:', error);
+        throw error;
+    }
+};
+
+const modifyGameStart = async (sock, msg, gameType, createGameFn) => {
+    try {
+        const gameId = msg.key.remoteJid;
+        const userId = msg.key.participant || msg.key.remoteJid;
+
+        logger.info(`Starting ${gameType} game for chat: ${gameId}, user: ${userId}`);
+
+        if (activeGames.has(gameId)) {
+            return await sock.sendMessage(gameId, {
+                text: '❌ A game is already in progress in this chat!'
+            });
+        }
+
+        if (isOnCooldown(userId)) {
+            return await sock.sendMessage(gameId, {
+                text: '⏳ Please wait before starting another game!'
+            });
+        }
+
+        const game = createGameFn();
+        if (!validateGameState(gameId, game)) {
+            return await sock.sendMessage(gameId, {
+                text: '❌ Error creating game. Please try again.'
+            });
+        }
+
+        activeGames.set(gameId, game);
+        logGameState(gameId, 'START', game);
+        setupGameTimeout(gameId, game, sock);
+        setCooldown(userId);
+
+        return game;
+    } catch (error) {
+        logger.error(`Error starting ${gameType} game:`, error);
+        cleanupGame(msg.key.remoteJid);
+        throw error;
     }
 };
 
 const additionalCommands = {
-    tebakgambar: async (sock, msg) => {
-        try {
-            const gameId = msg.key.remoteJid;
-            if (activeGames.has(gameId)) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ A game is already in progress in this chat!'
-                });
-            }
-
-            // Select random image quiz
-            const quiz = imageQuizzes[Math.floor(Math.random() * imageQuizzes.length)];
-
-            // Create game state
-            const game = createGameState('picture', {
-                image: quiz.image,
-                answer: quiz.answer.toLowerCase(),
-                category: quiz.category,
-                timeLimit: 90000 // 90 seconds for picture quizzes
-            });
-
-            activeGames.set(gameId, game);
-
-            // Send the image and question
-            await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: `./assets/quiz/${quiz.image}` },
-                caption: `🖼️ *Picture Quiz*\n\nCategory: ${quiz.category}\n\n` +
-                        `What or where is this?\n\n` +
-                        `⏳ You have 90 seconds and 3 attempts to answer!` +
-                        `\n\nUse ${config.prefix}answer <your answer> to respond`
-            });
-
-            // Set timeout to end game
-            setTimeout(async () => {
-                const currentGame = activeGames.get(gameId);
-                if (currentGame && !currentGame.solved) {
-                    await sock.sendMessage(msg.key.remoteJid, {
-                        text: `⌛ Time's up!\n\nThe correct answer was: ${game.data.answer}`
-                    });
-                    activeGames.delete(gameId);
-                }
-            }, game.timeLimit);
-
-        } catch (error) {
-            logger.error('Error in tebakgambar command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error starting picture quiz'
-            });
-        }
-    },
-
     leaderboard: async (sock, msg) => {
         try {
-            // Get all scores and sort them
+            logger.info('Displaying leaderboard');
             const scores = Array.from(gameScores.entries())
                 .map(([userId, data]) => ({
                     userId,
@@ -1693,133 +1214,52 @@ const additionalCommands = {
                 text: '❌ Error displaying leaderboard'
             });
         }
-    },
-    caklontong: async (sock, msg) => {
-        try {
-            const gameId = msg.key.remoteJid;
-            if (activeGames.has(gameId)) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ A game is already in progress in this chat!'
-                });
-            }
-
-            const cakLontongQuestions = [
-                {
-                    question: "Kalau haus minum...",
-                    answer: "air",
-                    explanation: "Ketika haus, minuman terbaik adalah air putih"
-                },
-                {
-                    question: "Burung terbang menggunakan...",
-                    answer: "sayap",
-                    explanation: "Burung menggunakan sayap untuk terbang di udara"
-                }
-            ];
-
-            const randomQuiz = cakLontongQuestions[Math.floor`.random() * cakLontongQuestions.length)];
-            const game = createGameState('caklontong', {
-                question: randomQuiz.question,
-                answer: randomQuiz.answer.toLowerCase(),
-                explanation: randomQuiz.explanation,
-                timeLimit: 60000 // 60 seconds
-            });
-
-            activeGames.set(gameId, game);
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `🎯 *Cak Lontong Quiz*\n\n` +
-                      `Question: ${game.data.question}\n\n` +
-                      `⏳ You have 60 seconds and 3 attempts to answer!\n` +
-                      `Use ${config.prefix}answer <your answer> to respond`
-            });
-
-            // Set timeout to end game
-            setTimeout(async () => {
-                const currentGame = activeGames.get(gameId);
-                if (currentGame && !currentGame.solved) {
-                    await sock.sendMessage(msg.key.remoteJid, {
-                        text: `⌛ Time's up!\n\n` +
-                              `Answer: ${game.data.answer}\n` +
-                              `Explanation: ${game.data.explanation}`
-                    });
-                    activeGames.delete(gameId);
-                }
-            }, game.timeLimit);
-
-        } catch (error) {
-            logger.error('Error in caklontong command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error starting Cak Lontong quiz'
-            });
-        }
-    },
-
-    tebaklagu: async (sock, msg) => {
-        try {
-            const gameId = msg.key.remoteJid;
-            if (activeGames.has(gameId)) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ A game is already in progress in this chat!'
-                });
-            }
-
-            const songQuizzes = [
-                {
-                    audio: "song1.mp3",
-                    title: "Shape of You",
-                    artist: "Ed Sheeran"
-                },
-                {
-                    audio: "song2.mp3",
-                    title: "Perfect",
-                    artist: "Ed Sheeran"
-                }
-            ];
-
-            const randomSong = songQuizzes[Math.floor(Math.random() * songQuizzes.length)];
-            const game = createGameState('tebaklagu', {
-                audio: randomSong.audio,
-                title: randomSong.title.toLowerCase(),
-                artist: randomSong.artist,
-                timeLimit: 30000 // 30 seconds
-            });
-
-            activeGames.set(gameId, game);
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                audio: { url: `./assets/audio/${game.data.audio}` },
-                mimetype: 'audio/mp4',
-                ptt: true, // Play as voice note
-                caption: `🎵 *Guess the Song*\n\n` +
-                        `Listen to the audio clip and guess the song title!\n\n` +
-                        `⏳ You have 30 seconds and 3 attempts!\n` +
-                        `Use ${config.prefix}answer <song title> to respond`
-            });
-
-            // Set timeout to end game
-            setTimeout(async () => {
-                const currentGame = activeGames.get(gameId);
-                if (currentGame && !currentGame.solved) {
-                    await sock.sendMessage(msg.key.remoteJid, {
-                        text: `⌛ Time's up!\n\n` +
-                              `The song was: ${game.data.title}\n` +
-                              `Artist: ${game.data.artist}`
-                    });
-                    activeGames.delete(gameId);
-                }
-            }, game.timeLimit);
-
-        } catch (error) {
-            logger.error('Error in tebaklagu command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error starting song quiz'
-            });
-        }
     }
-
 };
 
-// Extend gameCommands with additional commands
 Object.assign(gameCommands, additionalCommands);
 
 module.exports = gameCommands;
+
+//Helper function for tictactoe.  Add this after imageQuizzes
+const createTicTacToeBoard = () => {
+    const board = [];
+    for (let i = 0; i < 3; i++) {
+        board.push(['⬜', '⬜', '⬜']);
+    }
+    return board;
+};
+const checkWinner = (board) => {
+    // Check rows
+    for (let i = 0; i < 3; i++) {
+        if (board[i][0] !== '⬜' && board[i][0] === board[i][1] && board[i][1] === board[i][2]) {
+            return board[i][0];
+        }
+    }
+
+    // Check columns
+    for (let i = 0; i < 3; i++) {
+        if (board[0][i] !== '⬜' && board[0][i] === board[1][i] && board[1][i] === board[2][i]) {
+            return board[0][i];
+        }
+    }
+
+    // Check diagonals
+    if (board[0][0] !== '⬜' && board[0][0] === board[1][1] && board[1][1] === board[2][2]) {
+        return board[0][0];
+    }
+    if (board[0][2] !== '⬜' && board[0][2] === board[1][1] && board[1][1] === board[2][0]) {
+        return board[0][2];
+    }
+
+    // Check for draw
+    for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+            if (board[i][j] === '⬜') {
+                return null;
+            }
+        }
+    }
+
+    return 'draw';
+};
