@@ -914,6 +914,118 @@ const mediaCommands = {
         }
     },
 
+    togif: async (sock, msg) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.stickerMessage || !quotedMsg.stickerMessage.isAnimated) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an animated sticker with !togif'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Converting sticker to GIF...'
+            });
+
+            const buffer = await downloadMediaMessageWithLogging(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const tempInput = path.join(tempDir, 'input.webp');
+            const tempOutput = path.join(tempDir, 'output.gif');
+            await fs.writeFile(tempInput, buffer);
+
+            // Convert WebP to GIF using ffmpeg
+            await new Promise((resolve, reject) => {
+                ffmpeg(tempInput)
+                    .toFormat('gif')
+                    .on('end', resolve)
+                    .on('error', reject)
+                    .save(tempOutput);
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                video: { url: tempOutput },
+                gifPlayback: true,
+                caption: '✨ Here\'s your GIF!'
+            });
+
+            // Cleanup temp files
+            await cleanupTempFiles(tempInput, tempOutput);
+
+        } catch (error) {
+            logger.error('Error in togif command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to convert sticker to GIF: ' + error.message
+            });
+        }
+    },
+
+    tourl: async (sock, msg) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage && !quotedMsg?.videoMessage && !quotedMsg?.stickerMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to a media (image/video/sticker) with !tourl'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Uploading media...'
+            });
+
+            const buffer = await downloadMediaMessageWithLogging(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const tempFile = path.join(tempDir, `upload_${Date.now()}`);
+            await fs.writeFile(tempFile, buffer);
+
+            // Upload to a file hosting service (example using transfer.sh)
+            const formData = new FormData();
+            formData.append('file', fs.createReadStream(tempFile));
+
+            const response = await axios.post('https://transfer.sh/', formData, {
+                headers: formData.getHeaders()
+            });
+
+            const url = response.data.trim();
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🔗 Media URL: ${url}\n\n⚠️ Note: This link may expire after some time.`
+            });
+
+            // Cleanup temp file
+            await cleanupTempFiles(tempFile);
+
+        } catch (error) {
+            logger.error('Error in tourl command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to upload media: ' + error.message
+            });
+        }
+    },
+
     gif: async (sock, msg, args) => {
         try {
             const validGifs = [
