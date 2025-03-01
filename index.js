@@ -35,8 +35,9 @@ const { smsg } = require('./lib/simple');
 const qrcode = require('qrcode-terminal');
 
 
-// Global state for auth
+// Global variables
 global.authState = null;
+let hans = null; // Make hans globally accessible
 
 // Initialize Express server for keep-alive
 const app = express();
@@ -98,9 +99,9 @@ async function saveCredsToFile() {
 }
 
 // Function to save and send credentials
-async function saveAndSendCreds() {
+async function saveAndSendCreds(socket) {
     try {
-        if (global.authState) {
+        if (global.authState && socket?.user?.id) {
             const credsFile = path.join(process.cwd(), 'creds.json');
 
             // Save credentials to temporary file
@@ -108,15 +109,13 @@ async function saveAndSendCreds() {
             logger.info('✓ Credentials saved temporarily');
 
             // Send file to bot's own number
-            if (hans && hans.user && hans.user.id) {
-                await hans.sendMessage(hans.user.id, {
-                    document: fs.readFileSync(credsFile),
-                    mimetype: 'application/json',
-                    fileName: 'creds.json',
-                    caption: '🔐 Bot Credentials Backup'
-                });
-                logger.info('✓ Credentials sent to bot');
-            }
+            await socket.sendMessage(socket.user.id, {
+                document: fs.readFileSync(credsFile),
+                mimetype: 'application/json',
+                fileName: 'creds.json',
+                caption: '🔐 Bot Credentials Backup'
+            });
+            logger.info('✓ Credentials sent to bot');
 
             // Delete the temporary file
             await fs.remove(credsFile);
@@ -141,7 +140,7 @@ async function startHANS() {
         const { version, isLatest } = await fetchLatestBaileysVersion();
         logger.info(`Using WA v${version.join('.')}, isLatest: ${isLatest}`);
 
-        const hans = makeWASocket({
+        hans = makeWASocket({
             version,
             logger: pino({ level: 'silent' }), // Set Baileys logger to silent
             printQRInTerminal: true,
@@ -165,24 +164,9 @@ async function startHANS() {
 
         store.bind(hans.ev);
 
-        // Batch connection updates to reduce spam
-        let connectionUpdateTimeout;
+        // Connection handling
         hans.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
-
-            // Clear existing timeout
-            if (connectionUpdateTimeout) {
-                clearTimeout(connectionUpdateTimeout);
-            }
-
-            // Batch updates with 1 second delay
-            connectionUpdateTimeout = setTimeout(() => {
-                logger.debug('Connection state updated:', {
-                    currentState: connection,
-                    hasQR: !!qr,
-                    disconnectReason: lastDisconnect?.error?.output?.statusCode
-                });
-            }, 1000);
 
             if (qr) {
                 logger.info('Please scan this QR code to connect:');
@@ -205,62 +189,42 @@ async function startHANS() {
 
             if (connection === 'open') {
                 logger.info('WhatsApp connection established successfully!');
-
-                // Send credentials as file to bot
-                await saveAndSendCreds();
-
+                await saveAndSendCreds(hans);
                 await hans.sendMessage(hans.user.id, { 
                     text: `🟢 ${botName} is now active and ready to use!`
                 });
             }
         });
 
-        // Batch message updates
-        let messageUpdateTimeout;
+        // Message handling - single consolidated handler
         hans.ev.on('messages.upsert', async chatUpdate => {
             try {
-                // Clear existing timeout
-                if (messageUpdateTimeout) {
-                    clearTimeout(messageUpdateTimeout);
-                }
+                if (chatUpdate.type !== 'notify') return;
 
-                // Batch message processing with 500ms delay
-                messageUpdateTimeout = setTimeout(async () => {
-                    try {
-                        if (chatUpdate.type !== 'notify') return;
+                let msg = JSON.parse(JSON.stringify(chatUpdate.messages[0]));
+                if (!msg.message) return;
 
-                        let msg = JSON.parse(JSON.stringify(chatUpdate.messages[0]));
-                        if (!msg.message) return;
+                msg.message = (Object.keys(msg.message)[0] === 'ephemeralMessage') 
+                    ? msg.message.ephemeralMessage.message 
+                    : msg.message;
 
-                        msg.message = (Object.keys(msg.message)[0] === 'ephemeralMessage') 
-                            ? msg.message.ephemeralMessage.message 
-                            : msg.message;
+                if (msg.key && msg.key.remoteJid === 'status@broadcast') return;
 
-                        if (msg.key && msg.key.remoteJid === 'status@broadcast') return;
-
-                        const m = smsg(hans, msg, store);
-                        require('./handler')(hans, m, chatUpdate, store);
-                    } catch (parseError) {
-                        logger.error('Error parsing message:', parseError);
-                    }
-                }, 500);
+                const m = smsg(hans, msg, store);
+                require('./handler')(hans, m, chatUpdate, store);
             } catch (err) {
                 logger.error('Error in message handler:', err);
             }
         });
 
-        // Handle credentials updates
+        // Credentials update handling
         hans.ev.on('creds.update', async () => {
             try {
                 await saveCreds();
-                // Send updated credentials to bot
-                await saveAndSendCreds();
+                await saveAndSendCreds(hans);
                 logger.info('Credentials updated and sent successfully');
             } catch (error) {
-                logger.error('Error updating credentials:', {
-                    error: error.message,
-                    stack: error.stack
-                });
+                logger.error('Error updating credentials:', error);
             }
         });
 
@@ -280,7 +244,7 @@ const shutdown = async (signal) => {
         isShuttingDown = true;
         logger.info(`\nReceived ${signal}, shutting down gracefully...`);
         // Send final credentials backup before shutdown
-        await saveAndSendCreds();
+        await saveAndSendCreds(hans); // Pass hans to saveAndSendCreds
         process.exit(0);
     } catch (error) {
         logger.error('Error during shutdown:', error);
