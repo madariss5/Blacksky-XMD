@@ -150,8 +150,8 @@ module.exports = {
         pat: { description: 'Pat someone', category: 'Reactions' },
         // New Reaction Commands
         bite: { description: 'Bite someone', category: 'Reactions' },
-        blush: { description: 'Show you're blushing', category: 'Reactions' },
-        cry: { description: 'Show you\'re crying', category: 'Reactions' },
+        blush: { description: 'Show that you are blushing', category: 'Reactions' },
+        cry: { description: 'Show that you are crying', category: 'Reactions' },
         dance: { description: 'Show dancing', category: 'Reactions' },
         laugh: { description: 'Show laughing', category: 'Reactions' },
         poke: { description: 'Poke someone', category: 'Reactions' },
