@@ -1,10 +1,15 @@
 const express = require('express');
 const cors = require('cors');
 const logger = require('pino')();
+const { default: makeWASocket, useMultiFileAuthState, Browsers, DisconnectReason } = require('@whiskeysockets/baileys');
+const { Boom } = require('@hapi/boom');
+const path = require('path');
+const SessionManager = require('./utils/session');
 
 // Initialize express app
 const app = express();
 const PORT = process.env.PORT || 5000;
+const sessionManager = new SessionManager(path.join(__dirname, 'sessions'));
 
 // Basic middleware
 app.use(cors({
@@ -18,45 +23,64 @@ app.use(cors({
 app.use(express.json());
 app.set('trust proxy', true);
 
-// Log Replit environment details
-logger.info('Replit environment:', {
-    port: process.env.PORT,
-    replSlug: process.env.REPL_SLUG,
-    replId: process.env.REPL_ID,
-    replOwner: process.env.REPL_OWNER,
-    nodeEnv: process.env.NODE_ENV
-});
-
 // Request logging
 app.use((req, res, next) => {
     logger.info({
         method: req.method,
         path: req.path,
         ip: req.ip,
-        forwarded: req.headers['x-forwarded-for'],
-        host: req.headers.host,
-        proxyHeaders: {
-            'x-forwarded-proto': req.headers['x-forwarded-proto'],
-            'x-replit-user-id': req.headers['x-replit-user-id'],
-            'x-replit-user-name': req.headers['x-replit-user-name']
-        }
+        headers: req.headers
     });
     next();
 });
 
+// Initialize WhatsApp connection
+async function connectToWhatsApp() {
+    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
+
+    const sock = makeWASocket({
+        auth: state,
+        printQRInTerminal: true,
+        browser: Browsers.ubuntu('Chrome'),
+        logger
+    });
+
+    sock.ev.on('connection.update', async (update) => {
+        const { connection, lastDisconnect } = update;
+
+        if (connection === 'close') {
+            const shouldReconnect = (lastDisconnect?.error instanceof Boom)? 
+                lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut : true;
+
+            logger.info('Connection closed due to ', lastDisconnect?.error, ', reconnecting ', shouldReconnect);
+
+            if (shouldReconnect) {
+                connectToWhatsApp();
+            }
+        } else if (connection === 'open') {
+            logger.info('WhatsApp connection opened');
+        }
+    });
+
+    sock.ev.on('creds.update', saveCreds);
+
+    return sock;
+}
+
+// Start WhatsApp connection
+connectToWhatsApp()
+    .then(() => logger.info('WhatsApp initialization started'))
+    .catch(err => logger.error('WhatsApp initialization failed:', err));
+
 // Basic route
 app.get('/', (req, res) => {
-    res.send('WhatsApp Bot is running!');
+    res.json({
+        status: 'online',
+        service: 'WhatsApp Bot',
+        timestamp: new Date().toISOString()
+    });
 });
 
-// Diagnostic ping endpoint
-app.get('/ping', (req, res) => {
-    logger.info('Ping received:', {
-        timestamp: new Date().toISOString(),
-        headers: req.headers
-    });
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -75,36 +99,33 @@ app.get('/health', (req, res) => {
     }
 });
 
-// Create server instance separately for logging
+// Create server with proper binding and logging
 const server = app.listen(PORT, '0.0.0.0', () => {
-    try {
-        const address = server.address();
-        logger.info('Server started with details:', {
-            address: address.address,
-            port: address.port,
-            family: address.family
-        });
-
-        logger.info('Server listening on port', PORT);
-    } catch (error) {
-        logger.error('Startup error:', error);
-    }
+    const address = server.address();
+    logger.info('Server started with details:', {
+        address: address.address,
+        port: address.port,
+        family: address.family,
+        environment: {
+            port: process.env.PORT,
+            replSlug: process.env.REPL_SLUG,
+            replId: process.env.REPL_ID,
+            replOwner: process.env.REPL_OWNER,
+            nodeEnv: process.env.NODE_ENV
+        }
+    });
 });
 
 // Server error handling
 server.on('error', (error) => {
-    logger.error('Server error:', {
-        code: error.code,
-        message: error.message,
-        stack: error.stack
-    });
+    logger.error('Server error:', error);
     if (error.code === 'EADDRINUSE') {
         logger.error(`Port ${PORT} is already in use`);
         process.exit(1);
     }
 });
 
-// Set keepalive timeout to prevent proxy timeouts
+// Set keepalive timeout
 server.keepAliveTimeout = 65000;
 server.headersTimeout = 66000;
 
