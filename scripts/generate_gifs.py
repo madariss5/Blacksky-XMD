@@ -1,4 +1,4 @@
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageSequence
 import os
 import math
 
@@ -173,12 +173,128 @@ def create_rip_gif():
                   duration=100, 
                   loop=0)
 
+def create_neko_gif():
+    frames = []
+    width, height = 400, 200
+    for i in range(20):
+        img = Image.new('RGB', (width, height), 'white')
+        draw = ImageDraw.Draw(img)
+
+        # Draw cat ears
+        ear_x = width//2
+        ear_y = height//2
+        ear_size = 30 + math.sin(i/3) * 5  # Animated ear size
+
+        # Left ear
+        draw.polygon([
+            (ear_x - 40, ear_y - 20),
+            (ear_x - 20, ear_y - 40 - ear_size),
+            (ear_x, ear_y - 20)
+        ], fill='black')
+
+        # Right ear
+        draw.polygon([
+            (ear_x + 40, ear_y - 20),
+            (ear_x + 20, ear_y - 40 - ear_size),
+            (ear_x, ear_y - 20)
+        ], fill='black')
+
+        # Draw face
+        face_size = 60
+        draw.ellipse([
+            ear_x - face_size//2, ear_y - face_size//2,
+            ear_x + face_size//2, ear_y + face_size//2
+        ], fill='white', outline='black')
+
+        # Draw eyes
+        eye_blink = max(0, abs(math.sin(i/5))) * 10
+        draw.ellipse([ear_x - 20, ear_y - 10, ear_x - 5, ear_y - 10 + eye_blink], fill='black')
+        draw.ellipse([ear_x + 5, ear_y - 10, ear_x + 20, ear_y - 10 + eye_blink], fill='black')
+
+        # Draw whiskers with animation
+        whisker_wave = math.sin(i/3) * 5
+        for x_offset in [-1, 0, 1]:
+            y_offset = x_offset * whisker_wave
+            # Left whiskers
+            draw.line([
+                (ear_x - 30, ear_y + x_offset * 5),
+                (ear_x - 60, ear_y + x_offset * 5 + y_offset)
+            ], fill='black', width=2)
+            # Right whiskers
+            draw.line([
+                (ear_x + 30, ear_y + x_offset * 5),
+                (ear_x + 60, ear_y + x_offset * 5 + y_offset)
+            ], fill='black', width=2)
+
+        frames.append(img)
+
+    frames[0].save(
+        './media/anime-neko.gif',
+        save_all=True,
+        append_images=frames[1:],
+        duration=50,
+        loop=0
+    )
+
+def create_awoo_gif():
+    frames = []
+    width, height = 400, 200
+    for i in range(20):
+        img = Image.new('RGB', (width, height), 'white')
+        draw = ImageDraw.Draw(img)
+
+        # Draw wolf ears with animation
+        ear_x = width//2
+        ear_y = height//2
+        ear_size = 40 + math.sin(i/3) * 10  # Animated ear size
+
+        # Left ear
+        draw.polygon([
+            (ear_x - 50, ear_y - 20),
+            (ear_x - 30, ear_y - 50 - ear_size),
+            (ear_x - 10, ear_y - 20)
+        ], fill='gray')
+
+        # Right ear
+        draw.polygon([
+            (ear_x + 50, ear_y - 20),
+            (ear_x + 30, ear_y - 50 - ear_size),
+            (ear_x + 10, ear_y - 20)
+        ], fill='gray')
+
+        # Draw howling mouth
+        mouth_open = 20 + math.sin(i/2) * 10  # Animated mouth
+        draw.ellipse([
+            ear_x - 20, ear_y,
+            ear_x + 20, ear_y + mouth_open
+        ], fill='black')
+
+        # Draw sound waves
+        for j in range(3):
+            wave_size = 20 + j * 15 + math.sin(i/3) * 5
+            draw.arc([
+                ear_x - wave_size, ear_y - wave_size,
+                ear_x + wave_size, ear_y + wave_size
+            ], 220, 320, fill='blue', width=2)
+
+        frames.append(img)
+
+    frames[0].save(
+        './media/anime-awoo.gif',
+        save_all=True,
+        append_images=frames[1:],
+        duration=50,
+        loop=0
+    )
+
 def main():
     create_media_dir()
     create_wasted_gif()
     create_jail_gif()
     create_triggered_gif()
     create_rip_gif()
+    create_neko_gif()
+    create_awoo_gif()
 
 if __name__ == '__main__':
     main()
