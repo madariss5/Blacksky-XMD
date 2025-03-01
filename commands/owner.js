@@ -300,11 +300,19 @@ const ownerCommands = {
         if (!number) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a number to ban!' });
         }
-        const success = await store.banUser(number);
-        if (success) {
-            await sock.sendMessage(msg.key.remoteJid, { text: `Banned @${number.split('@')[0]}`, mentions: [number] });
-        } else {
-            await sock.sendMessage(msg.key.remoteJid, { text: 'Number already banned!' });
+        try {
+            const success = await store.banUser(number);
+            if (success) {
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `✅ Banned @${number.split('@')[0]}`,
+                    mentions: [number]
+                });
+            } else {
+                await sock.sendMessage(msg.key.remoteJid, { text: '❌ User is already banned!' });
+            }
+        } catch (error) {
+            logger.error('Error in ban command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to ban user: ' + error.message });
         }
     },
 
@@ -316,11 +324,19 @@ const ownerCommands = {
         if (!number) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a number to unban!' });
         }
-        const success = await store.unbanUser(number);
-        if (success) {
-            await sock.sendMessage(msg.key.remoteJid, { text: `Unbanned @${number.split('@')[0]}`, mentions: [number] });
-        } else {
-            await sock.sendMessage(msg.key.remoteJid, { text: 'Number is not banned!' });
+        try {
+            const success = await store.unbanUser(number);
+            if (success) {
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `✅ Unbanned @${number.split('@')[0]}`,
+                    mentions: [number]
+                });
+            } else {
+                await sock.sendMessage(msg.key.remoteJid, { text: '❌ User is not banned!' });
+            }
+        } catch (error) {
+            logger.error('Error in unban command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to unban user: ' + error.message });
         }
     },
 
@@ -328,30 +344,42 @@ const ownerCommands = {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
         }
-        const banned = store.getBannedUsers();
-        const bannedGroups = store.getBannedGroups();
-        let message = '*Banned Users*\n\n';
-        if (banned.length > 0) {
-            banned.forEach(number => {
-                message += `• @${number.split('@')[0]}\n`;
-            });
-        } else {
-            message += 'No banned users\n';
-        }
-        message += '\n*Banned Groups*\n\n';
-        if (bannedGroups.length > 0) {
-            bannedGroups.forEach(group => {
-                message += `• ${group}\n`;
-            });
-        } else {
-            message += 'No banned groups';
-        }
-        await sock.sendMessage(msg.key.remoteJid, {
-            text: message,
-            mentions: banned
-        });
-    },
+        try {
+            const bannedUsers = await store.getBannedUsers();
+            const bannedGroups = await store.getBannedGroups();
 
+            let text = '📋 *Banned Users & Groups List*\n\n';
+
+            if (bannedUsers.length > 0) {
+                text += '*Banned Users:*\n';
+                for (let i = 0; i < bannedUsers.length; i++) {
+                    text += `${i + 1}. @${bannedUsers[i].split('@')[0]}\n`;
+                }
+            } else {
+                text += '*No banned users*\n';
+            }
+
+            text += '\n*Banned Groups:*\n';
+            if (bannedGroups.length > 0) {
+                for (let i = 0; i < bannedGroups.length; i++) {
+                    text += `${i + 1}. ${bannedGroups[i]}\n`;
+                }
+            } else {
+                text += 'No banned groups';
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text,
+                mentions: bannedUsers
+            });
+        } catch (error) {
+            logger.error('Error in banlist command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to get ban list: ' + error.message });
+        }
+    }
+
+
+    ,
     bangroup: async (sock, msg, args) => {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });

@@ -110,6 +110,9 @@ const basicCommands = {
                 'Owner': [
                     `• ${config.prefix}block - Block user from using bot`,
                     `• ${config.prefix}unblock - Unblock user`,
+                    `• ${config.prefix}ban - Ban user from using bot`,
+                    `• ${config.prefix}unban - Unban user`,
+                    `• ${config.prefix}banlist - View banned users and groups`,
                     `• ${config.prefix}broadcast - Send message to all users`,
                     `• ${config.prefix}setbotbio - Set bot's bio`,
                     `• ${config.prefix}setbotname - Set bot's name`,
