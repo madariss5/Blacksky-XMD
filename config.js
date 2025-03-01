@@ -13,6 +13,7 @@ module.exports = {
         tovn: { description: 'Convert audio to voice note', category: 'Media' },
         togif: { description: 'Convert video sticker to gif', category: 'Media' },
         tourl: { description: 'Upload media to url', category: 'Media' },
+        play: { description: 'Play audio from YouTube', category: 'Media' },
         song: { description: 'Download and play songs', category: 'Media' },
         video: { description: 'Download and play videos', category: 'Media' },
         playlist: { description: 'Create and play playlists', category: 'Media' },

@@ -7,6 +7,8 @@ const { exec } = require('child_process');
 const ffmpeg = require('fluent-ffmpeg');
 const axios = require('axios');
 const gtts = require('node-gtts');
+const yts = require('yt-search');
+const ytdl = require('@distube/ytdl-core');
 
 // Add error handling for libuuid.so.1 dependency
 try {
@@ -136,6 +138,283 @@ async function cleanupTempFiles(...filePaths) {
 }
 
 const mediaCommands = {
+    video: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a video name or YouTube URL!\nUsage: !video <video name/URL>'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🔍 Searching for your video request...'
+            });
+
+            const query = args.join(' ');
+            let videoUrl;
+
+            // Check if the argument is a YouTube URL
+            if (query.match(/^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/)) {
+                videoUrl = query;
+            } else {
+                // Search for the video
+                const searchResults = await yts(query);
+                if (!searchResults.videos.length) {
+                    return await sock.sendMessage(msg.key.remoteJid, {
+                        text: '❌ No results found!'
+                    });
+                }
+                videoUrl = searchResults.videos[0].url;
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Downloading and processing video...'
+            });
+
+            // Get video info
+            const info = await ytdl.getInfo(videoUrl);
+            const title = info.videoDetails.title;
+            const thumbnail = info.videoDetails.thumbnails[0].url;
+
+            // Download video
+            const videoStream = ytdl(videoUrl, {
+                quality: 'highest',
+                filter: 'videoandaudio'
+            });
+
+            const timestamp = Date.now();
+            const outputPath = path.join(tempDir, `video_${timestamp}.mp4`);
+
+            // Process video using ffmpeg
+            await new Promise((resolve, reject) => {
+                ffmpeg(videoStream)
+                    .toFormat('mp4')
+                    .size('480x?') // Resize to 480p width, maintain aspect ratio
+                    .on('end', resolve)
+                    .on('error', reject)
+                    .save(outputPath);
+            });
+
+            // Send thumbnail with info
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: thumbnail },
+                caption: `🎥 *Downloading*\n\n*${title}*`
+            });
+
+            // Send video
+            await sock.sendMessage(msg.key.remoteJid, {
+                video: fs.readFileSync(outputPath),
+                caption: `✨ Here's your video: ${title}`,
+                mimetype: 'video/mp4'
+            });
+
+            // Cleanup
+            await fs.remove(outputPath);
+
+        } catch (error) {
+            logger.error('Error in video command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to download video: ' + error.message
+            });
+        }
+    },
+
+    playlist: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a playlist URL or search term!\nUsage: !playlist <playlist URL/name>'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🔍 Searching for playlist...'
+            });
+
+            const query = args.join(' ');
+            let playlistUrl;
+            let videos = [];
+
+            // Check if argument is a YouTube playlist URL
+            if (query.includes('youtube.com/playlist')) {
+                playlistUrl = query;
+                // TODO: Implement playlist URL handling
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '🚧 Playlist URL support coming soon!'
+                });
+            } else {
+                // Search for videos
+                const searchResults = await yts(query);
+                videos = searchResults.videos.slice(0, 5); // Get first 5 results
+            }
+
+            if (!videos.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ No results found!'
+                });
+            }
+
+            // Display playlist
+            let playlistText = '🎵 *Found These Songs:*\n\n';
+            videos.forEach((video, index) => {
+                playlistText += `${index + 1}. ${video.title}\n⏱️ ${video.timestamp}\n\n`;
+            });
+
+            playlistText += '\nReply with the number to play that song.';
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: playlistText
+            });
+
+            // Store playlist in memory for later selection
+            // TODO: Implement playlist selection handling
+
+        } catch (error) {
+            logger.error('Error in playlist command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to process playlist: ' + error.message
+            });
+        }
+    },
+    video: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a video name or YouTube URL!\nUsage: !video <video name/URL>'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🔍 Searching for your video request...'
+            });
+
+            const query = args.join(' ');
+            let videoUrl;
+
+            // Check if the argument is a YouTube URL
+            if (query.match(/^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/)) {
+                videoUrl = query;
+            } else {
+                // Search for the video 
+                const searchResults = await yts(query);
+                if (!searchResults.videos.length) {
+                    return await sock.sendMessage(msg.key.remoteJid, {
+                        text: '❌ No results found!'
+                    });
+                }
+                videoUrl = searchResults.videos[0].url;
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Downloading and processing video...'
+            });
+
+            // Get video info
+            const info = await ytdl.getInfo(videoUrl);
+            const title = info.videoDetails.title;
+            const thumbnail = info.videoDetails.thumbnails[0].url;
+
+            // Download video
+            const videoStream = ytdl(videoUrl, {
+                quality: 'highest',
+                filter: 'videoandaudio'
+            });
+
+            const timestamp = Date.now();
+            const outputPath = path.join(tempDir, `video_${timestamp}.mp4`);
+
+            // Process video using ffmpeg
+            await new Promise((resolve, reject) => {
+                ffmpeg(videoStream)
+                    .toFormat('mp4')
+                    .size('480x?') // Resize to 480p width, maintain aspect ratio
+                    .on('end', resolve)
+                    .on('error', reject)
+                    .save(outputPath);
+            });
+
+            // Send thumbnail with info
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: thumbnail },
+                caption: `🎥 *Downloading*\n\n*${title}*`
+            });
+
+            // Send video
+            await sock.sendMessage(msg.key.remoteJid, {
+                video: fs.readFileSync(outputPath),
+                caption: `✨ Here's your video: ${title}`,
+                mimetype: 'video/mp4'
+            });
+
+            // Cleanup
+            await fs.remove(outputPath);
+
+        } catch (error) {
+            logger.error('Error in video command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to download video: ' + error.message
+            });
+        }
+    },
+
+    playlist: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a playlist URL or search term!\nUsage: !playlist <playlist URL/name>'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🔍 Searching for playlist...'
+            });
+
+            const query = args.join(' ');
+            let playlistUrl;
+            let videos = [];
+
+            // Check if argument is a YouTube playlist URL
+            if (query.includes('youtube.com/playlist')) {
+                playlistUrl = query;
+                // TODO: Implement playlist URL handling
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '🚧 Playlist URL support coming soon!'
+                });
+            } else {
+                // Search for videos
+                const searchResults = await yts(query);
+                videos = searchResults.videos.slice(0, 5); // Get first 5 results
+            }
+
+            if (!videos.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ No results found!'
+                });
+            }
+
+            // Display playlist
+            let playlistText = '🎵 *Found These Songs:*\n\n';
+            videos.forEach((video, index) => {
+                playlistText += `${index + 1}. ${video.title}\n⏱️ ${video.timestamp}\n\n`;
+            });
+
+            playlistText += '\nReply with the number to play that song.';
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: playlistText
+            });
+
+            // Store playlist in memory for later selection
+            // TODO: Implement playlist selection handling
+
+        } catch (error) {
+            logger.error('Error in playlist command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to process playlist: ' + error.message
+            });
+        }
+    },
+
     sticker: async (sock, msg, args) => {
         const tempFiles = [];
         try {
@@ -916,7 +1195,652 @@ const mediaCommands = {
         } catch (error) {
             logger.error('Error in circle command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to process image: ' + error.message
+            });
+        }
+    },
+
+    video: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a video name or YouTube URL!\nUsage: !video <video name/URL>'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🔍 Searching for your video request...'
+            });
+
+            const query = args.join(' ');
+            let videoUrl;
+
+            // Check if the argument is a YouTube URL
+            if (query.match(/^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/)) {
+                videoUrl = query;
+            } else {
+                // Search for the video
+                const searchResults = await yts(query);
+                if (!searchResults.videos.length) {
+                    return await sock.sendMessage(msg.key.remoteJid, {
+                        text: '❌ No results found!'
+                    });
+                }
+                videoUrl = searchResults.videos[0].url;
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Downloading and processing video...'
+            });
+
+            // Get video info
+            const info = await ytdl.getInfo(videoUrl);
+            const title = info.videoDetails.title;
+            const thumbnail = info.videoDetails.thumbnails[0].url;
+
+            // Download video
+            const videoStream = ytdl(videoUrl, {
+                quality: 'highest',
+                filter: 'videoandaudio'
+            });
+
+            const timestamp = Date.now();
+            const outputPath = path.join(tempDir, `video_${timestamp}.mp4`);
+
+            // Process video using ffmpeg
+            await new Promise((resolve, reject) => {
+                ffmpeg(videoStream)
+                    .toFormat('mp4')
+                    .size('480x?') // Resize to 480p width, maintain aspect ratio
+                    .on('end', resolve)
+                    .on('error', reject)
+                    .save(outputPath);
+            });
+
+            // Send thumbnail with info
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: thumbnail },
+                caption: `🎥 *Downloading*\n\n*${title}*`
+            });
+
+            // Send video
+            await sock.sendMessage(msg.key.remoteJid, {
+                video: fs.readFileSync(outputPath),
+                caption: `✨ Here's your video: ${title}`,
+                mimetype: 'video/mp4'
+            });
+
+            // Cleanup
+            await fs.remove(outputPath);
+
+        } catch (error) {
+            logger.error('Error in video command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to download video: ' + error.message
+            });
+        }
+    },
+
+    playlist: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a playlist URL or search term!\nUsage: !playlist <playlist URL/name>'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🔍 Searching for playlist...'
+            });
+
+            const query = args.join(' ');
+            let playlistUrl;
+            let videos = [];
+
+            // Check if argument is a YouTube playlist URL
+            if (query.includes('youtube.com/playlist')) {
+                playlistUrl = query;
+                // TODO: Implement playlist URL handling
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '🚧 Playlist URL support coming soon!'
+                });
+            } else {
+                // Search for videos
+                const searchResults = await yts(query);
+                videos = searchResults.videos.slice(0, 5); // Get first 5 results
+            }
+
+            if (!videos.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ No results found!'
+                });
+            }
+
+            // Display playlist
+            let playlistText = '🎵 *Found These Songs:*\n\n';
+            videos.forEach((video, index) => {
+                playlistText += `${index + 1}. ${video.title}\n⏱️ ${video.timestamp}\n\n`;
+            });
+
+            playlistText += '\nReply with the number to play that song.';
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: playlistText
+            });
+
+            // Store playlist in memory for later selection
+            // TODO: Implement playlist selection handling
+
+        } catch (error) {
+            logger.error('Error in playlist command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to process playlist: ' + error.message
+            });
+        }
+    },
+
+    video: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a video name or YouTube URL!\nUsage: !video <video name/URL>'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🔍 Searching for your video request...'
+            });
+
+            const query = args.join(' ');
+            let videoUrl;
+
+            // Check if the argument is a YouTube URL
+            if (query.match(/^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/)) {
+                videoUrl = query;
+            } else {
+                // Search for the video
+                const searchResults = await yts(query);
+                if (!searchResults.videos.length) {
+                    return await sock.sendMessage(msg.key.remoteJid, {
+                        text: '❌ No results found!'
+                    });
+                }
+                videoUrl = searchResults.videos[0].url;
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Downloading and processing video...'
+            });
+
+            // Get video info
+            const info = await ytdl.getInfo(videoUrl);
+            const title = info.videoDetails.title;
+            const thumbnail = info.videoDetails.thumbnails[0].url;
+
+            // Download video
+            const videoStream = ytdl(videoUrl, {
+                quality: 'highest',
+                filter: 'videoandaudio'
+            });
+
+            const timestamp = Date.now();
+            const outputPath = path.join(tempDir, `video_${timestamp}.mp4`);
+
+            // Process video using ffmpeg
+            await new Promise((resolve, reject) => {
+                ffmpeg(videoStream)
+                    .toFormat('mp4')
+                    .size('480x?') // Resize to 480p width, maintain aspect ratio
+                    .on('end', resolve)
+                    .on('error', reject)
+                    .save(outputPath);
+            });
+
+            // Send thumbnail with info
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: thumbnail },
+                caption: `🎥 *Downloading*\n\n*${title}*`
+            });
+
+            // Send video
+            await sock.sendMessage(msg.key.remoteJid, {
+                video: fs.readFileSync(outputPath),
+                caption: `✨ Here's your video: ${title}`,
+                mimetype: 'video/mp4'
+            });
+
+            // Cleanup
+            await fs.remove(outputPath);
+
+        } catch (error) {
+            logger.error('Error in video command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to download video: ' + error.message
+            });
+        }
+    },
+
+    playlist: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a playlist URL or search term!\nUsage: !playlist <playlist URL/name>'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🔍 Searching for playlist...'
+            });
+
+            const query = args.join(' ');
+            let playlistUrl;
+            let videos = [];
+
+            // Check if argument is a YouTube playlist URL
+            if (query.includes('youtube.com/playlist')) {
+                playlistUrl = query;
+                // TODO: Implement playlist URL handling
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '🚧 Playlist URL support coming soon!'
+                });
+            } else {
+                // Search for videos
+                const searchResults = await yts(query);
+                videos = searchResults.videos.slice(0, 5); // Get first 5 results
+            }
+
+            if (!videos.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ No results found!'
+                });
+            }
+
+            // Display playlist
+            let playlistText = '🎵 *Found These Songs:*\n\n';
+            videos.forEach((video, index) => {
+                playlistText += `${index + 1}. ${video.title}\n⏱️ ${video.timestamp}\n\n`;
+            });
+
+            playlistText += '\nReply with the number to play that song.';
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: playlistText
+            });
+
+            // Store playlist in memory for later selection
+            // TODO: Implement playlist selection handling
+
+        } catch (error) {
+            logger.error('Error in playlist command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to process playlist: ' + error.message
+            });
+        }
+    }
+        }
+    },
+
+    video: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a video name or YouTube URL!\nUsage: !video <video name/URL>'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🔍 Searching for your video request...'
+            });
+
+            const query = args.join(' ');
+            let videoUrl;
+
+            // Check if the argument is a YouTube URL
+            if (query.match(/^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/)) {
+                videoUrl = query;
+            } else {
+                // Search for the video
+                const searchResults = await yts(query);
+                if (!searchResults.videos.length) {
+                    return await sock.sendMessage(msg.key.remoteJid, {
+                        text: '❌ No results found!'
+                    });
+                }
+                videoUrl = searchResults.videos[0].url;
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Downloading and processing video...'
+            });
+
+            // Get video info
+            const info = await ytdl.getInfo(videoUrl);
+            const title = info.videoDetails.title;
+            const thumbnail = info.videoDetails.thumbnails[0].url;
+
+            // Download video
+            const videoStream = ytdl(videoUrl, {
+                quality: 'highest',
+                filter: 'videoandaudio'
+            });
+
+            const timestamp = Date.now();
+            const outputPath = path.join(tempDir, `video_${timestamp}.mp4`);
+
+            // Process video using ffmpeg
+            await new Promise((resolve, reject) => {
+                ffmpeg(videoStream)
+                    .toFormat('mp4')
+                    .size('480x?') // Resize to 480p width, maintain aspect ratio
+                    .on('end', resolve)
+                    .on('error', reject)
+                    .save(outputPath);
+            });
+
+            // Send thumbnail with info
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: thumbnail },
+                caption: `🎥 *Downloading*\n\n*${title}*`
+            });
+
+            // Send video
+            await sock.sendMessage(msg.key.remoteJid, {
+                video: fs.readFileSync(outputPath),
+                caption: `✨ Here's your video: ${title}`,
+                mimetype: 'video/mp4'
+            });
+
+            // Cleanup
+            await fs.remove(outputPath);
+
+        } catch (error) {
+            logger.error('Error in video command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to download video: ' + error.message
+            });
+        }
+    },
+
+    playlist: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a playlist URL or search term!\nUsage: !playlist <playlist URL/name>'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🔍 Searching for playlist...'
+            });
+
+            const query = args.join(' ');
+            let playlistUrl;
+            let videos = [];
+
+            // Check if argument is a YouTube playlist URL
+            if (query.includes('youtube.com/playlist')) {
+                playlistUrl = query;
+                // TODO: Implement playlist URL handling
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '🚧 Playlist URL support coming soon!'
+                });
+            } else {
+                // Search for videos
+                const searchResults = await yts(query);
+                videos = searchResults.videos.slice(0, 5); // Get first 5 results
+            }
+
+            if (!videos.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ No results found!'
+                });
+            }
+
+            // Display playlist
+            let playlistText = '🎵 *Found These Songs:*\n\n';
+            videos.forEach((video, index) => {
+                playlistText += `${index + 1}. ${video.title}\n⏱️ ${video.timestamp}\n\n`;
+            });
+
+            playlistText += '\nReply with the number to play that song.';
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: playlistText
+            });
+
+            // Store playlist in memory for later selection
+            // TODO: Implement playlist selection handling
+
+        } catch (error) {
+            logger.error('Error in playlist command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to process playlist: ' + error.message
+            });
+        }
+    }
+        }
+    },
+
+    video: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a video name or YouTube URL!\nUsage: !video <video name/URL>'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🔍 Searching for your video request...'
+            });
+
+            const query = args.join(' ');
+            let videoUrl;
+
+            // Check if the argument is a YouTube URL
+            if (query.match(/^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/)) {
+                videoUrl = query;
+            } else {
+                // Search for the video
+                const searchResults = await yts(query);
+                if (!searchResults.videos.length) {
+                    return await sock.sendMessage(msg.key.remoteJid, {
+                        text: '❌ No results found!'
+                    });
+                }
+                videoUrl = searchResults.videos[0].url;
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Downloading and processing video...'
+            });
+
+            // Get video info
+            const info = await ytdl.getInfo(videoUrl);
+            const title = info.videoDetails.title;
+            const thumbnail = info.videoDetails.thumbnails[0].url;
+
+            // Download video
+            const videoStream = ytdl(videoUrl, {
+                quality: 'highest',
+                filter: 'videoandaudio'
+            });
+
+            const timestamp = Date.now();
+            const outputPath = path.join(tempDir, `video_${timestamp}.mp4`);
+
+            // Process video using ffmpeg
+            await new Promise((resolve, reject) => {
+                ffmpeg(videoStream)
+                    .toFormat('mp4')
+                    .size('480x?') // Resize to 480p width, maintain aspect ratio
+                    .on('end', resolve)
+                    .on('error', reject)
+                    .save(outputPath);
+            });
+
+            // Send thumbnail with info
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: thumbnail },
+                caption: `🎥 *Downloading*\n\n*${title}*`
+            });
+
+            // Send video
+            await sock.sendMessage(msg.key.remoteJid, {
+                video: fs.readFileSync(outputPath),
+                caption: `✨ Here's your video: ${title}`,
+                mimetype: 'video/mp4'
+            });
+
+            // Cleanup
+            await fs.remove(outputPath);
+
+        } catch (error) {
+            logger.error('Error in video command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to download video: ' + error.message
+            });
+        }
+    },
+
+    playlist: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a playlist URL or search term!\nUsage: !playlist <playlist URL/name>'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🔍 Searching for playlist...'
+            });
+
+            const query = args.join(' ');
+            let playlistUrl;
+            let videos = [];
+
+            // Check if argument is a YouTube playlist URL
+            if (query.includes('youtube.com/playlist')) {
+                playlistUrl = query;
+                // TODO: Implement playlist URL handling
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '🚧 Playlist URL support coming soon!'
+                });
+            } else {
+                // Search for videos
+                const searchResults = await yts(query);
+                videos = searchResults.videos.slice(0, 5); // Get first 5 results
+            }
+
+            if (!videos.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ No results found!'
+                });
+            }
+
+            // Display playlist
+            let playlistText = '🎵 *Found These Songs:*\n\n';
+            videos.forEach((video, index) => {
+                playlistText += `${index + 1}. ${video.title}\n⏱️ ${video.timestamp}\n\n`;
+            });
+
+            playlistText += '\nReply with the number to play that song.';
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: playlistText
+            });
+
+            // Store playlist in memory for later selection
+            // TODO: Implement playlist selection handling
+
+        } catch (error) {
+            logger.error('Error in playlist command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to process playlist: ' + error.message
+            });
+        }
+    }
                 text: '❌ Failed to circle image: ' + error.message
+            });
+        }
+    },
+
+    play: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a song name or YouTube URL!\nUsage: !play <song name/URL>'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🔍 Searching for your request...'
+            });
+
+            const query = args.join(' ');
+            let videoUrl;
+
+            // Check if the argument is a YouTube URL
+            if (query.match(/^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/)) {
+                videoUrl = query;
+            } else {
+                // Search for the video
+                const searchResults = await yts(query);
+                if (!searchResults.videos.length) {
+                    return await sock.sendMessage(msg.key.remoteJid, {
+                        text: '❌ No results found!'
+                    });
+                }
+                videoUrl = searchResults.videos[0].url;
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Downloading and processing media...'
+            });
+
+            // Get video info
+            const info = await ytdl.getInfo(videoUrl);
+            const title = info.videoDetails.title;
+            const thumbnail = info.videoDetails.thumbnails[0].url;
+
+            // Download audio
+            const audioStream = ytdl(videoUrl, {
+                quality: 'highestaudio',
+                filter: 'audioonly'
+            });
+
+            const timestamp = Date.now();
+            const outputPath = path.join(tempDir, `audio_${timestamp}.mp3`);
+
+            // Convert to MP3 using ffmpeg
+            await new Promise((resolve, reject) => {
+                ffmpeg(audioStream)
+                    .audioBitrate(128)
+                    .toFormat('mp3')
+                    .on('end', resolve)
+                    .on('error', reject)
+                    .save(outputPath);
+            });
+
+            // Send thumbnail with audio
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: thumbnail },
+                caption: `🎵 *Now Playing*\n\n*${title}*`
+            });
+
+            // Send audio
+            await sock.sendMessage(msg.key.remoteJid, {
+                audio: fs.readFileSync(outputPath),
+                mimetype: 'audio/mp4',
+                fileName: `${title}.mp3`
+            });
+
+            // Cleanup
+            await fs.remove(outputPath);
+
+        } catch (error) {
+            logger.error('Error in play command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to play media: ' + error.message
             });
         }
     },
@@ -2883,6 +3807,148 @@ const mediaCommands = {
             });
         }
     },
+
+};
+
+    video: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a video name or YouTube URL!\nUsage: !video <video name/URL>'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🔍 Searching for your video request...'
+            });
+
+            const query = args.join(' ');
+            let videoUrl;
+
+            // Check if the argument is a YouTube URL
+            if (query.match(/^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/)) {
+                videoUrl = query;
+            } else {
+                // Search for the video
+                const searchResults = await yts(query);
+                if (!searchResults.videos.length) {
+                    return await sock.sendMessage(msg.key.remoteJid, {
+                        text: '❌ No results found!'
+                    });
+                }
+                videoUrl = searchResults.videos[0].url;
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Downloading and processing video...'
+            });
+
+            // Get video info
+            const info = await ytdl.getInfo(videoUrl);
+            const title = info.videoDetails.title;
+            const thumbnail = info.videoDetails.thumbnails[0].url;
+
+            // Download video
+            const videoStream = ytdl(videoUrl, {
+                quality: 'highest',
+                filter: 'videoandaudio'
+            });
+
+            const timestamp = Date.now();
+            const outputPath = path.join(tempDir, `video_${timestamp}.mp4`);
+
+            // Process video using ffmpeg
+            await new Promise((resolve, reject) => {
+                ffmpeg(videoStream)
+                    .toFormat('mp4')
+                    .size('480x?') // Resize to 480p width, maintain aspect ratio
+                    .on('end', resolve)
+                    .on('error', reject)
+                    .save(outputPath);
+            });
+
+            // Send thumbnail with info
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: thumbnail },
+                caption: `🎥 *Downloading*\n\n*${title}*`
+            });
+
+            // Send video
+            await sock.sendMessage(msg.key.remoteJid, {
+                video: fs.readFileSync(outputPath),
+                caption: `✨ Here's your video: ${title}`,
+                mimetype: 'video/mp4'
+            });
+
+            // Cleanup
+            await fs.remove(outputPath);
+
+        } catch (error) {
+            logger.error('Error in video command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to download video: ' + error.message
+            });
+        }
+    },
+
+    playlist: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a playlist URL or search term!\nUsage: !playlist <playlist URL/name>'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🔍 Searching for playlist...'
+            });
+
+            const query = args.join(' ');
+            let playlistUrl;
+            let videos = [];
+
+            // Check if argument is a YouTube playlist URL
+            if (query.includes('youtube.com/playlist')) {
+                playlistUrl = query;
+                // TODO: Implement playlist URL handling
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '🚧 Playlist URL support coming soon!'
+                });
+            } else {
+                // Search for videos
+                const searchResults = await yts(query);
+                videos = searchResults.videos.slice(0, 5); // Get first 5 results
+            }
+
+            if (!videos.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ No results found!'
+                });
+            }
+
+            // Display playlist
+            let playlistText = '🎵 *Found These Songs:*\n\n';
+            videos.forEach((video, index) => {
+                playlistText += `${index + 1}. ${video.title}\n⏱️ ${video.timestamp}\n\n`;
+            });
+
+            playlistText += '\nReply with the number to play that song.';
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: playlistText
+            });
+
+            // Store playlist in memory for later selection
+            // TODO: Implement playlist selection handling
+
+        } catch (error) {
+            logger.error('Error in playlist command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to process playlist: ' + error.message
+            });
+        }
+    }
+};
 
 };
 
