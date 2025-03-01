@@ -5,17 +5,11 @@ const logger = require('pino')();
 const commandModules = {};
 try {
     commandModules.basic = require('../commands/basic');        // Basic commands
-    commandModules.media = require('../commands/media');        // Media & sticker commands
-    commandModules.fun = require('../commands/fun');           // Fun & reaction commands
-    commandModules.game = require('../commands/game');         // Game commands
-    commandModules.downloader = require('../commands/downloader'); // Downloader commands
-    commandModules.music = require('../commands/music');       // Music commands
-    commandModules.ai = require('../commands/ai');            // AI commands
-    commandModules.group = require('../commands/group');       // Group management
+    commandModules.user = require('../commands/user');         // User commands
+    commandModules.reactions = require('../commands/reactions'); // Reaction commands
     commandModules.owner = require('../commands/owner');       // Owner commands
+    commandModules.economy = require('../commands/economy');   // Economy commands
     commandModules.utility = require('../commands/utility');   // Utility commands
-    commandModules.anime = require('../commands/anime');       // Anime commands
-    commandModules.nsfw = require('../commands/nsfw');        // NSFW commands
 } catch (error) {
     logger.error('Error loading command modules:', error.message, error.stack);
 }
@@ -131,16 +125,9 @@ async function messageHandler(sock, msg) {
 
             let commandExecuted = false;
 
-            // Try NSFW commands first if command exists in NSFW module
-            if (commandModules.nsfw && command in commandModules.nsfw) {
-                logger.debug('Attempting to execute NSFW command:', { command });
-                commandExecuted = await executeCommand(sock, msg, command, args, 'nsfw');
-                if (commandExecuted) return;
-            }
-
             // Try each module for the command
             for (const [moduleName, module] of Object.entries(commandModules)) {
-                if (moduleName !== 'nsfw' && module && command in module) {
+                if (module && command in module) {
                     commandExecuted = await executeCommand(sock, msg, command, args, moduleName);
                     if (commandExecuted) break;
                 }

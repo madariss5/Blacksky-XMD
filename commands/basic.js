@@ -51,28 +51,55 @@ const basicCommands = {
 
     menu: async (sock, msg) => {
         try {
-            const text = `*📱 HANS MD Commands Menu*\n\n` +
-                        `*Basic Commands* 📌\n` +
-                        `• .help - Show help\n` +
-                        `• .ping - Check response\n` +
-                        `• .info - Bot info\n` +
-                        `• .menu - Show this menu\n\n` +
-                        `*Group Commands* 👥\n` +
-                        `• .kick - Remove member\n` +
-                        `• .promote - Make admin\n` +
-                        `• .demote - Remove admin\n\n` +
-                        `*Media Commands* 🎨\n` +
-                        `• .sticker - Create sticker\n` +
-                        `• .toimg - Sticker to image\n\n` +
-                        `*Download Commands* 📥\n` +
-                        `• .ytmp3 - Download audio\n` +
-                        `• .ytmp4 - Download video\n\n` +
-                        `*AI Commands* 🤖\n` +
-                        `• .ai - Chat with AI\n` +
-                        `• .img - Generate image\n\n` +
-                        `Type .help <command> for more info!`;
+            const config = require('../config');
+
+            // Group commands by category
+            const categories = {};
+            Object.entries(config.commands).forEach(([cmd, info]) => {
+                const category = info.category || 'Uncategorized';
+                if (!categories[category]) {
+                    categories[category] = [];
+                }
+                categories[category].push(`• ${config.prefix}${cmd} - ${info.description}`);
+            });
+
+            // Category icons
+            const categoryIcons = {
+                'Basic': '📌',
+                'User': '👤',
+                'Economy': '💰',
+                'Group': '👥',
+                'Media': '🎨',
+                'Downloader': '📥',
+                'Fun': '🎮',
+                'Reactions': '🎭',
+                'Tools': '🛠️',
+                'AI': '🤖',
+                'NSFW': '🔞',
+                'Owner': '👑'
+            };
+
+            // Build menu text
+            let text = `*${config.botName} Command Menu*\n\n`;
+
+            // Add Basic commands first
+            if (categories['Basic']) {
+                text += `${categoryIcons['Basic']} *Basic Commands*\n${categories['Basic'].join('\n')}\n\n`;
+            }
+
+            // Add other categories
+            Object.entries(categories).forEach(([category, commands]) => {
+                if (category !== 'Basic' && commands.length > 0) {
+                    const icon = categoryIcons[category] || '📌';
+                    text += `${icon} *${category} Commands*\n${commands.join('\n')}\n\n`;
+                }
+            });
+
+            // Add footer
+            text += `💡 Type ${config.prefix}help <command> for detailed info!`;
 
             await sock.sendMessage(msg.key.remoteJid, { text });
+            logger.info('Menu command executed successfully');
         } catch (error) {
             logger.error('Menu command failed:', error);
             await sock.sendMessage(msg.key.remoteJid, {
