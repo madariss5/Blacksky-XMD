@@ -4,6 +4,18 @@ const logger = require('pino')();
 
 // Game state management
 const activeGames = new Map();
+const gameScores = new Map();
+
+// Helper function to create game state
+const createGameState = (type, data) => ({
+    type,
+    data,
+    startTime: Date.now(),
+    timeLimit: 60000, // Default 60 seconds
+    attempts: 0,
+    maxAttempts: 3,
+    solved: false
+});
 
 // Rate limiting for games
 const userCooldowns = new Map();
@@ -829,8 +841,7 @@ const gameCommands = {
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '🏗️ Chess game feature is under construction!\n\n' +
-                      'We are working on implementing a full chess game with:\n' +
-                      '• Board visualization\n' +
+                      'We are working on implementing a full chess game with:\                      '• Board visualization\n' +
                       '• Move validation\n' +
                       '• Game state tracking\n' +
                       '• Rating system\n\n' +
@@ -1070,9 +1081,53 @@ const gameCommands = {
     },
 
     tebakgambar: async (sock, msg) => {
-        await sock.sendMessage(msg.key.remoteJid, {
-            text: '🚧 Tebak Gambar game is under development!'
-        });
+        try {
+            const gameId = msg.key.remoteJid;
+            if (activeGames.has(gameId)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ A game is already in progress in this chat!'
+                });
+            }
+
+            // Select random image quiz
+            const quiz = imageQuizzes[Math.floor(Math.random() * imageQuizzes.length)];
+
+            // Create game state
+            const game = createGameState('picture', {
+                image: quiz.image,
+                answer: quiz.answer.toLowerCase(),
+                category: quiz.category,
+                timeLimit: 90000 // 90 seconds for picture quizzes
+            });
+
+            activeGames.set(gameId, game);
+
+            // Send the image and question
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: `./assets/quiz/${quiz.image}` },
+                caption: `🖼️ *Picture Quiz*\n\nCategory: ${quiz.category}\n\n` +
+                        `What or where is this?\n\n` +
+                        `⏳ You have 90 seconds and 3 attempts to answer!` +
+                        `\n\nUse ${config.prefix}answer <your answer> to respond`
+            });
+
+            // Set timeout to end game
+            setTimeout(async () => {
+                const currentGame = activeGames.get(gameId);
+                if (currentGame && !currentGame.solved) {
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        text: `⌛ Time's up!\n\nThe correct answer was: ${game.data.answer}`
+                    });
+                    activeGames.delete(gameId);
+                }
+            }, game.timeLimit);
+
+        } catch (error) {
+            logger.error('Error in tebakgambar command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error starting picture quiz'
+            });
+        }
     },
 
     tebaklirik: async (sock, msg) => {
@@ -1275,50 +1330,28 @@ const gameCommands = {
                 });
             }
 
-            const answer = args.join(' ').toLowerCase();
+            const userAnswer = args.join(' ').toLowerCase();
 
-            // Handle different game types
-            if (game.word) { // Word guessing game
-                if (answer === game.word) {
-                    await sock.sendMessage(msg.key.remoteJid, {
-                        text: `🎉 Correct! The word was "${game.word}"`
-                    });
+            if (game.type === 'picture') {
+                if (userAnswer === game.data.answer) {
                     game.solved = true;
+                    await handleGameWin(sock, msg, game, game.data.answer);
                     activeGames.delete(gameId);
                 } else {
                     game.attempts++;
                     if (game.attempts >= game.maxAttempts) {
                         await sock.sendMessage(msg.key.remoteJid, {
-                            text: `❌ Game Over! The word was "${game.word}"`
+                            text: `❌ Game Over!\nThe correct answer was: ${game.data.answer}`
                         });
                         activeGames.delete(gameId);
                     } else {
                         await sock.sendMessage(msg.key.remoteJid, {
-                            text: `❌ Wrong answer! ${game.maxAttempts - game.attempts} attempts left`
-                        });
-                    }
-                }
-            } else if (game.answers) { // Quiz or Asah Otak
-                if (game.answers.includes(answer)) {
-                    await sock.sendMessage(msg.key.remoteJid, {
-                        text: '🎉 Correct answer!'
-                    });
-                    game.solved = true;
-                    activeGames.delete(gameId);
-                } else {
-                    game.attempts++;
-                    if (game.attempts >= game.maxAttempts) {
-                        await sock.sendMessage(msg.key.remoteJid, {
-                            text: `❌ Game Over! The correct answer was "${game.answers[0]}"`
-                        });
-                        activeGames.delete(gameId);
-                    } else {
-                        await sock.sendMessage(msg.key.remoteJid, {
-                            text: `❌ Wrong answer! ${game.maxAttempts - game.attempts} attempts left`
+                            text: `❌ Wrong answer!\n${game.maxAttempts - game.attempts} attempts left`
                         });
                     }
                 }
             }
+            // Add other game type handlers here
 
         } catch (error) {
             logger.error('Error in answer command:', error);
@@ -1344,6 +1377,119 @@ const gameCommands = {
             logger.error('Error in werewolf command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error showing werewolf info'
+            });
+        }
+    }
+};
+
+// Add these helper functions at the bottom of the file
+const updateScore = (userId, points) => {
+    const currentScore = gameScores.get(userId) || { points: 0, wins: 0 };
+    gameScores.set(userId, {
+        points: currentScore.points + points,
+        wins: currentScore.wins + 1
+    });
+};
+
+const handleGameWin = async (sock, msg, game, answer) => {
+    const userId = msg.key.participant || msg.key.remoteJid;
+    const points = Math.max(10, Math.floor((game.timeLimit - (Date.now() - game.startTime)) / 1000));
+
+    updateScore(userId, points);
+
+    await sock.sendMessage(msg.key.remoteJid, {
+        text: `🎉 Correct!\n\n` +
+              `🎯 Answer: ${answer}\n` +
+              `✨ Points: +${points}\n\n` +
+              `Use ${config.prefix}leaderboard to see rankings!`
+    });
+};
+
+const additionalCommands = {
+    tebakgambar: async (sock, msg) => {
+        try {
+            const gameId = msg.key.remoteJid;
+            if (activeGames.has(gameId)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ A game is already in progress in this chat!'
+                });
+            }
+
+            // Select random image quiz
+            const quiz = imageQuizzes[Math.floor(Math.random() * imageQuizzes.length)];
+
+            // Create game state
+            const game = createGameState('picture', {
+                image: quiz.image,
+                answer: quiz.answer.toLowerCase(),
+                category: quiz.category,
+                timeLimit: 90000 // 90 seconds for picture quizzes
+            });
+
+            activeGames.set(gameId, game);
+
+            // Send the image and question
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: `./assets/quiz/${quiz.image}` },
+                caption: `🖼️ *Picture Quiz*\n\nCategory: ${quiz.category}\n\n` +
+                        `What or where is this?\n\n` +
+                        `⏳ You have 90 seconds and 3 attempts to answer!` +
+                        `\n\nUse ${config.prefix}answer <your answer> to respond`
+            });
+
+            // Set timeout to end game
+            setTimeout(async () => {
+                const currentGame = activeGames.get(gameId);
+                if (currentGame && !currentGame.solved) {
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        text: `⌛ Time's up!\n\nThe correct answer was: ${game.data.answer}`
+                    });
+                    activeGames.delete(gameId);
+                }
+            }, game.timeLimit);
+
+        } catch (error) {
+            logger.error('Error in tebakgambar command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error starting picture quiz'
+            });
+        }
+    },
+
+    leaderboard: async (sock, msg) => {
+        try {
+            // Get all scores and sort them
+            const scores = Array.from(gameScores.entries())
+                .map(([userId, data]) => ({
+                    userId,
+                    points: data.points,
+                    wins: data.wins
+                }))
+                .sort((a, b) => b.points - a.points)
+                .slice(0, 10); // Top 10
+
+            if (!scores.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '📊 No game scores recorded yet!'
+                });
+            }
+
+            let leaderboardText = '🏆 *Game Leaderboard*\n\n';
+            for (let i = 0; i < scores.length; i++) {
+                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '•';
+                leaderboardText += `${medal} ${i + 1}. @${scores[i].userId.split('@')[0]}\n` +
+                                 `   Points: ${scores[i].points} | Wins: ${scores[i].wins}\n`;
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: leaderboardText,
+                mentions: scores.map(s => s.userId)
+            });
+
+        } catch (error) {
+            logger.error('Error in leaderboard command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error displaying leaderboard'
             });
         }
     }
