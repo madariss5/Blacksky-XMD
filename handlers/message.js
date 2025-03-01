@@ -13,6 +13,7 @@ try {
     commandModules.fun = require('../commands/fun');          // Fun commands
     commandModules.downloader = require('../commands/downloader'); // Downloader commands
     commandModules.ai = require('../commands/ai');            // AI commands
+    commandModules.social = require('../commands/social');     // Social media commands
 } catch (error) {
     logger.error('Error loading command modules:', error.message, error.stack);
 }

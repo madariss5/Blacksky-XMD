@@ -1,6 +1,6 @@
 const config = require('../config');
 const logger = require('pino')();
-const musicCommands = require('./music'); 
+const musicCommands = require('./music');
 const ytdl = require('@distube/ytdl-core');
 const axios = require('axios');
 const yts = require('yt-search');
@@ -20,23 +20,19 @@ const downloaderCommands = {
         try {
             if (!args.length) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Please provide a YouTube URL!\nUsage: .ytmp3 <url>`
+                    text: `Please provide a YouTube URL!\nUsage: ${config.prefix}ytmp3 <url>`
                 });
             }
 
-            // Send processing message
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '⏳ Processing your request...'
             });
 
             let videoId;
-            let audioUrl;
             try {
-                // Handle both URL and search query
                 if (ytdl.validateURL(args[0])) {
                     videoId = ytdl.getVideoID(args[0]);
                 } else {
-                    // Search for the video if URL not provided
                     const searchResults = await yts(args.join(' '));
                     if (!searchResults.videos.length) {
                         throw new Error('No videos found');
@@ -47,20 +43,34 @@ const downloaderCommands = {
                 logger.info('Processing video ID:', videoId);
 
                 const info = await ytdl.getInfo(videoId);
-                const audioFormats = ytdl.filterFormats(info.formats, 'audioonly');
 
+                // Check video duration
+                const duration = parseInt(info.videoDetails.lengthSeconds);
+                if (duration > 600) { // 10 minutes max
+                    throw new Error('Video is too long. Maximum duration is 10 minutes.');
+                }
+
+                const audioFormats = ytdl.filterFormats(info.formats, 'audioonly');
                 if (!audioFormats.length) {
                     throw new Error('No audio formats available');
                 }
 
-                // Get the best audio format
+                // Get best audio format
                 const format = audioFormats.reduce((prev, curr) => {
                     const prevBitrate = prev.audioBitrate || 0;
                     const currBitrate = curr.audioBitrate || 0;
                     return prevBitrate > currBitrate ? prev : curr;
                 });
 
-                // Download to temp file
+                // Send progress message
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `🎵 *Downloading Audio*\n\n` +
+                          `• Title: ${info.videoDetails.title}\n` +
+                          `• Duration: ${Math.floor(duration / 60)}:${(duration % 60).toString().padStart(2, '0')}\n` +
+                          `• Quality: ${format.audioBitrate}kbps\n\n` +
+                          `Please wait...`
+                });
+
                 const tempFile = path.join(tempDir, `${videoId}.mp3`);
                 const writeStream = fs.createWriteStream(tempFile);
 
@@ -73,7 +83,14 @@ const downloaderCommands = {
                     writeStream.on('error', reject);
                 });
 
-                // Send the audio file
+                // Check file size
+                const stats = await fs.stat(tempFile);
+                const fileSizeMB = stats.size / (1024 * 1024);
+                if (fileSizeMB > 100) { // 100MB limit
+                    await fs.remove(tempFile);
+                    throw new Error('Audio file is too large. Maximum size is 100MB.');
+                }
+
                 await sock.sendMessage(msg.key.remoteJid, {
                     audio: { url: tempFile },
                     mimetype: 'audio/mp4',
@@ -128,9 +145,9 @@ const downloaderCommands = {
                 const info = await ytdl.getInfo(videoId);
 
                 // Get best quality video with audio
-                const format = ytdl.chooseFormat(info.formats, { 
+                const format = ytdl.chooseFormat(info.formats, {
                     quality: 'highest',
-                    filter: 'audioandvideo' 
+                    filter: 'audioandvideo'
                 });
 
                 if (!format) {
@@ -395,6 +412,103 @@ const downloaderCommands = {
             logger.error('Error in lyrics command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error finding lyrics: ' + error.message
+            });
+        }
+    },
+    instagram: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `Please provide an Instagram URL!\nUsage: ${config.prefix}instagram <url>`
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Processing your request...'
+            });
+
+            // Generate temp file path
+            const tempFile = path.join(tempDir, `instagram_${Date.now()}.mp4`);
+
+            try {
+                // Use Instagram API to fetch media
+                const response = await axios.get(`https://api.instagram.com/oembed?url=${args[0]}`);
+                const mediaUrl = response.data.thumbnail_url.replace('/s150x150/', '/s1080x1080/');
+
+                // Download media
+                const mediaResponse = await axios({
+                    url: mediaUrl,
+                    method: 'GET',
+                    responseType: 'stream'
+                });
+
+                const writer = fs.createWriteStream(tempFile);
+                mediaResponse.data.pipe(writer);
+
+                await new Promise((resolve, reject) => {
+                    writer.on('finish', resolve);
+                    writer.on('error', reject);
+                });
+
+                // Send the media
+                await sock.sendMessage(msg.key.remoteJid, {
+                    video: { url: tempFile },
+                    caption: '📱 Instagram Media'
+                });
+
+                // Cleanup
+                await fs.remove(tempFile);
+
+            } catch (error) {
+                throw new Error('Failed to fetch Instagram content. Make sure the URL is public and valid.');
+            }
+
+        } catch (error) {
+            logger.error('Error in instagram command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error downloading Instagram media: ' + error.message
+            });
+        }
+    },
+
+    spotify: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `Please provide a Spotify track URL!\nUsage: ${config.prefix}spotify <url>`
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Processing Spotify track...\n\n⚠️ Note: This feature is experimental and may not work for all tracks.'
+            });
+
+            // Extract track ID from URL
+            const trackId = args[0].split('track/')[1]?.split('?')[0];
+            if (!trackId) {
+                throw new Error('Invalid Spotify URL. Please provide a valid track URL.');
+            }
+
+            // Fetch track metadata
+            const response = await axios.get(`https://api.spotify.com/v1/tracks/${trackId}`, {
+                headers: {
+                    'Authorization': `Bearer ${process.env.SPOTIFY_TOKEN}`
+                }
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🎵 *Track Information*\n\n` +
+                      `• Title: ${response.data.name}\n` +
+                      `• Artist: ${response.data.artists[0].name}\n` +
+                      `• Album: ${response.data.album.name}\n` +
+                      `• Duration: ${Math.floor(response.data.duration_ms / 1000 / 60)}:${Math.floor((response.data.duration_ms / 1000) % 60).toString().padStart(2, '0')}\n\n` +
+                      `⚠️ Due to copyright restrictions, I cannot download Spotify tracks directly. Please use the official Spotify app to listen to this track.`
+            });
+
+        } catch (error) {
+            logger.error('Error in spotify command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error processing Spotify track: ' + error.message
             });
         }
     }

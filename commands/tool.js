@@ -1,5 +1,24 @@
 const logger = require('pino')();
 const axios = require('axios');
+const { exec } = require('child_process');
+const path = require('path');
+const fs = require('fs-extra');
+const tempDir = path.join(__dirname, '../temp');
+fs.ensureDirSync(tempDir);
+
+// Rate limiting configuration
+const userCooldowns = new Map();
+const COOLDOWN_PERIOD = 5000; // 5 seconds
+
+const isOnCooldown = (userId) => {
+    if (!userCooldowns.has(userId)) return false;
+    const lastUsage = userCooldowns.get(userId);
+    return Date.now() - lastUsage < COOLDOWN_PERIOD;
+};
+
+const setCooldown = (userId) => {
+    userCooldowns.set(userId, Date.now());
+};
 
 const toolCommands = {
     calc: async (sock, msg, args) => {
@@ -60,14 +79,54 @@ const toolCommands = {
     },
 
     tts: async (sock, msg, args) => {
-        try {
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '⚠️ Text-to-speech is temporarily unavailable due to system maintenance.'
+        const userId = msg.key.participant || msg.key.remoteJid;
+
+        if (isOnCooldown(userId)) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Please wait a few seconds before using this command again.'
             });
+        }
+
+        if (!args.length) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Please provide text to convert!\nUsage: .tts [lang] <text>'
+            });
+        }
+
+        try {
+            let lang = 'en';
+            let text;
+
+            if (args[0].length === 2) {
+                lang = args[0];
+                text = args.slice(1).join(' ');
+            } else {
+                text = args.join(' ');
+            }
+
+            const tempFile = path.join(tempDir, `tts_${Date.now()}.mp3`);
+            const gtts = new (require('node-gtts'))(lang);
+
+            await new Promise((resolve, reject) => {
+                gtts.save(tempFile, text, (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                });
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                audio: { url: tempFile },
+                mimetype: 'audio/mp4',
+                ptt: true
+            });
+
+            setCooldown(userId);
+            await fs.remove(tempFile);
+
         } catch (error) {
             logger.error('Error in tts command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to process TTS command'
+                text: '❌ Failed to convert text to speech: ' + error.message
             });
         }
     },
@@ -154,7 +213,9 @@ const toolCommands = {
                 '𝔊𝔬𝔱𝔥𝔦𝔠': text.split('').map(c => c.replace(/[a-z]/gi, char => String.fromCharCode(char.charCodeAt(0) + 120107))).join(''),
                 '𝕒𝕖𝕤𝕥𝕙𝕖𝕥𝕚𝕔': text.split('').map(c => c.replace(/[a-z]/gi, char => String.fromCharCode(char.charCodeAt(0) + 120205))).join(''),
                 'ᴜᴘᴘᴇʀᴄᴀsᴇ': text.toUpperCase(),
-                'ʟᴏᴡᴇʀᴄᴀsᴇ': text.toLowerCase()
+                'ʟᴏᴡᴇʀᴄᴀsᴇ': text.toLowerCase(),
+                'sᴘᴀᴄᴇᴅ': text.split('').join(' '),
+                'ʀᴇᴠᴇʀsᴇ': text.split('').reverse().join('')
             };
 
             let styledText = `🎨 *Styled Text*\n\n`;
@@ -167,19 +228,6 @@ const toolCommands = {
             logger.error('Error in styletext command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Failed to style text'
-            });
-        }
-    },
-
-    ss: async (sock, msg, args) => {
-        try {
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '⚠️ Screenshot feature is temporarily unavailable due to system maintenance.'
-            });
-        } catch (error) {
-            logger.error('Error in ss command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to process screenshot command'
             });
         }
     },
@@ -208,6 +256,106 @@ const toolCommands = {
             logger.error('Error in shortlink command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Failed to shorten URL'
+            });
+        }
+    },
+
+    qr: async (sock, msg, args) => {
+        if (!args.length) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Please provide text to convert to QR code!\nUsage: .qr <text>'
+            });
+        }
+
+        try {
+            const text = args.join(' ');
+            const qr = require('qrcode');
+            const tempFile = path.join(tempDir, `qr_${Date.now()}.png`);
+
+            await qr.toFile(tempFile, text);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: tempFile },
+                caption: '📱 QR Code Generated'
+            });
+
+            await fs.remove(tempFile);
+        } catch (error) {
+            logger.error('Error in qr command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to generate QR code'
+            });
+        }
+    },
+
+    readqr: async (sock, msg) => {
+        if (!msg.message.imageMessage) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Please send an image with QR code!\nUsage: Send image with caption .readqr'
+            });
+        }
+
+        try {
+            const tempFile = path.join(tempDir, `qr_read_${Date.now()}.png`);
+            const buffer = await downloadMediaMessage(msg, 'buffer', {});
+            await fs.writeFile(tempFile, buffer);
+
+            const QrCode = require('qrcode-reader');
+            const jimp = require('jimp');
+            const qr = new QrCode();
+            const image = await jimp.read(tempFile);
+
+            const result = await new Promise((resolve, reject) => {
+                qr.callback = (err, value) => err ? reject(err) : resolve(value);
+                qr.decode(image.bitmap);
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `📱 *QR Code Content*\n\n${result.result}`
+            });
+
+            await fs.remove(tempFile);
+        } catch (error) {
+            logger.error('Error in readqr command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to read QR code'
+            });
+        }
+    },
+
+    reminder: async (sock, msg, args) => {
+        if (args.length < 2) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Please provide time and message!\nUsage: .reminder <time in minutes> <message>'
+            });
+        }
+
+        try {
+            const minutes = parseInt(args[0]);
+            if (isNaN(minutes) || minutes < 1 || minutes > 1440) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a valid time between 1 and 1440 minutes'
+                });
+            }
+
+            const message = args.slice(1).join(' ');
+            const userId = msg.key.participant || msg.key.remoteJid;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `⏰ Reminder set for ${minutes} minutes from now!`
+            });
+
+            setTimeout(async () => {
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `⏰ *Reminder*\n\n@${userId.split('@')[0]}, here's your reminder:\n${message}`,
+                    mentions: [userId]
+                });
+            }, minutes * 60000);
+
+        } catch (error) {
+            logger.error('Error in reminder command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to set reminder'
             });
         }
     }

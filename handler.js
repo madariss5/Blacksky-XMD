@@ -7,6 +7,7 @@ const utilityCommands = require('./commands/utility');
 const funCommands = require('./commands/fun');
 const aiCommands = require('./commands/ai');
 const downloaderCommands = require('./commands/downloader');
+const socialCommands = require('./commands/social');
 const logger = require('pino')({ level: 'info' }); // Changed to 'info' for more visibility
 
 module.exports = async (hans, m, chatUpdate, store) => {
@@ -162,6 +163,25 @@ module.exports = async (hans, m, chatUpdate, store) => {
                 logger.info('Downloader command executed successfully:', { command });
             } catch (error) {
                 logger.error('Error executing downloader command:', {
+                    command,
+                    error: error.message,
+                    stack: error.stack
+                });
+                await hans.sendMessage(m.key.remoteJid, { 
+                    text: `❌ Error executing command: ${error.message}` 
+                });
+            }
+        }
+
+        // Social Commands
+        else if (socialCommands[command]) {
+            try {
+                logger.info('Executing social command:', { command });
+                await socialCommands[command](hans, m, args);
+                commandExecuted = true;
+                logger.info('Social command executed successfully:', { command });
+            } catch (error) {
+                logger.error('Error executing social command:', {
                     command,
                     error: error.message,
                     stack: error.stack

@@ -102,7 +102,8 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node index.js"
+args = "node server.js --port 8080"
+waitForPort = 8080
 
 [deployment]
 run = ["sh", "-c", "node test_whatsapp.js"]
