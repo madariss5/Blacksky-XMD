@@ -4,9 +4,13 @@ const groupCommands = require('../commands/group');
 const mediaCommands = require('../commands/media');
 const downloaderCommands = require('../commands/downloader');
 const funCommands = require('../commands/fun');
+const reactionCommands = require('../commands/reactions');
 const toolCommands = require('../commands/tool');
 const aiCommands = require('../commands/ai');
 const ownerCommands = require('../commands/owner');
+const userCommands = require('../commands/user');
+const economyCommands = require('../commands/economy');
+const nsfwCommands = require('../commands/nsfw');
 
 class CommandHandler {
     constructor() {
@@ -23,9 +27,13 @@ class CommandHandler {
             media: mediaCommands,
             downloader: downloaderCommands,
             fun: funCommands,
+            reactions: reactionCommands,
             tool: toolCommands,
             ai: aiCommands,
-            owner: ownerCommands
+            owner: ownerCommands,
+            user: userCommands,
+            economy: economyCommands,
+            nsfw: nsfwCommands
         };
 
         for (const [category, module] of Object.entries(commandModules)) {

@@ -34,7 +34,7 @@ const basicCommands = {
             }
 
             // General help message with improved formatting
-            const basicCmds = ['help', 'ping', 'menu', 'info', 'runtime', 'speed', 'profile', 'me']
+            const basicCmds = ['help', 'ping', 'menu', 'info', 'runtime', 'speed', 'profile', 'me', 'dashboard', 'status', 'creator', 'sc', 'tqto', 'changelog', 'rank', 'premium', 'about', 'rules']
                 .map(cmd => `• ${config.prefix}${cmd} - ${config.commands[cmd].description}`)
                 .join('\n');
 
@@ -579,6 +579,30 @@ const basicCommands = {
             logger.error('Rules command failed:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error showing rules: ' + error.message
+            });
+        }
+    },
+    status: async (sock, msg) => {
+        try {
+            const uptime = process.uptime();
+            const memUsage = process.memoryUsage();
+            const loadAvg = os.loadavg();
+
+            const text = `🤖 *Bot Status*\n\n` +
+                        `• Name: ${config.botName}\n` +
+                        `• Uptime: ${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m\n` +
+                        `• Memory: ${(memUsage.heapUsed / 1024 / 1024).toFixed(2)} MB\n` +
+                        `• CPU Load: ${loadAvg[0].toFixed(2)}%\n` +
+                        `• Node.js: ${process.version}\n` +
+                        `• Platform: ${os.platform()}\n` +
+                        `• Status: 🟢 Online`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text });
+            logger.info('Status command executed successfully');
+        } catch (error) {
+            logger.error('Status command failed:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error checking status: ' + error.message
             });
         }
     }

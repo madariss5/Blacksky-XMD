@@ -17,6 +17,24 @@ module.exports = {
         status: { description: 'View bot status and info', category: 'Basic' },
         dashboard: { description: 'View bot statistics dashboard', category: 'Basic' },
 
+        // User & Profile Commands
+        profile: { description: 'View user profile', category: 'User' },
+        me: { description: 'View your profile', category: 'User' },
+        register: { description: 'Register your account', category: 'User' },
+        level: { description: 'Check your level and XP', category: 'User' },
+        daily: { description: 'Claim daily rewards', category: 'User' },
+        bio: { description: 'Set your profile bio', category: 'User' },
+
+        // Economy Commands
+        balance: { description: 'Check your balance', category: 'Economy' },
+        transfer: { description: 'Transfer coins to users', category: 'Economy' },
+        shop: { description: 'View available items in shop', category: 'Economy' },
+        buy: { description: 'Buy items from shop', category: 'Economy' },
+        inventory: { description: 'View your inventory', category: 'Economy' },
+        work: { description: 'Work to earn coins', category: 'Economy' },
+        rob: { description: 'Rob other users', category: 'Economy' },
+        gamble: { description: 'Gamble your coins', category: 'Economy' },
+
         // Group Commands
         kick: { description: 'Kick member from group', category: 'Group' },
         add: { description: 'Add member to group', category: 'Group' },
@@ -62,6 +80,30 @@ module.exports = {
         quote: { description: 'Get inspirational quotes', category: 'Fun' },
         fact: { description: 'Get random facts', category: 'Fun' },
         couple: { description: 'Tag random couples', category: 'Fun' },
+        magic8ball: { description: 'Ask the magic 8 ball', category: 'Fun' },
+        wordgame: { description: 'Play word guessing game', category: 'Fun' },
+        guess: { description: 'Make a guess in word game', category: 'Fun' },
+        trivia: { description: 'Start a trivia quiz', category: 'Fun' },
+        answer: { description: 'Answer trivia question', category: 'Fun' },
+        emojiart: { description: 'Get random emoji art', category: 'Fun' },
+
+        // Reaction Commands
+        slap: { description: 'Slap someone', category: 'Reactions' },
+        hug: { description: 'Hug someone', category: 'Reactions' },
+        pat: { description: 'Pat someone', category: 'Reactions' },
+        kiss: { description: 'Kiss someone', category: 'Reactions' },
+        punch: { description: 'Punch someone', category: 'Reactions' },
+        kill: { description: 'Eliminate someone (joke)', category: 'Reactions' },
+        highfive: { description: 'Give a high five', category: 'Reactions' },
+        facepalm: { description: 'Show disappointment', category: 'Reactions' },
+        poke: { description: 'Poke someone', category: 'Reactions' },
+        cuddle: { description: 'Cuddle with someone', category: 'Reactions' },
+        yeet: { description: 'Yeet someone', category: 'Reactions' },
+        boop: { description: 'Boop someone\'s nose', category: 'Reactions' },
+        bonk: { description: 'Bonk someone', category: 'Reactions' },
+        wave: { description: 'Wave at someone', category: 'Reactions' },
+        wink: { description: 'Wink at someone', category: 'Reactions' },
+        wasted: { description: 'Apply wasted effect', category: 'Reactions' },
 
         // Tool Commands
         calc: { description: 'Calculator', category: 'Tools' },
@@ -80,6 +122,14 @@ module.exports = {
         dalle: { description: 'Generate images with DALL-E', category: 'AI' },
         gpt: { description: 'Chat with GPT', category: 'AI' },
         blackbox: { description: 'AI code generation', category: 'AI' },
+
+        // NSFW Commands
+        nsfwcheck: { description: 'Check NSFW status', category: 'NSFW' },
+        setnsfw: { description: 'Enable/disable NSFW in group', category: 'NSFW' },
+        waifu: { description: 'Get NSFW waifu image', category: 'NSFW' },
+        neko: { description: 'Get NSFW neko image', category: 'NSFW' },
+        trap: { description: 'Get NSFW trap image', category: 'NSFW' },
+        blowjob: { description: 'Get NSFW image', category: 'NSFW' },
 
         // Owner Commands
         broadcast: { description: 'Send message to all chats', category: 'Owner' },
