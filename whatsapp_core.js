@@ -1,11 +1,11 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, Browsers, DisconnectReason, fetchLatestBaileysVersion } = require("@whiskeysockets/baileys");
 const { Boom } = require('@hapi/boom');
-const fs = require('fs-extra');
-const path = require('path');
+const fs = require('fs');
 const pino = require('pino');
-const readline = require('readline');
+const readline = require("readline");
+const path = require('path');
+const qrcode = require("qrcode-terminal");
 
-// Configure logger
 const logger = pino({
     level: 'info',
     transport: {
@@ -21,8 +21,8 @@ const AUTH_DIR = path.join(__dirname, 'auth_info_baileys');
 
 async function ensureCleanAuth() {
     logger.info('Cleaning auth directory...');
-    await fs.remove(AUTH_DIR);
-    await fs.ensureDir(AUTH_DIR);
+    await fs.promises.rm(AUTH_DIR, { recursive: true, force: true });
+    await fs.promises.mkdir(AUTH_DIR, { recursive: true });
     logger.info('Auth directory cleaned and recreated');
 }
 
@@ -56,6 +56,20 @@ function validatePhoneInput(countryCode, phoneNumber) {
     return fullNumber;
 }
 
+function getUserInput(question) {
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+
+    return new Promise((resolve) => {
+        rl.question(question, (answer) => {
+            rl.close();
+            resolve(answer.trim());
+        });
+    });
+}
+
 async function getPhoneNumber() {
     while (true) {
         try {
@@ -82,7 +96,8 @@ async function getPhoneNumber() {
             const fullNumber = validatePhoneInput(countryCode, phoneNumber);
             logger.info('────────────────────────────────────────');
             logger.info(`Phone number validated: +${fullNumber}`);
-            logger.info('────────────────────────────────────────');
+            logger.info('────────────────────────────────────────\n');
+
             return fullNumber;
         } catch (error) {
             logger.error('Error:', error.message);
@@ -91,114 +106,87 @@ async function getPhoneNumber() {
     }
 }
 
-function getUserInput(question) {
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-    });
-
-    return new Promise((resolve) => {
-        rl.question(question, (answer) => {
-            rl.close();
-            resolve(answer);
-        });
-    });
-}
-
-async function initializeWhatsApp(phoneNumber) {
+async function initializeWhatsApp() {
     try {
-        logger.info('Please follow these steps to pair your device:');
+        let { version } = await fetchLatestBaileysVersion();
+        logger.info('Using WhatsApp version:', version);
+
+        // Get phone number first
+        const phoneNumber = await getPhoneNumber();
+
+        logger.info('Starting WhatsApp connection initialization...');
+
+        // Clean and initialize auth directory
+        await ensureCleanAuth();
+
+        // Load auth state
+        const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+
+        logger.info('\nPlease follow these steps to pair your device:');
         logger.info('1. Open WhatsApp on your phone');
         logger.info('2. Go to Settings > Linked Devices');
         logger.info('3. Tap on "Link a Device"');
         logger.info('4. When prompted, enter the pairing code that will be shown here');
-        logger.info('Waiting for pairing code to be generated...');
+        logger.info('Waiting for pairing code to be generated...\n');
 
-        // Ensure clean auth state first
-        await ensureCleanAuth();
-
-        // Initialize auth state
-        logger.info('Initializing auth state...');
-        const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
-
-        // Create WhatsApp socket connection
+        // Create WhatsApp socket with pairing code configuration
         const sock = makeWASocket({
-            auth: state,
+            version,
+            logger: pino({ level: 'silent' }),
             printQRInTerminal: false,
-            logger,
-            browser: ['Ubuntu', 'Firefox', '20.0.1'],
-            connectTimeoutMs: 60000,
-            defaultQueryTimeoutMs: 20000,
-            keepAliveIntervalMs: 10000,
-            emitOwnEvents: true,
-            markOnlineOnConnect: true,
-            // Enable pairing code
+            auth: state,
+            browser: Browsers.ubuntu('Chrome'),
+            mobile: false,
             pairingCode: true,
-            phoneNumber: parseInt(phoneNumber) // Convert to number as required by Baileys
+            phoneNumber: parseInt(phoneNumber)
         });
 
         // Handle connection updates
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect } = update;
 
-            // Enhanced logging for debugging
             logger.info('Connection update received:', {
                 connection,
                 disconnectReason: lastDisconnect?.error?.output?.statusCode,
                 hasPairingCode: !!update.pairingCode
             });
 
-            // Display pairing code if available
             if (update.pairingCode) {
                 logger.info('╔════════════════════════════════╗');
-                logger.info(`║  Pairing Code: ${update.pairingCode}        ║`);
-                logger.info('╚════════════════════════════════╝');
-            }
-
-            if (connection === 'open') {
-                logger.info('WhatsApp connection opened successfully');
-                sock.sendPresenceUpdate('available');
-
-                // Log successful connection details
-                logger.info('Connected with:', {
-                    user: sock.user,
-                    platform: sock.ws.socket.platform,
-                    timestamp: new Date().toISOString()
-                });
+                logger.info(`║   PAIRING CODE: ${update.pairingCode}   ║`);
+                logger.info('╚════════════════════════════════╝\n');
             }
 
             if (connection === 'close') {
                 const shouldReconnect = (lastDisconnect?.error instanceof Boom) ?
                     lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut : true;
 
-                logger.info('Connection closed due to:', {
-                    error: lastDisconnect?.error,
-                    willReconnect: shouldReconnect
-                });
+                logger.info('Connection closed, reconnecting:', shouldReconnect);
 
                 if (shouldReconnect) {
-                    startWhatsApp();
+                    setTimeout(initializeWhatsApp, 3000);
+                }
+            } else if (connection === 'open') {
+                logger.info('WhatsApp connection opened successfully!');
+                sock.sendPresenceUpdate('available');
+
+                const startupMessage = '🤖 *WhatsApp Bot Online!*\n\n' +
+                    'Send !menu to see available commands';
+
+                try {
+                    await sock.sendMessage(`${phoneNumber}@s.whatsapp.net`, {
+                        text: startupMessage
+                    });
+                    logger.info('Startup message sent successfully');
+                } catch (error) {
+                    logger.error('Failed to send startup message:', error);
                 }
             }
         });
 
         // Handle credentials update
-        sock.ev.on('creds.update', async () => {
-            logger.info('Credentials updated, saving...');
-            await saveCreds();
-        });
-
-        // Handle messages for testing
-        sock.ev.on('messages.upsert', async ({ messages }) => {
-            const message = messages[0];
-            if (!message) return;
-
-            logger.info('New message received:', {
-                from: message.key.remoteJid,
-                type: message.message ? Object.keys(message.message)[0] : 'unknown',
-                timestamp: new Date().toISOString()
-            });
-        });
+        sock.ev.on('creds.update', saveCreds);
+        logger.info('Credentials update handler registered');
 
         return sock;
     } catch (error) {
@@ -207,19 +195,8 @@ async function initializeWhatsApp(phoneNumber) {
     }
 }
 
-async function startWhatsApp() {
-    try {
-        // Get phone number first
-        const phoneNumber = await getPhoneNumber();
-
-        // Then initialize WhatsApp
-        logger.info('Starting WhatsApp with pairing code authentication...');
-        await initializeWhatsApp(phoneNumber);
-    } catch (error) {
-        logger.error('Fatal error:', error);
-        process.exit(1);
-    }
-}
-
 // Start the application
-startWhatsApp();
+initializeWhatsApp().catch(err => {
+    logger.error('Fatal error:', err);
+    process.exit(1);
+});
