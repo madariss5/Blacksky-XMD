@@ -20,6 +20,7 @@ class WhatsAppManager {
         this.sock = null;
         this.isConnected = false;
         this.initializationPromise = null;
+        this.qrDisplayed = false;
     }
 
     async initialize() {
@@ -35,94 +36,112 @@ class WhatsAppManager {
         try {
             logger.info('Starting WhatsApp initialization...');
 
-            // Clean up auth directory to force new QR code
-            await fs.remove(this.authDir);
+            // Ensure auth directory exists
             await fs.ensureDir(this.authDir);
 
             const { state, saveCreds } = await useMultiFileAuthState(this.authDir);
             const { version } = await fetchLatestBaileysVersion();
 
-            logger.info('Creating WhatsApp socket with version:', version);
+            logger.info('Creating WhatsApp connection with version:', version);
 
             this.sock = makeWASocket({
                 version,
-                logger: pino({ level: "silent" }),
-                printQRInTerminal: true,
+                logger: pino({ 
+                    level: 'debug',
+                    timestamp: () => `,"time":"${new Date().toJSON()}"` 
+                }),
+                printQRInTerminal: false,
                 auth: state,
                 browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49'],
                 connectTimeoutMs: 60_000,
                 qrTimeout: 40000,
-                defaultQueryTimeoutMs: 0,
+                defaultQueryTimeoutMs: 20000,
                 keepAliveIntervalMs: 10000,
                 emitOwnEvents: true,
                 markOnlineOnConnect: true,
                 retryRequestDelayMs: 2000,
-                userDeviceIdForUserHandle: '𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝔹𝕆𝕋'
+                fireInitQueries: true,
+                syncFullHistory: true
             });
 
             this.store.bind(this.sock.ev);
 
-            this.sock.ev.on('connection.update', (update) => {
+            // Enhanced connection state handling
+            this.sock.ev.on('connection.update', async (update) => {
                 const { connection, lastDisconnect, qr } = update;
-                logger.info('Connection status update:', {
-                    connection,
+
+                logger.info('Connection state updated:', {
+                    currentState: connection,
                     hasQR: !!qr,
+                    isConnected: this.isConnected,
                     disconnectReason: lastDisconnect?.error?.output?.statusCode
                 });
 
-                if (qr) {
-                    logger.info('New QR code received, displaying in terminal...');
+                if (qr && !this.qrDisplayed) {
+                    this.qrDisplayed = true;
+                    logger.info('Please scan this QR code to connect:');
                     require('qrcode-terminal').generate(qr, { small: true });
                 }
 
                 if (connection === 'open') {
                     this.isConnected = true;
+                    this.qrDisplayed = false;
+                    this.retriesLeft = 3;
                     logger.info('WhatsApp connection established successfully!');
-                    this.sock.sendPresenceUpdate('available');
+                    await this.sock.sendPresenceUpdate('available');
                 }
 
                 if (connection === 'close') {
                     this.isConnected = false;
-                    const shouldReconnect = (lastDisconnect?.error instanceof Boom) ?
-                        lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut : true;
+                    const statusCode = lastDisconnect?.error?.output?.statusCode;
+                    const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
                     logger.info('Connection closed:', {
                         shouldReconnect,
-                        statusCode: lastDisconnect?.error?.output?.statusCode,
-                        errorMessage: lastDisconnect?.error?.message
+                        statusCode,
+                        retriesLeft: this.retriesLeft,
+                        error: lastDisconnect?.error?.message
                     });
 
-                    if (shouldReconnect) {
-                        logger.info('Attempting reconnection in 3 seconds...');
-                        setTimeout(() => {
-                            this.initializationPromise = null;
-                            this.initialize();
-                        }, 3000);
+                    if (shouldReconnect && this.retriesLeft > 0) {
+                        this.retriesLeft--;
+                        const delay = (3 - this.retriesLeft) * this.retryTimeout;
+                        logger.info(`Attempting reconnection in ${delay}ms... (${this.retriesLeft} retries left)`);
+                        this.initializationPromise = null;
+                        this.qrDisplayed = false;
+                        setTimeout(() => this.initialize(), delay);
+                    } else if (statusCode === DisconnectReason.loggedOut) {
+                        logger.info('Device logged out, clearing auth info...');
+                        await fs.remove(this.authDir);
+                        await fs.ensureDir(this.authDir);
+                        this.qrDisplayed = false;
+                        logger.info('Auth directory cleared. Please restart the application to scan new QR code.');
                     }
                 }
             });
 
-            this.sock.ev.on('creds.update', saveCreds);
-
-            // Handle messages with improved error handling
-            this.sock.ev.on('messages.upsert', async ({ messages, type }) => {
+            // Enhanced credentials update handling
+            this.sock.ev.on('creds.update', async () => {
                 try {
-                    if (type === 'notify') {
-                        logger.info('New message received:', {
-                            from: messages[0].key.remoteJid,
-                            type: Object.keys(messages[0].message)[0]
-                        });
-                    }
+                    await saveCreds();
+                    logger.info('Credentials updated and saved successfully');
                 } catch (error) {
-                    logger.error('Error processing message:', error);
+                    logger.error('Error saving credentials:', {
+                        error: error.message,
+                        stack: error.stack
+                    });
                 }
             });
 
             return this.sock;
 
         } catch (error) {
-            logger.error('WhatsApp initialization error:', error);
+            logger.error('WhatsApp initialization error:', {
+                error: error.message,
+                stack: error.stack
+            });
             this.initializationPromise = null;
+            this.qrDisplayed = false;
             throw error;
         }
     }
