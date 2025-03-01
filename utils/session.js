@@ -1,10 +1,11 @@
 const fs = require('fs').promises;
 const path = require('path');
-const logger = require('./logger');
+const logger = require('pino')();
 
 class SessionManager {
     constructor(sessionDir) {
         this.sessionDir = sessionDir;
+        this.authDir = path.join(process.cwd(), 'auth_info_baileys');
     }
 
     async initialize() {
@@ -14,7 +15,15 @@ class SessionManager {
 
             // Create fresh session directory
             await fs.mkdir(this.sessionDir, { recursive: true });
-            logger.info(`Session directory initialized: ${this.sessionDir}`);
+
+            // Also clean up auth directory
+            await fs.rm(this.authDir, { recursive: true, force: true });
+            await fs.mkdir(this.authDir, { recursive: true });
+
+            logger.info('Session and auth directories initialized:', {
+                sessionDir: this.sessionDir,
+                authDir: this.authDir
+            });
             return true;
         } catch (error) {
             logger.error('Failed to initialize session directory:', error);

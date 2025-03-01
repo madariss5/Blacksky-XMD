@@ -1,6 +1,48 @@
 const logger = require('pino')();
 
 const utilityCommands = {
+    menu: async (sock, msg) => {
+        try {
+            const menuText = `🤖 *WhatsApp Bot Commands*\n\n` +
+                           `*Utility Commands:*\n` +
+                           `!menu - Show this menu\n` +
+                           `!stats - Show bot statistics\n` +
+                           `!report <issue> - Report an issue\n` +
+                           `!donate - Support information\n` +
+                           `!qrmaker <text> - Generate QR code\n` +
+                           `!qrreader - Read QR code from image\n\n` +
+
+                           `*Economy Commands:*\n` +
+                           `!daily - Claim daily reward\n` +
+                           `!balance - Check your balance\n` +
+                           `!work - Work to earn gold\n` +
+                           `!shop - View available items\n\n` +
+
+                           `*Fun Commands:*\n` +
+                           `!pong - Play pong game\n` +
+                           `!roll - Roll a dice\n` +
+                           `!flip - Flip a coin\n\n` +
+
+                           `*Anime Commands:*\n` +
+                           `!waifu - Get random waifu image\n` +
+                           `!neko - Get random neko image\n` +
+                           `!anime info <name> - Get anime information\n\n` +
+
+                           `*Group Commands:*\n` +
+                           `!kick @user - Kick user from group\n` +
+                           `!add @user - Add user to group\n` +
+                           `!promote @user - Promote user to admin\n` +
+                           `!demote @user - Demote user from admin`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text: menuText });
+        } catch (error) {
+            logger.error('Error in menu command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to show menu'
+            });
+        }
+    },
+
     stats: async (sock, msg) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, {
@@ -54,7 +96,6 @@ const utilityCommands = {
             });
         }
     },
-
     qrmaker: async (sock, msg, args) => {
         try {
             if (!args.length) {
@@ -87,6 +128,10 @@ const utilityCommands = {
                 text: '❌ Failed to read QR code'
             });
         }
+    },
+    help: async (sock, msg) => {
+        // Alias for menu command
+        await utilityCommands.menu(sock, msg);
     }
 };
 
