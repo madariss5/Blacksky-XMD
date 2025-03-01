@@ -4,83 +4,95 @@ const chalk = require('chalk');
 const logger = require('pino')();
 const commandHandler = require('./handlers/command_handler');
 
-// Session path
+// Session path configuration
 const SESSION_PATH = path.join(__dirname, 'sessions');
 
-console.log(chalk.cyan('\nStarting WhatsApp bot...\n'));
-console.log(chalk.cyan('┌─────────────────────────────────────┐'));
-console.log(chalk.cyan('│          Venom-Bot Connection       │'));
-console.log(chalk.cyan('└─────────────────────────────────────┘\n'));
+// Initialize the WhatsApp bot with improved settings
+function startWhatsAppBot() {
+  console.log(chalk.cyan('\nInitializing WhatsApp bot...\n'));
 
-console.log(chalk.yellow('Please follow these steps:'));
-console.log(chalk.white('1. Open WhatsApp on your phone'));
-console.log(chalk.white('2. Go to Settings > Linked Devices'));
-console.log(chalk.white('3. Tap on "Link a Device"'));
-console.log(chalk.white('4. Make sure your app is up to date'));
-console.log(chalk.white('5. Scan the QR code when it appears\n'));
-
-// Create Venom-Bot Client
-venom
-  .create({
-    session: 'flash-bot',
-    multidevice: true,
-    folderNameToken: SESSION_PATH,
-    headless: 'new', // Use new headless mode
-    useChrome: true,
-    debug: false,
-    logQR: true,
-    disableWelcome: true,
-    disableSpins: true,
-    browserArgs: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-accelerated-2d-canvas',
-      '--disable-gpu',
-      '--no-first-run',
-      '--no-zygote',
-      '--disable-extensions'
-    ],
-    puppeteerOptions: {
+  return venom
+    .create({
+      session: 'flash-bot',
+      multidevice: true,
+      folderNameToken: SESSION_PATH,
       headless: 'new',
-      args: [
+      useChrome: true,
+      debug: true, // Enable debug logs
+      logQR: true,
+      disableWelcome: true,
+      disableSpins: true,
+      browserArgs: [
         '--no-sandbox',
-        '--disable-setuid-sandbox'
-      ]
-    }
-  })
-  .then((client) => start(client))
-  .catch((error) => {
-    logger.error('Error creating client:', error);
-    process.exit(1);
-  });
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process', // <- This one helps with memory
+        '--disable-extensions'
+      ],
+      puppeteerOptions: {
+        headless: 'new',
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox'
+        ]
+      }
+    })
+    .then((client) => {
+      logger.info('WhatsApp bot initialized successfully');
+      setupEventHandlers(client);
+      return client;
+    })
+    .catch((error) => {
+      logger.error('Error initializing WhatsApp bot:', error);
+      process.exit(1);
+    });
+}
 
-function start(client) {
-  console.log(chalk.green('\n✓ Successfully connected to WhatsApp\n'));
-  console.log(chalk.cyan('• Bot Status: Online'));
-  console.log(chalk.cyan('• Type !menu to see available commands\n'));
-
+function setupEventHandlers(client) {
   // Message handler
   client.onMessage(async (message) => {
     try {
       if (message.isGroupMsg) return; // Skip group messages for now
-
-      // Process commands through existing handler
       await commandHandler.handleMessage(client, message);
     } catch (error) {
       logger.error('Error processing message:', error);
     }
   });
 
-  // Handle client events
+  // State change handler
   client.onStateChange((state) => {
-    logger.info('State changed:', state);
+    logger.info('Connection state:', state);
+    if (state === 'CONFLICT') {
+      client.useHere(); // Use this device when there's a conflict
+    }
     if (state === 'DISCONNECTED') {
-      console.log(chalk.red('\n× Connection lost. Please restart the application.\n'));
+      logger.warn('WhatsApp disconnected. Attempting to reconnect...');
+      setTimeout(() => {
+        startWhatsAppBot();
+      }, 5000);
     }
   });
 
-  // Error handling
+  // QR Code handler with improved logging
+  client.onQR((qr) => {
+    logger.info('New QR Code received. Length:', qr.length);
+    console.log('\nScan this QR code to connect:');
+    require('qrcode-terminal').generate(qr, { small: true });
+  });
+
+  // Connection success handler
+  client.onConnected(() => {
+    logger.info('WhatsApp connection established successfully!');
+    console.log(chalk.green('\n✓ Successfully connected to WhatsApp\n'));
+    console.log(chalk.cyan('• Bot Status: Online'));
+    console.log(chalk.cyan('• Type !menu to see available commands\n'));
+  });
+  
+    // Error handling
   client.onConnectionError((error) => {
     logger.error('Connection error:', error);
   });
@@ -97,3 +109,11 @@ function start(client) {
     }
   });
 }
+
+// Start the bot
+startWhatsAppBot().catch((err) => {
+  logger.error('Fatal error:', err);
+  process.exit(1);
+});
+
+module.exports = { startWhatsAppBot };

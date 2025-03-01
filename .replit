@@ -102,7 +102,7 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node whatsapp_core.js"
+args = "node index.js"
 
 [deployment]
 run = ["sh", "-c", "node test_whatsapp.js"]

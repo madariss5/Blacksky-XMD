@@ -1,5 +1,25 @@
 {pkgs}: {
   deps = [
+    pkgs.pango
+    pkgs.expat
+    pkgs.dbus
+    pkgs.cups
+    pkgs.cairo
+    pkgs.at-spi2-core
+    pkgs.at-spi2-atk
+    pkgs.alsaLib
+    pkgs.xorg.libXtst
+    pkgs.xorg.libXrender
+    pkgs.xorg.libXi
+    pkgs.xorg.libXfixes
+    pkgs.xorg.libXext
+    pkgs.xorg.libXdamage
+    pkgs.xorg.libXcursor
+    pkgs.xorg.libXcomposite
+    pkgs.xorg.libX11
+    pkgs.chromium
+    pkgs.glib
+    pkgs.gtk3
     pkgs.nodejs
     pkgs.exiftool
     pkgs.imagemagick
