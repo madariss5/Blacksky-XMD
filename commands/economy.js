@@ -641,8 +641,4 @@ const economyCommands = {
     }
 };
 
-module.exports = {
-    ...economyCommands,
-    rob,
-    gamble
-};
+module.exports = economyCommands;
