@@ -1,6 +1,7 @@
 const http = require('http');
 const logger = require('pino')();
 const express = require('express');
+const whatsapp = require('./server/whatsapp');
 
 // Initialize express app
 const app = express();
@@ -16,7 +17,17 @@ app.get('/', (req, res) => {
     res.json({
         status: 'ok',
         service: 'WhatsApp Bot Server',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        whatsapp_status: whatsapp.isSocketConnected() ? 'connected' : 'disconnected'
+    });
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'healthy',
+        whatsapp: whatsapp.isSocketConnected() ? 'connected' : 'disconnected',
+        uptime: process.uptime()
     });
 });
 
@@ -30,9 +41,13 @@ logger.info('Server configuration:', {
     pid: process.pid
 });
 
-// Try to start server on port 5000
-logger.info(`Attempting to start server on port ${PORT}...`);
+// Initialize WhatsApp connection
+whatsapp.initialize().catch(err => {
+    logger.error('Failed to initialize WhatsApp:', err);
+    process.exit(1);
+});
 
+// Start server
 server.listen(PORT, '0.0.0.0', () => {
     const addr = server.address();
     logger.info('Server started successfully:', {
@@ -43,6 +58,7 @@ server.listen(PORT, '0.0.0.0', () => {
     });
 });
 
+// Error handling for server
 server.on('error', (err) => {
     logger.error('Server error occurred:', {
         error: err.message,
@@ -71,7 +87,9 @@ process.on('uncaughtException', (err) => {
         error: err.message,
         stack: err.stack
     });
-    process.exit(1);
+    if (!err.message.includes('EADDRINUSE')) {
+        process.exit(1);
+    }
 });
 
 // Handle unhandled rejections
@@ -80,7 +98,9 @@ process.on('unhandledRejection', (err) => {
         error: err.message,
         stack: err.stack
     });
-    process.exit(1);
+    if (!err.message.includes('EADDRINUSE')) {
+        process.exit(1);
+    }
 });
 
 module.exports = server;

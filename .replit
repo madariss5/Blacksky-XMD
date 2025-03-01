@@ -13,29 +13,11 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "WhatsApp Core"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
 args = "WhatsApp Bot"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
 args = "Animation Preview"
-
-[[workflows.workflow]]
-name = "WhatsApp Core"
-author = "agent"
-
-[workflows.workflow.metadata]
-agentRequireRestartOnSave = false
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node whatsapp_core.js"
 
 [[workflows.workflow]]
 name = "WhatsApp Bot"

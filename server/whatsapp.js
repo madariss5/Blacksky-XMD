@@ -20,13 +20,25 @@ class WhatsAppManager {
         this.sock = null;
         this.isConnected = false;
         this.messageRetryMap = new Map();
+        this.initializationPromise = null;
     }
 
     async initialize() {
+        // Prevent multiple initialization attempts
+        if (this.initializationPromise) {
+            return this.initializationPromise;
+        }
+
+        this.initializationPromise = this._initialize();
+        return this.initializationPromise;
+    }
+
+    async _initialize() {
         try {
             logger.info('Starting WhatsApp initialization...');
 
-            // Ensure auth directory exists
+            // Clean up auth directory and recreate
+            await fs.remove(this.authDir);
             await fs.ensureDir(this.authDir);
 
             const { state, saveCreds } = await useMultiFileAuthState(this.authDir);
@@ -36,19 +48,16 @@ class WhatsAppManager {
 
             this.sock = makeWASocket({
                 version,
-                logger: pino({ level: "silent" }), // Reduce noise in logs
+                logger: pino({ level: "silent" }),
                 printQRInTerminal: true,
                 auth: state,
-                browser: ['BLACKSKY-MD', 'Safari', '1.0.0'],
+                browser: ['BLACKSKY-MD', 'Chrome', '112.0.0.0'],
                 connectTimeoutMs: 60_000,
-                defaultQueryTimeoutMs: 0,
+                defaultQueryTimeoutMs: 30_000,
                 keepAliveIntervalMs: 10000,
                 emitOwnEvents: true,
                 markOnlineOnConnect: true,
-                retryRequestDelayMs: 2000,
-                getMessage: async (key) => {
-                    return this.handleMessageRetrieval(key);
-                }
+                retryRequestDelayMs: 2000
             });
 
             this.store.bind(this.sock.ev);
@@ -83,6 +92,7 @@ class WhatsAppManager {
                     if (shouldReconnect && this.retriesLeft > 0) {
                         this.retriesLeft--;
                         logger.info(`Attempting reconnection in ${this.retryTimeout}ms... (${this.retriesLeft} retries left)`);
+                        this.initializationPromise = null; // Reset initialization promise
                         setTimeout(() => this.initialize(), this.retryTimeout);
                     } else {
                         logger.error('Connection closed permanently:', lastDisconnect?.error);
@@ -90,34 +100,45 @@ class WhatsAppManager {
                             await fs.remove(this.authDir);
                             logger.info('Auth directory cleared due to logout');
                         }
+                        throw new Error('WhatsApp connection closed permanently');
                     }
                 }
             });
 
-            // Improved message handling
+            // Handle messages with improved error handling
             this.sock.ev.on('messages.upsert', async ({ messages, type }) => {
-                if (type === 'notify') {
-                    for (const message of messages) {
-                        if (message.key && message.key.remoteJid) {
-                            this.messageRetryMap.set(message.key.id, {
-                                retries: 0,
-                                timestamp: Date.now()
-                            });
+                try {
+                    if (type === 'notify') {
+                        for (const message of messages) {
+                            if (message.key && message.key.remoteJid) {
+                                this.messageRetryMap.set(message.key.id, {
+                                    retries: 0,
+                                    timestamp: Date.now()
+                                });
+                            }
                         }
                     }
+                } catch (error) {
+                    logger.error('Error processing message:', error);
                 }
             });
 
             // Handle credentials updates
             this.sock.ev.on('creds.update', async () => {
-                logger.info('Credentials updated, saving...');
-                await saveCreds();
+                try {
+                    logger.info('Credentials updated, saving...');
+                    await saveCreds();
+                } catch (error) {
+                    logger.error('Error saving credentials:', error);
+                }
             });
 
             return this.sock;
 
         } catch (error) {
             logger.error('WhatsApp initialization error:', error);
+            this.initializationPromise = null;
+
             if (this.retriesLeft > 0) {
                 this.retriesLeft--;
                 logger.info(`Retrying initialization in ${this.retryTimeout}ms... (${this.retriesLeft} retries left)`);
@@ -129,24 +150,28 @@ class WhatsAppManager {
     }
 
     async handleMessageRetrieval(key) {
-        const retryData = this.messageRetryMap.get(key.id);
-        if (!retryData) return null;
+        try {
+            const retryData = this.messageRetryMap.get(key.id);
+            if (!retryData) return null;
 
-        if (retryData.retries >= 5) {
-            this.messageRetryMap.delete(key.id);
+            if (retryData.retries >= 5) {
+                this.messageRetryMap.delete(key.id);
+                return null;
+            }
+
+            if (Date.now() - retryData.timestamp > 60000) {
+                this.messageRetryMap.delete(key.id);
+                return null;
+            }
+
+            retryData.retries++;
+            this.messageRetryMap.set(key.id, retryData);
+
+            return null;
+        } catch (error) {
+            logger.error('Error retrieving message:', error);
             return null;
         }
-
-        if (Date.now() - retryData.timestamp > 60000) { // 1 minute timeout
-            this.messageRetryMap.delete(key.id);
-            return null;
-        }
-
-        retryData.retries++;
-        this.messageRetryMap.set(key.id, retryData);
-
-        // Return null to let the library handle retry logic
-        return null;
     }
 
     getSocket() {
