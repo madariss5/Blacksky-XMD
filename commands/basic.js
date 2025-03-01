@@ -54,13 +54,32 @@ const basicCommands = {
             const config = require('../config');
 
             // Group commands by category
-            const categories = {};
+            const categories = {
+                'Basic': [
+                    `• ${config.prefix}help - Show help message`,
+                    `• ${config.prefix}ping - Check bot response time`,
+                    `• ${config.prefix}info - Show bot information`,
+                    `• ${config.prefix}menu - Show all commands`
+                ],
+                'User': [
+                    `• ${config.prefix}profile - View user profile`,
+                    `• ${config.prefix}me - Show your own profile`,
+                    `• ${config.prefix}register - Register new user`,
+                    `• ${config.prefix}level - View level stats`,
+                    `• ${config.prefix}daily - Claim daily rewards`,
+                    `• ${config.prefix}bio - Set or view bio`
+                ]
+            };
+
+            // Add other command categories from config
             Object.entries(config.commands).forEach(([cmd, info]) => {
                 const category = info.category || 'Uncategorized';
-                if (!categories[category]) {
-                    categories[category] = [];
+                if (category !== 'Basic' && category !== 'User') {
+                    if (!categories[category]) {
+                        categories[category] = [];
+                    }
+                    categories[category].push(`• ${config.prefix}${cmd} - ${info.description}`);
                 }
-                categories[category].push(`• ${config.prefix}${cmd} - ${info.description}`);
             });
 
             // Category icons
@@ -76,20 +95,16 @@ const basicCommands = {
                 'Tools': '🛠️',
                 'AI': '🤖',
                 'NSFW': '🔞',
-                'Owner': '👑'
+                'Owner': '👑',
+                'Music': '🎵'
             };
 
             // Build menu text
             let text = `*${config.botName} Command Menu*\n\n`;
 
-            // Add Basic commands first
-            if (categories['Basic']) {
-                text += `${categoryIcons['Basic']} *Basic Commands*\n${categories['Basic'].join('\n')}\n\n`;
-            }
-
-            // Add other categories
+            // Add categories in order
             Object.entries(categories).forEach(([category, commands]) => {
-                if (category !== 'Basic' && commands.length > 0) {
+                if (commands.length > 0) {
                     const icon = categoryIcons[category] || '📌';
                     text += `${icon} *${category} Commands*\n${commands.join('\n')}\n\n`;
                 }
