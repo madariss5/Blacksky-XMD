@@ -36,7 +36,6 @@ class WhatsAppManager {
         try {
             logger.info('Starting WhatsApp initialization...');
 
-            // Ensure auth directory exists
             await fs.ensureDir(this.authDir);
 
             const { state, saveCreds } = await useMultiFileAuthState(this.authDir);
@@ -61,7 +60,8 @@ class WhatsAppManager {
                 markOnlineOnConnect: true,
                 retryRequestDelayMs: 2000,
                 fireInitQueries: true,
-                syncFullHistory: true
+                syncFullHistory: true,
+                userDeviceIdForUserHandle: '𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝔹𝕆𝕋'
             });
 
             this.store.bind(this.sock.ev);
@@ -94,7 +94,8 @@ class WhatsAppManager {
                 if (connection === 'close') {
                     this.isConnected = false;
                     const statusCode = lastDisconnect?.error?.output?.statusCode;
-                    const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+                    const shouldReconnect = (lastDisconnect?.error instanceof Boom) ?
+                        lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut : true;
 
                     logger.info('Connection closed:', {
                         shouldReconnect,
@@ -107,20 +108,48 @@ class WhatsAppManager {
                         this.retriesLeft--;
                         const delay = (3 - this.retriesLeft) * this.retryTimeout;
                         logger.info(`Attempting reconnection in ${delay}ms... (${this.retriesLeft} retries left)`);
-                        this.initializationPromise = null;
-                        this.qrDisplayed = false;
-                        setTimeout(() => this.initialize(), delay);
+
+                        // Keep the process alive and try to reconnect
+                        setTimeout(async () => {
+                            try {
+                                this.initializationPromise = null;
+                                this.qrDisplayed = false;
+                                await this.initialize();
+                            } catch (error) {
+                                logger.error('Reconnection attempt failed:', error);
+                            }
+                        }, delay);
                     } else if (statusCode === DisconnectReason.loggedOut) {
+                        // Only clear auth if explicitly logged out
                         logger.info('Device logged out, clearing auth info...');
                         await fs.remove(this.authDir);
                         await fs.ensureDir(this.authDir);
                         this.qrDisplayed = false;
-                        logger.info('Auth directory cleared. Please restart the application to scan new QR code.');
+
+                        // Attempt to reinitialize immediately
+                        this.initializationPromise = null;
+                        await this.initialize();
                     }
                 }
             });
 
-            // Enhanced credentials update handling
+            // Handle message events
+            this.sock.ev.on('messages.upsert', async ({ messages, type }) => {
+                try {
+                    if (type === 'notify') {
+                        for (const message of messages) {
+                            logger.info('Processing new message:', {
+                                from: message.key.remoteJid,
+                                type: message.message ? Object.keys(message.message)[0] : 'unknown'
+                            });
+                        }
+                    }
+                } catch (error) {
+                    logger.error('Error processing message:', error);
+                }
+            });
+
+            // Handle credentials updates
             this.sock.ev.on('creds.update', async () => {
                 try {
                     await saveCreds();
@@ -142,7 +171,16 @@ class WhatsAppManager {
             });
             this.initializationPromise = null;
             this.qrDisplayed = false;
-            throw error;
+
+            // Attempt to recover from initialization error
+            if (this.retriesLeft > 0) {
+                this.retriesLeft--;
+                const delay = (3 - this.retriesLeft) * this.retryTimeout;
+                logger.info(`Retrying initialization in ${delay}ms... (${this.retriesLeft} retries left)`);
+                setTimeout(() => this.initialize(), delay);
+            } else {
+                throw error;
+            }
         }
     }
 
