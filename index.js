@@ -76,7 +76,7 @@ const startBot = async() => {
         // Credentials update
         sock.ev.on('creds.update', saveCreds);
 
-        // Helper function to format menu
+        // Helper function to format menu with improved styling
         const formatMenu = (commands) => {
             const categories = {};
             Object.entries(commands).forEach(([cmd, info]) => {
@@ -86,24 +86,34 @@ const startBot = async() => {
                 categories[info.category].push(`${config.prefix}${cmd} - ${info.description}`);
             });
 
-            let menu = `╭─「 ${config.botName} 」\n`;
-            menu += `│\n`;
-            menu += `│ 👋 Hello!\n`;
-            menu += `│ 🤖 Bot Name: ${config.botName}\n`;
-            menu += `│ 👑 Owner: ${config.ownerName}\n`;
-            menu += `│ ⚡ Prefix: ${config.prefix}\n`;
-            menu += `│\n`;
+            const botName = config.botName;
+            const currentTime = new Date().toLocaleTimeString();
+            const currentDate = new Date().toLocaleDateString();
+
+            let menu = `╭━━━━『 ${botName} 』━━━━┈ ❋ཻུ۪۪⸙\n`;
+            menu += `│ ╭──────────────···\n`;
+            menu += `│ │ User: %user%\n`;  // Will be replaced with actual user name
+            menu += `│ │ Time: ${currentTime}\n`;
+            menu += `│ │ Date: ${currentDate}\n`;
+            menu += `│ │ Prefix: ${config.prefix}\n`;
+            menu += `│ ╰──────────────···\n│\n`;
 
             Object.entries(categories).forEach(([category, cmds]) => {
-                menu += `│ 📑 *${category} Commands*\n`;
+                menu += `│ ╭━━━『 ${category} 』\n`;
                 cmds.forEach(cmd => {
-                    menu += `│ • ${cmd}\n`;
+                    menu += `│ │ ⌬ ${cmd}\n`;
                 });
-                menu += `│\n`;
+                menu += `│ ╰━━━━━━━━━━━━━━━┈ ❋ཻུ۪۪⸙\n│\n`;
             });
 
-            menu += `╰────\n\n`;
-            menu += `_Send ${config.prefix}help <command> for detailed info_`;
+            menu += `│ ╭━━━『 Note 』\n`;
+            menu += `│ │ Bot Name: ${botName}\n`;
+            menu += `│ │ Owner: ${config.ownerName}\n`;
+            menu += `│ │ Prefix: ${config.prefix}\n`;
+            menu += `│ │ Use ${config.prefix}help <command> for detailed info\n`;
+            menu += `│ ╰━━━━━━━━━━━━━━━┈ ❋ཻུ۪۪⸙\n`;
+            menu += `╰━━━━━━━━━━━━━━━━━━━━━━┈ ❋ཻུ۪۪⸙\n\n`;
+            menu += `   Powered by ${botName}`;
 
             return menu;
         };
@@ -129,18 +139,37 @@ const startBot = async() => {
                 switch (command) {
                     case 'menu':
                     case 'help':
-                        const menuText = formatMenu(config.commands);
-                        await sock.sendMessage(msg.key.remoteJid, { 
-                            text: menuText,
-                            contextInfo: {
-                                externalAdReply: {
-                                    title: config.botName,
-                                    body: "WhatsApp Bot",
-                                    thumbnailUrl: config.menuImage,
-                                    sourceUrl: "https://wa.me/" + config.ownerNumber
-                                }
+                        if (args.length > 0) {
+                            // Detailed help for specific command
+                            const cmdName = args[0].toLowerCase();
+                            const cmdInfo = config.commands[cmdName];
+                            if (cmdInfo) {
+                                const helpText = `╭━━━『 Command Help 』━━━┈ ❋ཻུ۪۪⸙\n` +
+                                               `│ Command: ${config.prefix}${cmdName}\n` +
+                                               `│ Category: ${cmdInfo.category}\n` +
+                                               `│ Description: ${cmdInfo.description}\n` +
+                                               `╰━━━━━━━━━━━━━━━━━━━━━┈ ❋ཻུ۪۪⸙`;
+                                await sock.sendMessage(msg.key.remoteJid, { text: helpText });
+                            } else {
+                                await sock.sendMessage(msg.key.remoteJid, { 
+                                    text: `❌ Command "${cmdName}" not found.\nUse ${config.prefix}menu to see available commands.`
+                                });
                             }
-                        });
+                        } else {
+                            // Full menu
+                            const menuText = formatMenu(config.commands);
+                            await sock.sendMessage(msg.key.remoteJid, { 
+                                text: menuText,
+                                contextInfo: {
+                                    externalAdReply: {
+                                        title: config.botName,
+                                        body: "WhatsApp Bot",
+                                        thumbnailUrl: config.menuImage,
+                                        sourceUrl: "https://wa.me/" + config.ownerNumber.split('@')[0]
+                                    }
+                                }
+                            });
+                        }
                         break;
 
                     case 'ping':
@@ -154,9 +183,9 @@ const startBot = async() => {
 
                     case 'owner':
                         const ownerContact = `*${config.botName} Owner*\n\n` +
-                                          `👤 Name: ${config.ownerName}\n` +
-                                          `📞 Number: wa.me/${config.ownerNumber.split('@')[0]}\n\n` +
-                                          `_For bug reports and features_`;
+                                              `👤 Name: ${config.ownerName}\n` +
+                                              `📞 Number: wa.me/${config.ownerNumber.split('@')[0]}\n\n` +
+                                              `_For bug reports and features_`;
                         await sock.sendMessage(msg.key.remoteJid, { text: ownerContact });
                         break;
 

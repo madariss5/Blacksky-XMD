@@ -13,6 +13,9 @@ module.exports = {
         info: { description: 'View bot information and stats', category: 'Basic' },
         owner: { description: 'View bot creator info', category: 'Basic' },
         runtime: { description: 'Check bot uptime', category: 'Basic' },
+        speed: { description: 'Test bot response speed', category: 'Basic' },
+        status: { description: 'View bot status and info', category: 'Basic' },
+        dashboard: { description: 'View bot statistics dashboard', category: 'Basic' },
 
         // Group Commands
         kick: { description: 'Kick member from group', category: 'Group' },
@@ -21,29 +24,71 @@ module.exports = {
         demote: { description: 'Demote admin to member', category: 'Group' },
         tagall: { description: 'Tag all group members', category: 'Group' },
         hidetag: { description: 'Tag all members secretly', category: 'Group' },
+        group: { description: 'Group settings (open/close)', category: 'Group' },
+        setname: { description: 'Change group name', category: 'Group' },
+        setdesc: { description: 'Change group description', category: 'Group' },
+        setppgc: { description: 'Set group profile picture', category: 'Group' },
+        revoke: { description: 'Reset group invite link', category: 'Group' },
+        leave: { description: 'Make bot leave the group', category: 'Group' },
 
         // Media Commands
         sticker: { description: 'Create sticker from image/video', category: 'Media' },
         toimg: { description: 'Convert sticker to image', category: 'Media' },
-        play: { description: 'Play YouTube audio', category: 'Media' },
-        video: { description: 'Download YouTube video', category: 'Media' },
+        tomp3: { description: 'Convert video to audio', category: 'Media' },
+        tovn: { description: 'Convert audio to voice note', category: 'Media' },
+        togif: { description: 'Convert video sticker to gif', category: 'Media' },
+        tourl: { description: 'Upload media to url', category: 'Media' },
+        song: { description: 'Download and play songs', category: 'Media' },
+        video: { description: 'Download and play videos', category: 'Media' },
+        playlist: { description: 'Create and play playlists', category: 'Media' },
 
         // Downloader Commands
         ytmp3: { description: 'Download YouTube audio', category: 'Downloader' },
         ytmp4: { description: 'Download YouTube video', category: 'Downloader' },
+        ytsearch: { description: 'Search YouTube videos', category: 'Downloader' },
         instagram: { description: 'Download Instagram media', category: 'Downloader' },
-        tiktok: { description: 'Download TikTok video', category: 'Downloader' },
+        fb: { description: 'Download Facebook videos', category: 'Downloader' },
+        tiktok: { description: 'Download TikTok videos', category: 'Downloader' },
+        tiktokaudio: { description: 'Download TikTok audio', category: 'Downloader' },
+        spotify: { description: 'Download Spotify tracks', category: 'Downloader' },
+        gitclone: { description: 'Clone GitHub repositories', category: 'Downloader' },
+
+        // Fun Commands
+        reaction: { description: 'Add reaction to message', category: 'Fun' },
+        dare: { description: 'Get a dare challenge', category: 'Fun' },
+        truth: { description: 'Get a truth question', category: 'Fun' },
+        joke: { description: 'Get random jokes', category: 'Fun' },
+        meme: { description: 'Get random memes', category: 'Fun' },
+        quote: { description: 'Get inspirational quotes', category: 'Fun' },
+        fact: { description: 'Get random facts', category: 'Fun' },
+        couple: { description: 'Tag random couples', category: 'Fun' },
+
+        // Tool Commands
+        calc: { description: 'Calculator', category: 'Tools' },
+        translate: { description: 'Translate text', category: 'Tools' },
+        tts: { description: 'Text to speech', category: 'Tools' },
+        weather: { description: 'Check weather info', category: 'Tools' },
+        dictionary: { description: 'Look up word definitions', category: 'Tools' },
+        styletext: { description: 'Style text formatting', category: 'Tools' },
+        ss: { description: 'Take website screenshot', category: 'Tools' },
+        shortlink: { description: 'Shorten URLs', category: 'Tools' },
 
         // AI Commands
         ai: { description: 'Chat with AI', category: 'AI' },
         imagine: { description: 'Generate AI images', category: 'AI' },
         remini: { description: 'Enhance image quality', category: 'AI' },
+        dalle: { description: 'Generate images with DALL-E', category: 'AI' },
+        gpt: { description: 'Chat with GPT', category: 'AI' },
+        blackbox: { description: 'AI code generation', category: 'AI' },
 
         // Owner Commands
         broadcast: { description: 'Send message to all chats', category: 'Owner' },
         block: { description: 'Block a user', category: 'Owner' },
         unblock: { description: 'Unblock a user', category: 'Owner' },
         setbotpp: { description: 'Set bot profile picture', category: 'Owner' },
-        restart: { description: 'Restart bot system', category: 'Owner' }
+        setbotbio: { description: 'Set bot bio', category: 'Owner' },
+        eval: { description: 'Evaluate JavaScript code', category: 'Owner' },
+        restart: { description: 'Restart bot system', category: 'Owner' },
+        shutdown: { description: 'Shutdown bot system', category: 'Owner' }
     }
 };
