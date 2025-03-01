@@ -74,6 +74,15 @@ async function startHANS() {
             browser: ['SHABAN-MD', 'Safari', '1.0.0'],
             msgRetryCounterCache,
             defaultQueryTimeoutMs: undefined,
+            // Add decode functions
+            decodeJid: (jid) => {
+                if (!jid) return jid;
+                if (/:\d+@/gi.test(jid)) {
+                    let decode = jidDecode(jid) || {};
+                    return decode.user && decode.server && decode.user + '@' + decode.server || jid;
+                } else return jid;
+            },
+            // Keep existing patchMessageBeforeSending
             patchMessageBeforeSending: (message) => {
                 const requiresPatch = !!(
                     message.buttonsMessage ||
@@ -97,9 +106,9 @@ async function startHANS() {
             },
         });
 
+        // Bind store to hans's events
         store.bind(hans.ev);
 
-        // Handle connection updates
         hans.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
 
@@ -142,17 +151,14 @@ async function startHANS() {
                 console.log(chalk.cyan('• Bot Status: Online'));
                 console.log(chalk.cyan('• Type .menu to see available commands\n'));
 
-                // Send info message to bot number
                 hans.sendMessage(hans.user.id, { 
                     text: `🟢 ${botName} is now active and ready to use!`
                 });
             }
         });
 
-        // Handle credentials update
         hans.ev.on('creds.update', saveCreds);
 
-        // Handle incoming messages
         hans.ev.on('messages.upsert', async chatUpdate => {
             try {
                 let msg = JSON.parse(JSON.stringify(chatUpdate.messages[0]));
@@ -175,7 +181,6 @@ async function startHANS() {
             }
         });
 
-        // Handle group participants update
         hans.ev.on('group-participants.update', async (grp) => {
             try {
                 let metadata = await hans.groupMetadata(grp.id);
@@ -202,13 +207,11 @@ async function startHANS() {
     }
 }
 
-// Start the bot
 startHANS().catch(err => {
     console.error('Fatal error:', err);
     process.exit(1);
 });
 
-// Handle uncaught errors
 process.on('uncaughtException', err => {
     console.error('Uncaught Exception:', err);
     if (err.code !== 'EADDRINUSE') {

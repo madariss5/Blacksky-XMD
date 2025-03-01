@@ -3,18 +3,19 @@ const logger = require('pino')({ level: 'silent' });
 
 module.exports = async (hans, m, chatUpdate, store) => {
     try {
-        const prefix = '.'; // Using . as prefix for commands
+        const prefix = '.';
         const isCmd = m.body?.startsWith(prefix);
-        const command = isCmd ? m.body.slice(prefix.length).trim().split(' ')[0].toLowerCase() : '';
-        const args = m.body?.trim().split(/ +/).slice(1) || [];
+
+        // If no body or not a command, return
+        if (!m.body || !isCmd) return;
+
+        const command = m.body.slice(prefix.length).trim().split(' ')[0].toLowerCase();
+        const args = m.body.trim().split(/ +/).slice(1);
 
         logger.info('Processing command:', { command, args });
 
-        // If it's a command but not in message body, return
-        if (!m.body) return;
-
         // Handle basic commands
-        if (isCmd && basicCommands[command]) {
+        if (basicCommands[command]) {
             try {
                 await basicCommands[command](hans, m, args);
                 logger.info(`Successfully executed command: ${command}`);
@@ -27,7 +28,7 @@ module.exports = async (hans, m, chatUpdate, store) => {
             return;
         }
 
-        // If command not found but prefix was used
+        // Command not found
         if (isCmd) {
             await hans.sendMessage(m.key.remoteJid, {
                 text: `Command *${command}* not found. Type ${prefix}menu to see available commands.`
