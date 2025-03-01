@@ -17,6 +17,26 @@ module.exports = {
         status: { description: 'View bot status and info', category: 'Basic' },
         dashboard: { description: 'View bot statistics dashboard', category: 'Basic' },
 
+        // Game Commands - Updated and new additions
+        rpg: { description: 'View RPG game status', category: 'Game' },
+        quest: { description: 'Start a new RPG quest', category: 'Game' },
+        battle: { description: 'Battle another player', category: 'Game' },
+        tictactoe: { description: 'Play TicTacToe with a friend', category: 'Game' },
+        chess: { description: 'Play chess with a friend (Coming Soon)', category: 'Game' },
+        suit: { description: 'Play Rock Paper Scissors', category: 'Game' },
+        truth: { description: 'Get a truth question', category: 'Game' },
+        dare: { description: 'Get a dare challenge', category: 'Game' },
+        quiz: { description: 'Show available quiz games', category: 'Game' },
+        family100: { description: 'Play Family 100 quiz game', category: 'Game' },
+        asahotak: { description: 'Play Brain Teaser quiz', category: 'Game' },
+        tebakkata: { description: 'Play Word Guessing game', category: 'Game' },
+        tebakgambar: { description: 'Play Picture Quiz game', category: 'Game' },
+        tebaklirik: { description: 'Play Lyrics Quiz game', category: 'Game' },
+        tebakkimia: { description: 'Play Chemistry Quiz game', category: 'Game' },
+        tebakbendera: { description: 'Play Flag Quiz game', category: 'Game' },
+        tebakkabupaten: { description: 'Play Region Quiz game', category: 'Game' },
+        werewolf: { description: 'Play Werewolf game (Coming Soon)', category: 'Game' },
+
         // User & Profile Commands
         profile: { description: 'View user profile', category: 'User' },
         me: { description: 'View your profile', category: 'User' },

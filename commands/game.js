@@ -5,38 +5,47 @@ const logger = require('pino')();
 // Game state management
 const activeGames = new Map();
 
-// Helper function to create a TicTacToe board
-const createTicTacToeBoard = () => {
-    return Array(3).fill(null).map(() => Array(3).fill('⬜'));
+// Rate limiting for games
+const userCooldowns = new Map();
+const COOLDOWN_PERIOD = 30000; // 30 seconds
+
+const isOnCooldown = (userId) => {
+    if (!userCooldowns.has(userId)) return false;
+    const lastUsage = userCooldowns.get(userId);
+    return Date.now() - lastUsage < COOLDOWN_PERIOD;
 };
 
-// Helper function to check TicTacToe winner
-const checkWinner = (board) => {
-    // Check rows
-    for (let i = 0; i < 3; i++) {
-        if (board[i][0] !== '⬜' && board[i][0] === board[i][1] && board[i][1] === board[i][2]) {
-            return board[i][0];
-        }
-    }
-    // Check columns
-    for (let i = 0; i < 3; i++) {
-        if (board[0][i] !== '⬜' && board[0][i] === board[1][i] && board[1][i] === board[2][i]) {
-            return board[0][i];
-        }
-    }
-    // Check diagonals
-    if (board[0][0] !== '⬜' && board[0][0] === board[1][1] && board[1][1] === board[2][2]) {
-        return board[0][0];
-    }
-    if (board[0][2] !== '⬜' && board[0][2] === board[1][1] && board[1][1] === board[2][0]) {
-        return board[0][2];
-    }
-    // Check draw
-    if (board.every(row => row.every(cell => cell !== '⬜'))) {
-        return 'draw';
-    }
-    return null;
+const setCooldown = (userId) => {
+    userCooldowns.set(userId, Date.now());
 };
+
+// Game-specific data storage
+const truthQuestions = [
+    "What's your biggest fear?",
+    "What's the most embarrassing thing that's happened to you?",
+    "What's your biggest secret?",
+    "What's the worst lie you've ever told?",
+    "What's your biggest regret?",
+    // Add more truth questions
+];
+
+const dareActions = [
+    "Send a funny selfie",
+    "Do 10 push-ups",
+    "Sing a song",
+    "Tell a joke",
+    "Dance for 30 seconds",
+    // Add more dare actions
+];
+
+const familyQuestions = [
+    {
+        question: "Name something people do when they're bored",
+        answers: ["Sleep", "Watch TV", "Play games", "Eat", "Browse phone", "Read", "Exercise"],
+        points: [30, 25, 20, 15, 10, 5, 5]
+    },
+    // Add more family quiz questions
+];
 
 const gameCommands = {
     rpg: async (sock, msg) => {
@@ -750,16 +759,145 @@ const gameCommands = {
             });
         }
     },
-    chess: async (sock, msg) => {
-        await sock.sendMessage(msg.key.remoteJid, {
-            text: '🚧 Chess game is under development!'
-        });
+    chess: async (sock, msg, args) => {
+        try {
+            if (!args[0]) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please mention a player to play with!\nUsage: !chess @player'
+                });
+            }
+
+            const challenger = msg.key.participant || msg.key.remoteJid;
+            const opponent = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+
+            if (challenger === opponent) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ You cannot play against yourself!'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🏗️ Chess game feature is under construction!\n\n' +
+                      'We are working on implementing a full chess game with:\n' +
+                      '• Board visualization\n' +
+                      '• Move validation\n' +
+                      '• Game state tracking\n' +
+                      '• Rating system\n\n' +
+                      'Please try other games in the meantime!'
+            });
+
+        } catch (error) {
+            logger.error('Error in chess command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error starting chess game'
+            });
+        }
     },
 
     family100: async (sock, msg) => {
-        await sock.sendMessage(msg.key.remoteJid, {
-            text: '🚧 Family 100 quiz game is under development!'
-        });
+        try {
+            const gameId = msg.key.remoteJid;
+
+            if (activeGames.has(gameId)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ A game is already in progress in this chat!'
+                });
+            }
+
+            const randomQuestion = familyQuestions[Math.floor(Math.random() * familyQuestions.length)];
+            const game = {
+                question: randomQuestion.question,
+                answers: randomQuestion.answers,
+                points: randomQuestion.points,
+                foundAnswers: new Set(),
+                startTime: Date.now(),
+                timeLimit: 60000 // 60 seconds
+            };
+
+            activeGames.set(gameId, game);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `👨‍👩‍👧‍👦 *Family 100*\n\n${game.question}\n\n⏳ You have 60 seconds to guess! Type your answers.`
+            });
+
+            // Set timeout to end game
+            setTimeout(async () => {
+                if (activeGames.has(gameId)) {
+                    const game = activeGames.get(gameId);
+                    const remainingAnswers = game.answers.filter(answer => !game.foundAnswers.has(answer));
+
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        text: `⌛ Time's up!\n\nFound answers: ${Array.from(game.foundAnswers).join(', ')}\n\nMissed answers: ${remainingAnswers.join(', ')}`
+                    });
+
+                    activeGames.delete(gameId);
+                }
+            }, game.timeLimit);
+
+            logger.info('Family100 game started in chat:', gameId);
+
+        } catch (error) {
+            logger.error('Error in family100 command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error starting Family 100 game'
+            });
+        }
+    },
+
+    truth: async (sock, msg) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+
+            if (isOnCooldown(userId)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '⏳ Please wait before starting another game!'
+                });
+            }
+
+            const randomQuestion = truthQuestions[Math.floor(Math.random() * truthQuestions.length)];
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🤔 *Truth Question*\n\n${randomQuestion}\n\n@${userId.split('@')[0]}, answer honestly!`,
+                mentions: [userId]
+            });
+
+            setCooldown(userId);
+            logger.info('Truth command executed for user:', userId);
+
+        } catch (error) {
+            logger.error('Error in truth command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error starting truth game'
+            });
+        }
+    },
+
+    dare: async (sock, msg) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+
+            if (isOnCooldown(userId)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '⏳ Please wait before starting another game!'
+                });
+            }
+
+            const randomDare = dareActions[Math.floor(Math.random() * dareActions.length)];
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `😈 *Dare Challenge*\n\n${randomDare}\n\n@${userId.split('@')[0]}, you must complete this dare!`,
+                mentions: [userId]
+            });
+
+            setCooldown(userId);
+            logger.info('Dare command executed for user:', userId);
+
+        } catch (error) {
+            logger.error('Error in dare command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error starting dare game'
+            });
+        }
     },
 
     werewolf: async (sock, msg) => {
@@ -767,19 +905,6 @@ const gameCommands = {
             text: '🚧 Werewolf game is under development!'
         });
     },
-
-    truth: async (sock, msg) => {
-        await sock.sendMessage(msg.key.remoteJid, {
-            text: '🚧 Truth or Dare (Truth) is under development!'
-        });
-    },
-
-    dare: async (sock, msg) => {
-        await sock.sendMessage(msg.key.remoteJid, {
-            text: '🚧 Truth or Dare (Dare) is under development!'
-        });
-    },
-
     asahotak: async (sock, msg) => {
         await sock.sendMessage(msg.key.remoteJid, {
             text: '🚧 Asah Otak quiz game is under development!'
@@ -844,6 +969,36 @@ const gameCommands = {
         await sock.sendMessage(msg.key.remoteJid, {
             text: '🚧 Cak Lontong quiz game is under development!'
         });
+    },
+    quiz: async (sock, msg) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+
+            if (isOnCooldown(userId)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '⏳ Please wait before starting another quiz!'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🎮 *Available Quiz Games*\n\n' +
+                      '1. !family100 - Family 100 quiz game\n' +
+                      '2. !asahotak - Brain teaser quiz\n' +
+                      '3. !tebakkata - Word guessing game\n' +
+                      '4. !tebakgambar - Picture quiz\n' +
+                      '5. !tebaklirik - Lyrics quiz\n' +
+                      '6. !tebakkimia - Chemistry quiz\n' +
+                      '7. !tebakbendera - Flag quiz\n' +
+                      '8. !tebakkabupaten - Region quiz\n\n' +
+                      'Choose a quiz type to start playing!'
+            });
+
+        } catch (error) {
+            logger.error('Error in quiz command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error showing quiz menu'
+            });
+        }
     }
 };
 

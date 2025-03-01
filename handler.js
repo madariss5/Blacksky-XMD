@@ -8,20 +8,21 @@ const funCommands = require('./commands/fun');
 const aiCommands = require('./commands/ai');
 const downloaderCommands = require('./commands/downloader');
 const socialCommands = require('./commands/social');
-const logger = require('pino')({ level: 'info' }); // Changed to 'info' for more visibility
+const logger = require('pino')({ level: 'info' });
 
 module.exports = async (hans, m, chatUpdate, store) => {
     try {
         const prefix = '.';
         const isCmd = m.body?.startsWith(prefix);
 
-        // Log incoming message details
+        // Log incoming message details with more context
         logger.info('Received message:', {
             body: m.body,
             from: m.sender,
             isGroup: m.isGroup,
             type: m.mtype,
-            isCommand: isCmd
+            isCommand: isCmd,
+            timestamp: new Date().toISOString()
         });
 
         // If no body or not a command, return
@@ -40,15 +41,35 @@ module.exports = async (hans, m, chatUpdate, store) => {
         // Try each command module in order
         let commandExecuted = false;
 
+        // AI Commands - Prioritize AI commands due to their complexity
+        if (aiCommands[command]) {
+            try {
+                logger.info('Executing AI command:', { command });
+                await aiCommands[command](hans, m, args);
+                commandExecuted = true;
+                logger.info('AI command executed successfully:', { command });
+            } catch (error) {
+                logger.error('Error executing AI command:', {
+                    command,
+                    error: error.message,
+                    stack: error.stack,
+                    args
+                });
+                await hans.sendMessage(m.key.remoteJid, { 
+                    text: `❌ Error executing command: ${error.message}` 
+                });
+            }
+        }
+
         // Basic Commands
-        if (basicCommands[command]) {
+        else if (basicCommands[command]) {
             try {
                 logger.info('Executing basic command:', { command });
                 await basicCommands[command](hans, m, args);
                 commandExecuted = true;
                 logger.info('Basic command executed successfully:', { command });
             } catch (error) {
-                logger.error('Error executing basic command:', { 
+                logger.error('Error executing basic command:', {
                     command,
                     error: error.message,
                     stack: error.stack
@@ -78,15 +99,15 @@ module.exports = async (hans, m, chatUpdate, store) => {
             }
         }
 
-        // AI Commands
-        else if (aiCommands[command]) {
+        // Downloader Commands
+        else if (downloaderCommands[command]) {
             try {
-                logger.info('Executing AI command:', { command });
-                await aiCommands[command](hans, m, args);
+                logger.info('Executing downloader command:', { command });
+                await downloaderCommands[command](hans, m, args);
                 commandExecuted = true;
-                logger.info('AI command executed successfully:', { command });
+                logger.info('Downloader command executed successfully:', { command });
             } catch (error) {
-                logger.error('Error executing AI command:', {
+                logger.error('Error executing downloader command:', {
                     command,
                     error: error.message,
                     stack: error.stack
@@ -144,25 +165,6 @@ module.exports = async (hans, m, chatUpdate, store) => {
                 logger.info('Fun command executed successfully:', { command });
             } catch (error) {
                 logger.error('Error executing fun command:', {
-                    command,
-                    error: error.message,
-                    stack: error.stack
-                });
-                await hans.sendMessage(m.key.remoteJid, { 
-                    text: `❌ Error executing command: ${error.message}` 
-                });
-            }
-        }
-
-        // Downloader Commands
-        else if (downloaderCommands[command]) {
-            try {
-                logger.info('Executing downloader command:', { command });
-                await downloaderCommands[command](hans, m, args);
-                commandExecuted = true;
-                logger.info('Downloader command executed successfully:', { command });
-            } catch (error) {
-                logger.error('Error executing downloader command:', {
                     command,
                     error: error.message,
                     stack: error.stack
@@ -241,7 +243,8 @@ module.exports = async (hans, m, chatUpdate, store) => {
     } catch (err) {
         logger.error("Error in command handler:", {
             error: err.message,
-            stack: err.stack
+            stack: err.stack,
+            command: m.body
         });
         try {
             await hans.sendMessage(m.key.remoteJid, { 
