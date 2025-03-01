@@ -107,15 +107,16 @@ const funCommands = {
 3. *!trivia* - Play trivia quiz
 4. *!dare* - Get a dare challenge
 5. *!truth* - Get a truth question
+6. *!rps* <choice> - Play Rock Paper Scissors
+7. *!roll* [max] - Roll a dice (default: 6)
 
 😊 *Entertainment:*
-6. *!joke* - Get random jokes
-7. *!meme* - Get random memes
-8. *!quote* - Get inspirational quotes
-9. *!fact* - Get random facts
-10. *!emojiart* - Get random emoji art
-11. *!rps* <choice> - Play Rock Paper Scissors
-12. *!roll* [max] - Roll a dice (default: 6)
+8. *!joke* - Get random jokes
+9. *!meme* - Get random memes
+10. *!quote* - Get inspirational quotes
+11. *!fact* - Get random facts
+12. *!emojiart* - Get random emoji art
+
 
 🌟 *Reactions:*
 13. *!slap* [@user] - Slap someone
@@ -360,7 +361,7 @@ const funCommands = {
                     : `❌ *Wrong!*\nThe correct answer was "${triviaData.answer}"`
             });
 
-            await sendGifReaction(sock, msg, 
+            await sendGifReaction(sock, msg,
                 isCorrect ? './media/anime-happy.gif' : './media/anime-cry.gif',
                 isCorrect ? '🎉' : '😢'
             );
@@ -1206,75 +1207,86 @@ const funCommands = {
     },
     rps: async (sock, msg, args) => {
         try {
-            const choices = ['rock', 'paper', 'scissors'];
-            const userChoice = args[0]?.toLowerCase();
-
-            if (!userChoice || !choices.includes(userChoice)) {
+            if (!args.length) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '🎮 *Rock Paper Scissors*\nUse: !rps <choice>\nChoices: rock, paper, scissors'
+                    text: 'Please make your choice!\nUsage: .rps <rock/paper/scissors>'
                 });
             }
 
+            const choices = ['rock', 'paper', 'scissors'];
+            const userChoice = args[0].toLowerCase();
             const botChoice = choices[Math.floor(Math.random() * choices.length)];
-            let result;
 
+            if (!choices.includes(userChoice)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Invalid choice! Please choose rock, paper, or scissors'
+                });
+            }
+
+            // Determine winner
+            let result;
             if (userChoice === botChoice) {
-                result = 'It\'s a tie! 🤝';
+                result = "It's a tie! 🤝";
             } else if (
                 (userChoice === 'rock' && botChoice === 'scissors') ||
                 (userChoice === 'paper' && botChoice === 'rock') ||
                 (userChoice === 'scissors' && botChoice === 'paper')
             ) {
-                result = 'You win! 🎉';
+                result = "You win! 🎉";
             } else {
-                result = 'I win! 😎';
+                result = "I win! 😎";
             }
-
-            // Use appropriate reaction GIF based on result
-            const reactionGif = result.includes('win') ? './media/anime-happy.gif' : 
-                              result.includes('tie') ? './media/anime-smile.gif' : 
-                              './media/anime-smug.gif';
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `🎮 *Rock Paper Scissors*\n\nYou chose: ${userChoice}\nI chose: ${botChoice}\n\n${result}`
             });
 
-            await sendGifReaction(sock, msg, reactionGif);
+            // Send appropriate reaction GIF
+            const gifPath = result.includes("win") ? './media/anime-happy.gif' : 
+                          result.includes("tie") ? './media/anime-smile.gif' : 
+                          './media/anime-smug.gif';
+
+            await sendGifReaction(sock, msg, gifPath);
 
         } catch (error) {
             logger.error('Error in rps command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to play Rock Paper Scissors!'
+                text: '❌ Error playing Rock Paper Scissors!'
             });
         }
     },
+
     roll: async (sock, msg, args) => {
         try {
-            const max = parseInt(args[0]) || 6;
-            if (max < 1 || max > 100) {
+            const max = args.length ? parseInt(args[0]) : 6;
+
+            if (isNaN(max) || max < 1 || max > 100) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Please specify a number between 1 and 100'
+                    text: '❌ Please provide a valid number between 1 and 100!'
                 });
             }
 
             const result = Math.floor(Math.random() * max) + 1;
-            const gif = result === max ? './media/anime-happy.gif' : 
-                       result === 1 ? './media/anime-cry.gif' : 
-                       './media/anime-smile.gif';
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `🎲 *Dice Roll*\n\nYou rolled a ${result} (1-${max})`
+                text: `🎲 *Dice Roll*\n\nYou rolled a ${result} (1-${max})!`
             });
 
-            await sendGifReaction(sock, msg, gif);
+            // Send reaction GIF based on roll result
+            const gifPath = result === max ? './media/anime-happy.gif' : 
+                          result > max/2 ? './media/anime-smile.gif' : 
+                          './media/anime-cry.gif';
+
+            await sendGifReaction(sock, msg, gifPath);
 
         } catch (error) {
             logger.error('Error in roll command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to roll the dice!'
+                text: '❌ Error rolling the dice!'
             });
         }
-    }
+    },
+
 };
 
 module.exports = funCommands;

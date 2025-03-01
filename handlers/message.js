@@ -10,6 +10,9 @@ try {
     commandModules.owner = require('../commands/owner');       // Owner commands
     commandModules.economy = require('../commands/economy');   // Economy commands
     commandModules.utility = require('../commands/utility');   // Utility commands
+    commandModules.fun = require('../commands/fun');          // Fun commands
+    commandModules.downloader = require('../commands/downloader'); // Downloader commands
+    commandModules.ai = require('../commands/ai');            // AI commands
 } catch (error) {
     logger.error('Error loading command modules:', error.message, error.stack);
 }

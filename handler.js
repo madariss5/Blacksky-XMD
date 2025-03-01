@@ -4,6 +4,9 @@ const reactionsCommands = require('./commands/reactions');
 const ownerCommands = require('./commands/owner');
 const economyCommands = require('./commands/economy');
 const utilityCommands = require('./commands/utility');
+const funCommands = require('./commands/fun');
+const aiCommands = require('./commands/ai');
+const downloaderCommands = require('./commands/downloader');
 const logger = require('pino')({ level: 'info' }); // Changed to 'info' for more visibility
 
 module.exports = async (hans, m, chatUpdate, store) => {
@@ -74,6 +77,25 @@ module.exports = async (hans, m, chatUpdate, store) => {
             }
         }
 
+        // AI Commands
+        else if (aiCommands[command]) {
+            try {
+                logger.info('Executing AI command:', { command });
+                await aiCommands[command](hans, m, args);
+                commandExecuted = true;
+                logger.info('AI command executed successfully:', { command });
+            } catch (error) {
+                logger.error('Error executing AI command:', {
+                    command,
+                    error: error.message,
+                    stack: error.stack
+                });
+                await hans.sendMessage(m.key.remoteJid, { 
+                    text: `❌ Error executing command: ${error.message}` 
+                });
+            }
+        }
+
         // Economy Commands
         else if (economyCommands[command]) {
             try {
@@ -102,6 +124,44 @@ module.exports = async (hans, m, chatUpdate, store) => {
                 logger.info('Utility command executed successfully:', { command });
             } catch (error) {
                 logger.error('Error executing utility command:', {
+                    command,
+                    error: error.message,
+                    stack: error.stack
+                });
+                await hans.sendMessage(m.key.remoteJid, { 
+                    text: `❌ Error executing command: ${error.message}` 
+                });
+            }
+        }
+
+        // Fun Commands
+        else if (funCommands[command]) {
+            try {
+                logger.info('Executing fun command:', { command });
+                await funCommands[command](hans, m, args);
+                commandExecuted = true;
+                logger.info('Fun command executed successfully:', { command });
+            } catch (error) {
+                logger.error('Error executing fun command:', {
+                    command,
+                    error: error.message,
+                    stack: error.stack
+                });
+                await hans.sendMessage(m.key.remoteJid, { 
+                    text: `❌ Error executing command: ${error.message}` 
+                });
+            }
+        }
+
+        // Downloader Commands
+        else if (downloaderCommands[command]) {
+            try {
+                logger.info('Executing downloader command:', { command });
+                await downloaderCommands[command](hans, m, args);
+                commandExecuted = true;
+                logger.info('Downloader command executed successfully:', { command });
+            } catch (error) {
+                logger.error('Error executing downloader command:', {
                     command,
                     error: error.message,
                     stack: error.stack

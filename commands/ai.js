@@ -2,22 +2,14 @@ const config = require('../config');
 const logger = require('pino')();
 const fs = require('fs-extra');
 const path = require('path');
-const { exec } = require('child_process');
-const OpenAI = require('openai');
+const openai = require('openai');
 const gtts = require('node-gtts');
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
-const axios = require('axios'); // Added axios import for image download
+const axios = require('axios');
 const Replicate = require('replicate');
-const replicate = new Replicate({
-    auth: process.env.REPLICATE_API_TOKEN,
-});
 
 const tempDir = path.join(__dirname, '../temp');
 fs.ensureDirSync(tempDir);
-
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
-});
 
 // Rate limiting configuration 
 const userCooldowns = new Map();
@@ -49,29 +41,31 @@ const generateTTS = async (text, lang = 'en') => {
 
 const aiCommands = {
     ask: async (sock, msg, args) => {
+        if (isOnCooldown(msg.sender)) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Please wait a few seconds before using this command again.'
+            });
+        }
+
+        if (!args.length) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: 'Please provide a question!\nUsage: .ask <your question>'
+            });
+        }
+
         try {
-            const userId = msg.key.participant || msg.key.remoteJid;
-
-            if (isOnCooldown(userId)) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '⏳ Please wait a few seconds before using this command again.'
-                });
-            }
-
-            if (!args.length) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: 'Please provide a question!\nUsage: .ask <your question>'
-                });
-            }
-
             // Send typing indicator
             await sock.sendPresenceUpdate('composing', msg.key.remoteJid);
 
-            const userInput = args.join(' ');
-            const response = await chatWithGPT(userId, userInput);
+            const response = await openai.chat.completions.create({
+                model: "gpt-3.5-turbo",
+                messages: [{ role: "user", content: args.join(' ') }],
+            });
 
-            setCooldown(userId);
-            await sock.sendMessage(msg.key.remoteJid, { text: response });
+            setCooldown(msg.sender);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: response.choices[0].message.content 
+            });
 
         } catch (error) {
             logger.error('Error in ask command:', error);
@@ -81,74 +75,48 @@ const aiCommands = {
         }
     },
 
-    gpt: async (sock, msg, args) => {
-        // Alias for ask command
-        return aiCommands.ask(sock, msg, args);
-    },
-
-    cleargpt: async (sock, msg) => {
-        try {
-            const userId = msg.key.participant || msg.key.remoteJid;
-            const response = clearConversation(userId);
-            await sock.sendMessage(msg.key.remoteJid, { text: response });
-        } catch (error) {
-            logger.error('Error in cleargpt command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error clearing conversation: ' + error.message
+    dalle: async (sock, msg, args) => {
+        if (isOnCooldown(msg.sender)) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Please wait a few seconds before using this command again.'
             });
         }
-    },
 
-    dalle: async (sock, msg, args) => {
+        if (!args.length) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: 'Please provide an image description!\nUsage: .dalle <description>'
+            });
+        }
+
         try {
-            const userId = msg.key.participant || msg.key.remoteJid;
-
-            if (isOnCooldown(userId)) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '⏳ Please wait a few seconds before using this command again.'
-                });
-            }
-
-            if (!args.length) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: 'Please provide an image description!\nUsage: .dalle <description>'
-                });
-            }
-
-            // Send processing message
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '🎨 Generating your image...'
             });
 
-            const prompt = args.join(' ');
-
-            // Generate image using DALL-E
             const response = await openai.images.generate({
                 model: "dall-e-3",
-                prompt: prompt,
+                prompt: args.join(' '),
                 n: 1,
                 size: "1024x1024"
             });
 
             const imageUrl = response.data[0].url;
-
-            // Generate filename with timestamp
             const timestamp = Date.now();
-            const filename = `dalle_${timestamp}.jpg`;
+            const outputPath = path.join(tempDir, `dalle_${timestamp}.jpg`);
 
-            // Download image
-            const localImagePath = await downloadImage(imageUrl, filename);
+            // Download and save image
+            const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+            await fs.writeFile(outputPath, imageResponse.data);
 
-            setCooldown(userId);
+            setCooldown(msg.sender);
 
-            // Send the image
             await sock.sendMessage(msg.key.remoteJid, {
-                image: fs.readFileSync(localImagePath),
-                caption: `🖼️ Here's your DALL-E generated image for: "${prompt}"`
+                image: fs.readFileSync(outputPath),
+                caption: `🖼️ Here's your DALL-E generated image for: "${args.join(' ')}"`
             });
 
-            // Clean up
-            await fs.unlink(localImagePath);
+            // Cleanup
+            await fs.remove(outputPath);
 
         } catch (error) {
             logger.error('Error in dalle command:', error);
@@ -158,125 +126,20 @@ const aiCommands = {
         }
     },
 
-    imagine: async (sock, msg, args) => {
-        // Alias for dalle command
-        return aiCommands.dalle(sock, msg, args);
-    },
-
-    txt2img: async (sock, msg, args) => {
-        // Another alias for dalle command
-        return aiCommands.dalle(sock, msg, args);
-    },
-
-    translate: async (sock, msg, args) => {
-        try {
-            const userId = msg.key.participant || msg.key.remoteJid;
-
-            if (isOnCooldown(userId)) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '⏳ Please wait a few seconds before using this command again.'
-                });
-            }
-
-            if (args.length < 2) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: 'Please provide the target language and text!\nUsage: .translate <language> <text>'
-                });
-            }
-
-            const targetLang = args[0].toLowerCase();
-            const textToTranslate = args.slice(1).join(' ');
-
-            // Use chatWithGPT for translation
-            const prompt = `Translate the following text to ${targetLang}. Only respond with the translation, no explanations: ${textToTranslate}`;
-            const translation = await chatWithGPT(userId, prompt);
-
-            setCooldown(userId);
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: `Translation (${targetLang}):\n${translation}`
-            });
-
-        } catch (error) {
-            logger.error('Error in translate command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error translating text: ' + error.message
+    tts: async (sock, msg, args) => {
+        if (isOnCooldown(msg.sender)) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Please wait a few seconds before using this command again.'
             });
         }
-    },
 
-    remini: async (sock, msg) => {
-        await sock.sendMessage(msg.key.remoteJid, { 
-            text: "🚧 The remini command is currently under development."
-        });
-    },
+        if (!args.length) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: 'Please provide text to convert!\nUsage: !tts [lang] <text>\nExample: !tts en Hello World\nSupported languages: en, es, fr, de, it, ja, ko, zh'
+            });
+        }
 
-    colorize: async (sock, msg) => {
-        await sock.sendMessage(msg.key.remoteJid, { 
-            text: "🚧 The colorize command is currently under development."
-        });
-    },
-
-    upscale: async (sock, msg) => {
-        await sock.sendMessage(msg.key.remoteJid, { 
-            text: "🚧 The upscale command is currently under development."
-        });
-    },
-
-    anime2d: async (sock, msg) => {
-        await sock.sendMessage(msg.key.remoteJid, { 
-            text: "🚧 The anime2d command is currently under development."
-        });
-    },
-
-    img2txt: async (sock, msg) => {
-        await sock.sendMessage(msg.key.remoteJid, { 
-            text: "🚧 The img2txt command is currently under development."
-        });
-    },
-
-    // Additional AI characters with placeholder messages
-    lisa: async (sock, msg) => {
-        await sock.sendMessage(msg.key.remoteJid, { 
-            text: "👩 Lisa AI is currently taking a break. Try using .gpt instead!"
-        });
-    },
-
-    rias: async (sock, msg) => {
-        await sock.sendMessage(msg.key.remoteJid, { 
-            text: "👩 Rias AI is currently unavailable. Try using .gpt instead!"
-        });
-    },
-
-    toxxic: async (sock, msg) => {
-        await sock.sendMessage(msg.key.remoteJid, { 
-            text: "🤖 Toxxic AI is currently offline. Try using .gpt instead!"
-        });
-    },
-    aiuser: async (sock, msg, args) => {
-        await sock.sendMessage(msg.key.remoteJid, { text: "This command is not yet implemented." });
-    },
-    bugandro: async (sock, msg, args) => {
-        await sock.sendMessage(msg.key.remoteJid, { text: "This command is not yet implemented." });
-    },
-    bugios: async (sock, msg, args) => {
-        await sock.sendMessage(msg.key.remoteJid, { text: "This command is not yet implemented." });
-    },
-    tts: async (sock, msg, args) => {
         try {
-            const userId = msg.key.participant || msg.key.remoteJid;
-
-            if (isOnCooldown(userId)) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '⏳ Please wait a few seconds before using this command again.'
-                });
-            }
-
-            if (!args.length) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: 'Please provide text to convert!\nUsage: !tts [lang] <text>\nExample: !tts en Hello World\nSupported languages: en, es, fr, de, it, ja, ko, zh'
-                });
-            }
-
             let lang = 'en';
             let text;
 
@@ -296,11 +159,11 @@ const aiCommands = {
 
             await sock.sendMessage(msg.key.remoteJid, {
                 audio: fs.readFileSync(audioPath),
-                mimetype: 'audio/mp3',
+                mimetype: 'audio/mp4',
                 ptt: true // Play as voice note
             });
 
-            setCooldown(userId);
+            setCooldown(msg.sender);
             await fs.remove(audioPath);
 
         } catch (error) {
@@ -311,6 +174,79 @@ const aiCommands = {
         }
     },
 
+    // Alias commands
+    gpt: async (sock, msg, args) => {
+        return aiCommands.ask(sock, msg, args);
+    },
+
+    imagine: async (sock, msg, args) => {
+        return aiCommands.dalle(sock, msg, args);
+    },
+
+    txt2img: async (sock, msg, args) => {
+        return aiCommands.dalle(sock, msg, args);
+    },
+    cleargpt: async (sock, msg) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const response = clearConversation(userId);
+            await sock.sendMessage(msg.key.remoteJid, { text: response });
+        } catch (error) {
+            logger.error('Error in cleargpt command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error clearing conversation: ' + error.message
+            });
+        }
+    },
+    remini: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: "🚧 The remini command is currently under development."
+        });
+    },
+    colorize: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: "🚧 The colorize command is currently under development."
+        });
+    },
+    upscale: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: "🚧 The upscale command is currently under development."
+        });
+    },
+    anime2d: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: "🚧 The anime2d command is currently under development."
+        });
+    },
+    img2txt: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: "🚧 The img2txt command is currently under development."
+        });
+    },
+    lisa: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: "👩 Lisa AI is currently taking a break. Try using .gpt instead!"
+        });
+    },
+    rias: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: "👩 Rias AI is currently unavailable. Try using .gpt instead!"
+        });
+    },
+    toxxic: async (sock, msg) => {
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: "🤖 Toxxic AI is currently offline. Try using .gpt instead!"
+        });
+    },
+    aiuser: async (sock, msg, args) => {
+        await sock.sendMessage(msg.key.remoteJid, { text: "This command is not yet implemented." });
+    },
+    bugandro: async (sock, msg, args) => {
+        await sock.sendMessage(msg.key.remoteJid, { text: "This command is not yet implemented." });
+    },
+    bugios: async (sock, msg, args) => {
+        await sock.sendMessage(msg.key.remoteJid, { text: "This command is not yet implemented." });
+    },
     styleimg: async (sock, msg, args) => {
         try {
             const userId = msg.key.participant || msg.key.remoteJid;
@@ -377,7 +313,6 @@ const aiCommands = {
             });
         }
     },
-
     deepspeech: async (sock, msg) => {
         try {
             const userId = msg.key.participant || msg.key.remoteJid;
@@ -500,19 +435,16 @@ const aiCommands = {
             });
         }
     },
-
     bardai: async (sock, msg, args) => {
         await sock.sendMessage(msg.key.remoteJid, {
             text: "🚧 Google Bard integration is currently under development. Please use !gpt for AI chat functionality."
         });
     },
-
     claude: async (sock, msg, args) => {
         await sock.sendMessage(msg.key.remoteJid, {
             text: "🚧 Claude AI integration is currently under development. Please use !gpt for AI chat functionality."
         });
     },
-
     blackbox: async (sock, msg, args) => {
         try {
             const userId = msg.key.participant || msg.key.remoteJid;
