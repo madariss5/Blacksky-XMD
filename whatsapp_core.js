@@ -48,64 +48,63 @@ async function startWhatsApp() {
         console.log(chalk.yellow('\nInitializing WhatsApp connection...'));
 
         // Clean previous session
-        const sessionsDir = path.join(process.cwd(), 'sessions');
-        await fs.promises.rm(sessionsDir, { recursive: true, force: true }).catch(() => {});
-        await fs.promises.mkdir(sessionsDir, { recursive: true });
+        const authDir = './auth_info_baileys';
+        await fs.promises.rm(authDir, { recursive: true, force: true }).catch(() => {});
+        await fs.promises.mkdir(authDir, { recursive: true });
 
-        // Initialize auth state with retries
-        let state, saveCreds;
-        try {
-            const authResult = await useMultiFileAuthState('sessions');
-            state = authResult.state;
-            saveCreds = authResult.saveCreds;
-            logger.info('Auth state loaded successfully');
-        } catch (error) {
-            logger.error('Failed to load auth state:', error);
-            process.exit(1);
-        }
+        // Initialize auth state
+        const { state, saveCreds } = await useMultiFileAuthState(authDir);
 
-        // Initialize version
-        const { version } = await fetchLatestBaileysVersion();
-        logger.info('Using Baileys version:', version);
-
-        let hasPairingCode = false;
-        let connectionRetries = 0;
-        const MAX_RETRIES = 3;
-
-        const msgRetryCounterCache = new NodeCache();
-
-        // Create socket with enhanced error handling
+        // Create socket with enhanced configuration
         const sock = makeWASocket({
-            version,
-            logger: pino({ level: 'silent' }),
+            version: await fetchLatestBaileysVersion(),
             printQRInTerminal: false,
-            mobile: false,
-            browser: Browsers.ubuntu('Chrome'),
             auth: {
                 creds: state.creds,
                 keys: makeCacheableSignalKeyStore(state.keys, logger),
             },
-            msgRetryCounterCache,
-            generateHighQualityLinkPreview: true,
-            defaultQueryTimeoutMs: undefined,
-            connectTimeoutMs: 60_000,
+            logger: pino({ level: 'silent' }),
+            browser: Browsers.ubuntu('Chrome'),
+            msgRetryCounterCache: new NodeCache(),
+            defaultQueryTimeoutMs: 60000,
+            connectTimeoutMs: 60000,
             emitOwnEvents: true,
             pairingCode: true,
+            mobile: false,
             phoneNumber: parseInt(phoneNumber)
         });
+
+        let hasPairingCode = false;
+        let connectionRetries = 0;
+        const MAX_RETRIES = 3;
+        let connectionTimeout;
 
         // Handle connection updates
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect } = update;
-            logger.info('Connection update:', {
-                connection,
-                disconnectReason: lastDisconnect?.error?.output?.statusCode
+
+            // Reset connection timeout
+            if (connectionTimeout) {
+                clearTimeout(connectionTimeout);
+            }
+
+            // Set new connection timeout
+            connectionTimeout = setTimeout(() => {
+                logger.error('Connection timeout after 60 seconds');
+                console.log(chalk.red('\nConnection timeout. Please try again.'));
+                process.exit(1);
+            }, 60000);
+
+            logger.info('Connection status:', {
+                state: connection,
+                retries: connectionRetries,
+                error: lastDisconnect?.error?.output?.statusCode
             });
 
             if (connection === 'connecting' && !hasPairingCode) {
                 setTimeout(async () => {
                     try {
-                        console.log(chalk.yellow('\nRequesting pairing code...'));
+                        console.log(chalk.yellow('\nGenerating pairing code...'));
                         const code = await sock.requestPairingCode(phoneNumber);
 
                         if (code) {
@@ -138,19 +137,26 @@ async function startWhatsApp() {
             }
 
             if (connection === 'open') {
+                if (connectionTimeout) {
+                    clearTimeout(connectionTimeout);
+                }
+
                 console.log(chalk.green('\nWhatsApp connection established successfully!'));
                 try {
                     await sock.sendMessage(sock.user.id, {
                         text: '🤖 *WhatsApp Bot Online!*\n\nSend !menu to see available commands'
                     });
                     logger.info('Startup message sent successfully');
-                    process.exit(0);
                 } catch (error) {
                     logger.error('Failed to send startup message:', error);
                 }
             }
 
             if (connection === 'close') {
+                if (connectionTimeout) {
+                    clearTimeout(connectionTimeout);
+                }
+
                 const shouldReconnect = (lastDisconnect?.error instanceof Boom) ?
                     lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut : true;
 
@@ -172,10 +178,17 @@ async function startWhatsApp() {
         });
 
         // Handle credentials update
-        sock.ev.on('creds.update', saveCreds);
+        sock.ev.on('creds.update', async () => {
+            logger.info('Credentials updated - saving');
+            await saveCreds();
+        });
 
+        // Error handling
         process.on('uncaughtException', (err) => {
             logger.error('Uncaught Exception:', err);
+            if (connectionTimeout) {
+                clearTimeout(connectionTimeout);
+            }
             console.error(chalk.red('\nFatal error:', err.message));
             process.exit(1);
         });
