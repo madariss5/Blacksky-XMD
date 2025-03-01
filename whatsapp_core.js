@@ -73,8 +73,8 @@ async function startWhatsApp() {
         sock = makeWASocket({
             auth: state,
             printQRInTerminal: false,
-            browser: ['WhatsApp Web', 'Chrome', '112.0.0'],
-            version: [2, 2245, 9],
+            browser: ['WhatsApp Web', 'Safari', '16.5'],
+            version: [2, 2323, 4],
             connectTimeoutMs: 60000,
             qrTimeout: QR_TIMEOUT,
             defaultQueryTimeoutMs: 30000,
@@ -100,6 +100,12 @@ async function startWhatsApp() {
 
             if (connection === 'close') {
                 const statusCode = lastDisconnect?.error?.output?.statusCode;
+                console.log('Last disconnect details:', JSON.stringify({
+                    statusCode,
+                    error: lastDisconnect?.error?.message,
+                    stack: lastDisconnect?.error?.stack
+                }, null, 2));
+
                 const shouldReconnect = (lastDisconnect?.error instanceof Boom) ?
                     statusCode !== DisconnectReason.loggedOut : true;
 
