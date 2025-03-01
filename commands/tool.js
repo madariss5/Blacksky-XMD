@@ -259,7 +259,6 @@ const toolCommands = {
             });
         }
     },
-
     qr: async (sock, msg, args) => {
         if (!args.length) {
             return await sock.sendMessage(msg.key.remoteJid, {

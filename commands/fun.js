@@ -153,6 +153,7 @@ const funCommands = {
 44. *!handhold* [@user] - Hold hands with someone
 45. *!baka* [@user] - Call someone baka
 46. *!neko* - Show a cute neko
+47. *!couple* - Tag random couples
 
 
 *How to use:*
@@ -740,8 +741,7 @@ const funCommands = {
     },
     wave: async (sock, msg, args) => {
         try {
-            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
-            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `*${msg.pushName}* waves at ${target}! 👋`,
@@ -1287,6 +1287,116 @@ const funCommands = {
         }
     },
 
+    couple: async (sock, msg) => {
+        try {
+            const groupMembers = await sock.groupMetadata(msg.key.remoteJid).participants;
+            if (groupMembers.length < 2) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Need at least 2 members in the group!'
+                });
+            }
+
+            // Select two random members
+            const shuffled = groupMembers.sort(() => 0.5 - Math.random());
+            const couple = shuffled.slice(0, 2);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `💕 *Today's Lucky Couple*\n\n@${couple[0].id.split('@')[0]} + @${couple[1].id.split('@')[0]} = ❤️`,
+                mentions: couple.map(member => member.id)
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-love.gif', '💕');
+        } catch (error) {
+            logger.error('Error in couple command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to find a couple!'
+            });
+        }
+    },
+
+    blush: async (sock, msg) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* is blushing! 😊`
+            });
+            await sendGifReaction(sock, msg, './media/anime-blush.gif', '😊');
+        } catch (error) {
+            logger.error('Error in blush command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to execute blush command!'
+            });
+        }
+    },
+
+    happy: async (sock, msg) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* is very happy! 😄`
+            });
+            await sendGifReaction(sock, msg, './media/anime-happy.gif', '😄');
+        } catch (error) {
+            logger.error('Error in happy command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to execute happy command!'
+            });
+        }
+    },
+
+    smile: async (sock, msg) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* is smiling! 😊`
+            });
+            await sendGifReaction(sock, msg, './media/anime-smile.gif', '😊');
+        } catch (error) {
+            logger.error('Error in smile command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to execute smile command!'
+            });
+        }
+    },
+
+    smug: async (sock, msg) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* has a smug look! 😏`
+            });
+            await sendGifReaction(sock, msg, './media/anime-smug.gif', '😏');
+        } catch (error) {
+            logger.error('Error in smug command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to execute smug command!'
+            });
+        }
+    },
+
+    cry: async (sock, msg) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* is crying! 😢`
+            });
+            await sendGifReaction(sock, msg, './media/anime-cry.gif', '😢');
+        } catch (error) {
+            logger.error('Error in cry command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to execute cry command!'
+            });
+        }
+    },
+
+    dance: async (sock, msg) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* is dancing! 💃`
+            });
+            await sendGifReaction(sock, msg, './media/anime-dance.gif', '💃');
+        } catch (error) {
+            logger.error('Error in dance command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to execute dance command!'
+            });
+        }
+    }
 };
 
 module.exports = funCommands;

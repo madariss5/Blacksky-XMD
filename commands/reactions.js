@@ -43,18 +43,80 @@ const reactionCommands = {
         }
     },
 
-    // Move all other reaction commands from fun.js
     pat: async (sock, msg, args) => {
-        // Implementation from fun.js
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* patted ${target}! 🥰`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-pat.gif', '🥰', mentions);
+        } catch (error) {
+            logger.error('Error in pat command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute pat command!'
+            });
+        }
     },
+
     kiss: async (sock, msg, args) => {
-        // Implementation from fun.js
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* kissed ${target}! 💋`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-kiss.gif', '💋', mentions);
+        } catch (error) {
+            logger.error('Error in kiss command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute kiss command!'
+            });
+        }
     },
+
     punch: async (sock, msg, args) => {
-        // Implementation from fun.js
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* punched ${target}! 👊`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-punch.gif', '👊', mentions);
+        } catch (error) {
+            logger.error('Error in punch command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute punch command!'
+            });
+        }
     },
+
     kill: async (sock, msg, args) => {
-        // Implementation from fun.js
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* eliminated ${target}! ☠️`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-kill.gif', '☠️', mentions);
+        } catch (error) {
+            logger.error('Error in kill command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute kill command!'
+            });
+        }
     },
     highfive: async (sock, msg, args) => {
         // Implementation from fun.js
@@ -84,7 +146,22 @@ const reactionCommands = {
         // Implementation from fun.js
     },
     wasted: async (sock, msg, args) => {
-        // Implementation from fun.js
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*${msg.pushName}* wasted ${target}! 💀`,
+                mentions: mentions
+            });
+
+            await sendGifReaction(sock, msg, './media/anime-wasted.gif', '💀', mentions);
+        } catch (error) {
+            logger.error('Error in wasted command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute wasted command!'
+            });
+        }
     }
 };
 
