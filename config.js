@@ -6,6 +6,24 @@ module.exports = {
     botNumber: '', // Will be set after connection
     menuImage: 'https://raw.githubusercontent.com/your-repo/assets/main/f9.jpg',
     commands: {
+        // Media Commands (Updated)
+        sticker: { description: 'Create sticker from image/video', category: 'Media' },
+        toimg: { description: 'Convert sticker to image', category: 'Media' },
+        tomp3: { description: 'Convert video to audio', category: 'Media' },
+        tovn: { description: 'Convert audio to voice note', category: 'Media' },
+        togif: { description: 'Convert video sticker to gif', category: 'Media' },
+        tourl: { description: 'Upload media to url', category: 'Media' },
+        song: { description: 'Download and play songs', category: 'Media' },
+        video: { description: 'Download and play videos', category: 'Media' },
+        playlist: { description: 'Create and play playlists', category: 'Media' },
+        cropimg: { description: 'Crop image to square', category: 'Media' },
+        invert: { description: 'Invert image colors', category: 'Media' },
+        grayscale: { description: 'Convert image to grayscale', category: 'Media' },
+        pixelate: { description: 'Pixelate an image', category: 'Media' },
+        rotate: { description: 'Rotate image by specified degrees', category: 'Media' },
+        blur: { description: 'Apply blur effect to image', category: 'Media' },
+        circle: { description: 'Make image circular', category: 'Media' },
+
         // Basic Commands
         menu: { description: 'Show main menu with all commands', category: 'Basic' },
         help: { description: 'Get detailed help for specific commands', category: 'Basic' },
@@ -56,16 +74,6 @@ module.exports = {
         gitclone: { description: 'Clone GitHub repositories', category: 'Downloader' },
         apk: { description: 'Download Android APK files', category: 'Downloader' },
 
-        // Media Commands
-        sticker: { description: 'Create sticker from image/video', category: 'Media' },
-        toimg: { description: 'Convert sticker to image', category: 'Media' },
-        tomp3: { description: 'Convert video to audio', category: 'Media' },
-        tovn: { description: 'Convert audio to voice note', category: 'Media' },
-        togif: { description: 'Convert video sticker to gif', category: 'Media' },
-        tourl: { description: 'Upload media to url', category: 'Media' },
-        song: { description: 'Download and play songs', category: 'Media' },
-        video: { description: 'Download and play videos', category: 'Media' },
-        playlist: { description: 'Create and play playlists', category: 'Media' },
 
         // User & Profile Commands
         profile: { description: 'View user profile', category: 'User' },

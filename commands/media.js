@@ -8,6 +8,13 @@ const ffmpeg = require('fluent-ffmpeg');
 const axios = require('axios');
 const gtts = require('node-gtts');
 
+// Add error handling for libuuid.so.1 dependency
+try {
+    const { createCanvas, loadImage } = require('canvas');
+} catch (error) {
+    logger.warn('Canvas module not loaded properly:', error);
+}
+
 // Ensure temp directory exists
 const tempDir = path.join(__dirname, '../temp');
 fs.ensureDirSync(tempDir);
@@ -910,6 +917,263 @@ const mediaCommands = {
             logger.error('Error in circle command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Failed to circle image: ' + error.message
+            });
+        }
+    },
+
+    cropimg: async (sock, msg) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !cropimg'
+                });
+            }
+
+            const buffer = await downloadMediaMessageWithLogging(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const tempInput = path.join(tempDir, 'input.jpg');
+            const tempOutput = path.join(tempDir, 'output.jpg');
+            await fs.writeFile(tempInput, buffer);
+
+            // Crop the image using ImageMagick
+            await executeImageMagick(
+                `convert "${tempInput}" -gravity center -crop 1:1 +repage "${tempOutput}"`,
+                tempInput,
+                tempOutput
+            );
+
+            const outputBuffer = await fs.readFile(tempOutput);
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: outputBuffer,
+                caption: '✨ Image cropped to square!'
+            });
+
+            await cleanupTempFiles(tempInput, tempOutput);
+
+        } catch (error) {
+            logger.error('Error in cropimg command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to crop image: ' + error.message
+            });
+        }
+    },
+
+    invert: async (sock, msg) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !invert'
+                });
+            }
+
+            const buffer = await downloadMediaMessageWithLogging(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const tempInput = path.join(tempDir, 'input.jpg');
+            const tempOutput = path.join(tempDir, 'output.jpg');
+            await fs.writeFile(tempInput, buffer);
+
+            // Invert colors using ImageMagick
+            await executeImageMagick(
+                `convert "${tempInput}" -negate "${tempOutput}"`,
+                tempInput,
+                tempOutput
+            );
+
+            const outputBuffer = await fs.readFile(tempOutput);
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: outputBuffer,
+                caption: '✨ Colors inverted!'
+            });
+
+            await cleanupTempFiles(tempInput, tempOutput);
+
+        } catch (error) {
+            logger.error('Error in invert command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to invert image: ' + error.message
+            });
+        }
+    },
+
+    grayscale: async (sock, msg) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !grayscale'
+                });
+            }
+
+            const buffer = await downloadMediaMessageWithLogging(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const tempInput = path.join(tempDir, 'input.jpg');
+            const tempOutput = path.join(tempDir, 'output.jpg');
+            await fs.writeFile(tempInput, buffer);
+
+            // Convert to grayscale using ImageMagick
+            await executeImageMagick(
+                `convert "${tempInput}" -colorspace Gray "${tempOutput}"`,
+                tempInput,
+                tempOutput
+            );
+
+            const outputBuffer = await fs.readFile(tempOutput);
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: outputBuffer,
+                caption: '✨ Image converted to grayscale!'
+            });
+
+            await cleanupTempFiles(tempInput, tempOutput);
+
+        } catch (error) {
+            logger.error('Error in grayscale command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to convert to grayscale: ' + error.message
+            });
+        }
+    },
+
+    pixelate: async (sock, msg) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !pixelate'
+                });
+            }
+
+            const buffer = await downloadMediaMessageWithLogging(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const tempInput = path.join(tempDir, 'input.jpg');
+            const tempOutput = path.join(tempDir, 'output.jpg');
+            await fs.writeFile(tempInput, buffer);
+
+            // Pixelate image using ImageMagick
+            await executeImageMagick(
+                `convert "${tempInput}" -scale 10% -scale 1000% "${tempOutput}"`,
+                tempInput,
+                tempOutput
+            );
+
+            const outputBuffer = await fs.readFile(tempOutput);
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: outputBuffer,
+                caption: '✨ Image pixelated!'
+            });
+
+            await cleanupTempFiles(tempInput, tempOutput);
+
+        } catch (error) {
+            logger.error('Error in pixelate command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to pixelate image: ' + error.message
+            });
+        }
+    },
+
+    rotate: async (sock, msg, args) => {
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !rotate <degrees>'
+                });
+            }
+
+            const degrees = parseInt(args[0]) || 90;
+            if (isNaN(degrees) || degrees < -360 || degrees > 360) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a valid rotation angle between -360 and 360 degrees'
+                });
+            }
+
+            const buffer = await downloadMediaMessageWithLogging(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const tempInput = path.join(tempDir, 'input.jpg');
+            const tempOutput = path.join(tempDir, 'output.jpg');
+            await fs.writeFile(tempInput, buffer);
+
+            // Rotate image using ImageMagick
+            await executeImageMagick(
+                `convert "${tempInput}" -rotate ${degrees} "${tempOutput}"`,
+                tempInput,
+                tempOutput
+            );
+
+            const outputBuffer = await fs.readFile(tempOutput);
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: outputBuffer,
+                caption: `✨ Image rotated by ${degrees}°!`
+            });
+
+            await cleanupTempFiles(tempInput, tempOutput);
+
+        } catch (error) {
+            logger.error('Error in rotate command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to rotate image: ' + error.message
             });
         }
     },
