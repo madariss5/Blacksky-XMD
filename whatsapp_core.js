@@ -1,13 +1,13 @@
-const { default: makeWASocket, useMultiFileAuthState, makeCacheableSignalKeyStore, Browsers, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const fs = require('fs');
-const chalk = require('chalk');
 const pino = require('pino');
-const NodeCache = require('node-cache');
 const path = require('path');
+const chalk = require('chalk');
+const qrcode = require('qrcode-terminal');
 
-// Initialize logger
-const logger = pino({ 
+// Initialize logger with better formatting
+const logger = pino({
     level: 'info',
     transport: {
         target: 'pino-pretty',
@@ -15,195 +15,127 @@ const logger = pino({
     }
 });
 
+let connectionAttempts = 0;
+const MAX_RETRIES = 5;
+const RECONNECT_INTERVAL = 3000;
+
 async function startWhatsApp() {
     try {
+        // Clear terminal and show header
         console.clear();
-        console.log('\n' + chalk.cyan('='.repeat(50)));
-        console.log(chalk.cyan('WhatsApp Bot Pairing Code Authentication'));
-        console.log(chalk.cyan('='.repeat(50)) + '\n');
+        console.log(chalk.blue('\n┌─────────────────────────────────────┐'));
+        console.log(chalk.blue('│          Flash-Bot Connection        │'));
+        console.log(chalk.blue('└─────────────────────────────────────┘\n'));
 
-        console.log(chalk.yellow('Please follow these steps:'));
-        console.log('1. Open WhatsApp on your phone');
-        console.log('2. Go to Settings > Linked Devices');
-        console.log('3. Tap on "Link a Device"');
-        console.log('4. Wait for the pairing code prompt\n');
-
-        // Get phone number from environment
-        let phoneNumber = process.env.OWNER_NUMBER;
-        if (!phoneNumber) {
-            console.log(chalk.red('\nNo phone number provided in environment'));
-            process.exit(1);
-        }
-
-        // Format phone number: remove non-digits
-        phoneNumber = phoneNumber.replace(/[^0-9]/g, '');
-        logger.info('Using phone number:', phoneNumber);
-
-        if (!phoneNumber || phoneNumber.length < 10) {
-            console.log(chalk.red('\nInvalid phone number format'));
-            process.exit(1);
-        }
-
-        console.log(chalk.green('\nPhone number validated:', phoneNumber));
-        console.log(chalk.yellow('\nInitializing WhatsApp connection...'));
-
-        // Clean previous session
+        // Clean auth state
         const authDir = './auth_info_baileys';
         await fs.promises.rm(authDir, { recursive: true, force: true }).catch(() => {});
         await fs.promises.mkdir(authDir, { recursive: true });
 
-        // Initialize auth state
+        // Load authentication state
         const { state, saveCreds } = await useMultiFileAuthState(authDir);
+        const { version } = await fetchLatestBaileysVersion();
 
-        // Create socket with enhanced configuration
+        // Create WhatsApp connection
         const sock = makeWASocket({
-            version: await fetchLatestBaileysVersion(),
-            printQRInTerminal: false,
-            auth: {
-                creds: state.creds,
-                keys: makeCacheableSignalKeyStore(state.keys, logger),
-            },
+            version,
             logger: pino({ level: 'silent' }),
-            browser: Browsers.ubuntu('Chrome'),
-            msgRetryCounterCache: new NodeCache(),
-            defaultQueryTimeoutMs: 60000,
+            printQRInTerminal: false, // We'll handle QR display ourselves
+            auth: state,
+            browser: ['Flash-Bot', 'Chrome', '1.0.0'],
             connectTimeoutMs: 60000,
-            emitOwnEvents: true,
-            pairingCode: true,
-            mobile: false,
-            phoneNumber: parseInt(phoneNumber)
+            qrTimeout: 60000,
+            defaultQueryTimeoutMs: 60000,
+            keepAliveIntervalMs: 10000,
+            markOnlineOnConnect: true,
+            retryRequestDelayMs: 2000
         });
 
-        let hasPairingCode = false;
-        let connectionRetries = 0;
-        const MAX_RETRIES = 3;
-        let connectionTimeout;
-
-        // Handle connection updates
+        // Connection update handler
         sock.ev.on('connection.update', async (update) => {
-            const { connection, lastDisconnect } = update;
-
-            // Reset connection timeout
-            if (connectionTimeout) {
-                clearTimeout(connectionTimeout);
-            }
-
-            // Set new connection timeout
-            connectionTimeout = setTimeout(() => {
-                logger.error('Connection timeout after 60 seconds');
-                console.log(chalk.red('\nConnection timeout. Please try again.'));
-                process.exit(1);
-            }, 60000);
+            const { connection, lastDisconnect, qr } = update;
 
             logger.info('Connection status:', {
                 state: connection,
-                retries: connectionRetries,
+                attempts: connectionAttempts,
                 error: lastDisconnect?.error?.output?.statusCode
             });
 
-            if (connection === 'connecting' && !hasPairingCode) {
-                setTimeout(async () => {
-                    try {
-                        console.log(chalk.yellow('\nGenerating pairing code...'));
-                        const code = await sock.requestPairingCode(phoneNumber);
+            if (qr) {
+                // Clear terminal and redraw header when showing new QR
+                console.clear();
+                console.log(chalk.blue('\n┌─────────────────────────────────────┐'));
+                console.log(chalk.blue('│          Flash-Bot Connection        │'));
+                console.log(chalk.blue('└─────────────────────────────────────┘\n'));
 
-                        if (code) {
-                            hasPairingCode = true;
-                            const formattedCode = code.match(/.{1,4}/g)?.join("-") || code;
-                            console.log('\n' + chalk.green('='.repeat(50)));
-                            console.log(chalk.green('Your Pairing Code: ') + chalk.white(formattedCode));
-                            console.log(chalk.green('='.repeat(50)) + '\n');
-                            console.log(chalk.yellow('Enter this code in WhatsApp mobile app when prompted'));
-                            console.log(chalk.yellow('Waiting for connection...\n'));
-                            logger.info('Pairing code generated:', formattedCode);
-                        }
-                    } catch (error) {
-                        logger.error('Failed to request pairing code:', error);
-                        connectionRetries++;
+                console.log(chalk.yellow('Please follow these steps:'));
+                console.log('1. Open WhatsApp on your phone');
+                console.log('2. Go to Settings > Linked Devices');
+                console.log('3. Tap on "Link a Device"');
+                console.log('4. Scan the QR code below\n');
 
-                        if (connectionRetries < MAX_RETRIES) {
-                            console.log(chalk.yellow(`\nRetrying... (${connectionRetries}/${MAX_RETRIES})`));
-                            setTimeout(() => {
-                                if (!hasPairingCode) {
-                                    sock.requestPairingCode(phoneNumber);
-                                }
-                            }, 2000);
-                        } else {
-                            console.log(chalk.red('\nFailed to generate pairing code after multiple attempts.'));
-                            process.exit(1);
-                        }
-                    }
-                }, 3000);
+                qrcode.generate(qr, { small: true });
+                console.log(chalk.yellow('\nWaiting for connection...\n'));
+            }
+
+            if (connection === 'close') {
+                const statusCode = lastDisconnect?.error?.output?.statusCode;
+                const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+
+                if (shouldReconnect && connectionAttempts < MAX_RETRIES) {
+                    connectionAttempts++;
+                    const delay = Math.min(RECONNECT_INTERVAL * connectionAttempts, 30000); // Max 30s delay
+
+                    console.log(chalk.yellow(`\nConnection closed. Reconnecting (Attempt ${connectionAttempts}/${MAX_RETRIES})...`));
+                    setTimeout(startWhatsApp, delay);
+                } else if (statusCode === DisconnectReason.loggedOut) {
+                    console.log(chalk.red('\n× Session expired. Please scan QR code again.'));
+                    connectionAttempts = 0; // Reset attempts for new session
+                    setTimeout(startWhatsApp, RECONNECT_INTERVAL);
+                } else {
+                    console.log(chalk.red('\n× Connection closed permanently.'));
+                    console.log(chalk.yellow('Please check your internet connection and restart the application.'));
+                    process.exit(1);
+                }
             }
 
             if (connection === 'open') {
-                if (connectionTimeout) {
-                    clearTimeout(connectionTimeout);
-                }
+                connectionAttempts = 0; // Reset attempts on successful connection
+                console.log(chalk.green('\n✓ Connected to WhatsApp'));
+                console.log(chalk.cyan('• Status: Online'));
+                console.log(chalk.cyan('• User: ' + sock.user.id));
 
-                console.log(chalk.green('\nWhatsApp connection established successfully!'));
                 try {
-                    await sock.sendMessage(sock.user.id, {
-                        text: '🤖 *WhatsApp Bot Online!*\n\nSend !menu to see available commands'
-                    });
+                    const startupMessage = '🤖 *WhatsApp Bot Online!*\n\nSend !menu to see available commands';
+                    await sock.sendMessage(sock.user.id, { text: startupMessage });
                     logger.info('Startup message sent successfully');
                 } catch (error) {
                     logger.error('Failed to send startup message:', error);
                 }
             }
-
-            if (connection === 'close') {
-                if (connectionTimeout) {
-                    clearTimeout(connectionTimeout);
-                }
-
-                const shouldReconnect = (lastDisconnect?.error instanceof Boom) ?
-                    lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut : true;
-
-                logger.info('Connection closed:', {
-                    shouldReconnect,
-                    errorCode: lastDisconnect?.error?.output?.statusCode,
-                    retries: connectionRetries
-                });
-
-                if (shouldReconnect && connectionRetries < MAX_RETRIES) {
-                    connectionRetries++;
-                    console.log(chalk.yellow(`\nConnection closed, attempting reconnect (${connectionRetries}/${MAX_RETRIES})...`));
-                    setTimeout(startWhatsApp, 3000);
-                } else {
-                    console.log(chalk.red('\nConnection closed permanently. Please check your WhatsApp mobile app and try again.'));
-                    process.exit(1);
-                }
-            }
         });
 
-        // Handle credentials update
-        sock.ev.on('creds.update', async () => {
-            logger.info('Credentials updated - saving');
-            await saveCreds();
-        });
+        // Credentials update handler
+        sock.ev.on('creds.update', saveCreds);
 
-        // Error handling
+        // Error handler
         process.on('uncaughtException', (err) => {
             logger.error('Uncaught Exception:', err);
-            if (connectionTimeout) {
-                clearTimeout(connectionTimeout);
-            }
-            console.error(chalk.red('\nFatal error:', err.message));
+            console.log(chalk.red('\n× Fatal error: ' + err.message));
             process.exit(1);
         });
 
     } catch (error) {
         logger.error('Fatal error:', error);
-        console.error(chalk.red('\nStartup error:', error.message));
+        console.log(chalk.red('\n× Startup error: ' + error.message));
         process.exit(1);
     }
 }
 
-// Start the application
-console.log(chalk.blue('\nStarting WhatsApp Bot...'));
+// Start the connection
+console.log(chalk.cyan('\nInitializing WhatsApp connection...'));
 startWhatsApp().catch(err => {
     logger.error('Startup error:', err);
-    console.error(chalk.red('\nStartup error:', err.message));
+    console.log(chalk.red('\n× Startup error: ' + err.message));
     process.exit(1);
 });
