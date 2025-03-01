@@ -9,6 +9,7 @@ const aiCommands = require('./commands/ai');
 const downloaderCommands = require('./commands/downloader');
 const socialCommands = require('./commands/social');
 const musicCommands = require('./commands/music');
+const groupCommands = require('./commands/group'); // Added group commands
 const logger = require('pino')({ level: 'info' });
 
 module.exports = async (hans, m, chatUpdate, store) => {
@@ -42,8 +43,25 @@ module.exports = async (hans, m, chatUpdate, store) => {
         // Try each command module in order
         let commandExecuted = false;
 
-        // Music Commands - Process first due to real-time nature
-        if (Object.prototype.hasOwnProperty.call(musicCommands, command)) {
+        // Group Commands - Process first for admin actions
+        if (Object.prototype.hasOwnProperty.call(groupCommands, command)) {
+            try {
+                logger.info('Executing group command:', { command });
+                await groupCommands[command](hans, m, args);
+                commandExecuted = true;
+                logger.info('Group command executed successfully:', { command });
+            } catch (error) {
+                logger.error('Error executing group command:', {
+                    command,
+                    error: error.message,
+                    stack: error.stack
+                });
+                await hans.sendMessage(m.key.remoteJid, { 
+                    text: `❌ Error executing group command: ${error.message}` 
+                });
+            }
+        }
+        else if (musicCommands[command]) {
             try {
                 logger.info('Executing music command:', { command });
                 await musicCommands[command](hans, m, args);

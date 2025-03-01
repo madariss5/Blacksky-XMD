@@ -69,13 +69,34 @@ const basicCommands = {
                     `• ${config.prefix}level - View level stats`,
                     `• ${config.prefix}daily - Claim daily rewards`,
                     `• ${config.prefix}bio - Set or view bio`
+                ],
+                'Group': [
+                    `• ${config.prefix}kick - Remove a member from group`,
+                    `• ${config.prefix}promote - Promote member to admin`,
+                    `• ${config.prefix}demote - Demote admin to member`,
+                    `• ${config.prefix}mute - Mute group chat`,
+                    `• ${config.prefix}unmute - Unmute group chat`,
+                    `• ${config.prefix}link - Get group invite link`,
+                    `• ${config.prefix}revoke - Revoke group invite link`,
+                    `• ${config.prefix}everyone - Mention all members`,
+                    `• ${config.prefix}hidetag - Hidden mention all`,
+                    `• ${config.prefix}setname - Change group name`,
+                    `• ${config.prefix}setdesc - Change group description`,
+                    `• ${config.prefix}setwelcome - Set welcome message`,
+                    `• ${config.prefix}setgoodbye - Set goodbye message`,
+                    `• ${config.prefix}antilink - Enable/disable antilink`,
+                    `• ${config.prefix}antispam - Enable/disable antispam`,
+                    `• ${config.prefix}warn - Warn a member`,
+                    `• ${config.prefix}delwarn - Remove a warning`,
+                    `• ${config.prefix}warnlist - List member warnings`,
+                    `• ${config.prefix}groupinfo - Show group info`
                 ]
             };
 
             // Add other command categories from config
             Object.entries(config.commands).forEach(([cmd, info]) => {
                 const category = info.category || 'Uncategorized';
-                if (category !== 'Basic' && category !== 'User') {
+                if (category !== 'Basic' && category !== 'User' && category !== 'Group') {
                     if (!categories[category]) {
                         categories[category] = [];
                     }
