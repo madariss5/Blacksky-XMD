@@ -7,8 +7,14 @@ const { ytmp3 } = require('../attached_assets/downloader-ytmp3');
 const { ytmp4 } = require('../attached_assets/downloader-ytmp4');
 const { fbdl } = require('../attached_assets/downloader-fbdl');
 const { mediafire } = require('../attached_assets/downloader-mediafire');
-const fetch = require('node-fetch');
 
+// Import fetch dynamically
+let fetchModule;
+(async () => {
+    fetchModule = await import('node-fetch');
+})().catch(err => {
+    logger.error('Error importing node-fetch:', err);
+});
 
 const tempDir = path.join(__dirname, '../temp');
 fs.ensureDirSync(tempDir);
@@ -64,7 +70,7 @@ const downloaderCommands = {
             const tempFile = path.join(tempDir, `yt_${Date.now()}.mp3`);
 
             const fileStream = fs.createWriteStream(tempFile);
-            const response = await fetch(result.url);
+            const response = await (await fetchModule).default(result.url);
             await new Promise((resolve, reject) => {
                 response.body.pipe(fileStream)
                     .on('finish', resolve)
@@ -111,7 +117,7 @@ const downloaderCommands = {
             const tempFile = path.join(tempDir, `yt_${Date.now()}.mp4`);
 
             const fileStream = fs.createWriteStream(tempFile);
-            const response = await fetch(result.url);
+            const response = await (await fetchModule).default(result.url);
             await new Promise((resolve, reject) => {
                 response.body.pipe(fileStream)
                     .on('finish', resolve)
@@ -158,7 +164,7 @@ const downloaderCommands = {
             const tempFile = path.join(tempDir, `fb_${Date.now()}.mp4`);
 
             const fileStream = fs.createWriteStream(tempFile);
-            const response = await fetch(result.url);
+            const response = await (await fetchModule).default(result.url);
             await new Promise((resolve, reject) => {
                 response.body.pipe(fileStream)
                     .on('finish', resolve)
@@ -204,7 +210,7 @@ const downloaderCommands = {
             const tempFile = path.join(tempDir, result.filename);
 
             const fileStream = fs.createWriteStream(tempFile);
-            const response = await fetch(result.url);
+            const response = await (await fetchModule).default(result.url);
             await new Promise((resolve, reject) => {
                 response.body.pipe(fileStream)
                     .on('finish', resolve)

@@ -17,10 +17,6 @@ args = "WhatsApp Core"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "HTTP Server"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
 args = "WhatsApp Bot"
 
 [[workflows.workflow.tasks]]
@@ -40,21 +36,6 @@ task = "packager.installForAll"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "node whatsapp_core.js"
-
-[[workflows.workflow]]
-name = "HTTP Server"
-author = "agent"
-
-[workflows.workflow.metadata]
-agentRequireRestartOnSave = false
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node server.js"
-waitForPort = 8080
 
 [[workflows.workflow]]
 name = "WhatsApp Bot"
