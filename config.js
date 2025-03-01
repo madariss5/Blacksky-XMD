@@ -168,6 +168,26 @@ module.exports = {
         setbotbio: { description: 'Set bot bio', category: 'Owner' },
         eval: { description: 'Evaluate JavaScript code', category: 'Owner' },
         restart: { description: 'Restart bot system', category: 'Owner' },
-        shutdown: { description: 'Shutdown bot system', category: 'Owner' }
+        shutdown: { description: 'Shutdown bot system', category: 'Owner' },
+        join: { description: 'Join a group via invite link', category: 'Owner' },
+        leave: { description: 'Leave a group', category: 'Owner' },
+        clearall: { description: 'Clear all chats', category: 'Owner' },
+        update: { description: 'Update bot from source', category: 'Owner' },
+        setprefix: { description: 'Change bot prefix', category: 'Owner' },
+        setstatus: { description: 'Set WhatsApp status', category: 'Owner' },
+        setname: { description: 'Change bot display name', category: 'Owner' },
+        ban: { description: 'Ban user from using bot', category: 'Owner' },
+        unban: { description: 'Unban user from using bot', category: 'Owner' },
+        addpremium: { description: 'Add user to premium list', category: 'Owner' },
+        delpremium: { description: 'Remove user from premium list', category: 'Owner' },
+        listpremium: { description: 'Show list of premium users', category: 'Owner' },
+        listban: { description: 'Show list of banned users', category: 'Owner' },
+        bc: { description: 'Broadcast message to specific groups', category: 'Owner' },
+        bcgc: { description: 'Broadcast message to all groups', category: 'Owner' },
+        bcpc: { description: 'Broadcast message to private chats', category: 'Owner' },
+        getcase: { description: 'Get command source code', category: 'Owner' },
+        addcmd: { description: 'Add custom command', category: 'Owner' },
+        delcmd: { description: 'Delete custom command', category: 'Owner' },
+        listcmd: { description: 'List all custom commands', category: 'Owner' }
     }
 };
