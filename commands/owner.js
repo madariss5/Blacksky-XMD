@@ -535,7 +535,6 @@ const ownerCommands = {
     },
 
 
-
     leave: async (sock, msg) => {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
@@ -649,11 +648,11 @@ const ownerCommands = {
     },
 
     addcmd: async (sock, msg, args) => {
-        if (msg.key.remoteJid !== config.ownerNumber) {
+        if (msg.key.remoteJid !==config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
         }
         if (args.length < 2) {
-            returnreturn await sock.sendMessage(msg.key.remoteJid, {
+            return await sock.sendMessage(msg.key.remoteJid, {
                 text: 'Please provide command name and response!\nUsage: .addcmd <command> <response>'
             });
         }

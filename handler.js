@@ -10,35 +10,51 @@ const downloaderCommands = require('./commands/downloader');
 const socialCommands = require('./commands/social');
 const musicCommands = require('./commands/music');
 const groupCommands = require('./commands/group');
-const nsfwCommands = require('./commands/nsfw'); // Added NSFW commands
+const nsfwCommands = require('./commands/nsfw');
 const logger = require('pino')({ level: 'info' });
 
 module.exports = async (hans, m, chatUpdate, store) => {
     try {
+        // Basic validation of message object
+        if (!m || typeof m !== 'object') {
+            logger.error('Invalid message object received:', { m });
+            return;
+        }
+
+        // Safely access message properties
+        const body = m.body || '';
+        const sender = m.sender || '';
+        const remoteJid = m.key?.remoteJid;
+
         const prefix = '.';
-        const isCmd = m.body?.startsWith(prefix);
+        const isCmd = body.startsWith(prefix);
 
         // Enhanced logging for command processing
         logger.info('Received message:', {
-            body: m.body,
-            from: m.sender,
+            body,
+            sender,
+            remoteJid,
             isGroup: m.isGroup,
             type: m.mtype,
             isCommand: isCmd,
             timestamp: new Date().toISOString()
         });
 
-        // If no body or not a command, return
-        if (!m.body || !isCmd) return;
+        // If no body or not a command, return early
+        if (!body || !isCmd) {
+            logger.debug('Skipping non-command message');
+            return;
+        }
 
-        const command = m.body.slice(prefix.length).trim().split(' ')[0].toLowerCase();
-        const args = m.body.trim().split(/ +/).slice(1);
+        // Parse command and arguments safely
+        const command = body.slice(prefix.length).trim().split(' ')[0].toLowerCase();
+        const args = body.trim().split(/ +/).slice(1);
 
         logger.info('Processing command:', { 
             command, 
             args,
-            sender: m.sender,
-            chat: m.chat
+            sender,
+            remoteJid
         });
 
         // Try each command module in order
@@ -57,12 +73,12 @@ module.exports = async (hans, m, chatUpdate, store) => {
                     error: error.message,
                     stack: error.stack
                 });
-                await hans.sendMessage(m.key.remoteJid, { 
+                await hans.sendMessage(remoteJid, { 
                     text: `❌ Error executing owner command: ${error.message}` 
                 });
             }
         }
-        // Group Commands - Process first for admin actions
+        // Group Commands
         else if (Object.prototype.hasOwnProperty.call(groupCommands, command)) {
             try {
                 logger.info('Executing group command:', { command });
@@ -75,12 +91,12 @@ module.exports = async (hans, m, chatUpdate, store) => {
                     error: error.message,
                     stack: error.stack
                 });
-                await hans.sendMessage(m.key.remoteJid, { 
+                await hans.sendMessage(remoteJid, { 
                     text: `❌ Error executing group command: ${error.message}` 
                 });
             }
         }
-        // NSFW Commands - Add with age verification
+        // NSFW Commands
         else if (Object.prototype.hasOwnProperty.call(nsfwCommands, command)) {
             try {
                 logger.info('Executing NSFW command:', { command });
@@ -93,12 +109,13 @@ module.exports = async (hans, m, chatUpdate, store) => {
                     error: error.message,
                     stack: error.stack
                 });
-                await hans.sendMessage(m.key.remoteJid, { 
+                await hans.sendMessage(remoteJid, { 
                     text: `❌ Error executing NSFW command: ${error.message}` 
                 });
             }
         }
-        else if (musicCommands[command]) {
+        // Music Commands
+        else if (Object.prototype.hasOwnProperty.call(musicCommands, command)) {
             try {
                 logger.info('Executing music command:', { command });
                 await musicCommands[command](hans, m, args);
@@ -110,12 +127,13 @@ module.exports = async (hans, m, chatUpdate, store) => {
                     error: error.message,
                     stack: error.stack
                 });
-                await hans.sendMessage(m.key.remoteJid, { 
+                await hans.sendMessage(remoteJid, { 
                     text: `❌ Error executing music command: ${error.message}` 
                 });
             }
         }
-        else if (aiCommands[command]) {
+        // AI Commands
+        else if (Object.prototype.hasOwnProperty.call(aiCommands, command)) {
             try {
                 logger.info('Executing AI command:', { command });
                 await aiCommands[command](hans, m, args);
@@ -125,15 +143,15 @@ module.exports = async (hans, m, chatUpdate, store) => {
                 logger.error('Error executing AI command:', {
                     command,
                     error: error.message,
-                    stack: error.stack,
-                    args
+                    stack: error.stack
                 });
-                await hans.sendMessage(m.key.remoteJid, { 
-                    text: `❌ Error executing command: ${error.message}` 
+                await hans.sendMessage(remoteJid, { 
+                    text: `❌ Error executing AI command: ${error.message}` 
                 });
             }
         }
-        else if (basicCommands[command]) {
+        // Basic Commands
+        else if (Object.prototype.hasOwnProperty.call(basicCommands, command)) {
             try {
                 logger.info('Executing basic command:', { command });
                 await basicCommands[command](hans, m, args);
@@ -145,12 +163,13 @@ module.exports = async (hans, m, chatUpdate, store) => {
                     error: error.message,
                     stack: error.stack
                 });
-                await hans.sendMessage(m.key.remoteJid, { 
-                    text: `❌ Error executing command: ${error.message}` 
+                await hans.sendMessage(remoteJid, { 
+                    text: `❌ Error executing basic command: ${error.message}` 
                 });
             }
         }
-        else if (userCommands[command]) {
+        // Process other command types similarly...
+        else if (Object.prototype.hasOwnProperty.call(userCommands, command)) {
             try {
                 logger.info('Executing user command:', { command });
                 await userCommands[command](hans, m, args);
@@ -162,12 +181,11 @@ module.exports = async (hans, m, chatUpdate, store) => {
                     error: error.message,
                     stack: error.stack
                 });
-                await hans.sendMessage(m.key.remoteJid, { 
-                    text: `❌ Error executing command: ${error.message}` 
+                await hans.sendMessage(remoteJid, { 
+                    text: `❌ Error executing user command: ${error.message}` 
                 });
             }
-        }
-        else if (downloaderCommands[command]) {
+        } else if (Object.prototype.hasOwnProperty.call(downloaderCommands, command)) {
             try {
                 logger.info('Executing downloader command:', { command });
                 await downloaderCommands[command](hans, m, args);
@@ -179,12 +197,11 @@ module.exports = async (hans, m, chatUpdate, store) => {
                     error: error.message,
                     stack: error.stack
                 });
-                await hans.sendMessage(m.key.remoteJid, { 
-                    text: `❌ Error executing command: ${error.message}` 
+                await hans.sendMessage(remoteJid, {
+                    text: `❌ Error executing downloader command: ${error.message}`
                 });
             }
-        }
-        else if (economyCommands[command]) {
+        } else if (Object.prototype.hasOwnProperty.call(economyCommands, command)) {
             try {
                 logger.info('Executing economy command:', { command });
                 await economyCommands[command](hans, m, args);
@@ -196,12 +213,11 @@ module.exports = async (hans, m, chatUpdate, store) => {
                     error: error.message,
                     stack: error.stack
                 });
-                await hans.sendMessage(m.key.remoteJid, { 
-                    text: `❌ Error executing command: ${error.message}` 
+                await hans.sendMessage(remoteJid, {
+                    text: `❌ Error executing economy command: ${error.message}`
                 });
             }
-        }
-        else if (utilityCommands[command]) {
+        } else if (Object.prototype.hasOwnProperty.call(utilityCommands, command)) {
             try {
                 logger.info('Executing utility command:', { command });
                 await utilityCommands[command](hans, m, args);
@@ -213,12 +229,11 @@ module.exports = async (hans, m, chatUpdate, store) => {
                     error: error.message,
                     stack: error.stack
                 });
-                await hans.sendMessage(m.key.remoteJid, { 
-                    text: `❌ Error executing command: ${error.message}` 
+                await hans.sendMessage(remoteJid, {
+                    text: `❌ Error executing utility command: ${error.message}`
                 });
             }
-        }
-        else if (funCommands[command]) {
+        } else if (Object.prototype.hasOwnProperty.call(funCommands, command)) {
             try {
                 logger.info('Executing fun command:', { command });
                 await funCommands[command](hans, m, args);
@@ -230,12 +245,11 @@ module.exports = async (hans, m, chatUpdate, store) => {
                     error: error.message,
                     stack: error.stack
                 });
-                await hans.sendMessage(m.key.remoteJid, { 
-                    text: `❌ Error executing command: ${error.message}` 
+                await hans.sendMessage(remoteJid, {
+                    text: `❌ Error executing fun command: ${error.message}`
                 });
             }
-        }
-        else if (socialCommands[command]) {
+        } else if (Object.prototype.hasOwnProperty.call(socialCommands, command)) {
             try {
                 logger.info('Executing social command:', { command });
                 await socialCommands[command](hans, m, args);
@@ -247,12 +261,11 @@ module.exports = async (hans, m, chatUpdate, store) => {
                     error: error.message,
                     stack: error.stack
                 });
-                await hans.sendMessage(m.key.remoteJid, { 
-                    text: `❌ Error executing command: ${error.message}` 
+                await hans.sendMessage(remoteJid, {
+                    text: `❌ Error executing social command: ${error.message}`
                 });
             }
-        }
-        else if (reactionsCommands[command]) {
+        } else if (Object.prototype.hasOwnProperty.call(reactionsCommands, command)) {
             try {
                 logger.info('Executing reaction command:', { command });
                 await reactionsCommands[command](hans, m, args);
@@ -264,33 +277,33 @@ module.exports = async (hans, m, chatUpdate, store) => {
                     error: error.message,
                     stack: error.stack
                 });
-                await hans.sendMessage(m.key.remoteJid, { 
-                    text: `❌ Error executing command: ${error.message}` 
+                await hans.sendMessage(remoteJid, {
+                    text: `❌ Error executing reaction command: ${error.message}`
                 });
             }
         }
 
-
         // Command not found
         if (!commandExecuted) {
             logger.warn('Command not found:', { command });
-            await hans.sendMessage(m.key.remoteJid, {
+            await hans.sendMessage(remoteJid, {
                 text: `Command *${command}* not found. Type ${prefix}menu to see available commands.`
             });
         }
 
     } catch (err) {
-        logger.error("Error in command handler:", {
+        logger.error('Error in command handler:', {
             error: err.message,
             stack: err.stack,
-            command: m.body
+            command: m?.body,
+            messageObject: JSON.stringify(m, null, 2)
         });
         try {
-            await hans.sendMessage(m.key.remoteJid, { 
-                text: "❌ An error occurred while processing your command." 
+            await hans.sendMessage(m?.key?.remoteJid, { 
+                text: '❌ An error occurred while processing your command.' 
             });
         } catch (sendError) {
-            logger.error("Failed to send error message:", {
+            logger.error('Failed to send error message:', {
                 error: sendError.message,
                 stack: sendError.stack
             });
