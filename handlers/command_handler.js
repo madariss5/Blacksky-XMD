@@ -11,6 +11,7 @@ const ownerCommands = require('../commands/owner');
 const userCommands = require('../commands/user');
 const economyCommands = require('../commands/economy');
 const nsfwCommands = require('../commands/nsfw');
+const utilityCommands = require('../commands/utility');
 
 class CommandHandler {
     constructor() {
@@ -29,6 +30,7 @@ class CommandHandler {
             fun: funCommands,
             reactions: reactionCommands,
             tool: toolCommands,
+            utility: utilityCommands,
             ai: aiCommands,
             owner: ownerCommands,
             user: userCommands,

@@ -1,28 +1,23 @@
 const logger = require('pino')();
+const axios = require('axios');
+const os = require('os');
 
 const utilityCommands = {
     menu: async (sock, msg) => {
         try {
-            const menuText = `🤖 *WhatsApp Bot Commands*\n\n` +
-                           `*Utility Commands:*\n` +
-                           `!menu - Show this menu\n` +
-                           `!stats - Show bot statistics\n` +
-                           `!report <issue> - Report an issue\n` +
-                           `!donate - Support information\n` +
-                           `!broadcast <message> - Send message to all groups (admin only)\n` +
+            const menuText = `🛠️ *Utility Commands*\n\n` +
+                           `*Media Conversion:*\n` +
+                           `!sticker - Create sticker from image/video\n` +
+                           `!tts <text> - Convert text to speech\n` +
+                           `!translate <lang> <text> - Translate text\n\n` +
+                           `*Information:*\n` +
+                           `!weather <city> - Get weather info\n` +
+                           `!calc <expression> - Calculate expression\n` +
+                           `!stats - Show bot statistics\n\n` +
+                           `*System:*\n` +
                            `!ping - Check bot response time\n` +
-                           `!uptime - Show bot uptime\n\n` +
-
-                           `*Group Commands:*\n` +
-                           `!groupinfo - Show group information\n` +
-                           `!members - List group members\n` +
-                           `!admins - List group admins\n` +
-                           `!link - Get group invite link (admin only)\n\n` +
-
-                           `*Owner Commands:*\n` +
-                           `!shutdown - Shutdown bot (owner only)\n` +
-                           `!restart - Restart bot (owner only)\n` +
-                           `!update - Check for updates (owner only)`;
+                           `!uptime - Show bot uptime\n` +
+                           `!report <issue> - Report an issue`;
 
             await sock.sendMessage(msg.key.remoteJid, { text: menuText });
         } catch (error) {
@@ -33,6 +28,125 @@ const utilityCommands = {
         }
     },
 
+    sticker: async (sock, msg) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⚠️ Sticker creation is temporarily unavailable due to system maintenance.'
+            });
+        } catch (error) {
+            logger.error('Error in sticker command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to process sticker command'
+            });
+        }
+    },
+
+    tts: async (sock, msg, args) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⚠️ Text-to-speech is temporarily unavailable due to system maintenance.'
+            });
+        } catch (error) {
+            logger.error('Error in tts command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to process TTS command'
+            });
+        }
+    },
+
+    translate: async (sock, msg, args) => {
+        try {
+            if (args.length < 2) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide language and text!\nUsage: !translate <lang> <text>'
+                });
+            }
+
+            const targetLang = args[0].toLowerCase();
+            const text = args.slice(1).join(' ');
+
+            // Using a free translation API
+            const response = await axios.get('https://translate.googleapis.com/translate_a/single', {
+                params: {
+                    client: 'gtx',
+                    sl: 'auto',
+                    tl: targetLang,
+                    dt: 't',
+                    q: text
+                }
+            });
+
+            const translation = response.data[0][0][0];
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🌐 *Translation*\n\nOriginal: ${text}\nTranslated (${targetLang}): ${translation}`
+            });
+
+            logger.info('Translation completed successfully');
+        } catch (error) {
+            logger.error('Error in translate command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to translate: ' + error.message
+            });
+        }
+    },
+
+    weather: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a city name!\nUsage: !weather <city>'
+                });
+            }
+
+            const city = args.join(' ');
+            const response = await axios.get(`http://api.openweathermap.org/data/2.5/weather`, {
+                params: {
+                    q: city,
+                    appid: process.env.OPENWEATHER_API_KEY,
+                    units: 'metric'
+                }
+            });
+
+            const weather = response.data;
+            const weatherText = `🌤️ *Weather in ${weather.name}*\n\n` +
+                              `• Temperature: ${weather.main.temp}°C\n` +
+                              `• Feels like: ${weather.main.feels_like}°C\n` +
+                              `• Weather: ${weather.weather[0].main}\n` +
+                              `• Description: ${weather.weather[0].description}\n` +
+                              `• Humidity: ${weather.main.humidity}%\n` +
+                              `• Wind Speed: ${weather.wind.speed} m/s`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text: weatherText });
+        } catch (error) {
+            logger.error('Error in weather command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to get weather info: ' + error.message
+            });
+        }
+    },
+
+    calc: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide an expression to calculate!\nUsage: !calc <expression>'
+                });
+            }
+
+            const expression = args.join('');
+            // Simple evaluation with basic security
+            const result = eval(expression.replace(/[^0-9+\-*/.()]/g, ''));
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🔢 *Calculator*\n\n${expression} = ${result}`
+            });
+        } catch (error) {
+            logger.error('Error in calc command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Invalid expression!'
+            });
+        }
+    },
     stats: async (sock, msg) => {
         try {
             const memory = process.memoryUsage();
@@ -97,22 +211,6 @@ const utilityCommands = {
         }
     },
 
-    donate: async (sock, msg) => {
-        try {
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '💝 *Support the Bot*\n\n' +
-                      'Thank you for considering a donation!\n' +
-                      'Your support helps keep the bot running and improving.\n\n' +
-                      'Contact the bot owner for donation information.'
-            });
-        } catch (error) {
-            logger.error('Error in donate command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to show donation information'
-            });
-        }
-    },
-
     ping: async (sock, msg) => {
         try {
             const start = Date.now();
@@ -149,85 +247,6 @@ const utilityCommands = {
         }
     },
 
-    broadcast: async (sock, msg, args) => {
-        try {
-            // Check if sender is admin
-            if (!process.env.OWNER_NUMBER || 
-                !msg.key.remoteJid.includes(process.env.OWNER_NUMBER)) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ This command is only available to bot administrators'
-                });
-            }
-
-            if (!args.length) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Please provide a message to broadcast!\nUsage: !broadcast <message>'
-                });
-            }
-
-            const message = args.join(' ');
-            const groups = await sock.groupFetchAllParticipating();
-            let successCount = 0;
-            let failCount = 0;
-
-            for (const group of Object.values(groups)) {
-                try {
-                    await sock.sendMessage(group.id, {
-                        text: `📢 *Broadcast Message*\n\n${message}`
-                    });
-                    successCount++;
-                } catch (error) {
-                    logger.error('Error broadcasting to group:', error);
-                    failCount++;
-                }
-            }
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `📢 *Broadcast Complete*\n\n` +
-                      `✅ Sent to: ${successCount} groups\n` +
-                      `❌ Failed: ${failCount} groups`
-            });
-        } catch (error) {
-            logger.error('Error in broadcast command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to broadcast message'
-            });
-        }
-    },
-
-    qrmaker: async (sock, msg, args) => {
-        try {
-            if (!args.length) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Please provide text to convert to QR!\nUsage: !qrmaker <text>'
-                });
-            }
-
-            const text = args.join(' ');
-            // Note: QR generation would go here
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '🔄 QR code generation is currently under development.'
-            });
-        } catch (error) {
-            logger.error('Error in qrmaker command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to generate QR code'
-            });
-        }
-    },
-
-    qrreader: async (sock, msg) => {
-        try {
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '🔄 QR code reading is currently under development.'
-            });
-        } catch (error) {
-            logger.error('Error in qrreader command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to read QR code'
-            });
-        }
-    },
     help: async (sock, msg) => {
         // Alias for menu command
         await utilityCommands.menu(sock, msg);

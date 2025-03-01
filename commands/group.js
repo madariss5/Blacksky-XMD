@@ -837,7 +837,7 @@ const groupCommands = {
         }
     },
 
-tagall: async (sock, msg, args) => {
+    tagall: async (sock, msg, args) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
             if (!groupMetadata) return;
@@ -863,6 +863,163 @@ tagall: async (sock, msg, args) => {
             });
         }
     },
-};
+    tagadmin: async (sock, msg, args) => {
+        try {
+            const groupMetadata = await validateGroupContext(sock, msg, false);
+            if (!groupMetadata) return;
+
+            const admins = groupMetadata.participants
+                .filter(p => p.admin)
+                .map(p => p.id);
+
+            const message = args.length > 0 ? args.join(' ') : 'Attention admins!';
+            const mentionTags = admins.map(jid => `@${jid.split('@')[0]}`).join(' ');
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `👮‍♂️ *Admin Notification*\n\n${message}\n\n${mentionTags}`,
+                mentions: admins
+            });
+
+            logger.info('Admins tagged:', {
+                group: msg.key.remoteJid,
+                sender: msg.key.participant,
+                adminCount: admins.length
+            });
+        } catch (error) {
+            logger.error('Error in tagadmin command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to tag admins: ' + error.message
+            });
+        }
+    },
+
+    leave: async (sock, msg) => {
+        try {
+            const groupMetadata = await validateGroupContext(sock, msg, true);
+            if (!groupMetadata) return;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '👋 Goodbye! Bot is leaving the group as requested by admin.'
+            });
+
+            setTimeout(async () => {
+                try {
+                    await sock.groupLeave(msg.key.remoteJid);
+                    logger.info('Left group successfully:', {
+                        group: msg.key.remoteJid,
+                        requestedBy: msg.key.participant
+                    });
+                } catch (error) {
+                    logger.error('Failed to leave group:', error);
+                }
+            }, 1000);
+        } catch (error) {
+            logger.error('Error in leave command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to leave group: ' + error.message
+            });
+        }
+    },
+
+    antilink: async (sock, msg, args) => {
+        try {
+            const groupMetadata = await validateGroupContext(sock, msg, true);
+            if (!groupMetadata) return;
+
+            if (!args[0] || !['on', 'off'].includes(args[0].toLowerCase())) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please specify on/off!\nUsage: .antilink <on/off>'
+                });
+            }
+
+            const status = args[0].toLowerCase() === 'on';
+            await store.setGroupSetting(msg.key.remoteJid, 'antilink', status);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Anti-link has been ${status ? 'enabled' : 'disabled'}`
+            });
+
+            logger.info('Anti-link setting updated:', {
+                group: msg.key.remoteJid,
+                status: status,
+                updatedBy: msg.key.participant
+            });
+        } catch (error) {
+            logger.error('Error in antilink command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to update anti-link setting: ' + error.message
+            });
+        }
+    },
+
+    antispam: async (sock, msg, args) => {
+        try {
+            const groupMetadata = await validateGroupContext(sock, msg, true);
+            if (!groupMetadata) return;
+
+            if (!args[0] || !['on', 'off'].includes(args[0].toLowerCase())) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please specify on/off!\nUsage: .antispam <on/off>'
+                });
+            }
+
+            const status = args[0].toLowerCase() === 'on';
+            await store.setGroupSetting(msg.key.remoteJid, 'antispam', status);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Anti-spam has been ${status ? 'enabled' : 'disabled'}`
+            });
+
+            logger.info('Anti-spam setting updated:', {
+                group: msg.key.remoteJid,
+                status: status,
+                updatedBy: msg.key.participant
+            });
+        } catch (error) {
+            logger.error('Error in antispam command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to update anti-spam setting: ' + error.message
+            });
+        }
+    },
+
+    settings: async (sock, msg) => {
+        try {
+            const groupMetadata = await validateGroupContext(sock, msg, false);
+            if (!groupMetadata) return;
+
+            const settings = await store.getGroupSettings(msg.key.remoteJid);
+
+            const settingsText = `⚙️ *Group Settings*\n\n` +
+                             `• Anti-link: ${settings?.antilink ? '✅' : '❌'}\n` +
+                             `• Anti-spam: ${settings?.antispam ? '✅' : '❌'}\n` +
+                             `• Anti-toxic: ${settings?.antitoxic ? '✅' : '❌'}\n` +
+                             `• NSFW: ${settings?.nsfw ? '✅' : '❌'}\n` +
+                             `• Welcome Message: ${settings?.welcomeMessage ? '✅' : '❌'}\n` +
+                             `• Goodbye Message: ${settings?.goodbyeMessage ? '✅' : '❌'}\n` +
+                             `• Max Warnings: ${settings?.maxWarnings || 3}\n\n` +
+                             `*Admin Commands:*\n` +
+                             `• .antilink <on/off>\n` +
+                             `• .antispam <on/off>\n` +
+                             `• .antitoxic <on/off>\n` +
+                             `• .setnsfw <on/off>\n` +
+                             `• .setwelcome <message>\n` +
+                             `• .setgoodbye <message>\n` +
+                             `• .setmaxwarn <number>`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text: settingsText });
+
+            logger.info('Group settings displayed:', {
+                group: msg.key.remoteJid,
+                requestedBy: msg.key.participant
+            });
+        } catch (error) {
+            logger.error('Error in settings command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to display group settings: ' + error.message
+            });
+        }
+    }
+}; // End of groupCommands object
 
 module.exports = groupCommands;

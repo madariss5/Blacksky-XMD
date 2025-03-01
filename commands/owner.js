@@ -6,6 +6,9 @@ const path = require('path');
 const logger = require('pino')();
 const tempDir = os.tmpdir();
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
+const QRCode = require('qrcode');
+const QRReader = require('qrcode-reader');
+const Jimp = require('jimp');
 
 const ownerCommands = {
     broadcast: async (sock, msg, args) => {
@@ -116,6 +119,113 @@ const ownerCommands = {
         }
     },
 
+    restart: async (sock, msg) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        try {
+            await sock.sendMessage(msg.key.remoteJid, { text: '🔄 Restarting bot...' });
+            process.exit(0); // Process will be restarted by the process manager
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to restart: ' + error.message });
+        }
+    },
+
+    update: async (sock, msg) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        try {
+            await sock.sendMessage(msg.key.remoteJid, { text: '🔄 Checking for updates...' });
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: 'ℹ️ No updates available. You are using the latest version.' 
+            });
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to check updates: ' + error.message });
+        }
+    },
+
+    eval: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        if (!args.length) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide code to evaluate!' });
+        }
+        try {
+            const code = args.join(' ');
+            const result = eval(code);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `📝 *Eval Result:*\n\n${result}`
+            });
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Eval failed: ' + error.message });
+        }
+    },
+
+    setprefix: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        if (!args[0]) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a new prefix!' });
+        }
+        try {
+            config.prefix = args[0];
+            await sock.sendMessage(msg.key.remoteJid, { text: `✅ Prefix updated to: ${args[0]}` });
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to update prefix: ' + error.message });
+        }
+    },
+
+    backup: async (sock, msg) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        try {
+            const data = {
+                store: store.data,
+                config: config
+            };
+
+            const backupPath = path.join(tempDir, 'backup.json');
+            await fs.writeJSON(backupPath, data, { spaces: 2 });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                document: { url: backupPath },
+                mimetype: 'application/json',
+                fileName: `backup_${new Date().toISOString()}.json`
+            });
+
+            await fs.remove(backupPath);
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to create backup: ' + error.message });
+        }
+    },
+
+    restore: async (sock, msg) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        if (!msg.message.documentMessage) {
+            return await sock.sendMessage(msg.key.remoteJid, { 
+                text: '❌ Please send a backup file with this command!' 
+            });
+        }
+        try {
+            const buffer = await downloadMediaMessage(msg, 'buffer', {}, { logger });
+            const data = JSON.parse(buffer.toString());
+
+            if (data.store) store.data = data.store;
+            if (data.config) Object.assign(config, data.config);
+
+            await store.saveStore();
+            await sock.sendMessage(msg.key.remoteJid, { text: '✅ Backup restored successfully!' });
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to restore backup: ' + error.message });
+        }
+    },
+
     addmod: async (sock, msg, args) => {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
@@ -175,16 +285,16 @@ const ownerCommands = {
             };
 
             const systemInfo = `💻 *System Information*\n\n` +
-                           `• Platform: ${system.platform}\n` +
-                           `• Architecture: ${system.arch}\n` +
-                           `• CPUs: ${system.cpus}\n` +
-                           `• Total Memory: ${system.totalMem}\n` +
-                           `• Free Memory: ${system.freeMem}\n` +
-                           `• Uptime: ${system.uptime}\n` +
-                           `• Heap Used: ${system.heapUsed}\n` +
-                           `• Heap Total: ${system.heapTotal}\n` +
-                           `• Node.js: ${system.nodeVersion}\n` +
-                           `• V8: ${system.v8Version}`;
+                               `• Platform: ${system.platform}\n` +
+                               `• Architecture: ${system.arch}\n` +
+                               `• CPUs: ${system.cpus}\n` +
+                               `• Total Memory: ${system.totalMem}\n` +
+                               `• Free Memory: ${system.freeMem}\n` +
+                               `• Uptime: ${system.uptime}\n` +
+                               `• Heap Used: ${system.heapUsed}\n` +
+                               `• Heap Total: ${system.heapTotal}\n` +
+                               `• Node.js: ${system.nodeVersion}\n` +
+                               `• V8: ${system.v8Version}`;
 
             await sock.sendMessage(msg.key.remoteJid, { text: systemInfo });
         } catch (error) {
@@ -283,26 +393,79 @@ const ownerCommands = {
             await sock.sendMessage(msg.key.remoteJid, { text: 'Group is not banned!' });
         }
     },
-    restart: async (sock, msg) => {
+    setbotmode: async (sock, msg, args) => {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
         }
-        await sock.sendMessage(msg.key.remoteJid, { text: 'Restarting bot...' });
-        process.exit(0); 
+        const mode = args[0]?.toLowerCase();
+        if (!['public', 'private'].includes(mode)) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please specify public/private mode!' });
+        }
+        store.setBotMode(mode);
+        await sock.sendMessage(msg.key.remoteJid, { 
+            text: `Bot mode set to ${mode}`
+        });
     },
-
-    setprefix: async (sock, msg, args) => {
+    qrmaker: async (sock, msg, args) => {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
         }
-        const newPrefix = args[0];
-        if (!newPrefix) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a new prefix!' });
+        const text = args.join(' ');
+        if (!text) {
+            return await sock.sendMessage(msg.key.remoteJid, { 
+                text: '❌ Please provide text to convert to QR code!' 
+            });
         }
-        config.prefix = newPrefix;
-        await sock.sendMessage(msg.key.remoteJid, { text: `Prefix updated to: ${newPrefix}` });
+        try {
+            const qrPath = path.join(tempDir, 'qr_output.png');
+            await QRCode.toFile(qrPath, text, {
+                color: {
+                    dark: '#000000',
+                    light: '#FFFFFF'
+                },
+                width: 512,
+                margin: 1
+            });
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: qrPath },
+                caption: '✅ Here is your QR code!'
+            });
+            await fs.remove(qrPath);
+        } catch (error) {
+            logger.error('Error in qrmaker command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to generate QR code: ' + error.message
+            });
+        }
     },
 
+    qrreader: async (sock, msg) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        if (!msg.message.imageMessage) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Please send an image containing a QR code!'
+            });
+        }
+        try {
+            const buffer = await downloadMediaMessage(msg, 'buffer', {}, { logger });
+            const image = await Jimp.read(buffer);
+            const qr = new QRReader();
+            const value = await new Promise((resolve, reject) => {
+                qr.callback = (err, v) => err != null ? reject(err) : resolve(v);
+                qr.decode(image.bitmap);
+            });
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `📱 QR Code Content:\n\n${value.result}`
+            });
+        } catch (error) {
+            logger.error('Error in qrreader command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to read QR code: ' + error.message
+            });
+        }
+    },
     setbotname: async (sock, msg, args) => {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
@@ -338,18 +501,18 @@ const ownerCommands = {
             };
 
             const statsText = `📊 *Bot Statistics*\n\n` +
-                          `👥 Users: ${stats.users}\n` +
-                          `👥 Groups: ${stats.groups}\n` +
-                          `🚫 Banned Users: ${stats.banned}\n` +
-                          `🚫 Banned Groups: ${stats.bannedGroups}\n\n` +
-                          `💻 *System Information*\n\n` +
-                          `• Platform: ${stats.system.platform}\n` +
-                          `• Architecture: ${stats.system.arch}\n` +
-                          `• CPUs: ${stats.system.cpus}\n` +
-                          `• Total Memory: ${stats.system.totalMem}\n` +
-                          `• Free Memory: ${stats.system.freeMem}\n` +
-                          `• System Uptime: ${stats.system.uptime}\n` +
-                          `• Bot Uptime: ${stats.system.botUptime}`;
+                              `👥 Users: ${stats.users}\n` +
+                              `👥 Groups: ${stats.groups}\n` +
+                              `🚫 Banned Users: ${stats.banned}\n` +
+                              `🚫 Banned Groups: ${stats.bannedGroups}\n\n` +
+                              `💻 *System Information*\n\n` +
+                              `• Platform: ${stats.system.platform}\n` +
+                              `• Architecture: ${stats.system.arch}\n` +
+                              `• CPUs: ${stats.system.cpus}\n` +
+                              `• Total Memory: ${stats.system.totalMem}\n` +
+                              `• Free Memory: ${stats.system.freeMem}\n` +
+                              `• System Uptime: ${stats.system.uptime}\n` +
+                              `• Bot Uptime: ${stats.system.botUptime}`;
 
             await sock.sendMessage(msg.key.remoteJid, { text: statsText });
         } catch (error) {
@@ -437,80 +600,7 @@ const ownerCommands = {
             mentions: [number]
         });
     },
-
-    setbotmode: async (sock, msg, args) => {
-        if (msg.key.remoteJid !== config.ownerNumber) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
-        }
-        const mode = args[0]?.toLowerCase();
-        if (!['public', 'private'].includes(mode)) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please specify public/private mode!' });
-        }
-        store.setBotMode(mode);
-        await sock.sendMessage(msg.key.remoteJid, { 
-            text: `Bot mode set to ${mode}`
-        });
-    },
-    qrmaker: async (sock, msg, args) => {
-        if (msg.key.remoteJid !== config.ownerNumber) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
-        }
-        const text = args.join(' ');
-        if (!text) {
-            return await sock.sendMessage(msg.key.remoteJid, { 
-                text: '❌ Please provide text to convert to QR code!' 
-            });
-        }
-        try {
-            const qrPath = path.join(tempDir, 'qr_output.png');
-            await QRCode.toFile(qrPath, text, {
-                color: {
-                    dark: '#000000',
-                    light: '#FFFFFF'
-                },
-                width: 512,
-                margin: 1
-            });
-            await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: qrPath },
-                caption: '✅ Here is your QR code!'
-            });
-            await fs.remove(qrPath);
-        } catch (error) {
-            logger.error('Error in qrmaker command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to generate QR code: ' + error.message
-            });
-        }
-    },
-
-    qrreader: async (sock, msg) => {
-        if (msg.key.remoteJid !== config.ownerNumber) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
-        }
-        if (!msg.message.imageMessage) {
-            return await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Please send an image containing a QR code!'
-            });
-        }
-        try {
-            const buffer = await sock.downloadMediaMessage(msg);
-            const image = await Jimp.read(buffer);
-            const qr = new QRReader();
-            const value = await new Promise((resolve, reject) => {
-                qr.callback = (err, v) => err != null ? reject(err) : resolve(v);
-                qr.decode(image.bitmap);
-            });
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `📱 QR Code Content:\n\n${value.result}`
-            });
-        } catch (error) {
-            logger.error('Error in qrreader command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to read QR code: ' + error.message
-            });
-        }
-    }
+    
 };
 
 module.exports = ownerCommands;
