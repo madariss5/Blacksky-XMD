@@ -6,7 +6,18 @@ module.exports = {
     botNumber: '', // Will be set after connection
     menuImage: 'https://raw.githubusercontent.com/your-repo/assets/main/f9.jpg',
     commands: {
-        // Media Commands (Updated)
+        // AI Commands (Updated)
+        ai: { description: 'Chat with AI assistant (GPT-3.5)', category: 'AI' },
+        gpt: { description: 'Advanced chat with GPT-4', category: 'AI' },
+        imagine: { description: 'Generate images with Stable Diffusion', category: 'AI' },
+        dalle: { description: 'Generate images with DALL-E 3', category: 'AI' },
+        remini: { description: 'Enhance image quality', category: 'AI' },
+        blackbox: { description: 'AI code generation and explanation', category: 'AI' },
+        img2txt: { description: 'Analyze and describe images', category: 'AI' },
+        tts: { description: 'Convert text to speech', category: 'AI' },
+        cleargpt: { description: 'Clear GPT chat history', category: 'AI' },
+
+        // Media Commands
         sticker: { description: 'Create sticker from image/video', category: 'Media' },
         toimg: { description: 'Convert sticker to image', category: 'Media' },
         tomp3: { description: 'Convert video to audio', category: 'Media' },
@@ -153,13 +164,14 @@ module.exports = {
         ss: { description: 'Take website screenshot', category: 'Tools' },
         shortlink: { description: 'Shorten URLs', category: 'Tools' },
 
-        // AI Commands
+        // AI Commands (Original, now moved after new commands)
         ai: { description: 'Chat with AI', category: 'AI' },
         imagine: { description: 'Generate AI images', category: 'AI' },
         remini: { description: 'Enhance image quality', category: 'AI' },
         dalle: { description: 'Generate images with DALL-E', category: 'AI' },
         gpt: { description: 'Chat with GPT', category: 'AI' },
         blackbox: { description: 'AI code generation', category: 'AI' },
+
 
         // NSFW Commands
         nsfwcheck: { description: 'Check NSFW status', category: 'NSFW' },

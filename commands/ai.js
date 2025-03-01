@@ -19,6 +19,11 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
 });
 
+// Initialize Replicate if API token is available
+const replicate = process.env.REPLICATE_API_TOKEN ? new Replicate({
+    auth: process.env.REPLICATE_API_TOKEN,
+}) : null;
+
 // Conversation memory store with enhanced context handling
 const conversationHistory = new Map();
 const MAX_HISTORY = 10;
@@ -66,7 +71,7 @@ const addToConversationHistory = (userId, message) => {
 
 // Enhanced AI commands
 const aiCommands = {
-    ask: async (sock, msg, args) => {
+    ai: async (sock, msg, args) => {
         const userId = msg.key.participant || msg.key.remoteJid;
         if (isOnCooldown(userId, 'chat')) {
             return await sock.sendMessage(msg.key.remoteJid, {
@@ -76,17 +81,20 @@ const aiCommands = {
 
         if (!args.length) {
             return await sock.sendMessage(msg.key.remoteJid, {
-                text: 'Please provide a question!\nUsage: .ask <your question>'
+                text: '❌ Please provide a message!\nUsage: !ai <your message>'
             });
         }
 
         try {
-            // Send typing indicator
             await sock.sendPresenceUpdate('composing', msg.key.remoteJid);
 
             const response = await openai.chat.completions.create({
                 model: "gpt-3.5-turbo",
-                messages: [{ role: "user", content: args.join(' ') }],
+                messages: [
+                    { role: "system", content: "You are a friendly and knowledgeable AI assistant." },
+                    { role: "user", content: args.join(' ') }
+                ],
+                temperature: 0.7
             });
 
             setCooldown(userId, 'chat');
@@ -95,24 +103,78 @@ const aiCommands = {
             });
 
         } catch (error) {
-            logger.error('Error in ask command:', error);
+            logger.error('Error in ai command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error processing your request: ' + error.message
             });
         }
     },
 
-    dalle: async (sock, msg, args) => {
+    gpt: async (sock, msg, args) => {
         const userId = msg.key.participant || msg.key.remoteJid;
-        if (isOnCooldown(userId, 'image')) {
+
+        if (isOnCooldown(userId, 'chat')) {
             return await sock.sendMessage(msg.key.remoteJid, {
-                text: '⏳ Please wait a few seconds before using this command again.'
+                text: '⏳ Please wait before sending another message.'
             });
         }
 
         if (!args.length) {
             return await sock.sendMessage(msg.key.remoteJid, {
-                text: 'Please provide an image description!\nUsage: .dalle <description>'
+                text: '❌ Please provide a message to chat about!'
+            });
+        }
+
+        try {
+            await sock.sendPresenceUpdate('composing', msg.key.remoteJid);
+
+            const history = getConversationHistory(userId);
+            const userInput = args.join(' ');
+
+            const messages = [
+                { role: "system", content: "You are a helpful, friendly, and knowledgeable assistant." },
+                ...history,
+                { role: "user", content: userInput }
+            ];
+
+            const response = await openai.chat.completions.create({
+                model: "gpt-4",  // Using GPT-4 for better responses
+                messages: messages,
+                temperature: 0.7,
+                max_tokens: 2000,
+                top_p: 1,
+                frequency_penalty: 0,
+                presence_penalty: 0
+            });
+
+            const aiResponse = response.choices[0].message.content;
+
+            addToConversationHistory(userId, { role: "user", content: userInput });
+            addToConversationHistory(userId, { role: "assistant", content: aiResponse });
+
+            await sock.sendMessage(msg.key.remoteJid, { text: aiResponse });
+            setCooldown(userId, 'chat');
+
+        } catch (error) {
+            logger.error('Error in gpt command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error processing your request: ' + error.message
+            });
+        }
+    },
+
+    imagine: async (sock, msg, args) => {
+        const userId = msg.key.participant || msg.key.remoteJid;
+
+        if (isOnCooldown(userId, 'image')) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Please wait before generating another image.'
+            });
+        }
+
+        if (!args.length) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Please provide an image description!'
             });
         }
 
@@ -121,39 +183,306 @@ const aiCommands = {
                 text: '🎨 Generating your image...'
             });
 
-            const response = await openai.images.generate({
-                model: "dall-e-3",
-                prompt: args.join(' '),
-                n: 1,
-                size: "1024x1024"
+            if (!replicate) {
+                throw new Error('Replicate API token not configured');
+            }
+
+            const output = await replicate.run(
+                "stability-ai/sdxl:a00d0b7dcbb9c3fbb34ba87d2d5b46c56969c84a628bf778a7fdaec30b1b99c5",
+                {
+                    input: {
+                        prompt: args.join(' '),
+                        negative_prompt: "ugly, deformed, noisy, blurry, distorted, out of focus, bad anatomy, extra limbs, poorly drawn face, poorly drawn hands, missing fingers",
+                        num_outputs: 1,
+                        num_inference_steps: 25,
+                        scheduler: "K_EULER",
+                        guidance_scale: 7.5
+                    }
+                }
+            );
+
+            if (!output || !output[0]) {
+                throw new Error('Failed to generate image');
+            }
+
+            const imageUrl = output[0];
+            const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: Buffer.from(response.data),
+                caption: `✨ Generated image for: "${args.join(' ')}"`
             });
-
-            const imageUrl = response.data[0].url;
-            const timestamp = Date.now();
-            const outputPath = path.join(tempDir, `dalle_${timestamp}.jpg`);
-
-            // Download and save image
-            const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-            await fs.writeFile(outputPath, imageResponse.data);
 
             setCooldown(userId, 'image');
 
-            await sock.sendMessage(msg.key.remoteJid, {
-                image: fs.readFileSync(outputPath),
-                caption: `🖼️ Here's your DALL-E generated image for: "${args.join(' ')}"`
-            });
-
-            // Cleanup
-            await fs.remove(outputPath);
-
         } catch (error) {
-            logger.error('Error in dalle command:', error);
+            logger.error('Error in imagine command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error generating image: ' + error.message
+                text: '❌ Failed to generate image: ' + error.message
             });
         }
     },
 
+    dalle: async (sock, msg, args) => {
+        const userId = msg.key.participant || msg.key.remoteJid;
+        if (isOnCooldown(userId, 'image')) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Please wait before generating another image.'
+            });
+        }
+
+        if (!args.length) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Please provide an image description!'
+            });
+        }
+
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🎨 Creating your masterpiece with DALL-E 3...'
+            });
+
+            const response = await openai.images.generate({
+                model: "dall-e-3",
+                prompt: args.join(' '),
+                n: 1,
+                size: "1024x1024",
+                quality: "hd"
+            });
+
+            if (!response.data[0]?.url) {
+                throw new Error('Failed to generate image');
+            }
+
+            const imageUrl = response.data[0].url;
+            const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: Buffer.from(imageResponse.data),
+                caption: `✨ Here's your AI-generated image for: "${args.join(' ')}"`
+            });
+
+            setCooldown(userId, 'image');
+
+        } catch (error) {
+            logger.error('Error in dalle command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to generate image: ' + error.message
+            });
+        }
+    },
+
+    remini: async (sock, msg) => {
+        const userId = msg.key.participant || msg.key.remoteJid;
+
+        if (isOnCooldown(userId, 'image')) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Please wait before enhancing another image.'
+            });
+        }
+
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !remini'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🎨 Enhancing your image...'
+            });
+
+            if (!replicate) {
+                throw new Error('Replicate API token not configured');
+            }
+
+            const imageBuffer = await downloadMediaMessage(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const output = await replicate.run(
+                "nightmareai/real-esrgan:42fed1c4974146d4d2414e2be2c5277c7fcf05fcc3a73abf41610695738c1d7b",
+                {
+                    input: {
+                        image: imageBuffer.toString('base64'),
+                        scale: 2,
+                        face_enhance: true
+                    }
+                }
+            );
+
+            if (!output) {
+                throw new Error('Failed to enhance image');
+            }
+
+            const response = await axios.get(output, { responseType: 'arraybuffer' });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: Buffer.from(response.data),
+                caption: '✨ Here\'s your enhanced image!'
+            });
+
+            setCooldown(userId, 'image');
+
+        } catch (error) {
+            logger.error('Error in remini command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to enhance image: ' + error.message
+            });
+        }
+    },
+
+    blackbox: async (sock, msg, args) => {
+        const userId = msg.key.participant || msg.key.remoteJid;
+
+        if (isOnCooldown(userId, 'chat')) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Please wait before generating another code solution.'
+            });
+        }
+
+        if (!args.length) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Please provide a coding problem or question!'
+            });
+        }
+
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '💻 Generating code solution...'
+            });
+
+            const prompt = `As an expert programmer, please provide a detailed solution with explanations for the following: ${args.join(' ')}. Include:
+1. Problem analysis
+2. Solution approach
+3. Code implementation with comments
+4. Example usage
+5. Potential edge cases and handling`;
+
+            const response = await openai.chat.completions.create({
+                model: "gpt-4",
+                messages: [
+                    {
+                        role: "system",
+                        content: "You are an expert programmer specializing in providing clear, efficient, and well-documented code solutions."
+                    },
+                    {
+                        role: "user",
+                        content: prompt
+                    }
+                ],
+                temperature: 0.7,
+                max_tokens: 2000
+            });
+
+            const solution = response.choices[0].message.content;
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*🔍 Code Solution*\n\n${solution}\n\n⚠️ Remember to test and adapt the code to your specific needs.`
+            });
+
+            setCooldown(userId, 'chat');
+
+        } catch (error) {
+            logger.error('Error in blackbox command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to generate code solution: ' + error.message
+            });
+        }
+    },
+
+    cleargpt: async (sock, msg) => {
+        const userId = msg.key.participant || msg.key.remoteJid;
+        try {
+            conversationHistory.delete(userId);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🗑️ Conversation history cleared successfully!'
+            });
+        } catch (error) {
+            logger.error('Error in cleargpt command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error clearing conversation history: ' + error.message
+            });
+        }
+    },
+
+    img2txt: async (sock, msg) => {
+        const userId = msg.key.participant || msg.key.remoteJid;
+
+        if (isOnCooldown(userId, 'vision')) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Please wait before analyzing another image.'
+            });
+        }
+
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !img2txt'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🔍 Analyzing image...'
+            });
+
+            const imageBuffer = await downloadMediaMessage(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const response = await openai.chat.completions.create({
+                model: "gpt-4-vision-preview",
+                messages: [
+                    {
+                        role: "user",
+                        content: [
+                            { type: "text", text: "Describe this image in detail" },
+                            {
+                                type: "image_url",
+                                image_url: {
+                                    url: `data:image/jpeg;base64,${imageBuffer.toString('base64')}`
+                                }
+                            }
+                        ]
+                    }
+                ],
+                max_tokens: 500
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `📝 *Image Analysis*\n\n${response.choices[0].message.content}`
+            });
+
+            setCooldown(userId, 'vision');
+
+        } catch (error) {
+            logger.error('Error in img2txt command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to analyze image: ' + error.message
+            });
+        }
+    },
     tts: async (sock, msg, args) => {
         const userId = msg.key.participant || msg.key.remoteJid;
         if (isOnCooldown(userId, 'default')) {
@@ -202,7 +531,6 @@ const aiCommands = {
             });
         }
     },
-
     // Alias commands
     gpt: async (sock, msg, args) => {
         const userId = msg.key.participant || msg.key.remoteJid;
@@ -330,6 +658,10 @@ const aiCommands = {
                 text: '🎨 Enhancing your image...'
             });
 
+            if (!replicate) {
+                throw new Error('Replicate API token not configured');
+            }
+
             const imageBuffer = await downloadMediaMessage(
                 {
                     key: msg.message.extendedTextMessage.contextInfo.stanzaId,
@@ -343,10 +675,6 @@ const aiCommands = {
                     reuploadRequest: sock.updateMediaMessage
                 }
             );
-
-            const replicate = new Replicate({
-                auth: process.env.REPLICATE_API_TOKEN,
-            });
 
             const output = await replicate.run(
                 "nightmareai/real-esrgan:42fed1c4974146d4d2414e2be2c5277c7fcf05fcc3a73abf41610695738c1d7b",
@@ -450,6 +778,74 @@ const aiCommands = {
             });
         }
     },
+
+    img2txt: async (sock, msg) => {
+        const userId = msg.key.participant || msg.key.remoteJid;
+
+        if (isOnCooldown(userId, 'vision')) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Please wait before analyzing another image.'
+            });
+        }
+
+        try {
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image with !img2txt'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🔍 Analyzing image...'
+            });
+
+            const imageBuffer = await downloadMediaMessage(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            const response = await openai.chat.completions.create({
+                model: "gpt-4-vision-preview",
+                messages: [
+                    {
+                        role: "user",
+                        content: [
+                            { type: "text", text: "Describe this image in detail" },
+                            {
+                                type: "image_url",
+                                image_url: {
+                                    url: `data:image/jpeg;base64,${imageBuffer.toString('base64')}`
+                                }
+                            }
+                        ]
+                    }
+                ],
+                max_tokens: 500
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `📝 *Image Analysis*\n\n${response.choices[0].message.content}`
+            });
+
+            setCooldown(userId, 'vision');
+
+        } catch (error) {
+            logger.error('Error in img2txt command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to analyze image: ' + error.message
+            });
+        }
+    },
     colorize: async (sock, msg) => {
         await sock.sendMessage(msg.key.remoteJid, { 
             text: "🚧 The colorize command is currently under development."
@@ -463,11 +859,6 @@ const aiCommands = {
     anime2d: async (sock, msg) => {
         await sock.sendMessage(msg.key.remoteJid, { 
             text: "🚧 The anime2d command is currently under development."
-        });
-    },
-    img2txt: async (sock, msg) => {
-        await sock.sendMessage(msg.key.remoteJid, { 
-            text: "🚧 The img2txt command is currently under development."
         });
     },
     lisa: async (sock, msg) => {
@@ -637,6 +1028,10 @@ const aiCommands = {
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '🎨 Generating image with Stable Diffusion...'
             });
+
+            if (!replicate) {
+                throw new Error('Replicate API token not configured');
+            }
 
             const prompt = args.join(' ');
 
