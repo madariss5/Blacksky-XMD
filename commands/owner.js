@@ -118,7 +118,7 @@ const ownerCommands = {
         }
         try {
             await sock.sendMessage(msg.key.remoteJid, { text: '🔄 Restarting bot...' });
-            process.exit(0); 
+            process.exit(0);
         } catch (error) {
             await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to restart: ' + error.message });
         }
@@ -130,8 +130,8 @@ const ownerCommands = {
         }
         try {
             await sock.sendMessage(msg.key.remoteJid, { text: '🔄 Checking for updates...' });
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: 'ℹ️ No updates available. You are using the latest version.' 
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: 'ℹ️ No updates available. You are using the latest version.'
             });
         } catch (error) {
             await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to check updates: ' + error.message });
@@ -148,7 +148,7 @@ const ownerCommands = {
         try {
             const code = args.join(' ');
             const result = eval(code);
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `📝 *Eval Result:*\n\n${result}`
             });
         } catch (error) {
@@ -198,8 +198,8 @@ const ownerCommands = {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
         }
         if (!msg.message.documentMessage) {
-            return await sock.sendMessage(msg.key.remoteJid, { 
-                text: '❌ Please send a backup file with this command!' 
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Please send a backup file with this command!'
             });
         }
         try {
@@ -224,7 +224,7 @@ const ownerCommands = {
         }
         try {
             await store.addModerator(number);
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `Added @${number.split('@')[0]} as moderator`,
                 mentions: [number]
             });
@@ -243,7 +243,7 @@ const ownerCommands = {
         }
         try {
             await store.removeModerator(number);
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `Removed @${number.split('@')[0]} from moderators`,
                 mentions: [number]
             });
@@ -342,7 +342,7 @@ const ownerCommands = {
         } else {
             message += 'No banned groups';
         }
-        await sock.sendMessage(msg.key.remoteJid, { 
+        await sock.sendMessage(msg.key.remoteJid, {
             text: message,
             mentions: banned
         });
@@ -388,7 +388,7 @@ const ownerCommands = {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Please specify public/private mode!' });
         }
         store.setBotMode(mode);
-        await sock.sendMessage(msg.key.remoteJid, { 
+        await sock.sendMessage(msg.key.remoteJid, {
             text: `Bot mode set to ${mode}`
         });
     },
@@ -396,7 +396,7 @@ const ownerCommands = {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
         }
-        await sock.sendMessage(msg.key.remoteJid, { 
+        await sock.sendMessage(msg.key.remoteJid, {
             text: '⚠️ QR code generation is temporarily unavailable. This feature will be enabled in a future update.'
         });
     },
@@ -476,7 +476,7 @@ const ownerCommands = {
         }
         try {
             store.setMaintenanceMode(mode === 'on');
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `Maintenance mode ${mode === 'on' ? 'enabled' : 'disabled'}`
             });
         } catch (error) {
@@ -494,7 +494,7 @@ const ownerCommands = {
         }
         try {
             store.setMaxWarnings(maxWarns);
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `Maximum warnings set to ${maxWarns}`
             });
         } catch (error) {
@@ -526,7 +526,7 @@ const ownerCommands = {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a number to block!' });
         }
         await sock.updateBlockStatus(number, "block");
-        await sock.sendMessage(msg.key.remoteJid, { 
+        await sock.sendMessage(msg.key.remoteJid, {
             text: `Blocked @${number.split('@')[0]}`,
             mentions: [number]
         });
@@ -541,12 +541,241 @@ const ownerCommands = {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a number to unblock!' });
         }
         await sock.updateBlockStatus(number, "unblock");
-        await sock.sendMessage(msg.key.remoteJid, { 
+        await sock.sendMessage(msg.key.remoteJid, {
             text: `Unblocked @${number.split('@')[0]}`,
             mentions: [number]
         });
     },
-    
+
+
+    join: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        if (!args[0]) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a group link!' });
+        }
+        try {
+            const [linkID] = args[0].split('whatsapp.com/')[1];
+            await sock.groupAcceptInvite(linkID);
+            await sock.sendMessage(msg.key.remoteJid, { text: '✅ Successfully joined the group!' });
+        } catch (error) {
+            logger.error('Error in join command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to join group: ' + error.message });
+        }
+    },
+
+    leave: async (sock, msg) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        if (!msg.key.remoteJid.endsWith('@g.us')) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'This command can only be used in groups!' });
+        }
+        try {
+            await sock.groupLeave(msg.key.remoteJid);
+            await sock.sendMessage(msg.key.remoteJid, { text: '👋 Goodbye! Bot is leaving the group.' });
+        } catch (error) {
+            logger.error('Error in leave command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to leave group: ' + error.message });
+        }
+    },
+
+    clearall: async (sock, msg) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        try {
+            const chats = await store.get('chats') || [];
+            for (const chat of chats) {
+                await sock.chatModify({ clear: true }, chat);
+            }
+            await sock.sendMessage(msg.key.remoteJid, { text: '✅ Successfully cleared all chats!' });
+        } catch (error) {
+            logger.error('Error in clearall command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to clear chats: ' + error.message });
+        }
+    },
+
+    setstatus: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        const status = args.join(' ');
+        if (!status) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a status!' });
+        }
+        try {
+            await sock.updateProfileStatus(status);
+            await sock.sendMessage(msg.key.remoteJid, { text: `✅ Status updated to: ${status}` });
+        } catch (error) {
+            logger.error('Error in setstatus command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to update status: ' + error.message });
+        }
+    },
+
+    addpremium: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        const number = args[0]?.replace('@', '') + '@s.whatsapp.net';
+        if (!number) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a number to add as premium!' });
+        }
+        try {
+            await store.addPremiumUser(number);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Added @${number.split('@')[0]} to premium users`,
+                mentions: [number]
+            });
+        } catch (error) {
+            logger.error('Error in addpremium command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to add premium user: ' + error.message });
+        }
+    },
+
+    delpremium: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        const number = args[0]?.replace('@', '') + '@s.whatsapp.net';
+        if (!number) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a number to remove from premium!' });
+        }
+        try {
+            await store.removePremiumUser(number);            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Removed @${number.split('@')[0]} from premium users`,
+                mentions: [number]
+            });
+        } catch (error) {
+            logger.error('Error in delpremium command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to remove premium user: ' + error.message });
+        }
+    },
+
+    listpremium: async (sock, msg) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        try {
+            const premiumUsers = await store.getPremiumUsers();
+            if (!premiumUsers.length) {
+                return await sock.sendMessage(msg.key.remoteJid, { text: 'No premium users found!' });
+            }
+            let text = '*Premium Users List*\n\n';
+            premiumUsers.forEach((user, i) => {
+                text += `${i + 1}. @${user.split('@')[0]}\n`;
+            });
+            await sock.sendMessage(msg.key.remoteJid, {
+                text,
+                mentions: premiumUsers
+            });
+        } catch (error) {
+            logger.error('Error in listpremium command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to get premium users: ' + error.message });
+        }
+    },
+
+    bc: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        const message = args.join(' ');
+        if (!message) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a message to broadcast!' });
+        }
+        try {
+            const chats = await store.get('chats') || [];
+            let successCount = 0;
+            for (const chat of chats) {
+                try {
+                    await sock.sendMessage(chat, { text: `*📢 Broadcast*\n\n${message}` });
+                    successCount++;
+                } catch (error) {
+                    logger.error(`Failed to send broadcast to ${chat}:`, error);
+                }
+            }
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Broadcast sent to ${successCount}/${chats.length} chats`
+            });
+        } catch (error) {
+            logger.error('Error in bc command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to send broadcast: ' + error.message });
+        }
+    },
+
+    bcgc: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        const message = args.join(' ');
+        if (!message) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a message to broadcast!' });
+        }
+        try {
+            const groups = (await store.get('chats') || []).filter(id => id.endsWith('@g.us'));
+            let successCount = 0;
+            for (const group of groups) {
+                try {
+                    await sock.sendMessage(group, { text: `*📢 Group Broadcast*\n\n${message}` });
+                    successCount++;
+                } catch (error) {
+                    logger.error(`Failed to send broadcast to group ${group}:`, error);
+                }
+            }
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Broadcast sent to ${successCount}/${groups.length} groups`
+            });
+        } catch (error) {
+            logger.error('Error in bcgc command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to send group broadcast: ' + error.message });
+        }
+    },
+
+    bcpc: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        const message = args.join(' ');
+        if (!message) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a message to broadcast!' });
+        }
+        try {
+            const privateChats = (await store.get('chats') || []).filter(id => !id.endsWith('@g.us'));
+            let successCount = 0;
+            for (const chat of privateChats) {
+                try {
+                    await sock.sendMessage(chat, { text: `*📢 Broadcast*\n\n${message}` });
+                    successCount++;
+                } catch (error) {
+                    logger.error(`Failed to send broadcast to ${chat}:`, error);
+                }
+            }
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Broadcast sent to ${successCount}/${privateChats.length} private chats`
+            });
+        } catch (error) {
+            logger.error('Error in bcpc command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to send private chat broadcast: ' + error.message });
+        }
+    },
+
+    getcase: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        if (!args[0]) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a command name!' });
+        }
+        try {
+            const cmdName = args[0].toLowerCase();
+            const cmdFunction = ownerCommands[cmdName]?.toString() || 'Command not found';
+            await sock.sendMessage(msg.key.remoteJid, { text: `*${cmdName} Source Code*\n\n${cmdFunction}` });
+        } catch (error) {
+            logger.error('Error in getcase command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to get command source: ' + error.message });
+        }
+    }
 };
 
 module.exports = ownerCommands;
