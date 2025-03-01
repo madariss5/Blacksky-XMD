@@ -14,12 +14,11 @@ const path = require('path');
 class WhatsAppManager {
     constructor() {
         this.store = makeInMemoryStore({ logger: pino({ level: "silent" }) });
-        this.authDir = path.join(__dirname, '../auth_info_baileys');
-        this.retriesLeft = 5; // Increased retries
+        this.authDir = path.join(process.cwd(), 'auth_info_baileys');
+        this.retriesLeft = 3;
         this.retryTimeout = 3000;
         this.sock = null;
         this.isConnected = false;
-        this.messageRetryMap = new Map();
         this.initializationPromise = null;
     }
 
@@ -36,7 +35,8 @@ class WhatsAppManager {
         try {
             logger.info('Starting WhatsApp initialization...');
 
-            // Ensure auth directory exists
+            // Clean up auth directory to force new QR code
+            await fs.remove(this.authDir);
             await fs.ensureDir(this.authDir);
 
             const { state, saveCreds } = await useMultiFileAuthState(this.authDir);
@@ -44,33 +44,25 @@ class WhatsAppManager {
 
             logger.info('Creating WhatsApp socket with version:', version);
 
-            // Enhanced socket configuration based on SHABAN-MD-V5
             this.sock = makeWASocket({
                 version,
-                logger: pino({ level: "silent" }), // Reduce noise but log important events
+                logger: pino({ level: "silent" }),
                 printQRInTerminal: true,
-                auth: {
-                    creds: state.creds,
-                    keys: state.keys
-                },
-                browser: ['BLACKSKY-MD', 'Safari', '1.0.0'], // Updated browser config
-                connectTimeoutMs: 60000,
-                qrTimeout: 60000,
-                defaultQueryTimeoutMs: 30000,
+                auth: state,
+                browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49'],
+                connectTimeoutMs: 60_000,
+                qrTimeout: 40000,
+                defaultQueryTimeoutMs: 0,
                 keepAliveIntervalMs: 10000,
                 emitOwnEvents: true,
                 markOnlineOnConnect: true,
                 retryRequestDelayMs: 2000,
-                fireInitQueries: true,
-                generateHighQualityLinkPreview: true,
-                syncFullHistory: true,
-                userDeviceIdForUserHandle: 'BLACKSKY-BOT'
+                userDeviceIdForUserHandle: '𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝔹𝕆𝕋'
             });
 
             this.store.bind(this.sock.ev);
 
-            // Enhanced connection handling
-            this.sock.ev.on('connection.update', async (update) => {
+            this.sock.ev.on('connection.update', (update) => {
                 const { connection, lastDisconnect, qr } = update;
                 logger.info('Connection status update:', {
                     connection,
@@ -80,54 +72,49 @@ class WhatsAppManager {
 
                 if (qr) {
                     logger.info('New QR code received, displaying in terminal...');
-                    // Log QR data for debugging
-                    logger.info('QR data length:', qr.length);
-                    logger.info('QR data first 50 chars:', qr.substring(0, 50));
+                    require('qrcode-terminal').generate(qr, { small: true });
                 }
 
                 if (connection === 'open') {
                     this.isConnected = true;
-                    this.retriesLeft = 5; // Reset retries on successful connection
                     logger.info('WhatsApp connection established successfully!');
                     this.sock.sendPresenceUpdate('available');
                 }
 
                 if (connection === 'close') {
                     this.isConnected = false;
-                    const statusCode = lastDisconnect?.error?.output?.statusCode;
                     const shouldReconnect = (lastDisconnect?.error instanceof Boom) ?
-                        statusCode !== DisconnectReason.loggedOut : true;
+                        lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut : true;
 
                     logger.info('Connection closed:', {
                         shouldReconnect,
-                        statusCode,
+                        statusCode: lastDisconnect?.error?.output?.statusCode,
                         errorMessage: lastDisconnect?.error?.message
                     });
 
-                    if (shouldReconnect && this.retriesLeft > 0) {
-                        this.retriesLeft--;
-                        const delay = (5 - this.retriesLeft) * this.retryTimeout; // Progressive delay
-                        logger.info(`Attempting reconnection in ${delay}ms... (${this.retriesLeft} retries left)`);
-                        this.initializationPromise = null;
-                        setTimeout(() => this.initialize(), delay);
-                    } else {
-                        logger.error('Connection closed permanently');
-                        if (statusCode === DisconnectReason.loggedOut) {
-                            await fs.remove(this.authDir);
-                            logger.info('Auth directory cleared due to logout');
-                        }
-                        throw new Error('WhatsApp connection closed permanently');
+                    if (shouldReconnect) {
+                        logger.info('Attempting reconnection in 3 seconds...');
+                        setTimeout(() => {
+                            this.initializationPromise = null;
+                            this.initialize();
+                        }, 3000);
                     }
                 }
             });
 
-            // Enhanced credentials update handling
-            this.sock.ev.on('creds.update', async () => {
+            this.sock.ev.on('creds.update', saveCreds);
+
+            // Handle messages with improved error handling
+            this.sock.ev.on('messages.upsert', async ({ messages, type }) => {
                 try {
-                    logger.info('Credentials updated, saving...');
-                    await saveCreds();
+                    if (type === 'notify') {
+                        logger.info('New message received:', {
+                            from: messages[0].key.remoteJid,
+                            type: Object.keys(messages[0].message)[0]
+                        });
+                    }
                 } catch (error) {
-                    logger.error('Error saving credentials:', error);
+                    logger.error('Error processing message:', error);
                 }
             });
 
@@ -136,15 +123,7 @@ class WhatsAppManager {
         } catch (error) {
             logger.error('WhatsApp initialization error:', error);
             this.initializationPromise = null;
-
-            if (this.retriesLeft > 0) {
-                this.retriesLeft--;
-                const delay = (5 - this.retriesLeft) * this.retryTimeout;
-                logger.info(`Retrying initialization in ${delay}ms... (${this.retriesLeft} retries left)`);
-                setTimeout(() => this.initialize(), delay);
-            } else {
-                throw error;
-            }
+            throw error;
         }
     }
 
