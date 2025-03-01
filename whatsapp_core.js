@@ -1,4 +1,4 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const fs = require('fs');
 const path = require('path');
@@ -7,19 +7,6 @@ const qrcode = require('qrcode-terminal');
 const pino = require('pino');
 const NodeCache = require('node-cache');
 
-// Initialize logger with better error tracking
-const logger = pino({ 
-    level: process.env.LOG_LEVEL || 'info',
-    transport: {
-        target: 'pino-pretty',
-        options: { 
-            colorize: true,
-            ignore: 'pid,hostname',
-            translateTime: true
-        }
-    }
-});
-
 let sock = null;
 let connectionRetries = 0;
 let lastQRTime = 0;
@@ -27,124 +14,123 @@ const MAX_RETRIES = 3;
 const QR_INTERVAL = 30000; // 30 seconds between QR codes
 const QR_TIMEOUT = 60000; // 60 seconds timeout for QR code scanning
 
+// Initialize logger for errors only
+const logger = pino({ 
+    level: 'warn', // Only show warnings and errors
+    transport: {
+        target: 'pino-pretty',
+        options: { 
+            colorize: true,
+            ignore: 'pid,hostname,class',
+            messageFormat: '{msg}'
+        }
+    }
+});
+
+// Baileys logger for internal debug only
+const baileyLogger = pino({ level: 'silent' });
+
 async function showHeader() {
     console.log(chalk.blue('\n┌─────────────────────────────────────┐'));
     console.log(chalk.blue('│          Flash-Bot Connection        │'));
     console.log(chalk.blue('└─────────────────────────────────────┘\n'));
 }
 
+async function showInstructions() {
+    console.log(chalk.yellow('Please follow these steps:'));
+    console.log(chalk.white('1. Open WhatsApp on your phone'));
+    console.log(chalk.white('2. Go to Settings > Linked Devices'));
+    console.log(chalk.white('3. Tap on "Link a Device"'));
+    console.log(chalk.white('4. Make sure your WhatsApp is up to date'));
+    console.log(chalk.white('5. Check that you have a stable internet connection'));
+    console.log(chalk.white('6. Wait 5 seconds before scanning'));
+    console.log(chalk.white('7. Check that you\'re following the steps exactly as shown'));
+    console.log(chalk.white('8. Scan the QR code below\n'));
+}
+
 async function startWhatsApp() {
     try {
         await showHeader();
+        await showInstructions();
 
         // Clean auth state
         const authDir = './auth_info_baileys';
         try {
             await fs.promises.rm(authDir, { recursive: true, force: true });
             await fs.promises.mkdir(authDir, { recursive: true });
-            logger.info('Auth state cleaned');
         } catch (error) {
             logger.warn('Error cleaning auth directory:', error);
         }
 
         // Initialize authentication state
         const { state, saveCreds } = await useMultiFileAuthState(authDir);
-        const { version } = await fetchLatestBaileysVersion();
-        logger.info('Using Baileys version:', version);
 
         // Create WhatsApp socket connection
         sock = makeWASocket({
-            version,
-            logger: pino({ level: 'silent' }),
-            printQRInTerminal: false,
             auth: state,
+            printQRInTerminal: false,
             browser: ['Flash-Bot', 'Chrome', '1.0.0'],
+            logger: baileyLogger,
             connectTimeoutMs: 60000,
             qrTimeout: QR_TIMEOUT,
             defaultQueryTimeoutMs: 60000,
-            msgRetryCounterCache: new NodeCache(),
-            generateHighQualityLinkPreview: false,
-            markOnlineOnConnect: true,
-            fireInitQueries: false,
-            syncFullHistory: false
+            markOnlineOnConnect: true
         });
-
-        logger.info('Socket connection initialized');
 
         // Connection update handler
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
-
-            logger.info('Connection state:', {
-                state: connection,
-                attempts: connectionRetries,
-                hasQR: !!qr
-            });
 
             if (qr) {
                 const now = Date.now();
                 if (now - lastQRTime >= QR_INTERVAL) {
                     lastQRTime = now;
 
-                    await showHeader();
-                    console.log(chalk.yellow('Please follow these steps:'));
-                    console.log(chalk.white('1. Open WhatsApp on your phone'));
-                    console.log(chalk.white('2. Go to Settings > Linked Devices'));
-                    console.log(chalk.white('3. Tap on "Link a Device"'));
-                    console.log(chalk.white('4. Make sure your WhatsApp is up to date'));
-                    console.log(chalk.white('5. Check that you have a stable internet connection'));
-                    console.log(chalk.white('6. Wait 5 seconds before scanning'));
-                    console.log(chalk.white('7. Scan the QR code below\n'));
+                    // Clear previous QR code section
+                    console.log('\x1b[2K'); // Clear the current line
+                    console.log('\x1b[0G'); // Move cursor to start of line
 
-                    // Add delay before showing QR
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    // Show new QR code
+                    console.log(chalk.cyan('\nNew QR code generated:'));
+                    console.log(chalk.yellow('──────────────────────────────────────\n'));
                     qrcode.generate(qr, { small: true });
                     console.log(chalk.cyan('\nWaiting for connection...'));
-                    console.log(chalk.yellow(`Next QR code will be shown in ${QR_INTERVAL/1000} seconds if not connected.\n`));
-
-                    logger.info('New QR code generated, waiting for scan');
-                } else {
-                    logger.info('Skipping QR code display - too soon');
+                    console.log(chalk.yellow(`Next QR code in ${QR_INTERVAL/1000}s if not connected.\n`));
                 }
             }
 
             if (connection === 'connecting') {
-                console.log(chalk.yellow('\nConnecting to WhatsApp...'));
-                logger.info('Attempting connection to WhatsApp');
+                console.log(chalk.cyan('\nAttempting to connect...\n'));
             }
 
             if (connection === 'close') {
-                const statusCode = lastDisconnect?.error?.output?.statusCode;
                 const shouldReconnect = (lastDisconnect?.error instanceof Boom) ?
-                    statusCode !== DisconnectReason.loggedOut : true;
+                    lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut : true;
 
-                logger.info('Connection closed:', {
-                    statusCode,
-                    shouldReconnect,
-                    retries: connectionRetries
-                });
-
-                // Clear socket instance
-                sock = null;
-
-                if (shouldReconnect && connectionRetries < MAX_RETRIES) {
+                if (shouldReconnect) {
                     connectionRetries++;
-                    console.log(chalk.yellow(`\nConnection closed. Retrying (${connectionRetries}/${MAX_RETRIES})...`));
 
-                    // Clean up before retry
-                    try {
-                        await fs.promises.rm(authDir, { recursive: true, force: true });
-                        await fs.promises.mkdir(authDir, { recursive: true });
-                        logger.info('Auth cleared for retry');
-                    } catch (error) {
-                        logger.warn('Error cleaning auth directory:', error);
+                    // Clear socket instance
+                    sock = null;
+
+                    if (connectionRetries < MAX_RETRIES) {
+                        // Clean up before retry
+                        try {
+                            await fs.promises.rm(authDir, { recursive: true, force: true });
+                            await fs.promises.mkdir(authDir, { recursive: true });
+                        } catch (error) {
+                            logger.warn('Error cleaning auth directory:', error);
+                        }
+
+                        // Add increasing delay between retries
+                        const delay = Math.min(3000 * connectionRetries, 15000);
+                        console.log(chalk.yellow(`\nReconnecting in ${delay/1000}s... (${connectionRetries}/${MAX_RETRIES})\n`));
+                        setTimeout(startWhatsApp, delay);
                     }
-
-                    setTimeout(startWhatsApp, 3000);
-                } else if (statusCode === DisconnectReason.loggedOut) {
+                } else if (lastDisconnect?.error?.output?.statusCode === DisconnectReason.loggedOut) {
                     console.log(chalk.red('\n× Session expired. Starting fresh session...'));
-                    logger.warn('Session expired, restarting...');
                     connectionRetries = 0;
+                    lastQRTime = 0;
                     setTimeout(startWhatsApp, 3000);
                 } else {
                     console.log(chalk.red('\n× Connection closed permanently.'));
@@ -165,16 +151,9 @@ async function startWhatsApp() {
                 console.log(chalk.cyan('• Status: Online'));
                 console.log(chalk.cyan('• User: ' + sock.user.id));
 
-                logger.info('Connection established:', {
-                    user: sock.user.id,
-                    platform: process.platform,
-                    version: process.version
-                });
-
                 try {
                     const startupMessage = '🤖 *WhatsApp Bot Online!*\n\nSend !menu to see available commands';
                     await sock.sendMessage(sock.user.id, { text: startupMessage });
-                    logger.info('Startup message sent');
                 } catch (error) {
                     logger.error('Failed to send startup message:', error);
                 }
@@ -182,15 +161,12 @@ async function startWhatsApp() {
         });
 
         // Credentials update handler
-        sock.ev.on('creds.update', async () => {
-            logger.info('Credentials updated - saving');
-            await saveCreds();
-        });
+        sock.ev.on('creds.update', saveCreds);
 
         // Error handlers
-        process.on('uncaughtException', (err) => {
-            logger.error('Uncaught Exception:', err);
-            console.error(chalk.red('\nFatal error:', err.message));
+        process.on('uncaughtException', (error) => {
+            logger.error('Uncaught Exception:', error);
+            console.error(chalk.red('\nFatal error:', error.message));
             process.exit(1);
         });
 
