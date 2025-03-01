@@ -25,10 +25,28 @@ async function ensureCleanAuth() {
     logger.info('Auth directory cleaned and recreated');
 }
 
+function validatePhoneNumber(phoneNumber) {
+    // Remove any spaces, dashes, or plus signs
+    const cleanNumber = phoneNumber.replace(/[\s\-\+]/g, '');
+    // Check if it's a valid number format (just digits)
+    if (!/^\d+$/.test(cleanNumber)) {
+        throw new Error('Phone number should contain only digits');
+    }
+    return cleanNumber;
+}
+
 async function initializeWhatsApp() {
     try {
         // Ensure clean auth state
         await ensureCleanAuth();
+
+        // Validate phone number first
+        if (!process.env.OWNER_NUMBER) {
+            throw new Error('OWNER_NUMBER environment variable is not set');
+        }
+
+        const phoneNumber = validatePhoneNumber(process.env.OWNER_NUMBER);
+        logger.info('Starting pairing process for number:', phoneNumber);
 
         // Initialize auth state
         logger.info('Initializing auth state...');
@@ -46,23 +64,29 @@ async function initializeWhatsApp() {
             markOnlineOnConnect: true,
             // Enable pairing code
             pairingCode: true,
-            phoneNumber: process.env.OWNER_NUMBER
+            phoneNumber: phoneNumber // Make sure this is just digits
         });
+
+        logger.info('Please follow these steps to pair your device:');
+        logger.info('1. Open WhatsApp on your phone');
+        logger.info('2. Go to Settings > Linked Devices');
+        logger.info('3. Tap on "Link a Device"');
+        logger.info('4. When prompted, enter the pairing code that will be shown here');
+        logger.info('Waiting for pairing code to be generated...');
 
         // Handle connection updates
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect } = update;
 
             // Log connection updates
-            logger.info('Connection state update:', {
-                connection,
+            logger.info('Connection state update:', { 
+                connection, 
                 disconnectReason: lastDisconnect?.error?.output?.statusCode,
-                timestamp: new Date().toISOString()
+                fullUpdate: update // Log the full update object for debugging
             });
 
             if (connection === 'open') {
-                logger.info('Connection established successfully!');
-                sock.sendPresenceUpdate('available');
+                logger.info('WhatsApp connection opened successfully');
 
                 // Log successful connection details
                 logger.info('Connected with:', {
@@ -73,18 +97,12 @@ async function initializeWhatsApp() {
             }
 
             if (connection === 'close') {
-                const statusCode = lastDisconnect?.error?.output?.statusCode;
-                const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+                const shouldReconnect = (lastDisconnect?.error instanceof Boom)? 
+                    lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut : true;
 
-                logger.info('Connection closed:', { 
-                    shouldReconnect,
-                    statusCode,
-                    errorMessage: lastDisconnect?.error?.message,
-                    timestamp: new Date().toISOString()
-                });
+                logger.info('Connection closed due to ', lastDisconnect?.error, ', reconnecting ', shouldReconnect);
 
                 if (shouldReconnect) {
-                    logger.info('Attempting reconnection in 3 seconds...');
                     setTimeout(initializeWhatsApp, 3000);
                 }
             }
@@ -110,7 +128,7 @@ async function initializeWhatsApp() {
 
         return sock;
     } catch (error) {
-        logger.error('WhatsApp initialization error:', error);
+        logger.error('Error in WhatsApp connection setup:', error);
         throw error;
     }
 }
