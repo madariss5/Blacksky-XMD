@@ -2,7 +2,7 @@ const config = require('../config');
 const logger = require('pino')();
 const fs = require('fs-extra');
 const path = require('path');
-const openai = require('openai');
+const OpenAI = require('openai');
 const gtts = require('node-gtts');
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 const axios = require('axios');
@@ -10,16 +10,14 @@ const Replicate = require('replicate');
 
 // Add new imports for additional AI features
 const { createCanvas, loadImage } = require('canvas');
-const { Configuration, OpenAIApi } = require('openai');
 
 const tempDir = path.join(__dirname, '../temp');
 fs.ensureDirSync(tempDir);
 
-// Initialize OpenAI
-const configuration = new Configuration({
+// Initialize OpenAI with new SDK format
+const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
 });
-const openaiApi = new OpenAIApi(configuration);
 
 // Conversation memory store with enhanced context handling
 const conversationHistory = new Map();
