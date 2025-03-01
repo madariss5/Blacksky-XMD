@@ -8,6 +8,7 @@ const funCommands = require('./commands/fun');
 const aiCommands = require('./commands/ai');
 const downloaderCommands = require('./commands/downloader');
 const socialCommands = require('./commands/social');
+const musicCommands = require('./commands/music');
 const logger = require('pino')({ level: 'info' });
 
 module.exports = async (hans, m, chatUpdate, store) => {
@@ -15,7 +16,7 @@ module.exports = async (hans, m, chatUpdate, store) => {
         const prefix = '.';
         const isCmd = m.body?.startsWith(prefix);
 
-        // Log incoming message details with more context
+        // Enhanced logging for command processing
         logger.info('Received message:', {
             body: m.body,
             from: m.sender,
@@ -41,8 +42,25 @@ module.exports = async (hans, m, chatUpdate, store) => {
         // Try each command module in order
         let commandExecuted = false;
 
-        // AI Commands - Prioritize AI commands due to their complexity
-        if (aiCommands[command]) {
+        // Music Commands - Process first due to real-time nature
+        if (Object.prototype.hasOwnProperty.call(musicCommands, command)) {
+            try {
+                logger.info('Executing music command:', { command });
+                await musicCommands[command](hans, m, args);
+                commandExecuted = true;
+                logger.info('Music command executed successfully:', { command });
+            } catch (error) {
+                logger.error('Error executing music command:', {
+                    command,
+                    error: error.message,
+                    stack: error.stack
+                });
+                await hans.sendMessage(m.key.remoteJid, { 
+                    text: `❌ Error executing music command: ${error.message}` 
+                });
+            }
+        }
+        else if (aiCommands[command]) {
             try {
                 logger.info('Executing AI command:', { command });
                 await aiCommands[command](hans, m, args);
@@ -60,8 +78,6 @@ module.exports = async (hans, m, chatUpdate, store) => {
                 });
             }
         }
-
-        // Basic Commands
         else if (basicCommands[command]) {
             try {
                 logger.info('Executing basic command:', { command });
@@ -79,8 +95,6 @@ module.exports = async (hans, m, chatUpdate, store) => {
                 });
             }
         }
-
-        // User Commands
         else if (userCommands[command]) {
             try {
                 logger.info('Executing user command:', { command });
@@ -98,8 +112,6 @@ module.exports = async (hans, m, chatUpdate, store) => {
                 });
             }
         }
-
-        // Downloader Commands
         else if (downloaderCommands[command]) {
             try {
                 logger.info('Executing downloader command:', { command });
@@ -117,8 +129,6 @@ module.exports = async (hans, m, chatUpdate, store) => {
                 });
             }
         }
-
-        // Economy Commands
         else if (economyCommands[command]) {
             try {
                 logger.info('Executing economy command:', { command });
@@ -136,8 +146,6 @@ module.exports = async (hans, m, chatUpdate, store) => {
                 });
             }
         }
-
-        // Utility Commands
         else if (utilityCommands[command]) {
             try {
                 logger.info('Executing utility command:', { command });
@@ -155,8 +163,6 @@ module.exports = async (hans, m, chatUpdate, store) => {
                 });
             }
         }
-
-        // Fun Commands
         else if (funCommands[command]) {
             try {
                 logger.info('Executing fun command:', { command });
@@ -174,8 +180,6 @@ module.exports = async (hans, m, chatUpdate, store) => {
                 });
             }
         }
-
-        // Social Commands
         else if (socialCommands[command]) {
             try {
                 logger.info('Executing social command:', { command });
@@ -193,8 +197,6 @@ module.exports = async (hans, m, chatUpdate, store) => {
                 });
             }
         }
-
-        // Reactions Commands
         else if (reactionsCommands[command]) {
             try {
                 logger.info('Executing reaction command:', { command });
@@ -212,8 +214,6 @@ module.exports = async (hans, m, chatUpdate, store) => {
                 });
             }
         }
-
-        // Owner Commands
         else if (ownerCommands[command]) {
             try {
                 logger.info('Executing owner command:', { command });
