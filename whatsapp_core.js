@@ -1,23 +1,18 @@
-const { default: makeWASocket, useMultiFileAuthState, Browsers, DisconnectReason, fetchLatestBaileysVersion } = require("@whiskeysockets/baileys");
+const { default: makeWASocket, useMultiFileAuthState, Browsers, DisconnectReason, fetchLatestBaileysVersion, makeCacheableSignalKeyStore } = require("@whiskeysockets/baileys");
 const { Boom } = require('@hapi/boom');
 const fs = require('fs');
+const NodeCache = require("node-cache");
 const pino = require('pino');
 const readline = require("readline");
 const path = require('path');
 const qrcode = require("qrcode-terminal");
-
-const logger = pino({
-    level: 'info',
-    transport: {
-        target: 'pino-pretty',
-        options: {
-            colorize: true
-        }
-    }
-});
+const chalk = require('chalk'); // Added chalk dependency
 
 // Auth directory configuration
 const AUTH_DIR = path.join(__dirname, 'auth_info_baileys');
+
+// Configure cache for retry handling
+const msgRetryCounterCache = new NodeCache();
 
 async function ensureCleanAuth() {
     logger.info('Cleaning auth directory...');
@@ -26,79 +21,31 @@ async function ensureCleanAuth() {
     logger.info('Auth directory cleaned and recreated');
 }
 
-function validatePhoneInput(countryCode, phoneNumber) {
-    // Remove any non-digit characters
-    const cleanCountryCode = countryCode.replace(/\D/g, '');
-    const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
-
-    // Validate country code format
-    if (cleanCountryCode.length === 0) {
-        throw new Error('Country code is required');
-    }
-    if (cleanCountryCode.length > 4) {
-        throw new Error('Country code must be between 1-4 digits (e.g., 49 for Germany)');
-    }
-
-    // Phone number validation
-    if (cleanPhoneNumber.length === 0) {
-        throw new Error('Phone number is required');
-    }
-    if (cleanPhoneNumber.length < 8 || cleanPhoneNumber.length > 12) {
-        throw new Error('Phone number must be between 8-12 digits (excluding country code)');
-    }
-
-    // Check total length
-    const fullNumber = cleanCountryCode + cleanPhoneNumber;
-    if (fullNumber.length > 15) {
-        throw new Error('Total phone number length cannot exceed 15 digits');
-    }
-
-    return fullNumber;
-}
-
-function getUserInput(question) {
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-    });
-
-    return new Promise((resolve) => {
-        rl.question(question, (answer) => {
-            rl.close();
-            resolve(answer.trim());
-        });
-    });
-}
-
 async function getPhoneNumber() {
     while (true) {
         try {
             logger.info('Please enter your WhatsApp phone number details:');
             logger.info('────────────────────────────────────────');
             logger.info('Examples:');
-            logger.info('• Country code: 49 (for Germany)');
-            logger.info('• Phone number: 15561048015');
+            logger.info('• Country code: 91 (for India)');
+            logger.info('• Phone number: 1234567890');
             logger.info('Note: Enter only the digits, no spaces or special characters');
             logger.info('────────────────────────────────────────');
 
-            const countryCode = await getUserInput('Enter country code (without + or 00): ');
-            if (!countryCode) {
-                logger.error('Country code cannot be empty. Please try again.');
+            const phoneNumber = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFor example: +916909137213 : `)));
+            let formattedNumber = phoneNumber.replace(/[^0-9]/g, '');
+
+            // Validate phone number format
+            if (!formattedNumber || formattedNumber.length < 10) {
+                logger.error('Invalid phone number format. Please try again.');
                 continue;
             }
 
-            const phoneNumber = await getUserInput('Enter phone number (without country code): ');
-            if (!phoneNumber) {
-                logger.error('Phone number cannot be empty. Please try again.');
-                continue;
-            }
-
-            const fullNumber = validatePhoneInput(countryCode, phoneNumber);
             logger.info('────────────────────────────────────────');
-            logger.info(`Phone number validated: +${fullNumber}`);
+            logger.info(`Phone number validated: +${formattedNumber}`);
             logger.info('────────────────────────────────────────\n');
 
-            return fullNumber;
+            return formattedNumber;
         } catch (error) {
             logger.error('Error:', error.message);
             logger.info('Please try again with the correct format\n');
@@ -106,20 +53,30 @@ async function getPhoneNumber() {
     }
 }
 
+const question = (text) => new Promise((resolve) => {
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+    rl.question(text, (answer) => {
+        rl.close();
+        resolve(answer.trim());
+    });
+});
+
 async function initializeWhatsApp() {
     try {
-        let { version } = await fetchLatestBaileysVersion();
-        logger.info('Using WhatsApp version:', version);
+        // Get latest version
+        let { version, isLatest } = await fetchLatestBaileysVersion();
+        logger.info('Using WhatsApp version:', version, 'isLatest:', isLatest);
 
-        // Get phone number first
+        // Get phone number
         const phoneNumber = await getPhoneNumber();
 
-        logger.info('Starting WhatsApp connection initialization...');
-
-        // Clean and initialize auth directory
+        // Clean auth state
         await ensureCleanAuth();
 
-        // Load auth state
+        // Initialize auth state
         const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
 
         logger.info('\nPlease follow these steps to pair your device:');
@@ -129,14 +86,21 @@ async function initializeWhatsApp() {
         logger.info('4. When prompted, enter the pairing code that will be shown here');
         logger.info('Waiting for pairing code to be generated...\n');
 
-        // Create WhatsApp socket with pairing code configuration
+        // Create socket with enhanced configuration
         const sock = makeWASocket({
             version,
             logger: pino({ level: 'silent' }),
             printQRInTerminal: false,
-            auth: state,
-            browser: Browsers.ubuntu('Chrome'),
             mobile: false,
+            auth: {
+                creds: state.creds,
+                keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
+            },
+            browser: ['Chrome (Linux)', '', ''],
+            markOnlineOnConnect: true,
+            generateHighQualityLinkPreview: true,
+            msgRetryCounterCache,
+            defaultQueryTimeoutMs: undefined,
             pairingCode: true,
             phoneNumber: parseInt(phoneNumber)
         });
@@ -145,15 +109,14 @@ async function initializeWhatsApp() {
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect } = update;
 
-            logger.info('Connection update received:', {
-                connection,
-                disconnectReason: lastDisconnect?.error?.output?.statusCode,
-                hasPairingCode: !!update.pairingCode
-            });
+            // Log full update for debugging
+            logger.info('Connection update:', JSON.stringify(update, null, 2));
 
             if (update.pairingCode) {
+                let code = update.pairingCode;
+                code = code?.match(/.{1,4}/g)?.join("-") || code;
                 logger.info('╔════════════════════════════════╗');
-                logger.info(`║   PAIRING CODE: ${update.pairingCode}   ║`);
+                logger.info(`║  Pairing Code: ${code}  ║`);
                 logger.info('╚════════════════════════════════╝\n');
             }
 
@@ -161,14 +124,14 @@ async function initializeWhatsApp() {
                 const shouldReconnect = (lastDisconnect?.error instanceof Boom) ?
                     lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut : true;
 
-                logger.info('Connection closed, reconnecting:', shouldReconnect);
-
                 if (shouldReconnect) {
+                    logger.info('Reconnecting...');
                     setTimeout(initializeWhatsApp, 3000);
+                } else {
+                    logger.info('Connection closed permanently');
                 }
             } else if (connection === 'open') {
                 logger.info('WhatsApp connection opened successfully!');
-                sock.sendPresenceUpdate('available');
 
                 const startupMessage = '🤖 *WhatsApp Bot Online!*\n\n' +
                     'Send !menu to see available commands';
@@ -186,7 +149,6 @@ async function initializeWhatsApp() {
 
         // Handle credentials update
         sock.ev.on('creds.update', saveCreds);
-        logger.info('Credentials update handler registered');
 
         return sock;
     } catch (error) {
@@ -194,6 +156,17 @@ async function initializeWhatsApp() {
         throw error;
     }
 }
+
+// Configure logger
+const logger = pino({
+    level: 'info',
+    transport: {
+        target: 'pino-pretty',
+        options: {
+            colorize: true
+        }
+    }
+});
 
 // Start the application
 initializeWhatsApp().catch(err => {
