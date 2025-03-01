@@ -192,6 +192,8 @@ async function startHANS() {
                 // Batch message processing with 500ms delay
                 messageUpdateTimeout = setTimeout(async () => {
                     try {
+                        if (chatUpdate.type !== 'notify') return;
+
                         let msg = JSON.parse(JSON.stringify(chatUpdate.messages[0]));
                         if (!msg.message) return;
 
@@ -212,31 +214,17 @@ async function startHANS() {
             }
         });
 
+        // Handle credentials updates
         hans.ev.on('creds.update', async () => {
-            await saveCreds();
-            // Also update our creds.json when credentials change
-            await saveCredsToFile();
-        });
-
-        hans.ev.on('messages.upsert', async chatUpdate => {
             try {
-                let msg = JSON.parse(JSON.stringify(chatUpdate.messages[0]));
-                if (!msg.message) return;
-
-                msg.message = (Object.keys(msg.message)[0] === 'ephemeralMessage') 
-                    ? msg.message.ephemeralMessage.message 
-                    : msg.message;
-
-                if (msg.key && msg.key.remoteJid === 'status@broadcast') return;
-
-                try {
-                    const m = smsg(hans, msg, store);
-                    require('./handler')(hans, m, chatUpdate, store);
-                } catch (parseError) {
-                    logger.error('Error parsing message:', parseError);
-                }
-            } catch (err) {
-                logger.error('Error in message handler:', err);
+                await saveCreds();
+                await saveCredsToFile();
+                logger.info('Credentials updated and saved successfully');
+            } catch (error) {
+                logger.error('Error saving credentials:', {
+                    error: error.message,
+                    stack: error.stack
+                });
             }
         });
 
