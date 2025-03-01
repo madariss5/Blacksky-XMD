@@ -6,7 +6,7 @@ const messageHandler = require('./handlers/message');
 
 // Initialize express app
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 5000;
 
 // Basic middleware
 app.use(cors());
@@ -28,7 +28,13 @@ app.use((req, res, next) => {
         method: req.method,
         path: req.path,
         ip: req.ip,
-        forwarded: req.headers['x-forwarded-for']
+        forwarded: req.headers['x-forwarded-for'],
+        host: req.headers.host,
+        proxyHeaders: {
+            'x-forwarded-proto': req.headers['x-forwarded-proto'],
+            'x-replit-user-id': req.headers['x-replit-user-id'],
+            'x-replit-user-name': req.headers['x-replit-user-name']
+        }
     });
     next();
 });
@@ -36,6 +42,15 @@ app.use((req, res, next) => {
 // Basic route
 app.get('/', (req, res) => {
     res.send('WhatsApp Bot is running!');
+});
+
+// Diagnostic ping endpoint
+app.get('/ping', (req, res) => {
+    logger.info('Ping received:', {
+        timestamp: new Date().toISOString(),
+        headers: req.headers
+    });
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Health check endpoint
@@ -57,7 +72,7 @@ app.get('/health', (req, res) => {
 });
 
 // Create server instance separately for logging
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
     try {
         const address = server.address();
         logger.info('Server started with details:', {
@@ -89,6 +104,10 @@ server.on('error', (error) => {
         process.exit(1);
     }
 });
+
+// Set keepalive timeout to prevent proxy timeouts
+server.keepAliveTimeout = 65000;
+server.headersTimeout = 66000;
 
 // Global error handling
 process.on('uncaughtException', (error) => {
