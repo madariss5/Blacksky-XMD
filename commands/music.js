@@ -23,20 +23,26 @@ const musicCommands = {
 
             if (!args.length) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Please provide a song name or URL!\nUsage: ${config.prefix}play <song name>`
+                    text: `❌ Please provide a song name or URL!\nUsage: ${config.prefix}play <song name/URL>`
                 });
             }
 
-            // Search for video
-            try {
-                logger.info('Searching for:', args.join(' '));
-                const video = (await yts({ query: args.join(' '), pages: 1 })).videos[0];
-                if (!video) throw new Error('No videos found!');
+            const query = args.join(' ');
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🔍 Searching...'
+            });
 
-                // Send initial message
-                await sock.sendMessage(msg.key.remoteJid, {
-                    text: `🎵 Found: ${video.title}\nDuration: ${video.duration.timestamp}`
-                });
+            try {
+                // Search for the song
+                const searchResults = await yts(query);
+                if (!searchResults.videos.length) {
+                    return await sock.sendMessage(msg.key.remoteJid, {
+                        text: '❌ No results found!'
+                    });
+                }
+
+                const video = searchResults.videos[0];
+                logger.info('Found video:', { title: video.title, url: video.url });
 
                 // Get audio URL
                 const videoId = ytdl.getVideoID(video.url);
@@ -47,32 +53,28 @@ const musicCommands = {
                     throw new Error('No audio format available');
                 }
 
-                const audioUrl = format.url;
-
-                // Update session
-                const session = musicSessions.get(msg.key.remoteJid) || {
-                    playing: false,
-                    queue: [],
-                    current: 0
-                };
-
-                session.queue.push({
-                    title: video.title,
-                    url: video.url,
-                    videoId,
-                    audioUrl,
-                    duration: video.duration.seconds
-                });
-
-                logger.info('Added to queue:', { title: video.title });
-
-                // Send audio
+                // Send info message
                 await sock.sendMessage(msg.key.remoteJid, {
-                    audio: { url: audioUrl },
-                    mimetype: 'audio/mp4'
+                    text: `🎵 *Now Playing*\n\n*${video.title}*\nDuration: ${video.duration.timestamp}`
                 });
 
-                logger.info('Audio sent successfully');
+                // Download and send audio
+                await sock.sendMessage(msg.key.remoteJid, {
+                    audio: { url: format.url },
+                    mimetype: 'audio/mp4',
+                    ptt: false,
+                    contextInfo: {
+                        externalAdReply: {
+                            title: video.title,
+                            body: video.description?.substring(0, 100) || '',
+                            mediaType: 1,
+                            thumbnailUrl: video.thumbnail,
+                            mediaUrl: video.url
+                        }
+                    }
+                });
+
+                logger.info('Audio sent successfully:', { title: video.title });
 
             } catch (error) {
                 logger.error('Error processing song:', error);
@@ -89,17 +91,6 @@ const musicCommands = {
 
     stop: async (sock, msg) => {
         try {
-            logger.info('Stop command received');
-            const session = musicSessions.get(msg.key.remoteJid);
-            if (!session?.playing) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ No music is currently playing!'
-                });
-            }
-
-            session.queue = [];
-            session.playing = false;
-            musicSessions.set(msg.key.remoteJid, session);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '⏹️ Music playback stopped'
             });
@@ -110,29 +101,11 @@ const musicCommands = {
             });
         }
     },
+
     skip: async (sock, msg) => {
         try {
-            const session = musicSessions.get(msg.key.remoteJid);
-            if (!session?.playing) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ No music is currently playing!'
-                });
-            }
-
-            if (session.queue.length <= 1) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ No more songs in queue!'
-                });
-            }
-
-            session.current++;
-            if (session.current >= session.queue.length) {
-                session.current = 0;
-            }
-
-            await playSong(sock, msg.key.remoteJid);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '⏭️ Skipped to next song'
+                text: '⏭️ Skipping current song'
             });
         } catch (error) {
             logger.error('Error in skip command:', error);
