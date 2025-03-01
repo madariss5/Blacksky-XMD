@@ -24,6 +24,18 @@
       "description": "Logging level (info/debug/error)",
       "value": "info",
       "required": false
+    },
+    "OPENAI_API_KEY": {
+      "description": "OpenAI API key for AI features (optional)",
+      "required": false
+    },
+    "PEXELS_API_KEY": {
+      "description": "Pexels API key for image features (optional)",
+      "required": false
+    },
+    "TENOR_API_KEY": {
+      "description": "Tenor API key for GIF features (optional)",
+      "required": false
     }
   },
   "formation": {
