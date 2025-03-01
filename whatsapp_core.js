@@ -3,6 +3,7 @@ const { Boom } = require('@hapi/boom');
 const fs = require('fs-extra');
 const path = require('path');
 const pino = require('pino');
+const readline = require('readline');
 
 // Configure logger
 const logger = pino({
@@ -25,48 +26,87 @@ async function ensureCleanAuth() {
     logger.info('Auth directory cleaned and recreated');
 }
 
-function validatePhoneNumber(phoneNumber) {
-    // Remove any spaces, dashes, or plus signs
-    const cleanNumber = phoneNumber.replace(/[\s\-\+]/g, '');
-    // Check if it's a valid number format (just digits)
-    if (!/^\d+$/.test(cleanNumber)) {
-        throw new Error('Phone number should contain only digits');
+function validatePhoneInput(countryCode, phoneNumber) {
+    // Remove any non-digit characters
+    const cleanCountryCode = countryCode.replace(/\D/g, '');
+    const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
+
+    // Validate country code format
+    if (cleanCountryCode.length === 0) {
+        throw new Error('Country code is required');
     }
-    return cleanNumber;
+    if (cleanCountryCode.length > 4) {
+        throw new Error('Country code must be between 1-4 digits (e.g., 49 for Germany)');
+    }
+
+    // Phone number validation
+    if (cleanPhoneNumber.length === 0) {
+        throw new Error('Phone number is required');
+    }
+    if (cleanPhoneNumber.length < 8 || cleanPhoneNumber.length > 12) {
+        throw new Error('Phone number must be between 8-12 digits (excluding country code)');
+    }
+
+    // Check total length
+    const fullNumber = cleanCountryCode + cleanPhoneNumber;
+    if (fullNumber.length > 15) {
+        throw new Error('Total phone number length cannot exceed 15 digits');
+    }
+
+    return fullNumber;
 }
 
-async function initializeWhatsApp() {
-    try {
-        // Ensure clean auth state
-        await ensureCleanAuth();
+async function getPhoneNumber() {
+    while (true) {
+        try {
+            logger.info('Please enter your WhatsApp phone number details:');
+            logger.info('────────────────────────────────────────');
+            logger.info('Examples:');
+            logger.info('• Country code: 49 (for Germany)');
+            logger.info('• Phone number: 15561048015');
+            logger.info('Note: Enter only the digits, no spaces or special characters');
+            logger.info('────────────────────────────────────────');
 
-        // Validate phone number first
-        if (!process.env.OWNER_NUMBER) {
-            throw new Error('OWNER_NUMBER environment variable is not set');
+            const countryCode = await getUserInput('Enter country code (without + or 00): ');
+            if (!countryCode) {
+                logger.error('Country code cannot be empty. Please try again.');
+                continue;
+            }
+
+            const phoneNumber = await getUserInput('Enter phone number (without country code): ');
+            if (!phoneNumber) {
+                logger.error('Phone number cannot be empty. Please try again.');
+                continue;
+            }
+
+            const fullNumber = validatePhoneInput(countryCode, phoneNumber);
+            logger.info('────────────────────────────────────────');
+            logger.info(`Phone number validated: +${fullNumber}`);
+            logger.info('────────────────────────────────────────');
+            return fullNumber;
+        } catch (error) {
+            logger.error('Error:', error.message);
+            logger.info('Please try again with the correct format\n');
         }
+    }
+}
 
-        const phoneNumber = validatePhoneNumber(process.env.OWNER_NUMBER);
-        logger.info('Starting pairing process for number:', phoneNumber);
+function getUserInput(question) {
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
 
-        // Initialize auth state
-        logger.info('Initializing auth state...');
-        const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
-
-        // Create WhatsApp socket with pairing code config
-        const sock = makeWASocket({
-            auth: state,
-            printQRInTerminal: false, // Disable QR code
-            logger: logger,
-            browser: ['WhatsApp-MD', 'Firefox', '120.0.1'],
-            connectTimeoutMs: 60000,
-            defaultQueryTimeoutMs: 20000,
-            emitOwnEvents: true,
-            markOnlineOnConnect: true,
-            // Enable pairing code
-            pairingCode: true,
-            phoneNumber: phoneNumber // Make sure this is just digits
+    return new Promise((resolve) => {
+        rl.question(question, (answer) => {
+            rl.close();
+            resolve(answer);
         });
+    });
+}
 
+async function initializeWhatsApp(phoneNumber) {
+    try {
         logger.info('Please follow these steps to pair your device:');
         logger.info('1. Open WhatsApp on your phone');
         logger.info('2. Go to Settings > Linked Devices');
@@ -74,19 +114,50 @@ async function initializeWhatsApp() {
         logger.info('4. When prompted, enter the pairing code that will be shown here');
         logger.info('Waiting for pairing code to be generated...');
 
+        // Ensure clean auth state first
+        await ensureCleanAuth();
+
+        // Initialize auth state
+        logger.info('Initializing auth state...');
+        const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+
+        // Create WhatsApp socket connection
+        const sock = makeWASocket({
+            auth: state,
+            printQRInTerminal: false,
+            logger,
+            browser: ['Ubuntu', 'Firefox', '20.0.1'],
+            connectTimeoutMs: 60000,
+            defaultQueryTimeoutMs: 20000,
+            keepAliveIntervalMs: 10000,
+            emitOwnEvents: true,
+            markOnlineOnConnect: true,
+            // Enable pairing code
+            pairingCode: true,
+            phoneNumber: parseInt(phoneNumber) // Convert to number as required by Baileys
+        });
+
         // Handle connection updates
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect } = update;
 
-            // Log connection updates
-            logger.info('Connection state update:', { 
-                connection, 
+            // Enhanced logging for debugging
+            logger.info('Connection update received:', {
+                connection,
                 disconnectReason: lastDisconnect?.error?.output?.statusCode,
-                fullUpdate: update // Log the full update object for debugging
+                hasPairingCode: !!update.pairingCode
             });
+
+            // Display pairing code if available
+            if (update.pairingCode) {
+                logger.info('╔════════════════════════════════╗');
+                logger.info(`║  Pairing Code: ${update.pairingCode}        ║`);
+                logger.info('╚════════════════════════════════╝');
+            }
 
             if (connection === 'open') {
                 logger.info('WhatsApp connection opened successfully');
+                sock.sendPresenceUpdate('available');
 
                 // Log successful connection details
                 logger.info('Connected with:', {
@@ -97,13 +168,16 @@ async function initializeWhatsApp() {
             }
 
             if (connection === 'close') {
-                const shouldReconnect = (lastDisconnect?.error instanceof Boom)? 
+                const shouldReconnect = (lastDisconnect?.error instanceof Boom) ?
                     lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut : true;
 
-                logger.info('Connection closed due to ', lastDisconnect?.error, ', reconnecting ', shouldReconnect);
+                logger.info('Connection closed due to:', {
+                    error: lastDisconnect?.error,
+                    willReconnect: shouldReconnect
+                });
 
                 if (shouldReconnect) {
-                    setTimeout(initializeWhatsApp, 3000);
+                    startWhatsApp();
                 }
             }
         });
@@ -133,15 +207,19 @@ async function initializeWhatsApp() {
     }
 }
 
-// Check if OWNER_NUMBER is set
-if (!process.env.OWNER_NUMBER) {
-    logger.error('OWNER_NUMBER environment variable is not set. Cannot proceed with pairing code authentication.');
-    process.exit(1);
+async function startWhatsApp() {
+    try {
+        // Get phone number first
+        const phoneNumber = await getPhoneNumber();
+
+        // Then initialize WhatsApp
+        logger.info('Starting WhatsApp with pairing code authentication...');
+        await initializeWhatsApp(phoneNumber);
+    } catch (error) {
+        logger.error('Fatal error:', error);
+        process.exit(1);
+    }
 }
 
-// Start WhatsApp connection
-logger.info('Starting WhatsApp core with pairing code authentication...');
-initializeWhatsApp().catch(err => {
-    logger.error('Fatal error:', err);
-    process.exit(1);
-});
+// Start the application
+startWhatsApp();
