@@ -9,30 +9,20 @@ const utilityCommands = {
                            `!stats - Show bot statistics\n` +
                            `!report <issue> - Report an issue\n` +
                            `!donate - Support information\n` +
-                           `!qrmaker <text> - Generate QR code\n` +
-                           `!qrreader - Read QR code from image\n\n` +
-
-                           `*Economy Commands:*\n` +
-                           `!daily - Claim daily reward\n` +
-                           `!balance - Check your balance\n` +
-                           `!work - Work to earn gold\n` +
-                           `!shop - View available items\n\n` +
-
-                           `*Fun Commands:*\n` +
-                           `!pong - Play pong game\n` +
-                           `!roll - Roll a dice\n` +
-                           `!flip - Flip a coin\n\n` +
-
-                           `*Anime Commands:*\n` +
-                           `!waifu - Get random waifu image\n` +
-                           `!neko - Get random neko image\n` +
-                           `!anime info <name> - Get anime information\n\n` +
+                           `!broadcast <message> - Send message to all groups (admin only)\n` +
+                           `!ping - Check bot response time\n` +
+                           `!uptime - Show bot uptime\n\n` +
 
                            `*Group Commands:*\n` +
-                           `!kick @user - Kick user from group\n` +
-                           `!add @user - Add user to group\n` +
-                           `!promote @user - Promote user to admin\n` +
-                           `!demote @user - Demote user from admin`;
+                           `!groupinfo - Show group information\n` +
+                           `!members - List group members\n` +
+                           `!admins - List group admins\n` +
+                           `!link - Get group invite link (admin only)\n\n` +
+
+                           `*Owner Commands:*\n` +
+                           `!shutdown - Shutdown bot (owner only)\n` +
+                           `!restart - Restart bot (owner only)\n` +
+                           `!update - Check for updates (owner only)`;
 
             await sock.sendMessage(msg.key.remoteJid, { text: menuText });
         } catch (error) {
@@ -45,12 +35,25 @@ const utilityCommands = {
 
     stats: async (sock, msg) => {
         try {
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '📊 *Bot Statistics*\n\n' +
-                      '• Status: Online\n' +
-                      '• Uptime: ' + process.uptime().toFixed(2) + ' seconds\n' +
-                      '• Memory Usage: ' + (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2) + ' MB'
-            });
+            const memory = process.memoryUsage();
+            const stats = {
+                uptime: process.uptime(),
+                memory: {
+                    used: Math.round(memory.heapUsed / 1024 / 1024),
+                    total: Math.round(memory.heapTotal / 1024 / 1024)
+                },
+                platform: process.platform,
+                version: process.version
+            };
+
+            const statsText = `📊 *Bot Statistics*\n\n` +
+                            `• Status: Online\n` +
+                            `• Uptime: ${Math.floor(stats.uptime / 3600)}h ${Math.floor((stats.uptime % 3600) / 60)}m\n` +
+                            `• Memory: ${stats.memory.used}MB / ${stats.memory.total}MB\n` +
+                            `• Platform: ${stats.platform}\n` +
+                            `• Node.js: ${stats.version}`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text: statsText });
         } catch (error) {
             logger.error('Error in stats command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -68,11 +71,24 @@ const utilityCommands = {
             }
 
             const issue = args.join(' ');
-            logger.info('Issue reported:', { issue, reporter: msg.key.participant || msg.key.remoteJid });
+            logger.info('Issue reported:', { 
+                issue, 
+                reporter: msg.key.participant || msg.key.remoteJid 
+            });
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '✅ Thank you for your report! The issue has been logged for review.'
             });
+
+            // If owner number is set, forward the report
+            if (process.env.OWNER_NUMBER) {
+                const ownerJid = `${process.env.OWNER_NUMBER}@s.whatsapp.net`;
+                await sock.sendMessage(ownerJid, {
+                    text: `📝 *New Issue Report*\n\n` +
+                          `From: ${msg.key.participant || msg.key.remoteJid}\n` +
+                          `Issue: ${issue}`
+                });
+            }
         } catch (error) {
             logger.error('Error in report command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -96,6 +112,89 @@ const utilityCommands = {
             });
         }
     },
+
+    ping: async (sock, msg) => {
+        try {
+            const start = Date.now();
+            await sock.sendMessage(msg.key.remoteJid, { text: '📍 Checking...' });
+            const end = Date.now();
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🏓 Pong!\nResponse Time: ${end - start}ms`
+            });
+        } catch (error) {
+            logger.error('Error in ping command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to measure response time'
+            });
+        }
+    },
+
+    uptime: async (sock, msg) => {
+        try {
+            const uptime = process.uptime();
+            const hours = Math.floor(uptime / 3600);
+            const minutes = Math.floor((uptime % 3600) / 60);
+            const seconds = Math.floor(uptime % 60);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `⏱️ *Bot Uptime*\n\n` +
+                      `${hours}h ${minutes}m ${seconds}s`
+            });
+        } catch (error) {
+            logger.error('Error in uptime command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to get uptime'
+            });
+        }
+    },
+
+    broadcast: async (sock, msg, args) => {
+        try {
+            // Check if sender is admin
+            if (!process.env.OWNER_NUMBER || 
+                !msg.key.remoteJid.includes(process.env.OWNER_NUMBER)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ This command is only available to bot administrators'
+                });
+            }
+
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a message to broadcast!\nUsage: !broadcast <message>'
+                });
+            }
+
+            const message = args.join(' ');
+            const groups = await sock.groupFetchAllParticipating();
+            let successCount = 0;
+            let failCount = 0;
+
+            for (const group of Object.values(groups)) {
+                try {
+                    await sock.sendMessage(group.id, {
+                        text: `📢 *Broadcast Message*\n\n${message}`
+                    });
+                    successCount++;
+                } catch (error) {
+                    logger.error('Error broadcasting to group:', error);
+                    failCount++;
+                }
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `📢 *Broadcast Complete*\n\n` +
+                      `✅ Sent to: ${successCount} groups\n` +
+                      `❌ Failed: ${failCount} groups`
+            });
+        } catch (error) {
+            logger.error('Error in broadcast command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to broadcast message'
+            });
+        }
+    },
+
     qrmaker: async (sock, msg, args) => {
         try {
             if (!args.length) {

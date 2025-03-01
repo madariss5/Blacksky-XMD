@@ -7,6 +7,7 @@ const qrcode = require('qrcode-terminal');
 const path = require('path');
 const SessionManager = require('./utils/session');
 const utilityCommands = require('./commands/utility');
+const commandHandler = require('./handlers/command_handler');
 
 // Initialize express app
 const app = express();
@@ -71,38 +72,14 @@ async function connectToWhatsApp() {
                 for (const message of messages) {
                     if (message.key.fromMe) continue; // Skip messages sent by the bot
 
-                    const text = message.message?.conversation || 
-                                message.message?.extendedTextMessage?.text || '';
-
                     // Log incoming message for debugging
                     logger.info('Received message:', {
                         from: message.key.remoteJid,
-                        text: text,
-                        messageType: message.message ? Object.keys(message.message)[0] : 'unknown'
+                        type: message.message ? Object.keys(message.message)[0] : 'unknown'
                     });
 
-                    // Check if message starts with command prefix
-                    if (text.startsWith('!')) {
-                        const [command, ...args] = text.slice(1).split(' ');
-                        logger.info('Command received:', { command, args });
-
-                        // Handle utility commands
-                        if (command in utilityCommands) {
-                            try {
-                                await utilityCommands[command](sock, message, args);
-                            } catch (error) {
-                                logger.error('Error executing command:', error);
-                                await sock.sendMessage(message.key.remoteJid, {
-                                    text: '❌ Error executing command: ' + error.message
-                                });
-                            }
-                        } else {
-                            // Unknown command handler
-                            await sock.sendMessage(message.key.remoteJid, {
-                                text: '❌ Unknown command. Use !menu to see available commands.'
-                            });
-                        }
-                    }
+                    // Process message through command handler
+                    await commandHandler.handleMessage(sock, message);
                 }
             } catch (error) {
                 logger.error('Error processing message:', error);
@@ -113,8 +90,8 @@ async function connectToWhatsApp() {
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
 
-            logger.info('Connection update received:', { 
-                connection, 
+            logger.info('Connection update received:', {
+                connection,
                 disconnectReason: lastDisconnect?.error?.output?.statusCode,
                 hasQR: !!qr,
                 fullUpdate: update // Log the full update object for debugging
@@ -127,7 +104,7 @@ async function connectToWhatsApp() {
             }
 
             if (connection === 'close') {
-                const shouldReconnect = (lastDisconnect?.error instanceof Boom)? 
+                const shouldReconnect = (lastDisconnect?.error instanceof Boom) ?
                     lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut : true;
 
                 logger.info('Connection closed due to ', lastDisconnect?.error, ', reconnecting ', shouldReconnect);
@@ -140,11 +117,11 @@ async function connectToWhatsApp() {
 
                 // Send startup message
                 const startupMessage = '🤖 *WhatsApp Bot is Online!*\n\n' +
-                                     'Send !menu to see available commands\n\n' +
-                                     'Quick commands:\n' +
-                                     '!stats - Show bot statistics\n' +
-                                     '!help - Show help menu\n' +
-                                     '!report <issue> - Report an issue';
+                                        'Send !menu to see available commands\n\n' +
+                                        'Quick commands:\n' +
+                                        '!stats - Show bot statistics\n' +
+                                        '!help - Show help menu\n' +
+                                        '!report <issue> - Report an issue';
 
                 // If OWNER_NUMBER is set, send startup notification
                 if (process.env.OWNER_NUMBER) {
