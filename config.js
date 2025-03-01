@@ -172,7 +172,6 @@ module.exports = {
         gpt: { description: 'Chat with GPT', category: 'AI' },
         blackbox: { description: 'AI code generation', category: 'AI' },
 
-
         // NSFW Commands
         nsfwcheck: { description: 'Check NSFW status', category: 'NSFW' },
         setnsfw: { description: 'Enable/disable NSFW in group', category: 'NSFW' },
@@ -180,6 +179,13 @@ module.exports = {
         neko: { description: 'Get NSFW neko image', category: 'NSFW' },
         trap: { description: 'Get NSFW trap image', category: 'NSFW' },
         blowjob: { description: 'Get NSFW image', category: 'NSFW' },
+        ass: { description: 'Get NSFW ass image', category: 'NSFW' },
+        hentai: { description: 'Get NSFW hentai image', category: 'NSFW' },
+        milf: { description: 'Get NSFW milf image', category: 'NSFW' },
+        oral: { description: 'Get NSFW oral image', category: 'NSFW' },
+        paizuri: { description: 'Get NSFW paizuri image', category: 'NSFW' },
+        ecchi: { description: 'Get NSFW ecchi image', category: 'NSFW' },
+        ero: { description: 'Get NSFW ero image', category: 'NSFW' },
 
         // Owner Commands
         broadcast: { description: 'Send message to all chats', category: 'Owner' },
