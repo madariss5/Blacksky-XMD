@@ -17,7 +17,7 @@ args = "WhatsApp Bot"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "WhatsApp Bot Server"
+args = "Test Server"
 
 [[workflows.workflow]]
 name = "WhatsApp Bot"
@@ -35,7 +35,7 @@ args = "node index.js"
 waitForPort = 5000
 
 [[workflows.workflow]]
-name = "WhatsApp Bot Server"
+name = "Test Server"
 author = "agent"
 
 [workflows.workflow.metadata]
@@ -46,7 +46,7 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node index.js"
+args = "node test_server.js"
 waitForPort = 5000
 
 [deployment]

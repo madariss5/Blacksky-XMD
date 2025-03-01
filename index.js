@@ -1,17 +1,22 @@
 const express = require('express');
 const cors = require('cors');
 const logger = require('pino')();
-const whatsapp = require('./server/whatsapp');
-const messageHandler = require('./handlers/message');
 
 // Initialize express app
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Basic middleware
-app.use(cors());
+app.use(cors({
+    origin: [
+        'https://*.replit.dev',
+        'https://*.replit.app',
+        'https://*.repl.co'
+    ],
+    credentials: true
+}));
 app.use(express.json());
-app.set('trust proxy', 1);
+app.set('trust proxy', true);
 
 // Log Replit environment details
 logger.info('Replit environment:', {
@@ -60,7 +65,6 @@ app.get('/health', (req, res) => {
             status: 'healthy',
             uptime: process.uptime(),
             timestamp: new Date().toISOString(),
-            whatsappConnected: whatsapp.isSocketConnected(),
             port: PORT
         };
         logger.info('Health check succeeded:', status);
@@ -82,11 +86,6 @@ const server = app.listen(PORT, '0.0.0.0', () => {
         });
 
         logger.info('Server listening on port', PORT);
-        whatsapp.initialize().then(() => {
-            logger.info('WhatsApp connection initialized');
-        }).catch(error => {
-            logger.error('Startup error:', error);
-        });
     } catch (error) {
         logger.error('Startup error:', error);
     }
