@@ -824,31 +824,17 @@ const gameCommands = {
     },
     chess: async (sock, msg, args) => {
         try {
-            if (!args[0]) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Please mention a player to play with!\nUsage: !chess @player'
-                });
-            }
-
-            const challenger = msg.key.participant || msg.key.remoteJid;
-            const opponent = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
-
-            if (challenger === opponent) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ You cannot play against yourself!'
-                });
-            }
-
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '🏗️ Chess game feature is under construction!\n\n' +
-                      'We are working on implementing a full chess game with:\                      '• Board visualization\n' +
-                      '• Move validation` +
+                      'We are working on implementing a full chess game with:\n' +
+                      '• Board visualization\n' +
+                      '• Move validation\n' +
                       '• Game state tracking\n' +
                       '• Rating system\n\n' +
                       'Please try other games in the meantime!'
             });
 
-        } catch ((error) {
+        } catch (error) {
             logger.error('Error in chess command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error starting chess game'
@@ -862,6 +848,7 @@ const gameCommands = {
 
             if (activeGames.has(gameId)) {
                 return await sock.sendMessage(msg.key.remoteJid, {
+                    ```javascript
                     text: '❌ A game is already in progress in this chat!'
                 });
             }
@@ -1729,7 +1716,7 @@ const additionalCommands = {
                 }
             ];
 
-            const randomQuiz = cakLontongQuestions[Math.floor(Math.random() * cakLontongQuestions.length)];
+            const randomQuiz = cakLontongQuestions[Math.floor`.random() * cakLontongQuestions.length)];
             const game = createGameState('caklontong', {
                 question: randomQuiz.question,
                 answer: randomQuiz.answer.toLowerCase(),
