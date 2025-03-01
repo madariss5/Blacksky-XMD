@@ -57,28 +57,41 @@ const handleNSFWCommand = async (sock, msg, endpoint) => {
             text: '🔄 Fetching NSFW content...'
         });
 
-        // Make API request with improved error handling
-        logger.debug('Making API request', { 
-            endpoint,
-            url: `https://api.waifu.pics/nsfw/${endpoint}`
-        });
+        // Using alternative API endpoint
+        const apiEndpoints = {
+            'waifu': 'https://api.waifu.im/search/?included_tags=waifu&is_nsfw=true',
+            'neko': 'https://api.waifu.im/search/?included_tags=neko&is_nsfw=true',
+            'milf': 'https://api.waifu.im/search/?included_tags=milf&is_nsfw=true',
+            'oral': 'https://api.waifu.im/search/?included_tags=oral&is_nsfw=true',
+            'hentai': 'https://api.waifu.im/search/?included_tags=hentai&is_nsfw=true',
+            'ecchi': 'https://api.waifu.im/search/?included_tags=ecchi&is_nsfw=true',
+            'ero': 'https://api.waifu.im/search/?included_tags=ero&is_nsfw=true'
+        };
 
-        const response = await axios.get(`https://api.waifu.pics/nsfw/${endpoint}`, {
+        const apiUrl = apiEndpoints[endpoint] || apiEndpoints['waifu'];
+
+        logger.debug('Making API request', { endpoint, url: apiUrl });
+
+        const response = await axios.get(apiUrl, {
             timeout: 10000,
-            validateStatus: status => status === 200
+            headers: {
+                'Accept': 'application/json'
+            }
         });
 
-        if (!response.data || !response.data.url) {
+        if (!response.data || !response.data.images || !response.data.images[0]) {
             throw new Error('Invalid API response structure');
         }
 
+        const imageUrl = response.data.images[0].url;
+
         logger.debug('Received API response', { 
-            url: response.data.url,
+            url: imageUrl,
             status: response.status
         });
 
         await sock.sendMessage(msg.key.remoteJid, {
-            image: { url: response.data.url },
+            image: { url: imageUrl },
             caption: `🔞 NSFW ${endpoint} content`
         });
 
@@ -96,7 +109,7 @@ const handleNSFWCommand = async (sock, msg, endpoint) => {
 
         let errorMessage = '❌ Failed to fetch content';
         if (error.response?.status === 404) {
-            errorMessage = '❌ Content not found';
+            errorMessage = '❌ Content not available at the moment';
         } else if (error.code === 'ECONNABORTED') {
             errorMessage = '❌ Request timed out';
         } else if (error.response?.status === 403) {
@@ -104,7 +117,7 @@ const handleNSFWCommand = async (sock, msg, endpoint) => {
         }
 
         await sock.sendMessage(msg.key.remoteJid, {
-            text: `${errorMessage}: ${error.message}`
+            text: `${errorMessage}\nPlease try again later.`
         });
     }
 };
