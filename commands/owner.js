@@ -1,12 +1,11 @@
 const config = require('../config');
 const store = require('../database/store');
 const os = require('os');
-const QRCode = require('qrcode');
-const QRReader = require('qrcode-reader');
-const Jimp = require('jimp');
 const fs = require('fs-extra');
 const path = require('path');
+const logger = require('pino')();
 const tempDir = os.tmpdir();
+const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 
 const ownerCommands = {
     broadcast: async (sock, msg, args) => {
@@ -18,14 +17,179 @@ const ownerCommands = {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a message to broadcast!' });
         }
         const chats = store.get('chats') || [];
+        let successCount = 0;
         for (const chat of chats) {
             try {
                 await sock.sendMessage(chat, { text: message });
+                successCount++;
             } catch (error) {
-                console.error(`Failed to send broadcast to ${chat}:`, error);
+                logger.error(`Failed to send broadcast to ${chat}:`, error);
             }
         }
-        await sock.sendMessage(msg.key.remoteJid, { text: `Broadcast sent to ${chats.length} chats` });
+        await sock.sendMessage(msg.key.remoteJid, { text: `Broadcast sent to ${successCount}/${chats.length} chats` });
+    },
+
+    setname: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        const name = args.join(' ');
+        if (!name) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a name!' });
+        }
+        try {
+            await sock.updateProfileName(name);
+            await sock.sendMessage(msg.key.remoteJid, { text: `Name updated to: ${name}` });
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to update name: ' + error.message });
+        }
+    },
+
+    setbotname: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        const name = args.join(' ');
+        if (!name) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a name!' });
+        }
+        try {
+            config.botName = name;
+            await sock.sendMessage(msg.key.remoteJid, { text: `Bot name updated to: ${name}` });
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to update bot name: ' + error.message });
+        }
+    },
+
+    setbotbio: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        const bio = args.join(' ');
+        if (!bio) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a bio!' });
+        }
+        try {
+            await sock.updateProfileStatus(bio);
+            await sock.sendMessage(msg.key.remoteJid, { text: `Bot bio updated to: ${bio}` });
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to update bio: ' + error.message });
+        }
+    },
+
+    setbotpp: async (sock, msg) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        if (!msg.message.imageMessage) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please send an image with this command!' });
+        }
+        try {
+            const media = await downloadMediaMessage(msg, 'buffer', {}, { logger });
+            await sock.updateProfilePicture(sock.user.id, media);
+            await sock.sendMessage(msg.key.remoteJid, { text: 'Bot profile picture updated!' });
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to update profile picture: ' + error.message });
+        }
+    },
+
+    clearcache: async (sock, msg) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        try {
+            // Clear temporary files
+            const tempFiles = await fs.readdir(tempDir);
+            for (const file of tempFiles) {
+                if (file.startsWith('wa-')) {
+                    await fs.remove(path.join(tempDir, file));
+                }
+            }
+
+            // Clear store data
+            store.data = {};
+            await store.saveStore();
+
+            await sock.sendMessage(msg.key.remoteJid, { text: 'Cache cleared successfully!' });
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to clear cache: ' + error.message });
+        }
+    },
+
+    addmod: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        const number = args[0]?.replace('@', '') + '@s.whatsapp.net';
+        if (!number) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a number to add as moderator!' });
+        }
+        try {
+            await store.addModerator(number);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `Added @${number.split('@')[0]} as moderator`,
+                mentions: [number]
+            });
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to add moderator: ' + error.message });
+        }
+    },
+
+    removemod: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        const number = args[0]?.replace('@', '') + '@s.whatsapp.net';
+        if (!number) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a number to remove from moderators!' });
+        }
+        try {
+            await store.removeModerator(number);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `Removed @${number.split('@')[0]} from moderators`,
+                mentions: [number]
+            });
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to remove moderator: ' + error.message });
+        }
+    },
+
+    system: async (sock, msg) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        try {
+            const uptime = process.uptime();
+            const memory = process.memoryUsage();
+            const system = {
+                platform: os.platform(),
+                arch: os.arch(),
+                cpus: os.cpus().length,
+                totalMem: (os.totalmem() / (1024 * 1024 * 1024)).toFixed(2) + ' GB',
+                freeMem: (os.freemem() / (1024 * 1024 * 1024)).toFixed(2) + ' GB',
+                uptime: Math.floor(uptime / 3600) + 'h ' + Math.floor((uptime % 3600) / 60) + 'm',
+                heapUsed: (memory.heapUsed / (1024 * 1024)).toFixed(2) + ' MB',
+                heapTotal: (memory.heapTotal / (1024 * 1024)).toFixed(2) + ' MB',
+                nodeVersion: process.version,
+                v8Version: process.versions.v8
+            };
+
+            const systemInfo = `💻 *System Information*\n\n` +
+                           `• Platform: ${system.platform}\n` +
+                           `• Architecture: ${system.arch}\n` +
+                           `• CPUs: ${system.cpus}\n` +
+                           `• Total Memory: ${system.totalMem}\n` +
+                           `• Free Memory: ${system.freeMem}\n` +
+                           `• Uptime: ${system.uptime}\n` +
+                           `• Heap Used: ${system.heapUsed}\n` +
+                           `• Heap Total: ${system.heapTotal}\n` +
+                           `• Node.js: ${system.nodeVersion}\n` +
+                           `• V8: ${system.v8Version}`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text: systemInfo });
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to get system info: ' + error.message });
+        }
     },
 
     ban: async (sock, msg, args) => {
@@ -196,121 +360,32 @@ const ownerCommands = {
         }
     },
 
-    clearcache: async (sock, msg) => {
-        if (msg.key.remoteJid !== config.ownerNumber) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
-        }
-        try {
-            await sock.sendMessage(msg.key.remoteJid, { text: 'Clearing cache...' });
-            store.data = {};
-            await store.saveStore();
-            await sock.sendMessage(msg.key.remoteJid, { text: 'Cache cleared successfully!' });
-        } catch (error) {
-            await sock.sendMessage(msg.key.remoteJid, { text: 'Error clearing cache: ' + error.message });
-        }
-    },
-    setbotbio: async (sock, msg, args) => {
-        if (msg.key.remoteJid !== config.ownerNumber) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
-        }
-        const bio = args.join(' ');
-        await sock.updateProfileStatus(bio);
-        await sock.sendMessage(msg.key.remoteJid, { text: 'Bot bio updated successfully!' });
-    },
-
-    setbotpp: async (sock, msg) => {
-        if (msg.key.remoteJid !== config.ownerNumber) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
-        }
-        if (!msg.message.imageMessage) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please send an image with this command!' });
-        }
-        const image = await sock.downloadMediaMessage(msg.message.imageMessage);
-        await sock.updateProfilePicture(sock.user.id, image);
-        await sock.sendMessage(msg.key.remoteJid, { text: 'Bot profile picture updated!' });
-    },
-
-    addmod: async (sock, msg, args) => {
-        if (msg.key.remoteJid !== config.ownerNumber) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
-        }
-        const number = args[0]?.replace('@', '') + '@s.whatsapp.net';
-        await store.addModerator(number);
-        await sock.sendMessage(msg.key.remoteJid, { 
-            text: `Added @${number.split('@')[0]} as moderator`,
-            mentions: [number]
-        });
-    },
-
-    removemod: async (sock, msg, args) => {
-        if (msg.key.remoteJid !== config.ownerNumber) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
-        }
-        const number = args[0]?.replace('@', '') + '@s.whatsapp.net';
-        await store.removeModerator(number);
-        await sock.sendMessage(msg.key.remoteJid, { 
-            text: `Removed @${number.split('@')[0]} from moderators`,
-            mentions: [number]
-        });
-    },
-
-    system: async (sock, msg) => {
-        if (msg.key.remoteJid !== config.ownerNumber) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
-        }
-
-        const uptime = process.uptime();
-        const memory = process.memoryUsage();
-        const system = {
-            platform: os.platform(),
-            arch: os.arch(),
-            cpus: os.cpus().length,
-            totalMem: (os.totalmem() / (1024 * 1024 * 1024)).toFixed(2) + ' GB',
-            freeMem: (os.freemem() / (1024 * 1024 * 1024)).toFixed(2) + ' GB',
-            uptime: Math.floor(uptime / 3600) + 'h ' + Math.floor((uptime % 3600) / 60) + 'm',
-            heapUsed: (memory.heapUsed / (1024 * 1024)).toFixed(2) + ' MB',
-            heapTotal: (memory.heapTotal / (1024 * 1024)).toFixed(2) + ' MB'
-        };
-
-        const systemInfo = `*System Information*\n\n` +
-                          `• Platform: ${system.platform}\n` +
-                          `• Architecture: ${system.arch}\n` +
-                          `• CPUs: ${system.cpus}\n` +
-                          `• Total Memory: ${system.totalMem}\n` +
-                          `• Free Memory: ${system.freeMem}\n` +
-                          `• Uptime: ${system.uptime}\n` +
-                          `• Heap Used: ${system.heapUsed}\n` +
-                          `• Heap Total: ${system.heapTotal}`;
-
-        await sock.sendMessage(msg.key.remoteJid, { text: systemInfo });
-    },
-
     maintenance: async (sock, msg, args) => {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
         }
-
         const mode = args[0]?.toLowerCase();
         if (!['on', 'off'].includes(mode)) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Please specify on/off for maintenance mode!' });
         }
-
-        store.setMaintenanceMode(mode === 'on');
-        await sock.sendMessage(msg.key.remoteJid, { 
-            text: `Maintenance mode ${mode === 'on' ? 'enabled' : 'disabled'}`
-        });
+        try {
+            store.setMaintenanceMode(mode === 'on');
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `Maintenance mode ${mode === 'on' ? 'enabled' : 'disabled'}`
+            });
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to set maintenance mode: ' + error.message });
+        }
     },
 
     setmaxwarn: async (sock, msg, args) => {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
         }
-
         const maxWarns = parseInt(args[0]);
         if (isNaN(maxWarns) || maxWarns < 1) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a valid number of warnings!' });
         }
-
         store.setMaxWarnings(maxWarns);
         await sock.sendMessage(msg.key.remoteJid, { 
             text: `Maximum warnings set to ${maxWarns}`
@@ -321,11 +396,9 @@ const ownerCommands = {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
         }
-
         if (!args[0]) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a group link!' });
         }
-
         const [code] = args[0].split('whatsapp.com/')[1];
         try {
             await sock.groupAcceptInvite(code);
@@ -339,12 +412,10 @@ const ownerCommands = {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
         }
-
         const number = args[0]?.replace('@', '') + '@s.whatsapp.net';
         if (!number) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a number to block!' });
         }
-
         await sock.updateBlockStatus(number, "block");
         await sock.sendMessage(msg.key.remoteJid, { 
             text: `Blocked @${number.split('@')[0]}`,
@@ -356,12 +427,10 @@ const ownerCommands = {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
         }
-
         const number = args[0]?.replace('@', '') + '@s.whatsapp.net';
         if (!number) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a number to unblock!' });
         }
-
         await sock.updateBlockStatus(number, "unblock");
         await sock.sendMessage(msg.key.remoteJid, { 
             text: `Unblocked @${number.split('@')[0]}`,
@@ -373,12 +442,10 @@ const ownerCommands = {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
         }
-
         const mode = args[0]?.toLowerCase();
         if (!['public', 'private'].includes(mode)) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Please specify public/private mode!' });
         }
-
         store.setBotMode(mode);
         await sock.sendMessage(msg.key.remoteJid, { 
             text: `Bot mode set to ${mode}`
@@ -388,14 +455,12 @@ const ownerCommands = {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
         }
-
         const text = args.join(' ');
         if (!text) {
             return await sock.sendMessage(msg.key.remoteJid, { 
                 text: '❌ Please provide text to convert to QR code!' 
             });
         }
-
         try {
             const qrPath = path.join(tempDir, 'qr_output.png');
             await QRCode.toFile(qrPath, text, {
@@ -406,12 +471,10 @@ const ownerCommands = {
                 width: 512,
                 margin: 1
             });
-
             await sock.sendMessage(msg.key.remoteJid, {
                 image: { url: qrPath },
                 caption: '✅ Here is your QR code!'
             });
-
             await fs.remove(qrPath);
         } catch (error) {
             logger.error('Error in qrmaker command:', error);
@@ -425,23 +488,19 @@ const ownerCommands = {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
         }
-
         if (!msg.message.imageMessage) {
             return await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Please send an image containing a QR code!'
             });
         }
-
         try {
             const buffer = await sock.downloadMediaMessage(msg);
             const image = await Jimp.read(buffer);
-
             const qr = new QRReader();
             const value = await new Promise((resolve, reject) => {
                 qr.callback = (err, v) => err != null ? reject(err) : resolve(v);
                 qr.decode(image.bitmap);
             });
-
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `📱 QR Code Content:\n\n${value.result}`
             });

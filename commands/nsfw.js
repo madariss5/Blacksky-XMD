@@ -57,7 +57,7 @@ const handleNSFWCommand = async (sock, msg, endpoint) => {
             text: '🔄 Fetching NSFW content...'
         });
 
-        // Make API request to waifu.pics with improved error handling
+        // Make API request with improved error handling
         logger.debug('Making API request', { 
             endpoint,
             url: `https://api.waifu.pics/nsfw/${endpoint}`
@@ -109,7 +109,7 @@ const handleNSFWCommand = async (sock, msg, endpoint) => {
     }
 };
 
-// Age verification helper with improved error handling
+// Age verification helper
 const verifyAge = async (sock, msg) => {
     try {
         const userId = msg.key.participant || msg.key.remoteJid;
@@ -146,7 +146,7 @@ const verifyAge = async (sock, msg) => {
     }
 };
 
-// Group NSFW setting check with improved logging
+// Group NSFW setting check
 const checkGroupNSFW = async (sock, msg) => {
     try {
         // If not a group chat, NSFW is allowed
@@ -179,6 +179,7 @@ const checkGroupNSFW = async (sock, msg) => {
 
 // NSFW commands
 const nsfwCommands = {
+    // Registration and settings
     register: async (sock, msg, args) => {
         try {
             if (args.length < 2) {
