@@ -36,7 +36,7 @@ const truthQuestions = [
     "What's your biggest fear?",
     "What's the most embarrassing thing that's happened to you?",
     "What's your biggest secret?",
-    "What's the worst lie you've ever told?",
+    "What's your worst lie you've ever told?",
     "What's your biggest regret?",
     // Add more truth questions
 ];
@@ -842,7 +842,7 @@ const gameCommands = {
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '🏗️ Chess game feature is under construction!\n\n' +
                       'We are working on implementing a full chess game with:\                      '• Board visualization\n' +
-                      '• Move validation\n' +
+                      '• Move validation` +
                       '• Game state tracking\n' +
                       '• Rating system\n\n' +
                       'Please try other games in the meantime!'
@@ -868,6 +868,7 @@ const gameCommands = {
 
             const randomQuestion = familyQuestions[Math.floor(Math.random() * familyQuestions.length)];
             const game = {
+                type: 'family100',
                 question: randomQuestion.question,
                 answers: randomQuestion.answers,
                 points: randomQuestion.points,
@@ -979,13 +980,15 @@ const gameCommands = {
             const randomQuiz = asahOtakQuestions[Math.floor(Math.random() * asahOtakQuestions.length)];
 
             const game = {
+                type: 'asahotak',
                 question: randomQuiz.question,
                 answers: randomQuiz.answers,
                 hint: randomQuiz.hint,
                 attempts: 0,
                 maxAttempts: 3,
                 startTime: Date.now(),
-                timeLimit: 60000 // 60 seconds
+                timeLimit: 60000, // 60 seconds
+                solved: false
             };
 
             activeGames.set(gameId, game);
@@ -1039,13 +1042,15 @@ const gameCommands = {
             const randomWord = wordQuestions[Math.floor(Math.random() * wordQuestions.length)];
 
             const game = {
+                type: 'tebakkata',
                 word: randomWord.word.toLowerCase(),
                 hint: randomWord.hint,
                 guessedLetters: new Set(),
                 attempts: 0,
                 maxAttempts: 6,
                 startTime: Date.now(),
-                timeLimit: 120000 // 120 seconds
+                timeLimit: 120000, // 120 seconds
+                solved: false
             };
 
             activeGames.set(gameId, game);
@@ -1156,9 +1161,66 @@ const gameCommands = {
     },
 
     tebaklagu: async (sock, msg) => {
-        await sock.sendMessage(msg.key.remoteJid, {
-                        text: '🚧 Tebak Lagu game is under development!'
-        });
+        try {
+            const gameId = msg.key.remoteJid;
+            if (activeGames.has(gameId)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ A game is already in progress in this chat!'
+                });
+            }
+
+            const songQuizzes = [
+                {
+                    audio: "song1.mp3",
+                    title: "Shape of You",
+                    artist: "Ed Sheeran"
+                },
+                {
+                    audio: "song2.mp3",
+                    title: "Perfect",
+                    artist: "Ed Sheeran"
+                }
+            ];
+
+            const randomSong = songQuizzes[Math.floor(Math.random() * songQuizzes.length)];
+            const game = createGameState('tebaklagu', {
+                audio: randomSong.audio,
+                title: randomSong.title.toLowerCase(),
+                artist: randomSong.artist,
+                timeLimit: 30000 // 30 seconds
+            });
+
+            activeGames.set(gameId, game);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                audio: { url: `./assets/audio/${game.data.audio}` },
+                mimetype: 'audio/mp4',
+                ptt: true, // Play as voice note
+                caption: `🎵 *Guess the Song*\n\n` +
+                        `Listen to the audio clip and guess the song title!\n\n` +
+                        `⏳ You have 30 seconds and 3 attempts!\n` +
+                        `Use ${config.prefix}answer <song title> to respond`
+            });
+
+            // Set timeout to end game
+            setTimeout(async () => {
+                const currentGame = activeGames.get(gameId);
+                if (currentGame && !currentGame.solved) {
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        text: `⌛ Time's up!\n\n` +
+                              `The song was: ${game.data.title}\n` +
+                              `Artist: ${game.data.artist}`
+                    });
+                    activeGames.delete(gameId);
+                }
+            }, game.timeLimit);
+
+        } catch (error) {
+            logger.error('Error in tebaklagu command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error starting song quiz'
+            });
+        }
     },
 
     tebakkimia: async (sock, msg) => {
@@ -1184,12 +1246,14 @@ const gameCommands = {
             const randomElement = elements[Math.floor(Math.random() * elements.length)];
 
             const game = {
+                type: 'tebakkimia',
                 symbol: randomElement.symbol,
                 answer: randomElement.name.toLowerCase(),
                 attempts: 0,
                 maxAttempts: 3,
                 startTime: Date.now(),
-                timeLimit: 60000 // 60 seconds
+                timeLimit: 60000, // 60 seconds
+                solved: false
             };
 
             activeGames.set(gameId, game);
@@ -1262,9 +1326,63 @@ const gameCommands = {
     },
 
     caklontong: async (sock, msg) => {
-        await sock.sendMessage(msg.key.remoteJid, {
-            text: '🚧 Cak Lontong quiz game is under development!'
-        });
+        try {
+            const gameId = msg.key.remoteJid;
+            if (activeGames.has(gameId)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ A game is already in progress in this chat!'
+                });
+            }
+
+            const cakLontongQuestions = [
+                {
+                    question: "Kalau haus minum...",
+                    answer: "air",
+                    explanation: "Ketika haus, minuman terbaik adalah air putih"
+                },
+                {
+                    question: "Burung terbang menggunakan...",
+                    answer: "sayap",
+                    explanation: "Burung menggunakan sayap untuk terbang di udara"
+                }
+            ];
+
+            const randomQuiz = cakLontongQuestions[Math.floor(Math.random() * cakLontongQuestions.length)];
+            const game = createGameState('caklontong', {
+                question: randomQuiz.question,
+                answer: randomQuiz.answer.toLowerCase(),
+                explanation: randomQuiz.explanation,
+                timeLimit: 60000 // 60 seconds
+            });
+
+            activeGames.set(gameId, game);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🎯 *Cak Lontong Quiz*\n\n` +
+                      `Question: ${game.data.question}\n\n` +
+                      `⏳ You have 60 seconds and 3 attempts to answer!\n` +
+                      `Use ${config.prefix}answer <your answer> to respond`
+            });
+
+            // Set timeout to end game
+            setTimeout(async () => {
+                const currentGame = activeGames.get(gameId);
+                if (currentGame && !currentGame.solved) {
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        text: `⌛ Time's up!\n\n` +
+                              `Answer: ${game.data.answer}\n` +
+                              `Explanation: ${game.data.explanation}`
+                    });
+                    activeGames.delete(gameId);
+                }
+            }, game.timeLimit);
+
+        } catch (error) {
+            logger.error('Error in caklontong command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error starting Cak Lontong quiz'
+            });
+        }
     },
     quiz: async (sock, msg) => {
         try {
@@ -1278,12 +1396,14 @@ const gameCommands = {
             }
 
             const game = {
+                type: 'quiz',
                 question: randomQuiz.question,
                 answer: randomQuiz.answers[0],
                 attempts: 0,
                 maxAttempts: 3,
                 startTime: Date.now(),
-                timeLimit: 60000 // 60 seconds
+                timeLimit: 60000, // 60 seconds
+                solved: false
             };
 
             activeGames.set(gameId, game);
@@ -1332,26 +1452,100 @@ const gameCommands = {
 
             const userAnswer = args.join(' ').toLowerCase();
 
-            if (game.type === 'picture') {
-                if (userAnswer === game.data.answer) {
-                    game.solved = true;
-                    await handleGameWin(sock, msg, game, game.data.answer);
-                    activeGames.delete(gameId);
-                } else {
-                    game.attempts++;
-                    if (game.attempts >= game.maxAttempts) {
-                        await sock.sendMessage(msg.key.remoteJid, {
-                            text: `❌ Game Over!\nThe correct answer was: ${game.data.answer}`
-                        });
+            // Handle different game types
+            switch (game.type) {
+                case 'picture':
+                    if (userAnswer === game.data.answer) {
+                        game.solved = true;
+                        await handleGameWin(sock, msg, game, game.data.answer);
                         activeGames.delete(gameId);
                     } else {
-                        await sock.sendMessage(msg.key.remoteJid, {
-                            text: `❌ Wrong answer!\n${game.maxAttempts - game.attempts} attempts left`
-                        });
+                        await handleWrongAnswer(sock, msg, game);
                     }
-                }
+                    break;
+
+                case 'caklontong':
+                    if (userAnswer === game.data.answer) {
+                        game.solved = true;
+                        const rewardText = `🎉 Correct!\n\n` +
+                                         `Answer: ${game.data.answer}\n` +
+                                         `Explanation: ${game.data.explanation}`;
+                        await handleGameWin(sock, msg, game, rewardText);
+                        activeGames.delete(gameId);
+                    } else {
+                        await handleWrongAnswer(sock, msg, game);
+                    }
+                    break;
+
+                case 'tebaklagu':
+                    if (userAnswer === game.data.title) {
+                        game.solved = true;
+                        const rewardText = `🎉 Correct!\n\n` +
+                                         `Song: ${game.data.title}\n` +
+                                         `Artist: ${game.data.artist}`;
+                        await handleGameWin(sock, msg, game, rewardText);
+                        activeGames.delete(gameId);
+                    } else {
+                        await handleWrongAnswer(sock, msg, game);
+                    }
+                    break;
+                case 'asahotak':
+                    if (game.answers.includes(userAnswer)) {
+                        game.solved = true;
+                        await handleGameWin(sock, msg, game, userAnswer);
+                        activeGames.delete(gameId);
+                    } else {
+                        await handleWrongAnswer(sock, msg, game);
+                    }
+                    break;
+                case 'tebakkata':
+                    if (userAnswer === game.word) {
+                        game.solved = true;
+                        await handleGameWin(sock, msg, game, game.word);
+                        activeGames.delete(gameId);
+                    } else {
+                        await handleWrongAnswer(sock, msg, game);
+                    }
+                    break;
+                case 'quiz':
+                    if (userAnswer === game.answer) {
+                        game.solved = true;
+                        await handleGameWin(sock, msg, game, game.answer);
+                        activeGames.delete(gameId);
+                    } else {
+                        await handleWrongAnswer(sock, msg, game);
+                    }
+                    break;
+                case 'tebakkimia':
+                    if (userAnswer === game.answer) {
+                        game.solved = true;
+                        await handleGameWin(sock, msg, game, game.answer);
+                        activeGames.delete(gameId);
+                    } else {
+                        await handleWrongAnswer(sock, msg, game);
+                    }
+                    break;
+                case 'family100':
+                    if (game.answers.includes(userAnswer) && !game.foundAnswers.has(userAnswer)) {
+                        game.foundAnswers.add(userAnswer);
+                        const points = game.points[game.answers.indexOf(userAnswer)];
+                        const rewardText = `🎉 Correct!\n\n` +
+                                            `Answer: ${userAnswer}\n` +
+                                            `Points: +${points}`;
+                        await sock.sendMessage(msg.key.remoteJid, { text: rewardText });
+                    } else {
+                        await sock.sendMessage(msg.key.remoteJid, { text: '❌ Incorrect answer' });
+                    }
+                    break;
+                default:
+                    if (userAnswer === game.data.answer) {
+                        game.solved = true;
+                        await handleGameWin(sock, msg, game, game.data.answer);
+                        activeGames.delete(gameId);
+                    } else {
+                        await handleWrongAnswer(sock, msg, game);
+                    }
             }
-            // Add other game type handlers here
 
         } catch (error) {
             logger.error('Error in answer command:', error);
@@ -1403,6 +1597,26 @@ const handleGameWin = async (sock, msg, game, answer) => {
               `✨ Points: +${points}\n\n` +
               `Use ${config.prefix}leaderboard to see rankings!`
     });
+};
+
+const handleWrongAnswer = async (sock, msg, game) => {
+    game.attempts++;
+    if (game.attempts >= game.maxAttempts) {
+        let gameOverText = `❌ Game Over!`;
+        if (game.type === 'picture') gameOverText += `\nThe correct answer was: ${game.data.answer}`;
+        else if (game.type === 'caklontong') gameOverText += `\nThe correct answer was: ${game.data.answer}\nExplanation: ${game.data.explanation}`;
+        else if (game.type === 'tebaklagu') gameOverText += `\nThe song was: ${game.data.title}\nArtist: ${game.data.artist}`;
+        else if (game.type === 'asahotak') gameOverText += `\nPossible answers were: ${game.answers.join(', ')}`;
+        else if (game.type === 'tebakkata') gameOverText += `\nThe word was: ${game.word}`;
+        else if (game.type === 'quiz') gameOverText += `\nThe correct answer was: ${game.answer}`;
+        else if (game.type === 'tebakkimia') gameOverText += `\nThe correct answer was: ${game.answer}`;
+        await sock.sendMessage(msg.key.remoteJid, { text: gameOverText });
+        activeGames.delete(msg.key.remoteJid);
+    } else {
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: `❌ Wrong answer!\n${game.maxAttempts - game.attempts} attempts left`
+        });
+    }
 };
 
 const additionalCommands = {
@@ -1492,7 +1706,130 @@ const additionalCommands = {
                 text: '❌ Error displaying leaderboard'
             });
         }
+    },
+    caklontong: async (sock, msg) => {
+        try {
+            const gameId = msg.key.remoteJid;
+            if (activeGames.has(gameId)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ A game is already in progress in this chat!'
+                });
+            }
+
+            const cakLontongQuestions = [
+                {
+                    question: "Kalau haus minum...",
+                    answer: "air",
+                    explanation: "Ketika haus, minuman terbaik adalah air putih"
+                },
+                {
+                    question: "Burung terbang menggunakan...",
+                    answer: "sayap",
+                    explanation: "Burung menggunakan sayap untuk terbang di udara"
+                }
+            ];
+
+            const randomQuiz = cakLontongQuestions[Math.floor(Math.random() * cakLontongQuestions.length)];
+            const game = createGameState('caklontong', {
+                question: randomQuiz.question,
+                answer: randomQuiz.answer.toLowerCase(),
+                explanation: randomQuiz.explanation,
+                timeLimit: 60000 // 60 seconds
+            });
+
+            activeGames.set(gameId, game);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🎯 *Cak Lontong Quiz*\n\n` +
+                      `Question: ${game.data.question}\n\n` +
+                      `⏳ You have 60 seconds and 3 attempts to answer!\n` +
+                      `Use ${config.prefix}answer <your answer> to respond`
+            });
+
+            // Set timeout to end game
+            setTimeout(async () => {
+                const currentGame = activeGames.get(gameId);
+                if (currentGame && !currentGame.solved) {
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        text: `⌛ Time's up!\n\n` +
+                              `Answer: ${game.data.answer}\n` +
+                              `Explanation: ${game.data.explanation}`
+                    });
+                    activeGames.delete(gameId);
+                }
+            }, game.timeLimit);
+
+        } catch (error) {
+            logger.error('Error in caklontong command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error starting Cak Lontong quiz'
+            });
+        }
+    },
+
+    tebaklagu: async (sock, msg) => {
+        try {
+            const gameId = msg.key.remoteJid;
+            if (activeGames.has(gameId)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ A game is already in progress in this chat!'
+                });
+            }
+
+            const songQuizzes = [
+                {
+                    audio: "song1.mp3",
+                    title: "Shape of You",
+                    artist: "Ed Sheeran"
+                },
+                {
+                    audio: "song2.mp3",
+                    title: "Perfect",
+                    artist: "Ed Sheeran"
+                }
+            ];
+
+            const randomSong = songQuizzes[Math.floor(Math.random() * songQuizzes.length)];
+            const game = createGameState('tebaklagu', {
+                audio: randomSong.audio,
+                title: randomSong.title.toLowerCase(),
+                artist: randomSong.artist,
+                timeLimit: 30000 // 30 seconds
+            });
+
+            activeGames.set(gameId, game);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                audio: { url: `./assets/audio/${game.data.audio}` },
+                mimetype: 'audio/mp4',
+                ptt: true, // Play as voice note
+                caption: `🎵 *Guess the Song*\n\n` +
+                        `Listen to the audio clip and guess the song title!\n\n` +
+                        `⏳ You have 30 seconds and 3 attempts!\n` +
+                        `Use ${config.prefix}answer <song title> to respond`
+            });
+
+            // Set timeout to end game
+            setTimeout(async () => {
+                const currentGame = activeGames.get(gameId);
+                if (currentGame && !currentGame.solved) {
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        text: `⌛ Time's up!\n\n` +
+                              `The song was: ${game.data.title}\n` +
+                              `Artist: ${game.data.artist}`
+                    });
+                    activeGames.delete(gameId);
+                }
+            }, game.timeLimit);
+
+        } catch (error) {
+            logger.error('Error in tebaklagu command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error starting song quiz'
+            });
+        }
     }
+
 };
 
 // Extend gameCommands with additional commands
