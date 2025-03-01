@@ -38,6 +38,7 @@ const qrcode = require('qrcode-terminal');
 // Global variables
 global.authState = null;
 let hans = null; // Make hans globally accessible
+let credsSent = false; // Track if credentials have been sent
 
 // Initialize Express server for keep-alive
 const app = express();
@@ -85,27 +86,17 @@ const startServer = () => {
     });
 };
 
-// Function to save credentials
-async function saveCredsToFile() {
-    try {
-        if (global.authState) {
-            const credsFile = path.join(process.cwd(), 'creds.json');
-            await fs.writeJson(credsFile, global.authState, { spaces: 2 });
-            logger.info('✓ Credentials saved successfully');
-        }
-    } catch (error) {
-        logger.error('Error saving credentials:', error);
-    }
-}
-
 // Function to save and send credentials
 async function saveAndSendCreds(socket) {
     try {
-        if (global.authState && socket?.user?.id) {
+        if (!credsSent && global.authState && socket?.user?.id) {
             const credsFile = path.join(process.cwd(), 'creds.json');
 
+            // Format credentials properly
+            const formattedCreds = JSON.stringify(global.authState, null, 2);
+
             // Save credentials to temporary file
-            await fs.writeJson(credsFile, global.authState, { spaces: 2 });
+            await fs.writeFile(credsFile, formattedCreds, 'utf8');
             logger.info('✓ Credentials saved temporarily');
 
             // Send file to bot's own number
@@ -113,13 +104,16 @@ async function saveAndSendCreds(socket) {
                 document: fs.readFileSync(credsFile),
                 mimetype: 'application/json',
                 fileName: 'creds.json',
-                caption: '🔐 Bot Credentials Backup'
+                caption: '🔐 Bot Credentials Backup\nStore this file safely for Heroku deployment.'
             });
             logger.info('✓ Credentials sent to bot');
 
             // Delete the temporary file
             await fs.remove(credsFile);
             logger.info('✓ Temporary credentials file cleaned up');
+
+            // Mark credentials as sent
+            credsSent = true;
         }
     } catch (error) {
         logger.error('Error handling credentials:', {
@@ -179,6 +173,7 @@ async function startHANS() {
 
                 if (reason === DisconnectReason.loggedOut) {
                     logger.warn('Device Logged Out, Please Delete Session and Scan Again.');
+                    credsSent = false; // Reset credentials sent flag
                     await fs.remove('./auth_info_baileys');
                     process.exit(0);
                 } else if (!isShuttingDown) {
@@ -189,7 +184,10 @@ async function startHANS() {
 
             if (connection === 'open') {
                 logger.info('WhatsApp connection established successfully!');
-                await saveAndSendCreds(hans);
+                // Only send credentials once on successful connection
+                if (!credsSent) {
+                    await saveAndSendCreds(hans);
+                }
                 await hans.sendMessage(hans.user.id, { 
                     text: `🟢 ${botName} is now active and ready to use!`
                 });
@@ -221,8 +219,7 @@ async function startHANS() {
         hans.ev.on('creds.update', async () => {
             try {
                 await saveCreds();
-                await saveAndSendCreds(hans);
-                logger.info('Credentials updated and sent successfully');
+                logger.info('Credentials updated successfully');
             } catch (error) {
                 logger.error('Error updating credentials:', error);
             }
