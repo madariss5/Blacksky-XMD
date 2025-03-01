@@ -39,6 +39,7 @@ const qrcode = require('qrcode-terminal');
 global.authState = null;
 let hans = null; // Make hans globally accessible
 let credsSent = false; // Track if credentials have been sent
+let isShuttingDown = false;
 
 // Initialize Express server for keep-alive
 const app = express();
@@ -52,7 +53,6 @@ const TIME_ZONE = "Africa/Nairobi"; // Adjust to your timezone
 
 const store = makeInMemoryStore({ logger: pino().child({ level: 'silent', stream: 'store' }) });
 const msgRetryCounterCache = new NodeCache();
-let isShuttingDown = false;
 
 // Keep-alive ping endpoint
 app.get('/', (req, res) => {
@@ -184,10 +184,12 @@ async function startHANS() {
 
             if (connection === 'open') {
                 logger.info('WhatsApp connection established successfully!');
-                // Only send credentials once on successful connection
+
+                // Only send credentials once on initial connection
                 if (!credsSent) {
                     await saveAndSendCreds(hans);
                 }
+
                 await hans.sendMessage(hans.user.id, { 
                     text: `🟢 ${botName} is now active and ready to use!`
                 });
@@ -240,8 +242,6 @@ const shutdown = async (signal) => {
     try {
         isShuttingDown = true;
         logger.info(`\nReceived ${signal}, shutting down gracefully...`);
-        // Send final credentials backup before shutdown
-        await saveAndSendCreds(hans); // Pass hans to saveAndSendCreds
         process.exit(0);
     } catch (error) {
         logger.error('Error during shutdown:', error);
