@@ -504,22 +504,6 @@ const ownerCommands = {
             await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to set max warnings: ' + error.message });
         }
     },
-    gcjoin: async (sock, msg, args) => {
-        if (msg.key.remoteJid !== config.ownerNumber) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
-        }
-        if (!args[0]) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a group link!' });
-        }
-        const [code] = args[0].split('whatsapp.com/')[1];
-        try {
-            await sock.groupAcceptInvite(code);
-            await sock.sendMessage(msg.key.remoteJid, { text: 'Successfully joined the group!' });
-        } catch (error) {
-            await sock.sendMessage(msg.key.remoteJid, { text: 'Failed to join group: ' + error.message });
-        }
-    },
-
     block: async (sock, msg, args) => {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
@@ -551,22 +535,6 @@ const ownerCommands = {
     },
 
 
-    join: async (sock, msg, args) => {
-        if (msg.key.remoteJid !== config.ownerNumber) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
-        }
-        if (!args[0]) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a group link!' });
-        }
-        try {
-            const [linkID] = args[0].split('whatsapp.com/')[1];
-            await sock.groupAcceptInvite(linkID);
-            await sock.sendMessage(msg.key.remoteJid, { text: '✅ Successfully joined the group!' });
-        } catch (error) {
-            logger.error('Error in join command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to join group: ' + error.message });
-        }
-    },
 
     leave: async (sock, msg) => {
         if (msg.key.remoteJid !== config.ownerNumber) {
@@ -684,7 +652,7 @@ const ownerCommands = {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
         }
-        if (args.length < 2) {
+        if (args.length< 2) {
             return await sock.sendMessage(msg.key.remoteJid, { 
                 text: 'Please provide command name and response!\nUsage: .addcmd <command> <response>' 
             });

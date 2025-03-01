@@ -62,6 +62,7 @@ const basicCommands = {
                     `• ${config.prefix}menu - Show all commands`
                 ],
                 'User': [
+                    `• ${config.prefix}join - Join a group using invite link`,
                     `• ${config.prefix}profile - View user profile`,
                     `• ${config.prefix}me - Show your own profile`,
                     `• ${config.prefix}register - Register new user`,

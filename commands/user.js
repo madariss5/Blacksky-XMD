@@ -15,6 +15,37 @@ async function safeProfilePicture(sock, jid) {
 
 // Core user commands
 const coreUserCommands = {
+    join: async (sock, msg, args) => {
+        try {
+            if (!args[0]) {
+                return await sock.sendMessage(msg.key.remoteJid, { 
+                    text: '❌ Please provide a group link!\nUsage: .join <group_link>' 
+                });
+            }
+
+            // Extract invite code from link
+            const linkParts = args[0].split('whatsapp.com/');
+            if (linkParts.length < 2) {
+                return await sock.sendMessage(msg.key.remoteJid, { 
+                    text: '❌ Invalid group link provided!' 
+                });
+            }
+
+            const inviteCode = linkParts[1];
+            await sock.groupAcceptInvite(inviteCode);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '✅ Successfully joined the group!' 
+            });
+
+            logger.info('Successfully joined group with code:', inviteCode);
+        } catch (error) {
+            logger.error('Error in join command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '❌ Failed to join group: ' + error.message 
+            });
+        }
+    },
+
     profile: async (sock, msg, args) => {
         try {
             let targetUser;
