@@ -106,13 +106,33 @@ const basicCommands = {
                     `• ${config.prefix}paizuri - NSFW paizuri content`,
                     `• ${config.prefix}ecchi - NSFW ecchi content`,
                     `• ${config.prefix}ero - NSFW ero content`
+                ],
+                'Owner': [
+                    `• ${config.prefix}block - Block user from using bot`,
+                    `• ${config.prefix}unblock - Unblock user`,
+                    `• ${config.prefix}broadcast - Send message to all users`,
+                    `• ${config.prefix}setbotbio - Set bot's bio`,
+                    `• ${config.prefix}setbotname - Set bot's name`,
+                    `• ${config.prefix}setbotpp - Set bot's profile picture`,
+                    `• ${config.prefix}leave - Leave current group`,
+                    `• ${config.prefix}eval - Evaluate JavaScript code`,
+                    `• ${config.prefix}exec - Execute terminal command`,
+                    `• ${config.prefix}getfile - Get file content`,
+                    `• ${config.prefix}savefile - Save file content`,
+                    `• ${config.prefix}restart - Restart the bot`,
+                    `• ${config.prefix}shutdown - Shutdown the bot`,
+                    `• ${config.prefix}clearcache - Clear bot cache`,
+                    `• ${config.prefix}setprefix - Change command prefix`,
+                    `• ${config.prefix}addcmd - Add custom command`,
+                    `• ${config.prefix}delcmd - Delete custom command`,
+                    `• ${config.prefix}listcmd - List custom commands`
                 ]
             };
 
             // Add other command categories from config
             Object.entries(config.commands).forEach(([cmd, info]) => {
                 const category = info.category || 'Uncategorized';
-                if (category !== 'Basic' && category !== 'User' && category !== 'Group' && category !== 'NSFW') {
+                if (category !== 'Basic' && category !== 'User' && category !== 'Group' && category !== 'NSFW' && category !== 'Owner') {
                     if (!categories[category]) {
                         categories[category] = [];
                     }

@@ -652,9 +652,9 @@ const ownerCommands = {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
         }
-        if (args.length< 2) {
-            return await sock.sendMessage(msg.key.remoteJid, { 
-                text: 'Please provide command name and response!\nUsage: .addcmd <command> <response>' 
+        if (args.length < 2) {
+            returnreturn await sock.sendMessage(msg.key.remoteJid, {
+                text: 'Please provide command name and response!\nUsage: .addcmd <command> <response>'
             });
         }
         try {
@@ -727,14 +727,14 @@ const ownerCommands = {
             let successCount = 0;
             const total = chats.length;
 
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: `📢 Starting broadcast to ${total} chats...` 
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `📢 Starting broadcast to ${total} chats...`
             });
 
             for (const chat of chats) {
                 try {
-                    await sock.sendMessage(chat, { 
-                        text: `*📢 Broadcast Message*\n\n${message}` 
+                    await sock.sendMessage(chat, {
+                        text: `*📢 Broadcast Message*\n\n${message}`
                     });
                     successCount++;
 
@@ -770,8 +770,8 @@ const ownerCommands = {
             const cmdFunction = ownerCommands[cmdName];
 
             if (!cmdFunction) {
-                return await sock.sendMessage(msg.key.remoteJid, { 
-                    text: `❌ Command '${cmdName}' not found!` 
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `❌ Command '${cmdName}' not found!`
                 });
             }
 
@@ -781,12 +781,66 @@ const ownerCommands = {
                 .join('\n')
                 .trim();
 
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `*Source Code for '${cmdName}'*\n\`\`\`javascript\n${cmdSource}\n\`\`\``
             });
         } catch (error) {
             logger.error('Error in getcase command:', error);
             await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to get command source: ' + error.message });
+        }
+    },
+    getfile: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        if (!args[0]) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a file path!' });
+        }
+        try {
+            const filePath = args[0];
+            if (!fs.existsSync(filePath)) {
+                return await sock.sendMessage(msg.key.remoteJid, { text: '❌ File not found!' });
+            }
+            const content = await fs.readFile(filePath, 'utf8');
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `📄 *File Content*\n\n${content}`
+            });
+        } catch (error) {
+            logger.error('Error in getfile command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Error reading file: ' + error.message });
+        }
+    },
+
+    savefile: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        if (args.length < 2) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: 'Please provide file path and content!\nUsage: .savefile <path> <content>'
+            });
+        }
+        try {
+            const filePath = args[0];
+            const content = args.slice(1).join(' ');
+            await fs.writeFile(filePath, content, 'utf8');
+            await sock.sendMessage(msg.key.remoteJid, { text: '✅ File saved successfully!' });
+        } catch (error) {
+            logger.error('Error in savefile command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Error saving file: ' + error.message });
+        }
+    },
+
+    shutdown: async (sock, msg) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        try {
+            await sock.sendMessage(msg.key.remoteJid, { text: '🔄 Shutting down bot...' });
+            process.exit(0);
+        } catch (error) {
+            logger.error('Error in shutdown command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to shutdown: ' + error.message });
         }
     }
 };

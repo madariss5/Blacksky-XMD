@@ -44,8 +44,26 @@ module.exports = async (hans, m, chatUpdate, store) => {
         // Try each command module in order
         let commandExecuted = false;
 
+        // Owner Commands - Process first for security
+        if (Object.prototype.hasOwnProperty.call(ownerCommands, command)) {
+            try {
+                logger.info('Executing owner command:', { command });
+                await ownerCommands[command](hans, m, args);
+                commandExecuted = true;
+                logger.info('Owner command executed successfully:', { command });
+            } catch (error) {
+                logger.error('Error executing owner command:', {
+                    command,
+                    error: error.message,
+                    stack: error.stack
+                });
+                await hans.sendMessage(m.key.remoteJid, { 
+                    text: `❌ Error executing owner command: ${error.message}` 
+                });
+            }
+        }
         // Group Commands - Process first for admin actions
-        if (Object.prototype.hasOwnProperty.call(groupCommands, command)) {
+        else if (Object.prototype.hasOwnProperty.call(groupCommands, command)) {
             try {
                 logger.info('Executing group command:', { command });
                 await groupCommands[command](hans, m, args);
@@ -251,23 +269,7 @@ module.exports = async (hans, m, chatUpdate, store) => {
                 });
             }
         }
-        else if (ownerCommands[command]) {
-            try {
-                logger.info('Executing owner command:', { command });
-                await ownerCommands[command](hans, m, args);
-                commandExecuted = true;
-                logger.info('Owner command executed successfully:', { command });
-            } catch (error) {
-                logger.error('Error executing owner command:', {
-                    command,
-                    error: error.message,
-                    stack: error.stack
-                });
-                await hans.sendMessage(m.key.remoteJid, { 
-                    text: `❌ Error executing command: ${error.message}` 
-                });
-            }
-        }
+
 
         // Command not found
         if (!commandExecuted) {
