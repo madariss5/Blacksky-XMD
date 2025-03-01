@@ -138,144 +138,186 @@ async function cleanupTempFiles(...filePaths) {
 }
 
 const mediaCommands = {
-    video: async (sock, msg, args) => {
+    meme: async (sock, msg) => {
         try {
-            if (!args.length) {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🎭 Fetching a random meme...'
+            });
+
+            // Use multiple meme subreddits for variety
+            const subreddits = ['memes', 'dankmemes', 'wholesomememes', 'me_irl'];
+            const randomSubreddit = subreddits[Math.floor(Math.random() * subreddits.length)];
+            
+            // Fetch meme from Reddit JSON API
+            const response = await axios.get(`https://www.reddit.com/r/${randomSubreddit}/random.json`);
+            
+            if (!response.data || !response.data[0]?.data?.children?.length) {
+                throw new Error('Failed to fetch meme from Reddit');
+            }
+
+            const post = response.data[0].data.children[0].data;
+            
+            // Skip if NSFW or if no media URL
+            if (post.over_18 || !post.url) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Please provide a video name or YouTube URL!\nUsage: !video <video name/URL>'
+                    text: '❌ Failed to get appropriate meme, please try again.'
                 });
             }
 
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '🔍 Searching for your video request...'
-            });
+            // Handle different media types
+            const mediaUrl = post.url;
+            const isGif = mediaUrl.endsWith('.gif') || post.is_video;
+            const title = post.title || 'Random Meme';
 
-            const query = args.join(' ');
-            let videoUrl;
+            if (isGif) {
+                // Handle GIFs and videos
+                const timestamp = Date.now();
+                const outputPath = path.join(tempDir, `meme_${timestamp}.mp4`);
 
-            // Check if the argument is a YouTube URL
-            if (query.match(/^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/)) {
-                videoUrl = query;
+                // Download and convert if needed
+                const mediaResponse = await axios.get(mediaUrl, { responseType: 'arraybuffer' });
+                await fs.writeFile(outputPath, mediaResponse.data);
+
+                await sock.sendMessage(msg.key.remoteJid, {
+                    video: fs.readFileSync(outputPath),
+                    caption: `🎭 ${title}`,
+                    gifPlayback: true
+                });
+
+                await fs.remove(outputPath);
             } else {
-                // Search for the video
-                const searchResults = await yts(query);
-                if (!searchResults.videos.length) {
-                    return await sock.sendMessage(msg.key.remoteJid, {
-                        text: '❌ No results found!'
-                    });
-                }
-                videoUrl = searchResults.videos[0].url;
+                // Handle static images
+                await sock.sendMessage(msg.key.remoteJid, {
+                    image: { url: mediaUrl },
+                    caption: `🎭 ${title}`
+                });
             }
 
+        } catch (error) {
+            logger.error('Error in meme command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '⏳ Downloading and processing video...'
+                text: '❌ Failed to fetch meme: ' + error.message
             });
+        }
+    },
+            const randomSubreddit = subreddits[Math.floor(Math.random() * subreddits.length)];
+            
+            // Fetch meme from Reddit JSON API
+            const response = await axios.get(`https://www.reddit.com/r/${randomSubreddit}/random.json`);
+            
+            if (!response.data || !response.data[0]?.data?.children?.length) {
+                throw new Error('Failed to fetch meme from Reddit');
+            }
 
-            // Get video info
-            const info = await ytdl.getInfo(videoUrl);
-            const title = info.videoDetails.title;
-            const thumbnail = info.videoDetails.thumbnails[0].url;
+            const post = response.data[0].data.children[0].data;
+            
+            // Skip if NSFW or if no media URL
+            if (post.over_18 || !post.url) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Failed to get appropriate meme, please try again.'
+                });
+            }
 
-            // Download video
-            const videoStream = ytdl(videoUrl, {
-                quality: 'highest',
-                filter: 'videoandaudio'
-            });
+            // Handle different media types
+            const mediaUrl = post.url;
+            const isGif = mediaUrl.endsWith('.gif') || post.is_video;
+            const title = post.title || 'Random Meme';
 
-            const timestamp = Date.now();
-            const outputPath = path.join(tempDir, `video_${timestamp}.mp4`);
+            if (isGif) {
+                // Handle GIFs and videos
+                const timestamp = Date.now();
+                const outputPath = path.join(tempDir, `meme_${timestamp}.mp4`);
 
-            // Process video using ffmpeg
-            await new Promise((resolve, reject) => {
-                ffmpeg(videoStream)
-                    .toFormat('mp4')
-                    .size('480x?') // Resize to 480p width, maintain aspect ratio
-                    .on('end', resolve)
-                    .on('error', reject)
-                    .save(outputPath);
-            });
+                // Download and convert if needed
+                const mediaResponse = await axios.get(mediaUrl, { responseType: 'arraybuffer' });
+                await fs.writeFile(outputPath, mediaResponse.data);
 
-            // Send thumbnail with info
-            await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: thumbnail },
-                caption: `🎥 *Downloading*\n\n*${title}*`
-            });
+                await sock.sendMessage(msg.key.remoteJid, {
+                    video: fs.readFileSync(outputPath),
+                    caption: `🎭 ${title}`,
+                    gifPlayback: true
+                });
 
-            // Send video
-            await sock.sendMessage(msg.key.remoteJid, {
-                video: fs.readFileSync(outputPath),
-                caption: `✨ Here's your video: ${title}`,
-                mimetype: 'video/mp4'
-            });
-
-            // Cleanup
-            await fs.remove(outputPath);
+                await fs.remove(outputPath);
+            } else {
+                // Handle static images
+                await sock.sendMessage(msg.key.remoteJid, {
+                    image: { url: mediaUrl },
+                    caption: `🎭 ${title}`
+                });
+            }
 
         } catch (error) {
-            logger.error('Error in video command:', error);
+            logger.error('Error in meme command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to download video: ' + error.message
+                text: '❌ Failed to fetch meme: ' + error.message
             });
         }
     },
 
-    playlist: async (sock, msg, args) => {
+    meme: async (sock, msg) => {
         try {
-            if (!args.length) {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🎭 Fetching a random meme...'
+            });
+
+            // Use multiple meme subreddits for variety
+            const subreddits = ['memes', 'dankmemes', 'wholesomememes', 'me_irl'];
+            const randomSubreddit = subreddits[Math.floor(Math.random() * subreddits.length)];
+            
+            // Fetch meme from Reddit JSON API
+            const response = await axios.get(`https://www.reddit.com/r/${randomSubreddit}/random.json`);
+            
+            if (!response.data || !response.data[0]?.data?.children?.length) {
+                throw new Error('Failed to fetch meme from Reddit');
+            }
+
+            const post = response.data[0].data.children[0].data;
+            
+            // Skip if NSFW or if no media URL
+            if (post.over_18 || !post.url) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Please provide a playlist URL or search term!\nUsage: !playlist <playlist URL/name>'
+                    text: '❌ Failed to get appropriate meme, please try again.'
                 });
             }
 
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '🔍 Searching for playlist...'
-            });
+            // Handle different media types
+            const mediaUrl = post.url;
+            const isGif = mediaUrl.endsWith('.gif') || post.is_video;
+            const title = post.title || 'Random Meme';
 
-            const query = args.join(' ');
-            let playlistUrl;
-            let videos = [];
+            if (isGif) {
+                // Handle GIFs and videos
+                const timestamp = Date.now();
+                const outputPath = path.join(tempDir, `meme_${timestamp}.mp4`);
 
-            // Check if argument is a YouTube playlist URL
-            if (query.includes('youtube.com/playlist')) {
-                playlistUrl = query;
-                // TODO: Implement playlist URL handling
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '🚧 Playlist URL support coming soon!'
+                // Download and convert if needed
+                const mediaResponse = await axios.get(mediaUrl, { responseType: 'arraybuffer' });
+                await fs.writeFile(outputPath, mediaResponse.data);
+
+                await sock.sendMessage(msg.key.remoteJid, {
+                    video: fs.readFileSync(outputPath),
+                    caption: `🎭 ${title}`,
+                    gifPlayback: true
                 });
+
+                await fs.remove(outputPath);
             } else {
-                // Search for videos
-                const searchResults = await yts(query);
-                videos = searchResults.videos.slice(0, 5); // Get first 5 results
-            }
-
-            if (!videos.length) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ No results found!'
+                // Handle static images
+                await sock.sendMessage(msg.key.remoteJid, {
+                    image: { url: mediaUrl },
+                    caption: `🎭 ${title}`
                 });
             }
-
-            // Display playlist
-            let playlistText = '🎵 *Found These Songs:*\n\n';
-            videos.forEach((video, index) => {
-                playlistText += `${index + 1}. ${video.title}\n⏱️ ${video.timestamp}\n\n`;
-            });
-
-            playlistText += '\nReply with the number to play that song.';
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: playlistText
-            });
-
-            // Store playlist in memory for later selection
-            // TODO: Implement playlist selection handling
 
         } catch (error) {
-            logger.error('Error in playlist command:', error);
+            logger.error('Error in meme command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to process playlist: ' + error.message
+                text: '❌ Failed to fetch meme: ' + error.message
             });
         }
     },
+
     video: async (sock, msg, args) => {
         try {
             if (!args.length) {
@@ -925,6 +967,69 @@ const mediaCommands = {
                     reuploadRequest: sock.updateMediaMessage
                 }
             );
+
+    meme: async (sock, msg) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🎭 Fetching a random meme...'
+            });
+
+            // Use multiple meme subreddits for variety
+            const subreddits = ['memes', 'dankmemes', 'wholesomememes', 'me_irl'];
+            const randomSubreddit = subreddits[Math.floor(Math.random() * subreddits.length)];
+            
+            // Fetch meme from Reddit JSON API
+            const response = await axios.get(`https://www.reddit.com/r/${randomSubreddit}/random.json`);
+            
+            if (!response.data || !response.data[0]?.data?.children?.length) {
+                throw new Error('Failed to fetch meme from Reddit');
+            }
+
+            const post = response.data[0].data.children[0].data;
+            
+            // Skip if NSFW or if no media URL
+            if (post.over_18 || !post.url) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Failed to get appropriate meme, please try again.'
+                });
+            }
+
+            // Handle different media types
+            const mediaUrl = post.url;
+            const isGif = mediaUrl.endsWith('.gif') || post.is_video;
+            const title = post.title || 'Random Meme';
+
+            if (isGif) {
+                // Handle GIFs and videos
+                const timestamp = Date.now();
+                const outputPath = path.join(tempDir, `meme_${timestamp}.mp4`);
+
+                // Download and convert if needed
+                const mediaResponse = await axios.get(mediaUrl, { responseType: 'arraybuffer' });
+                await fs.writeFile(outputPath, mediaResponse.data);
+
+                await sock.sendMessage(msg.key.remoteJid, {
+                    video: fs.readFileSync(outputPath),
+                    caption: `🎭 ${title}`,
+                    gifPlayback: true
+                });
+
+                await fs.remove(outputPath);
+            } else {
+                // Handle static images
+                await sock.sendMessage(msg.key.remoteJid, {
+                    image: { url: mediaUrl },
+                    caption: `🎭 ${title}`
+                });
+            }
+
+        } catch (error) {
+            logger.error('Error in meme command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to fetch meme: ' + error.message
+            });
+        }
+    },
 
             const tempInput = path.join(tempDir, 'input.webp');
             const tempOutput = path.join(tempDir, 'output.webp');
