@@ -27,8 +27,7 @@ const MAX_RETRIES = 3;
 const QR_INTERVAL = 30000; // 30 seconds between QR codes
 const QR_TIMEOUT = 60000; // 60 seconds timeout for QR code scanning
 
-async function clearScreen() {
-    console.clear();
+async function showHeader() {
     console.log(chalk.blue('\n┌─────────────────────────────────────┐'));
     console.log(chalk.blue('│          Flash-Bot Connection        │'));
     console.log(chalk.blue('└─────────────────────────────────────┘\n'));
@@ -36,7 +35,7 @@ async function clearScreen() {
 
 async function startWhatsApp() {
     try {
-        await clearScreen();
+        await showHeader();
 
         // Clean auth state
         const authDir = './auth_info_baileys';
@@ -67,8 +66,7 @@ async function startWhatsApp() {
             generateHighQualityLinkPreview: false,
             markOnlineOnConnect: true,
             fireInitQueries: false,
-            syncFullHistory: false,
-            retryRequestDelayMs: 2000
+            syncFullHistory: false
         });
 
         logger.info('Socket connection initialized');
@@ -88,7 +86,7 @@ async function startWhatsApp() {
                 if (now - lastQRTime >= QR_INTERVAL) {
                     lastQRTime = now;
 
-                    await clearScreen();
+                    await showHeader();
                     console.log(chalk.yellow('Please follow these steps:'));
                     console.log(chalk.white('1. Open WhatsApp on your phone'));
                     console.log(chalk.white('2. Go to Settings > Linked Devices'));
