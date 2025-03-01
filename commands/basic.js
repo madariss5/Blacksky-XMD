@@ -1,50 +1,20 @@
-const config = require('../config');
-const logger = require('pino')();
+const pino = require('pino');
+const logger = pino({ level: 'silent' });
 const os = require('os');
-
-const startTime = Date.now();
-
-async function formatPhoneNumber(jid) {
-    return jid.split('@')[0].replace(/(\d{2})(\d{3})(\d{3})(\d{4})/, '+$1 $2 $3 $4');
-}
+const moment = require('moment-timezone');
 
 const basicCommands = {
-    help: async (sock, msg, args) => {
+    help: async (sock, msg) => {
         try {
-            logger.debug('Executing help command', { args });
-
-            // If a specific command is provided, show detailed help
-            if (args.length > 0) {
-                const command = args[0].toLowerCase();
-                const commandInfo = config.commands[command];
-
-                if (!commandInfo) {
-                    return await sock.sendMessage(msg.key.remoteJid, {
-                        text: `❌ Command "${command}" not found. Use ${config.prefix}help to see all commands.`
-                    });
-                }
-
-                const helpText = `*Command: ${command}*\n\n` +
-                                `📝 Description: ${commandInfo.description}\n` +
-                                `🔧 Usage: ${commandInfo.usage || `${config.prefix}${command}`}\n` +
-                                `📊 Category: ${commandInfo.category}\n` +
-                                (commandInfo.examples ? `\n💡 Examples:\n${commandInfo.examples.join('\n')}` : '');
-
-                return await sock.sendMessage(msg.key.remoteJid, { text: helpText });
-            }
-
-            // General help message with improved formatting
-            const basicCmds = ['help', 'ping', 'menu', 'info', 'runtime', 'speed', 'profile', 'me', 'dashboard', 'status', 'creator', 'sc', 'tqto', 'changelog', 'rank', 'premium', 'about', 'rules']
-                .map(cmd => `• ${config.prefix}${cmd} - ${config.commands[cmd].description}`)
-                .join('\n');
-
-            const text = `*${config.botName} Help*\n\n` +
-                        `📌 *Basic Commands*\n${basicCmds}\n\n` +
-                        `Type ${config.prefix}menu to see the full command list!\n` +
-                        `For detailed help on a command, type ${config.prefix}help <command>`;
+            const text = `*🤖 HANS MD Bot Help*\n\n` +
+                        `Basic Commands:\n` +
+                        `• .help - Show this help message\n` +
+                        `• .ping - Check bot response time\n` +
+                        `• .info - Show bot information\n` +
+                        `• .menu - Show all available commands\n\n` +
+                        `Type .menu to see full command list!`;
 
             await sock.sendMessage(msg.key.remoteJid, { text });
-            logger.info('Help command executed successfully');
         } catch (error) {
             logger.error('Help command failed:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -55,13 +25,10 @@ const basicCommands = {
 
     ping: async (sock, msg) => {
         try {
-            logger.debug('Executing ping command');
             const start = Date.now();
-
             const loadAvg = os.loadavg();
             const memUsage = process.memoryUsage();
 
-            // Send initial message and measure response time
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: '🏓 Testing bot response...' 
             });
@@ -74,7 +41,6 @@ const basicCommands = {
                       `💾 Memory: ${(memUsage.heapUsed / 1024 / 1024).toFixed(2)} MB`
             });
 
-            logger.info('Ping command executed successfully', { latency });
         } catch (error) {
             logger.error('Ping command failed:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -85,55 +51,28 @@ const basicCommands = {
 
     menu: async (sock, msg) => {
         try {
-            logger.debug('Executing menu command');
-
-            // Group commands by category
-            const categories = {};
-            Object.entries(config.commands).forEach(([cmd, info]) => {
-                const category = info.category || 'Uncategorized';
-                if (!categories[category]) {
-                    categories[category] = [];
-                }
-                categories[category].push(`• ${config.prefix}${cmd} - ${info.description}`);
-            });
-
-            // Build menu text with all categories
-            let text = `*${config.botName} Commands*\n\n`;
-
-            // Basic commands first
-            if (categories['Basic']) {
-                text += `📌 *Basic Commands*\n${categories['Basic'].join('\n')}\n\n`;
-            }
-
-            // Then other categories with icons
-            const categoryIcons = {
-                'Basic': '📌',
-                'Media': '🎨',
-                'Downloader': '📥',
-                'Music': '🎵',
-                'AI': '🤖',
-                'Group': '👥',
-                'Fun': '🎮',
-                'Game': '🎲',
-                'Economy': '💰',
-                'Anime': '🎌',
-                'Utility': '🛠️',
-                'Owner': '👑',
-                'NSFW': '🔞',
-                'Debug': '🐛'
-            };
-
-            Object.entries(categories).forEach(([category, commands]) => {
-                if (category !== 'Basic' && commands.length > 0) {
-                    const icon = categoryIcons[category] || '📌';
-                    text += `${icon} *${category} Commands*\n${commands.join('\n')}\n\n`;
-                }
-            });
-
-            text += `💡 Use ${config.prefix}help <command> for detailed info!`;
+            const text = `*📱 HANS MD Commands Menu*\n\n` +
+                        `*Basic Commands* 📌\n` +
+                        `• .help - Show help\n` +
+                        `• .ping - Check response\n` +
+                        `• .info - Bot info\n` +
+                        `• .menu - Show this menu\n\n` +
+                        `*Group Commands* 👥\n` +
+                        `• .kick - Remove member\n` +
+                        `• .promote - Make admin\n` +
+                        `• .demote - Remove admin\n\n` +
+                        `*Media Commands* 🎨\n` +
+                        `• .sticker - Create sticker\n` +
+                        `• .toimg - Sticker to image\n\n` +
+                        `*Download Commands* 📥\n` +
+                        `• .ytmp3 - Download audio\n` +
+                        `• .ytmp4 - Download video\n\n` +
+                        `*AI Commands* 🤖\n` +
+                        `• .ai - Chat with AI\n` +
+                        `• .img - Generate image\n\n` +
+                        `Type .help <command> for more info!`;
 
             await sock.sendMessage(msg.key.remoteJid, { text });
-            logger.info('Menu command executed successfully');
         } catch (error) {
             logger.error('Menu command failed:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -144,32 +83,24 @@ const basicCommands = {
 
     info: async (sock, msg) => {
         try {
-            logger.debug('Executing info command');
+            const uptime = process.uptime();
+            const days = Math.floor(uptime / 86400);
+            const hours = Math.floor((uptime % 86400) / 3600);
+            const minutes = Math.floor((uptime % 3600) / 60);
+            const seconds = Math.floor(uptime % 60);
 
-            const uptimeInSeconds = (Date.now() - startTime) / 1000;
-            const days = Math.floor(uptimeInSeconds / 86400);
-            const hours = Math.floor((uptimeInSeconds % 86400) / 3600);
-            const minutes = Math.floor((uptimeInSeconds % 3600) / 60);
-            const seconds = Math.floor(uptimeInSeconds % 60);
-
-            const text = `*${config.botName} Information*\n\n` +
-                        `🤖 *Bot Details*\n` +
-                        `• Name: ${config.botName}\n` +
-                        `• Owner: ${config.ownerName}\n` +
-                        `• Prefix: ${config.prefix}\n\n` +
-                        `⚙️ *System Info*\n` +
+            const text = `*🤖 Bot Information*\n\n` +
+                        `*System Info*\n` +
                         `• Platform: ${os.platform()}\n` +
                         `• Node.js: ${process.version}\n` +
                         `• Memory: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} MB\n` +
-                        `• CPU Usage: ${(os.loadavg()[0]).toFixed(2)}%\n\n` +
-                        `⏰ *Runtime*\n` +
+                        `• CPU Load: ${(os.loadavg()[0]).toFixed(2)}%\n\n` +
+                        `*Runtime*\n` +
                         `• Uptime: ${days}d ${hours}h ${minutes}m ${seconds}s\n` +
-                        `• Started: ${new Date(startTime).toLocaleString()}\n\n` +
-                        `📊 *Statistics*\n` +
-                        `• Total Commands: ${Object.keys(config.commands).length}`;
+                        `• Started: ${moment().subtract(uptime, 'seconds').format('YYYY-MM-DD HH:mm:ss')}\n\n` +
+                        `*Status*: 🟢 Online`;
 
             await sock.sendMessage(msg.key.remoteJid, { text });
-            logger.info('Info command executed successfully');
         } catch (error) {
             logger.error('Info command failed:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -177,7 +108,6 @@ const basicCommands = {
             });
         }
     },
-
     runtime: async (sock, msg) => {
         try {
             logger.debug('Executing runtime command');
@@ -607,5 +537,10 @@ const basicCommands = {
         }
     }
 };
+
+const startTime = Date.now();
+async function formatPhoneNumber(jid) {
+    return jid.split('@')[0].replace(/(\d{2})(\d{3})(\d{3})(\d{4})/, '+$1 $2 $3 $4');
+}
 
 module.exports = basicCommands;

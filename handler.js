@@ -1,46 +1,47 @@
+const basicCommands = require('./commands/basic');
+const logger = require('pino')({ level: 'silent' });
+
 module.exports = async (hans, m, chatUpdate, store) => {
     try {
-        const prefix = '!'; // Your prefix here
-        const isCmd = m.body.startsWith(prefix);
+        const prefix = '.'; // Using . as prefix for commands
+        const isCmd = m.body?.startsWith(prefix);
         const command = isCmd ? m.body.slice(prefix.length).trim().split(' ')[0].toLowerCase() : '';
-        const args = m.body.trim().split(/ +/).slice(1);
-        
-        // Basic command handler
-        switch (command) {
-            case 'hi':
-            case 'hello':
-                await m.reply('Hello! How can I help you today?');
-                break;
-                
-            case 'ping':
-                const start = Date.now();
-                await m.reply('Testing ping...');
-                const end = Date.now();
-                await m.reply(`Pong! Latency: ${end - start}ms`);
-                break;
-                
-            case 'menu':
-                const menuText = `
-🤖 *${botName} Menu* 🤖
+        const args = m.body?.trim().split(/ +/).slice(1) || [];
 
-*Basic Commands*
-• ${prefix}hi - Say hello
-• ${prefix}ping - Check bot latency
-• ${prefix}menu - Show this menu
+        logger.info('Processing command:', { command, args });
 
-*More commands coming soon!*
-                `;
-                await m.reply(menuText);
-                break;
-                
-            default:
-                if (isCmd) {
-                    await m.reply(`Command *${command}* not found. Type ${prefix}menu to see available commands.`);
-                }
+        // If it's a command but not in message body, return
+        if (!m.body) return;
+
+        // Handle basic commands
+        if (isCmd && basicCommands[command]) {
+            try {
+                await basicCommands[command](hans, m, args);
+                logger.info(`Successfully executed command: ${command}`);
+            } catch (error) {
+                logger.error(`Error executing command ${command}:`, error);
+                await hans.sendMessage(m.key.remoteJid, {
+                    text: `❌ Error executing command: ${error.message}`
+                });
+            }
+            return;
         }
-        
+
+        // If command not found but prefix was used
+        if (isCmd) {
+            await hans.sendMessage(m.key.remoteJid, {
+                text: `Command *${command}* not found. Type ${prefix}menu to see available commands.`
+            });
+        }
+
     } catch (err) {
-        console.error("Error in command handler: ", err);
-        await m.reply("An error occurred while processing your command.");
+        logger.error("Error in command handler:", err);
+        try {
+            await hans.sendMessage(m.key.remoteJid, {
+                text: "❌ An error occurred while processing your command."
+            });
+        } catch (sendError) {
+            logger.error("Failed to send error message:", sendError);
+        }
     }
 };
