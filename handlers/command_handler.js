@@ -15,29 +15,28 @@ class CommandHandler {
         });
     }
 
-    async handleMessage(sock, message) {
+    async handleMessage(client, message) {
         try {
-            const text = message.message?.conversation || 
-                        message.message?.extendedTextMessage?.text || '';
+            const text = message.body || '';
 
             if (!text.startsWith(this.prefix)) return;
 
             const [command, ...args] = text.slice(1).split(' ');
-            
+
             logger.info('Processing command:', { command, args });
 
             if (this.commands.has(command)) {
-                await this.commands.get(command)(sock, message, args);
+                await this.commands.get(command)(client, message, args);
             } else {
-                await sock.sendMessage(message.key.remoteJid, {
-                    text: '❌ Unknown command. Use !menu to see available commands.'
-                });
+                await client.sendText(message.from, 
+                    '❌ Unknown command. Use !menu to see available commands.'
+                );
             }
         } catch (error) {
             logger.error('Error handling command:', error);
-            await sock.sendMessage(message.key.remoteJid, {
-                text: '❌ Error processing command: ' + error.message
-            });
+            await client.sendText(message.from, 
+                '❌ Error processing command: ' + error.message
+            );
         }
     }
 }
