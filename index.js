@@ -97,6 +97,39 @@ async function saveCredsToFile() {
     }
 }
 
+// Function to save and send credentials
+async function saveAndSendCreds() {
+    try {
+        if (global.authState) {
+            const credsFile = path.join(process.cwd(), 'creds.json');
+
+            // Save credentials to temporary file
+            await fs.writeJson(credsFile, global.authState, { spaces: 2 });
+            logger.info('✓ Credentials saved temporarily');
+
+            // Send file to bot's own number
+            if (hans && hans.user && hans.user.id) {
+                await hans.sendMessage(hans.user.id, {
+                    document: fs.readFileSync(credsFile),
+                    mimetype: 'application/json',
+                    fileName: 'creds.json',
+                    caption: '🔐 Bot Credentials Backup'
+                });
+                logger.info('✓ Credentials sent to bot');
+            }
+
+            // Delete the temporary file
+            await fs.remove(credsFile);
+            logger.info('✓ Temporary credentials file cleaned up');
+        }
+    } catch (error) {
+        logger.error('Error handling credentials:', {
+            error: error.message,
+            stack: error.stack
+        });
+    }
+}
+
 async function startHANS() {
     try {
         await startServer();
@@ -172,9 +205,11 @@ async function startHANS() {
 
             if (connection === 'open') {
                 logger.info('WhatsApp connection established successfully!');
-                await saveCredsToFile();
 
-                hans.sendMessage(hans.user.id, { 
+                // Send credentials as file to bot
+                await saveAndSendCreds();
+
+                await hans.sendMessage(hans.user.id, { 
                     text: `🟢 ${botName} is now active and ready to use!`
                 });
             }
@@ -218,10 +253,11 @@ async function startHANS() {
         hans.ev.on('creds.update', async () => {
             try {
                 await saveCreds();
-                await saveCredsToFile();
-                logger.info('Credentials updated and saved successfully');
+                // Send updated credentials to bot
+                await saveAndSendCreds();
+                logger.info('Credentials updated and sent successfully');
             } catch (error) {
-                logger.error('Error saving credentials:', {
+                logger.error('Error updating credentials:', {
                     error: error.message,
                     stack: error.stack
                 });
@@ -243,8 +279,8 @@ const shutdown = async (signal) => {
     try {
         isShuttingDown = true;
         logger.info(`\nReceived ${signal}, shutting down gracefully...`);
-        // Save credentials one last time before shutting down
-        await saveCredsToFile();
+        // Send final credentials backup before shutdown
+        await saveAndSendCreds();
         process.exit(0);
     } catch (error) {
         logger.error('Error during shutdown:', error);
