@@ -35,32 +35,29 @@ const TIME_ZONE = "Africa/Nairobi"; // Adjust to your timezone
 const store = makeInMemoryStore({ logger: pino().child({ level: 'silent', stream: 'store' }) });
 const msgRetryCounterCache = new NodeCache();
 
-// Start server with port handling
 const startServer = () => {
-    app.get('/', (req, res) => {
-        res.json({ status: 'WhatsApp Bot Server Running' });
-    });
-
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         const server = app.listen(PORT, '0.0.0.0')
             .once('error', (err) => {
                 if (err.code === 'EADDRINUSE') {
-                    console.log(chalk.yellow(`Port ${PORT} is busy. Server could not start.`));
+                    console.log(chalk.yellow(`Port ${PORT} is busy, continuing without HTTP server`));
                     resolve(false);
-                } else {
-                    reject(err);
                 }
             })
             .once('listening', () => {
                 console.log(chalk.green(`Server started on port ${PORT}`));
                 resolve(true);
             });
+
+        // Add basic route
+        app.get('/', (req, res) => {
+            res.json({ status: 'WhatsApp Bot Server Running' });
+        });
     });
 };
 
 async function startHANS() {
     try {
-        // Try to start the server first
         await startServer();
 
         console.log(chalk.yellow('Loading WhatsApp session...'));
@@ -79,9 +76,9 @@ async function startHANS() {
             defaultQueryTimeoutMs: undefined,
             patchMessageBeforeSending: (message) => {
                 const requiresPatch = !!(
-                    message.buttonsMessage 
-                    || message.templateMessage
-                    || message.listMessage
+                    message.buttonsMessage ||
+                    message.templateMessage ||
+                    message.listMessage
                 );
                 if (requiresPatch) {
                     message = {
@@ -112,7 +109,7 @@ async function startHANS() {
 
             if (connection === 'close') {
                 let reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
-                console.log(chalk.red('Connection closed due to ', reason));
+                console.log(chalk.red('Connection closed due to:', reason));
 
                 if (reason === DisconnectReason.badSession) {
                     console.log(chalk.red('Bad Session File, Please Delete Session and Scan Again'));
@@ -137,14 +134,13 @@ async function startHANS() {
                     startHANS();
                 } else {
                     console.log(chalk.red(`Unknown DisconnectReason: ${reason}|${connection}`));
-                    process.exit(1);
                 }
             }
 
             if (connection === 'open') {
                 console.log(chalk.green('\n✓ Successfully connected to WhatsApp\n'));
                 console.log(chalk.cyan('• Bot Status: Online'));
-                console.log(chalk.cyan('• Type !menu to see available commands\n'));
+                console.log(chalk.cyan('• Type .menu to see available commands\n'));
 
                 // Send info message to bot number
                 hans.sendMessage(hans.user.id, { 
@@ -168,10 +164,14 @@ async function startHANS() {
 
                 if (msg.key && msg.key.remoteJid === 'status@broadcast') return;
 
-                const m = smsg(hans, msg, store);
-                require('./handler')(hans, m, chatUpdate, store);
+                try {
+                    const m = smsg(hans, msg, store);
+                    require('./handler')(hans, m, chatUpdate, store);
+                } catch (parseError) {
+                    console.error('Error parsing message:', parseError);
+                }
             } catch (err) {
-                console.error('Error in message handler: ', err);
+                console.error('Error in message handler:', err);
             }
         });
 
@@ -191,23 +191,13 @@ async function startHANS() {
                     }
                 }
             } catch (err) {
-                console.error('Error in group update handler: ', err);
+                console.error('Error in group update handler:', err);
             }
-        });
-
-        // Handle presence update
-        hans.ev.on('presence.update', async data => {
-            // Presence handling implementation
-        });
-
-        // Handle message delete
-        hans.ev.on('message-delete', async data => {
-            // Message delete handling implementation
         });
 
         return hans;
     } catch (err) {
-        console.error('Fatal error in startHANS: ', err);
+        console.error('Fatal error in startHANS:', err);
         process.exit(1);
     }
 }
