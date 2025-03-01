@@ -23,10 +23,6 @@ args = "WhatsApp Core"
 task = "workflow.run"
 args = "Express Server"
 
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "HTTP Server"
-
 [[workflows.workflow]]
 name = "WhatsApp Test"
 author = "agent"
@@ -58,21 +54,6 @@ args = "node whatsapp_core.js"
 
 [[workflows.workflow]]
 name = "Express Server"
-author = "agent"
-
-[workflows.workflow.metadata]
-agentRequireRestartOnSave = false
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node index.js"
-waitForPort = 5000
-
-[[workflows.workflow]]
-name = "HTTP Server"
 author = "agent"
 
 [workflows.workflow.metadata]
