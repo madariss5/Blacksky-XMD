@@ -5,6 +5,7 @@ const { default: makeWASocket, useMultiFileAuthState, Browsers, DisconnectReason
 const { Boom } = require('@hapi/boom');
 const path = require('path');
 const SessionManager = require('./utils/session');
+const utilityCommands = require('./commands/utility');
 
 // Initialize express app
 const app = express();
@@ -45,6 +46,35 @@ async function connectToWhatsApp() {
         logger
     });
 
+    // Handle incoming messages
+    sock.ev.on('messages.upsert', async ({ messages }) => {
+        for (const message of messages) {
+            if (message.key.fromMe) continue; // Skip messages sent by the bot
+
+            const text = message.message?.conversation || 
+                        message.message?.extendedTextMessage?.text || '';
+
+            // Check if message starts with command prefix
+            if (text.startsWith('!')) {
+                const [command, ...args] = text.slice(1).split(' ');
+                logger.info('Command received:', { command, args });
+
+                // Handle utility commands
+                if (command in utilityCommands) {
+                    try {
+                        await utilityCommands[command](sock, message, args);
+                    } catch (error) {
+                        logger.error('Error executing command:', error);
+                        await sock.sendMessage(message.key.remoteJid, {
+                            text: '❌ Error executing command'
+                        });
+                    }
+                }
+            }
+        }
+    });
+
+    // Connection update handling 
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update;
 
@@ -59,6 +89,23 @@ async function connectToWhatsApp() {
             }
         } else if (connection === 'open') {
             logger.info('WhatsApp connection opened');
+            // Send startup message
+            const startupMessage = '🤖 Bot is now online!\n\n' +
+                                 'Available commands:\n' +
+                                 '!stats - Show bot statistics\n' +
+                                 '!report <issue> - Report an issue\n' +
+                                 '!donate - Support information';
+
+            // If OWNER_NUMBER is set, send startup notification
+            if (process.env.OWNER_NUMBER) {
+                try {
+                    await sock.sendMessage(`${process.env.OWNER_NUMBER}@s.whatsapp.net`, {
+                        text: startupMessage
+                    });
+                } catch (error) {
+                    logger.error('Failed to send startup message:', error);
+                }
+            }
         }
     });
 
