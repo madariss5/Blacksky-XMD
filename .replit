@@ -13,11 +13,25 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "WhatsApp Bot"
+args = "Animation Preview"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Animation Preview"
+args = "WhatsApp Bot"
+
+[[workflows.workflow]]
+name = "Animation Preview"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python3 scripts/generate_ponk_gif.py"
 
 [[workflows.workflow]]
 name = "WhatsApp Bot"
@@ -33,20 +47,6 @@ task = "packager.installForAll"
 task = "shell.exec"
 args = "node server.js"
 waitForPort = 5000
-
-[[workflows.workflow]]
-name = "Animation Preview"
-author = "agent"
-
-[workflows.workflow.metadata]
-agentRequireRestartOnSave = false
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python3 scripts/generate_ponk_gif.py"
 
 [deployment]
 run = ["sh", "-c", "node test_whatsapp.js"]

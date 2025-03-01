@@ -24,7 +24,6 @@ class WhatsAppManager {
     }
 
     async initialize() {
-        // Prevent multiple initialization attempts
         if (this.initializationPromise) {
             return this.initializationPromise;
         }
@@ -37,8 +36,7 @@ class WhatsAppManager {
         try {
             logger.info('Starting WhatsApp initialization...');
 
-            // Clean up auth directory and recreate
-            await fs.remove(this.authDir);
+            // Ensure auth directory exists and is clean
             await fs.ensureDir(this.authDir);
 
             const { state, saveCreds } = await useMultiFileAuthState(this.authDir);
@@ -48,23 +46,29 @@ class WhatsAppManager {
 
             this.sock = makeWASocket({
                 version,
-                logger: pino({ level: "silent" }),
+                logger: pino({ level: "debug" }), // Set to debug for more detailed logs
                 printQRInTerminal: true,
                 auth: state,
-                browser: ['BLACKSKY-MD', 'Chrome', '112.0.0.0'],
-                connectTimeoutMs: 60_000,
-                defaultQueryTimeoutMs: 30_000,
-                keepAliveIntervalMs: 10000,
+                browser: ["Chrome (Linux)", "Desktop", "1.0.0"],
+                connectTimeoutMs: 120000, // Increased timeout
+                qrTimeout: 40000, // Added QR timeout
+                defaultQueryTimeoutMs: 60000, // Increased query timeout
+                keepAliveIntervalMs: 15000, // Increased keepalive
                 emitOwnEvents: true,
                 markOnlineOnConnect: true,
-                retryRequestDelayMs: 2000
+                retryRequestDelayMs: 2000,
+                phoneNumber: process.env.PHONE_NUMBER // Optional: Add phone number if available
             });
 
             this.store.bind(this.sock.ev);
 
-            // Setup connection handling with improved error handling
             this.sock.ev.on('connection.update', async (update) => {
                 const { connection, lastDisconnect, qr } = update;
+                logger.info('Connection status update:', {
+                    connection,
+                    hasQR: !!qr,
+                    disconnectReason: lastDisconnect?.error?.output?.statusCode
+                });
 
                 if (qr) {
                     logger.info('New QR code received, displaying in terminal...');
@@ -80,11 +84,11 @@ class WhatsAppManager {
                 if (connection === 'close') {
                     this.isConnected = false;
                     const statusCode = lastDisconnect?.error?.output?.statusCode;
-                    const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+                    const shouldReconnect = (lastDisconnect?.error instanceof Boom) ?
+                        statusCode !== DisconnectReason.loggedOut : true;
 
                     logger.info('Connection closed:', {
                         shouldReconnect,
-                        retriesLeft: this.retriesLeft,
                         statusCode,
                         errorMessage: lastDisconnect?.error?.message
                     });
@@ -92,10 +96,10 @@ class WhatsAppManager {
                     if (shouldReconnect && this.retriesLeft > 0) {
                         this.retriesLeft--;
                         logger.info(`Attempting reconnection in ${this.retryTimeout}ms... (${this.retriesLeft} retries left)`);
-                        this.initializationPromise = null; // Reset initialization promise
+                        this.initializationPromise = null;
                         setTimeout(() => this.initialize(), this.retryTimeout);
                     } else {
-                        logger.error('Connection closed permanently:', lastDisconnect?.error);
+                        logger.error('Connection closed permanently');
                         if (statusCode === DisconnectReason.loggedOut) {
                             await fs.remove(this.authDir);
                             logger.info('Auth directory cleared due to logout');
@@ -105,25 +109,6 @@ class WhatsAppManager {
                 }
             });
 
-            // Handle messages with improved error handling
-            this.sock.ev.on('messages.upsert', async ({ messages, type }) => {
-                try {
-                    if (type === 'notify') {
-                        for (const message of messages) {
-                            if (message.key && message.key.remoteJid) {
-                                this.messageRetryMap.set(message.key.id, {
-                                    retries: 0,
-                                    timestamp: Date.now()
-                                });
-                            }
-                        }
-                    }
-                } catch (error) {
-                    logger.error('Error processing message:', error);
-                }
-            });
-
-            // Handle credentials updates
             this.sock.ev.on('creds.update', async () => {
                 try {
                     logger.info('Credentials updated, saving...');
