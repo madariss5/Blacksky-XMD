@@ -22,36 +22,82 @@ const rl = readline.createInterface({
     output: process.stdout
 });
 
+const question = (text, timeout = 15000) => new Promise((resolve) => {
+    const timeoutId = setTimeout(() => {
+        rl.removeAllListeners('line');
+        resolve(null);
+    }, timeout);
+
+    rl.question(text, (answer) => {
+        clearTimeout(timeoutId);
+        resolve(answer ? answer.trim() : null);
+    });
+});
+
+async function selectAuthMethod() {
+    console.log(chalk.cyan('\nSelect Authentication Method:'));
+    console.log('1. Pairing Code');
+    console.log('2. QR Code');
+
+    const answer = await question(chalk.green('\nEnter your choice (1 or 2): '));
+
+    if (!answer) {
+        console.log(chalk.yellow('\nNo input received, defaulting to QR code method...'));
+        return 'qr';
+    }
+
+    if (answer !== '1' && answer !== '2') {
+        console.log(chalk.red('\nInvalid choice. Please select 1 or 2.'));
+        return await selectAuthMethod();
+    }
+
+    return answer === '1' ? 'pairing' : 'qr';
+}
+
 async function startWhatsApp() {
     try {
         console.clear();
         console.log('\n' + chalk.cyan('='.repeat(50)));
-        console.log(chalk.cyan('WhatsApp Pairing Code Authentication'));
+        console.log(chalk.cyan('WhatsApp Bot Authentication'));
         console.log(chalk.cyan('='.repeat(50)) + '\n');
 
-        console.log(chalk.yellow('Please follow these steps:'));
-        console.log('1. Open WhatsApp on your phone');
-        console.log('2. Go to Settings > Linked Devices');
-        console.log('3. Tap on "Link a Device"');
-        console.log('4. Wait for the pairing code prompt\n');
+        // Select authentication method
+        const authMethod = await selectAuthMethod();
 
-        // Get phone number
-        let phoneNumber = process.env.OWNER_NUMBER;
-        if (!phoneNumber) {
-            console.log(chalk.red('\nNo phone number provided in environment'));
-            process.exit(1);
+        if (authMethod === 'pairing') {
+            console.log('\n' + chalk.yellow('Pairing Code Authentication'));
+            console.log('Please follow these steps:');
+            console.log('1. Open WhatsApp on your phone');
+            console.log('2. Go to Settings > Linked Devices');
+            console.log('3. Tap on "Link a Device"');
+            console.log('4. Wait for the pairing code prompt\n');
+
+            // Get phone number from environment
+            let phoneNumber = process.env.OWNER_NUMBER;
+            if (!phoneNumber) {
+                console.log(chalk.red('\nNo phone number provided in environment'));
+                process.exit(1);
+            }
+
+            // Format phone number: remove non-digits
+            phoneNumber = phoneNumber.replace(/[^0-9]/g, '');
+            logger.info('Using phone number:', phoneNumber);
+
+            if (!phoneNumber || phoneNumber.length < 10) {
+                console.log(chalk.red('\nInvalid phone number format'));
+                process.exit(1);
+            }
+
+            console.log(chalk.green('\nPhone number validated:', phoneNumber));
+        } else {
+            console.log('\n' + chalk.yellow('QR Code Authentication'));
+            console.log('Please follow these steps:');
+            console.log('1. Open WhatsApp on your phone');
+            console.log('2. Go to Settings > Linked Devices');
+            console.log('3. Tap on "Link a Device"');
+            console.log('4. Scan the QR code when it appears\n');
         }
 
-        // Format phone number: remove non-digits and ensure it starts with country code
-        phoneNumber = phoneNumber.replace(/[^0-9]/g, '');
-        logger.info('Using phone number:', phoneNumber);
-
-        if (!phoneNumber || phoneNumber.length < 10) {
-            console.log(chalk.red('\nInvalid phone number format'));
-            process.exit(1);
-        }
-
-        console.log(chalk.green('\nPhone number validated:', phoneNumber));
         console.log(chalk.yellow('\nInitializing WhatsApp connection...'));
 
         // Clean previous session
@@ -63,18 +109,18 @@ async function startWhatsApp() {
         const { version } = await fetchLatestBaileysVersion();
         logger.info('Using Baileys version:', version);
 
-        // Create WhatsApp socket with specific configuration
+        // Create WhatsApp socket
         const sock = makeWASocket({
             version,
             logger: pino({ level: 'silent' }), // Silence Baileys internal logging
-            printQRInTerminal: false, // We'll handle QR display ourselves
+            printQRInTerminal: authMethod === 'qr', // Show QR in terminal only for QR auth
             browser: Browsers.ubuntu('Chrome'),
             auth: state,
             mobile: false,
             defaultQueryTimeoutMs: undefined,
             connectTimeoutMs: 60_000,
-            pairingCode: true,
-            phoneNumber: parseInt(phoneNumber)
+            pairingCode: authMethod === 'pairing',
+            phoneNumber: authMethod === 'pairing' ? parseInt(phoneNumber) : undefined
         });
 
         let hasPairingCode = false;
@@ -83,36 +129,50 @@ async function startWhatsApp() {
 
         // Connection handling
         sock.ev.on('connection.update', async (update) => {
-            const { connection, lastDisconnect } = update;
+            const { connection, lastDisconnect, qr } = update;
             logger.debug('Connection update:', update);
 
-            if (connection === 'connecting' && !hasPairingCode) {
-                // Allow some time for the connection to initialize
-                setTimeout(async () => {
-                    try {
-                        console.log(chalk.yellow('\nRequesting pairing code...'));
-                        const code = await sock.requestPairingCode(phoneNumber);
-                        if (code) {
-                            hasPairingCode = true;
-                            const formattedCode = code.match(/.{1,4}/g)?.join("-") || code;
-                            console.log('\n' + chalk.green('='.repeat(50)));
-                            console.log(chalk.green('Your Pairing Code: ') + chalk.white(formattedCode));
-                            console.log(chalk.green('='.repeat(50)) + '\n');
-                            logger.info('Pairing code generated successfully:', formattedCode);
-                        }
-                    } catch (error) {
-                        logger.error('Pairing code request failed:', error);
-                        console.log(chalk.red('\nFailed to get pairing code:', error.message));
+            if (authMethod === 'qr' && qr) {
+                console.log(chalk.yellow('\nScan this QR code with WhatsApp:'));
+                qrcode.generate(qr, { small: true });
+            }
 
-                        connectionRetries++;
-                        if (connectionRetries >= MAX_RETRIES) {
-                            console.log(chalk.yellow('\nFalling back to QR code method...'));
-                            sock.printQRInTerminal = true;
-                        } else {
-                            console.log(chalk.yellow(`\nRetrying... (${connectionRetries}/${MAX_RETRIES})`));
+            if (connection === 'connecting') {
+                console.log(chalk.yellow('\nConnecting to WhatsApp...'));
+
+                if (authMethod === 'pairing' && !hasPairingCode) {
+                    // Request pairing code with retry mechanism
+                    setTimeout(async () => {
+                        try {
+                            console.log(chalk.yellow('Requesting pairing code...'));
+                            const code = await sock.requestPairingCode(phoneNumber);
+                            if (code) {
+                                hasPairingCode = true;
+                                const formattedCode = code.match(/.{1,4}/g)?.join("-") || code;
+                                console.log('\n' + chalk.green('='.repeat(50)));
+                                console.log(chalk.green('Your Pairing Code: ') + chalk.white(formattedCode));
+                                console.log(chalk.green('='.repeat(50)) + '\n');
+                                logger.info('Pairing code generated successfully:', formattedCode);
+                            }
+                        } catch (error) {
+                            logger.error('Pairing code request failed:', error);
+                            console.log(chalk.red('\nFailed to get pairing code:', error.message));
+
+                            if (connectionRetries < MAX_RETRIES) {
+                                connectionRetries++;
+                                console.log(chalk.yellow(`\nRetrying pairing code request... (${connectionRetries}/${MAX_RETRIES})`));
+                                setTimeout(() => {
+                                    if (!hasPairingCode) {
+                                        sock.requestPairingCode(phoneNumber);
+                                    }
+                                }, 2000);
+                            } else {
+                                console.log(chalk.yellow('\nFalling back to QR code method...'));
+                                sock.printQRInTerminal = true;
+                            }
                         }
-                    }
-                }, 3000);
+                    }, 3000);
+                }
             }
 
             if (connection === 'open') {
