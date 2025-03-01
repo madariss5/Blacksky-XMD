@@ -282,7 +282,7 @@ const groupCommands = {
                 mentions: participants,
                 contextInfo: {
                     mentionedJid: participants,
-                    isHiddenTag: true // Add this flag for hidden tags
+                    isHiddenTag: true 
                 }
             });
 
@@ -826,7 +826,7 @@ const groupCommands = {
                     throw new Error('Failed to join group');
                 }
             } catch (joinError) {
-                logger.error('Error joining group:', joinError);
+                logger.error('Failed to join group:', joinError);
                 throw new Error('Invalid invite link or group is full');
             }
         } catch (error) {
@@ -921,64 +921,46 @@ const groupCommands = {
         }
     },
 
-    antilink: async (sock, msg, args) => {
+    join: async (sock, msg, args) => {
         try {
-            const groupMetadata = await validateGroupContext(sock, msg, true);
-            if (!groupMetadata) return;
-
-            if (!args[0] || !['on', 'off'].includes(args[0].toLowerCase())) {
+            if (!args[0]) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Please specify on/off!\nUsage: .antilink <on/off>'
+                    text: '❌ Please provide a group invite link!\nUsage: .join <link>'
                 });
             }
 
-            const status = args[0].toLowerCase() === 'on';
-            await store.setGroupSetting(msg.key.remoteJid, 'antilink', status);
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `✅ Anti-link has been ${status ? 'enabled' : 'disabled'}`
-            });
-
-            logger.info('Anti-link setting updated:', {
-                group: msg.key.remoteJid,
-                status: status,
-                updatedBy: msg.key.participant
-            });
-        } catch (error) {
-            logger.error('Error in antilink command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to update anti-link setting: ' + error.message
-            });
-        }
-    },
-
-    antispam: async (sock, msg, args) => {
-        try {
-            const groupMetadata = await validateGroupContext(sock, msg, true);
-            if (!groupMetadata) return;
-
-            if (!args[0] || !['on', 'off'].includes(args[0].toLowerCase())) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Please specify on/off!\nUsage: .antispam <on/off>'
-                });
+            // Extract invite code from the link
+            let code = args[0];
+            if (code.includes('chat.whatsapp.com/')) {
+                code = code.split('chat.whatsapp.com/')[1];
             }
 
-            const status = args[0].toLowerCase() === 'on';
-            await store.setGroupSetting(msg.key.remoteJid, 'antispam', status);
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `✅ Anti-spam has been ${status ? 'enabled' : 'disabled'}`
+            logger.info('Attempting to join group with code:', {
+                code: code,
+                user: msg.key.participant
             });
 
-            logger.info('Anti-spam setting updated:', {
-                group: msg.key.remoteJid,
-                status: status,
-                updatedBy: msg.key.participant
-            });
+            try {
+                const response = await sock.groupAcceptInvite(code);
+                if (response) {
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        text: '✅ Successfully joined the group!'
+                    });
+                    logger.info('Successfully joined group:', {
+                        groupId: response,
+                        user: msg.key.participant
+                    });
+                } else {
+                    throw new Error('Failed to join group');
+                }
+            } catch (joinError) {
+                logger.error('Failed to join group:', joinError);
+                throw new Error('Invalid invite link or group is full');
+            }
         } catch (error) {
-            logger.error('Error in antispam command:', error);
+            logger.error('Error in join command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to update anti-spam setting: ' + error.message
+                text: '❌ Failed to join group: ' + error.message
             });
         }
     },
@@ -1019,7 +1001,39 @@ const groupCommands = {
                 text: '❌ Failed to display group settings: ' + error.message
             });
         }
-    }
-}; // End of groupCommands object
+    },
+
+    antilink: async (sock, msg, args) => {
+        try {
+            const groupMetadata = await validateGroupContext(sock, msg, true);
+            if (!groupMetadata) return;
+
+            if (!args[0] || !['on', 'off'].includes(args[0].toLowerCase())) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please specify on/off!\nUsage: .antilink <on/off>'
+                });
+            }
+
+            const status = args[0].toLowerCase() === 'on';
+            await store.setGroupSetting(msg.key.remoteJid, 'antilink', status);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Anti-link has been ${status ? 'enabled' : 'disabled'}`
+            });
+
+            logger.info('Anti-link setting updated:', {
+                group: msg.key.remoteJid,
+                status: status,
+                updatedBy: msg.key.participant
+            });
+        } catch (error) {
+            logger.error('Error in antilink command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to update anti-link setting: ' + error.message
+            });
+        }
+    },
+
+};
 
 module.exports = groupCommands;

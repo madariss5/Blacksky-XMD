@@ -302,6 +302,42 @@ const nsfwCommands = {
     blowjob: async (sock, msg) => {
         logger.info('Executing blowjob command');
         await handleNSFWCommand(sock, msg, 'blowjob');
+    },
+
+    // Additional NSFW commands
+    ass: async (sock, msg) => {
+        logger.info('Executing ass command');
+        await handleNSFWCommand(sock, msg, 'ass');
+    },
+
+    hentai: async (sock, msg) => {
+        logger.info('Executing hentai command');
+        await handleNSFWCommand(sock, msg, 'hentai');
+    },
+
+    milf: async (sock, msg) => {
+        logger.info('Executing milf command');
+        await handleNSFWCommand(sock, msg, 'milf');
+    },
+
+    oral: async (sock, msg) => {
+        logger.info('Executing oral command');
+        await handleNSFWCommand(sock, msg, 'oral');
+    },
+
+    paizuri: async (sock, msg) => {
+        logger.info('Executing paizuri command');
+        await handleNSFWCommand(sock, msg, 'paizuri');
+    },
+
+    ecchi: async (sock, msg) => {
+        logger.info('Executing ecchi command');
+        await handleNSFWCommand(sock, msg, 'ecchi');
+    },
+
+    ero: async (sock, msg) => {
+        logger.info('Executing ero command');
+        await handleNSFWCommand(sock, msg, 'ero');
     }
 };
 

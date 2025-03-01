@@ -6,9 +6,6 @@ const path = require('path');
 const logger = require('pino')();
 const tempDir = os.tmpdir();
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
-const QRCode = require('qrcode');
-const QRReader = require('qrcode-reader');
-const Jimp = require('jimp');
 
 const ownerCommands = {
     broadcast: async (sock, msg, args) => {
@@ -113,7 +110,7 @@ const ownerCommands = {
             store.data = {};
             await store.saveStore();
 
-            await sock.sendMessage(msg.key.remoteJid, { text: 'Cache cleared successfully!' });
+            await sock.sendMessage(msg.key.remoteJid, { text: '✅ Cache cleared successfully!' });
         } catch (error) {
             await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to clear cache: ' + error.message });
         }
@@ -549,12 +546,15 @@ const ownerCommands = {
         if (isNaN(maxWarns) || maxWarns < 1) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a valid number of warnings!' });
         }
-        store.setMaxWarnings(maxWarns);
-        await sock.sendMessage(msg.key.remoteJid, { 
-            text: `Maximum warnings set to ${maxWarns}`
-        });
+        try {
+            store.setMaxWarnings(maxWarns);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `Maximum warnings set to ${maxWarns}`
+            });
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to set max warnings: ' + error.message });
+        }
     },
-
     gcjoin: async (sock, msg, args) => {
         if (msg.key.remoteJid !== config.ownerNumber) {
             return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
