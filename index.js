@@ -22,45 +22,56 @@ const { exec, spawn, execSync } = require('child_process');
 const ffmpeg = require('fluent-ffmpeg');
 const { smsg } = require('./lib/simple');
 
-// Initialize Express server
+// Initialize Express server for keep-alive
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Bot configuration
 const owner = ['254710772666']; // Replace with your number
-const sessionName = "shaban-md"; // Session name
-const botName = "SHABAN-MD"; // Bot name
+const sessionName = "blacksky-md"; // Session name
+const botName = "𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻"; // Bot name
 const TIME_ZONE = "Africa/Nairobi"; // Adjust to your timezone
 
 const store = makeInMemoryStore({ logger: pino().child({ level: 'silent', stream: 'store' }) });
 const msgRetryCounterCache = new NodeCache();
+let isShuttingDown = false;
 
+// Keep-alive ping endpoint
+app.get('/', (req, res) => {
+    res.json({ 
+        status: 'WhatsApp Bot Server Running',
+        botName: botName,
+        uptime: process.uptime()
+    });
+});
+
+// Start Express server with error handling
 const startServer = () => {
     return new Promise((resolve) => {
         const server = app.listen(PORT, '0.0.0.0')
             .once('error', (err) => {
                 if (err.code === 'EADDRINUSE') {
-                    console.log(chalk.yellow(`Port ${PORT} is busy, continuing without HTTP server`));
+                    console.log(chalk.yellow(`Port ${PORT} is busy, trying alternative port`));
                     resolve(false);
                 }
             })
             .once('listening', () => {
-                console.log(chalk.green(`Server started on port ${PORT}`));
+                console.log(chalk.green(`\nServer started on port ${PORT}`));
                 resolve(true);
             });
 
-        // Add basic route
-        app.get('/', (req, res) => {
-            res.json({ status: 'WhatsApp Bot Server Running' });
-        });
+        // Keep-alive interval
+        setInterval(() => {
+            axios.get(`http://0.0.0.0:${PORT}/`)
+                .catch(() => console.log('Keep-alive ping'));
+        }, 5 * 60 * 1000); // Every 5 minutes
     });
 };
 
 async function startHANS() {
     try {
         await startServer();
-
-        console.log(chalk.yellow('Loading WhatsApp session...'));
+        console.log(chalk.yellow('\nLoading WhatsApp session...'));
 
         const { state, saveCreds } = await useMultiFileAuthState(`./auth_info_baileys`);
         const { version, isLatest } = await fetchLatestBaileysVersion();
@@ -71,42 +82,26 @@ async function startHANS() {
             logger: pino({ level: 'silent' }),
             printQRInTerminal: true,
             auth: state,
-            browser: ['SHABAN-MD', 'Safari', '1.0.0'],
+            browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49'],
             msgRetryCounterCache,
             defaultQueryTimeoutMs: undefined,
+            connectTimeoutMs: 60_000,
+            qrTimeout: 40000,
+            keepAliveIntervalMs: 10000,
+            emitOwnEvents: true,
+            markOnlineOnConnect: true,
             // Add decode functions
-            decodeJid: (jid) => {
-                if (!jid) return jid;
-                if (/:\d+@/gi.test(jid)) {
-                    let decode = jidDecode(jid) || {};
-                    return decode.user && decode.server && decode.user + '@' + decode.server || jid;
-                } else return jid;
-            },
-            // Keep existing patchMessageBeforeSending
-            patchMessageBeforeSending: (message) => {
-                const requiresPatch = !!(
-                    message.buttonsMessage ||
-                    message.templateMessage ||
-                    message.listMessage
-                );
-                if (requiresPatch) {
-                    message = {
-                        viewOnceMessage: {
-                            message: {
-                                messageContextInfo: {
-                                    deviceListMetadataVersion: 2,
-                                    deviceListMetadata: {},
-                                },
-                                ...message,
-                            },
-                        },
-                    };
+            getMessage: async (key) => {
+                if (store) {
+                    const msg = await store.loadMessage(key.remoteJid, key.id)
+                    return msg?.message || undefined
                 }
-                return message;
-            },
+                return {
+                    conversation: ''
+                }
+            }
         });
 
-        // Bind store to hans's events
         store.bind(hans.ev);
 
         hans.ev.on('connection.update', async (update) => {
@@ -120,29 +115,13 @@ async function startHANS() {
                 let reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
                 console.log(chalk.red('Connection closed due to:', reason));
 
-                if (reason === DisconnectReason.badSession) {
-                    console.log(chalk.red('Bad Session File, Please Delete Session and Scan Again'));
-                    process.exit(1);
-                } else if (reason === DisconnectReason.connectionClosed) {
-                    console.log(chalk.yellow('Connection closed, reconnecting....'));
-                    startHANS();
-                } else if (reason === DisconnectReason.connectionLost) {
-                    console.log(chalk.yellow('Connection Lost from Server, reconnecting...'));
-                    startHANS();
-                } else if (reason === DisconnectReason.connectionReplaced) {
-                    console.log(chalk.red('Connection Replaced, Please Close Current Session First'));
-                    process.exit(1);
-                } else if (reason === DisconnectReason.loggedOut) {
+                if (reason === DisconnectReason.loggedOut) {
                     console.log(chalk.red('Device Logged Out, Please Delete Session and Scan Again.'));
-                    process.exit(1);
-                } else if (reason === DisconnectReason.restartRequired) {
-                    console.log(chalk.yellow('Restart Required, Restarting...'));
-                    startHANS();
-                } else if (reason === DisconnectReason.timedOut) {
-                    console.log(chalk.yellow('Connection TimedOut, Reconnecting...'));
-                    startHANS();
-                } else {
-                    console.log(chalk.red(`Unknown DisconnectReason: ${reason}|${connection}`));
+                    await fs.remove('./auth_info_baileys');
+                    process.exit(0);
+                } else if (!isShuttingDown) {
+                    console.log(chalk.yellow('Reconnecting...'));
+                    setTimeout(startHANS, 3000);
                 }
             }
 
@@ -181,47 +160,53 @@ async function startHANS() {
             }
         });
 
-        hans.ev.on('group-participants.update', async (grp) => {
-            try {
-                let metadata = await hans.groupMetadata(grp.id);
-                let participants = grp.participants;
-
-                for (let num of participants) {
-                    const welcomeMessage = `Welcome @${num.split('@')[0]} to ${metadata.subject}! 🎉`;
-                    if (grp.action == 'add') {
-                        hans.sendMessage(grp.id, { 
-                            text: welcomeMessage,
-                            mentions: [num]
-                        });
-                    }
-                }
-            } catch (err) {
-                console.error('Error in group update handler:', err);
-            }
-        });
-
         return hans;
     } catch (err) {
         console.error('Fatal error in startHANS:', err);
-        process.exit(1);
+        if (!isShuttingDown) {
+            console.log(chalk.yellow('Attempting restart in 10 seconds...'));
+            setTimeout(startHANS, 10000);
+        }
     }
 }
 
-startHANS().catch(err => {
-    console.error('Fatal error:', err);
-    process.exit(1);
-});
-
-process.on('uncaughtException', err => {
-    console.error('Uncaught Exception:', err);
-    if (err.code !== 'EADDRINUSE') {
+// Handle graceful shutdown
+const shutdown = async (signal) => {
+    try {
+        isShuttingDown = true;
+        console.log(chalk.yellow(`\nReceived ${signal}, shutting down gracefully...`));
+        process.exit(0);
+    } catch (error) {
+        console.error('Error during shutdown:', error);
         process.exit(1);
+    }
+};
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+// Handle uncaught errors
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+    if (!isShuttingDown && err.code !== 'EADDRINUSE') {
+        console.log(chalk.yellow('Attempting restart after uncaught exception...'));
+        setTimeout(startHANS, 3000);
     }
 });
 
-process.on('unhandledRejection', err => {
+process.on('unhandledRejection', (err) => {
     console.error('Unhandled Promise Rejection:', err);
-    if (err.code !== 'EADDRINUSE') {
-        process.exit(1);
+    if (!isShuttingDown && err.code !== 'EADDRINUSE') {
+        console.log(chalk.yellow('Attempting restart after unhandled rejection...'));
+        setTimeout(startHANS, 3000);
+    }
+});
+
+// Start the bot
+startHANS().catch(err => {
+    console.error('Fatal error:', err);
+    if (!isShuttingDown) {
+        console.log(chalk.yellow('Attempting restart after fatal error...'));
+        setTimeout(startHANS, 10000);
     }
 });
