@@ -1,9 +1,10 @@
 # Heroku Deployment Guide
 
 ## Recent Updates
-- Added proper port binding for web process
-- Fixed duplicate status messages
-- Improved credential handling
+- Added proper credential handling for multi-device auth
+- Added port binding for web process
+- Improved error handling and reconnection
+- Added detailed environment variable setup
 
 ## Prerequisites
 1. A Heroku account
@@ -19,7 +20,8 @@
 4. Add the following required variables:
 
 ### Required Variables
-- `SESSION_ID`: Your WhatsApp session ID (will be provided after first local run)
+- `OPENAI_API_KEY`: Your OpenAI API key for AI features
+- `REPLICATE_API_TOKEN`: Your Replicate API token for image features
 - `OWNER_NAME`: Your name as the bot owner
 - `OWNER_NUMBER`: Your WhatsApp number (format: country code + number, e.g., 1234567890)
 
@@ -28,7 +30,6 @@
 - `NODE_ENV`: Should be set to "production"
 - `BOT_NAME`: Name for your bot (default: BlackSky-MD)
 - `PREFIX`: Command prefix (default: .)
-- `USE_PAIRING`: Enable pairing code authentication (default: true)
 
 ## Deployment Steps
 
@@ -42,42 +43,48 @@
    heroku git:remote -a your-app-name
    ```
 
-3. Set environment variables:
+3. Set buildpacks:
+   ```bash
+   heroku buildpacks:set heroku/nodejs
+   ```
+
+4. Set environment variables:
    ```bash
    heroku config:set NODE_ENV="production"
    heroku config:set OWNER_NAME="Your Name"
    heroku config:set OWNER_NUMBER="1234567890"
-   heroku config:set LOG_LEVEL="info"
    ```
 
-4. Deploy the code:
+5. Deploy the code:
    ```bash
    git push heroku main
    ```
 
-5. Scale dynos properly:
+6. Scale dynos properly:
    ```bash
-   heroku ps:scale web=1 worker=0
+   heroku ps:scale web=0 worker=1
    ```
 
-6. Verify deployment:
+7. After first successful connection, check that creds.json is created:
    ```bash
-   heroku logs --tail
+   heroku run ls -la
    ```
 
 ## Verification Steps
 
-1. Check the logs for proper port binding:
-   - Look for: "Server is running on port [PORT]"
+1. Check the logs for proper connection:
+   ```bash
+   heroku logs --tail
+   ```
 
-2. Monitor status messages:
-   - Should see only one "Bot connected successfully" message
-   - Status updates should not be duplicated
+2. Look for these success indicators:
+   - "WhatsApp connection established successfully!"
+   - "Credentials saved successfully"
+   - "Bot is now active and ready to use!"
 
 3. Verify credential handling:
-   - The session ID should only be sent once to the bot's own chat
-   - Check for "Credentials were already sent, skipping" message
-
+   - Check for "creds.json" file in the app directory
+   - Monitor auto-reconnection if connection drops
 
 ## Troubleshooting
 
@@ -96,7 +103,19 @@ If you encounter issues:
 3. Clear credentials and restart if needed:
    ```bash
    heroku run rm -rf auth_info_baileys/
+   heroku run rm creds.json
    heroku restart
    ```
 
-For support, please create an issue in the GitHub repository.
+4. Common Issues:
+   - If bot disconnects frequently: Check your internet connection and Heroku dyno status
+   - If credentials don't save: Check file permissions and Heroku logs
+   - If commands don't work: Verify environment variables are set correctly
+
+## Support
+For support:
+1. Open an issue in the GitHub repository
+2. Check Heroku status page for service disruptions
+3. Review logs for specific error messages
+
+Remember to never share your credentials or API keys publicly!

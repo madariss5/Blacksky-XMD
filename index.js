@@ -22,6 +22,9 @@ const { exec, spawn, execSync } = require('child_process');
 const ffmpeg = require('fluent-ffmpeg');
 const { smsg } = require('./lib/simple');
 
+// Global state for auth
+global.authState = null;
+
 // Initialize Express server for keep-alive
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -68,12 +71,27 @@ const startServer = () => {
     });
 };
 
+// Function to save credentials
+async function saveCredsToFile() {
+    try {
+        if (global.authState) {
+            const credsFile = path.join(process.cwd(), 'creds.json');
+            await fs.writeJson(credsFile, global.authState, { spaces: 2 });
+            console.log(chalk.green('✓ Credentials saved successfully'));
+        }
+    } catch (error) {
+        console.error(chalk.red('Error saving credentials:'), error);
+    }
+}
+
 async function startHANS() {
     try {
         await startServer();
         console.log(chalk.yellow('\nLoading WhatsApp session...'));
 
         const { state, saveCreds } = await useMultiFileAuthState(`./auth_info_baileys`);
+        global.authState = state; // Store auth state globally
+
         const { version, isLatest } = await fetchLatestBaileysVersion();
         console.log(chalk.yellow(`Using WA v${version.join('.')}, isLatest: ${isLatest}`));
 
@@ -90,7 +108,6 @@ async function startHANS() {
             keepAliveIntervalMs: 10000,
             emitOwnEvents: true,
             markOnlineOnConnect: true,
-            // Add decode functions
             getMessage: async (key) => {
                 if (store) {
                     const msg = await store.loadMessage(key.remoteJid, key.id)
@@ -130,13 +147,20 @@ async function startHANS() {
                 console.log(chalk.cyan('• Bot Status: Online'));
                 console.log(chalk.cyan('• Type .menu to see available commands\n'));
 
+                // Save credentials for Heroku deployment
+                await saveCredsToFile();
+
                 hans.sendMessage(hans.user.id, { 
                     text: `🟢 ${botName} is now active and ready to use!`
                 });
             }
         });
 
-        hans.ev.on('creds.update', saveCreds);
+        hans.ev.on('creds.update', async () => {
+            await saveCreds();
+            // Also update our creds.json when credentials change
+            await saveCredsToFile();
+        });
 
         hans.ev.on('messages.upsert', async chatUpdate => {
             try {
@@ -175,6 +199,8 @@ const shutdown = async (signal) => {
     try {
         isShuttingDown = true;
         console.log(chalk.yellow(`\nReceived ${signal}, shutting down gracefully...`));
+        // Save credentials one last time before shutting down
+        await saveCredsToFile();
         process.exit(0);
     } catch (error) {
         console.error('Error during shutdown:', error);
