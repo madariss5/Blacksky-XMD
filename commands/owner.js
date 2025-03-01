@@ -647,7 +647,7 @@ const ownerCommands = {
         }
         try {
             await store.removePremiumUser(number);
-            awaitawait sock.sendMessage(msg.key.remoteJid, {
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: `✅ Removed @${number.split('@')[0]} from premium users`,
                 mentions: [number]
             });
