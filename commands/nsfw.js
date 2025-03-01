@@ -304,7 +304,7 @@ const nsfwCommands = {
         await handleNSFWCommand(sock, msg, 'blowjob');
     },
 
-    // Additional NSFW commands
+    // Additional NSFW commands with improved error handling and rate limiting
     ass: async (sock, msg) => {
         logger.info('Executing ass command');
         await handleNSFWCommand(sock, msg, 'ass');

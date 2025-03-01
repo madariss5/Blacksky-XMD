@@ -8,18 +8,31 @@ const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 const axios = require('axios');
 const Replicate = require('replicate');
 
+// Add new imports for additional AI features
+const { createCanvas, loadImage } = require('canvas');
+const { Configuration, OpenAIApi } = require('openai');
+
 const tempDir = path.join(__dirname, '../temp');
 fs.ensureDirSync(tempDir);
 
-// Conversation memory store
-const conversationHistory = new Map();
+// Initialize OpenAI
+const configuration = new Configuration({
+    apiKey: process.env.OPENAI_API_KEY
+});
+const openaiApi = new OpenAIApi(configuration);
 
-// Rate limiting configuration 
+// Conversation memory store with enhanced context handling
+const conversationHistory = new Map();
+const MAX_HISTORY = 10;
+const MAX_CONTEXT_LENGTH = 2000;
+
+// Rate limiting configuration
 const userCooldowns = new Map();
 const COOLDOWN_PERIODS = {
-    default: 10000, // 10 seconds
-    image: 30000,   // 30 seconds
-    chat: 5000      // 5 seconds
+    default: 10000,  // 10 seconds
+    image: 30000,    // 30 seconds for image generation
+    chat: 5000,      // 5 seconds for chat
+    vision: 20000    // 20 seconds for vision tasks
 };
 
 const isOnCooldown = (userId, type = 'default') => {
@@ -34,41 +47,26 @@ const setCooldown = (userId, type = 'default') => {
     userCooldowns.set(key, Date.now());
 };
 
-// Helper function to get conversation history
-const getConversationHistory = (userId, maxTokens = 2000) => {
+// Helper function for conversation history
+const getConversationHistory = (userId) => {
     if (!conversationHistory.has(userId)) {
         conversationHistory.set(userId, []);
     }
-    return conversationHistory.get(userId).slice(-maxTokens);
+    return conversationHistory.get(userId).slice(-MAX_HISTORY);
 };
 
-// Helper function to add to conversation history
 const addToConversationHistory = (userId, message) => {
     if (!conversationHistory.has(userId)) {
         conversationHistory.set(userId, []);
     }
     const history = conversationHistory.get(userId);
     history.push(message);
-    // Keep only last 10 messages
-    if (history.length > 10) {
+    if (history.length > MAX_HISTORY) {
         history.shift();
     }
 };
 
-// Helper function to generate TTS audio
-const generateTTS = async (text, lang = 'en') => {
-    const tts = new gtts(lang);
-    const timestamp = Date.now();
-    const outputPath = path.join(tempDir, `tts_${timestamp}.mp3`);
-
-    return new Promise((resolve, reject) => {
-        tts.save(outputPath, text, (err) => {
-            if (err) reject(err);
-            else resolve(outputPath);
-        });
-    });
-};
-
+// Enhanced AI commands
 const aiCommands = {
     ask: async (sock, msg, args) => {
         const userId = msg.key.participant || msg.key.remoteJid;
@@ -213,33 +211,36 @@ const aiCommands = {
 
         if (isOnCooldown(userId, 'chat')) {
             return await sock.sendMessage(msg.key.remoteJid, {
-                text: '⏳ Please wait a few seconds before using this command again.'
+                text: '⏳ Please wait before sending another message.'
             });
         }
 
         if (!args.length) {
             return await sock.sendMessage(msg.key.remoteJid, {
-                text: 'Please provide a question!\nUsage: .gpt <your question>'
+                text: '❌ Please provide a message to chat about!'
             });
         }
 
         try {
             await sock.sendPresenceUpdate('composing', msg.key.remoteJid);
 
-            const userInput = args.join(' ');
             const history = getConversationHistory(userId);
+            const userInput = args.join(' ');
 
             const messages = [
-                { role: "system", content: "You are a helpful assistant." },
+                { role: "system", content: "You are a helpful, friendly, and knowledgeable assistant." },
                 ...history,
                 { role: "user", content: userInput }
             ];
 
             const response = await openai.chat.completions.create({
-                model: "gpt-3.5-turbo",
+                model: "gpt-4",  // Using GPT-4 for better responses
                 messages: messages,
                 temperature: 0.7,
-                max_tokens: 500
+                max_tokens: 2000,
+                top_p: 1,
+                frequency_penalty: 0,
+                presence_penalty: 0
             });
 
             const aiResponse = response.choices[0].message.content;
@@ -247,10 +248,8 @@ const aiCommands = {
             addToConversationHistory(userId, { role: "user", content: userInput });
             addToConversationHistory(userId, { role: "assistant", content: aiResponse });
 
+            await sock.sendMessage(msg.key.remoteJid, { text: aiResponse });
             setCooldown(userId, 'chat');
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: aiResponse 
-            });
 
         } catch (error) {
             logger.error('Error in gpt command:', error);
@@ -259,20 +258,65 @@ const aiCommands = {
             });
         }
     },
-
     imagine: async (sock, msg, args) => {
-        return aiCommands.dalle(sock, msg, args);
+        const userId = msg.key.participant || msg.key.remoteJid;
+
+        if (isOnCooldown(userId, 'image')) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Please wait before generating another image.'
+            });
+        }
+
+        if (!args.length) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Please provide an image description!'
+            });
+        }
+
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🎨 Generating your image with latest DALL-E model...'
+            });
+
+            const response = await openai.images.generate({
+                model: "dall-e-3",
+                prompt: args.join(' '),
+                n: 1,
+                size: "1024x1024",
+                quality: "hd"
+            });
+
+            if (!response.data[0]?.url) {
+                throw new Error('Failed to generate image');
+            }
+
+            const imageUrl = response.data[0].url;
+            const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: Buffer.from(imageResponse.data),
+                caption: `✨ Here's your AI-generated image for: "${args.join(' ')}"`
+            });
+
+            setCooldown(userId, 'image');
+
+        } catch (error) {
+            logger.error('Error in imagine command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to generate image: ' + error.message
+            });
+        }
     },
 
     txt2img: async (sock, msg, args) => {
-        return aiCommands.dalle(sock, msg, args);
+        return aiCommands.imagine(sock, msg, args);
     },
     remini: async (sock, msg) => {
         const userId = msg.key.participant || msg.key.remoteJid;
 
         if (isOnCooldown(userId, 'image')) {
             return await sock.sendMessage(msg.key.remoteJid, {
-                text: '⏳ Please wait a moment before using this command again.'
+                text: '⏳ Please wait before enhancing another image.'
             });
         }
 
@@ -321,25 +365,76 @@ const aiCommands = {
                 throw new Error('Failed to enhance image');
             }
 
-            const enhancedImageUrl = output;
-            const timestamp = Date.now();
-            const outputPath = path.join(tempDir, `enhanced_${timestamp}.png`);
-
-            const response = await axios.get(enhancedImageUrl, { responseType: 'arraybuffer' });
-            await fs.writeFile(outputPath, response.data);
+            const response = await axios.get(output, { responseType: 'arraybuffer' });
 
             await sock.sendMessage(msg.key.remoteJid, {
-                image: fs.readFileSync(outputPath),
+                image: Buffer.from(response.data),
                 caption: '✨ Here\'s your enhanced image!'
             });
 
             setCooldown(userId, 'image');
-            await fs.remove(outputPath);
 
         } catch (error) {
             logger.error('Error in remini command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Failed to enhance image: ' + error.message
+            });
+        }
+    },
+    blackbox: async (sock, msg, args) => {
+        const userId = msg.key.participant || msg.key.remoteJid;
+
+        if (isOnCooldown(userId, 'chat')) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Please wait before generating another code solution.'
+            });
+        }
+
+        if (!args.length) {
+            return await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Please provide a coding problem or question!'
+            });
+        }
+
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '💻 Generating code solution...'
+            });
+
+            const prompt = `As an expert programmer, please provide a detailed solution with explanations for the following: ${args.join(' ')}. Include:
+1. Problem analysis
+2. Solution approach
+3. Code implementation with comments
+4. Example usage
+5. Potential edge cases and handling`;
+
+            const response = await openai.chat.completions.create({
+                model: "gpt-4",
+                messages: [
+                    {
+                        role: "system",
+                        content: "You are an expert programmer specializing in providing clear, efficient, and well-documented code solutions."
+                    },
+                    {
+                        role: "user",
+                        content: prompt
+                    }
+                ],
+                temperature: 0.7,
+                max_tokens: 2000
+            });
+
+            const solution = response.choices[0].message.content;
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*🔍 Code Solution*\n\n${solution}\n\n⚠️ Remember to test and adapt the code to your specific needs.`
+            });
+
+            setCooldown(userId, 'chat');
+
+        } catch (error) {
+            logger.error('Error in blackbox command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to generate code solution: ' + error.message
             });
         }
     },
@@ -354,59 +449,6 @@ const aiCommands = {
             logger.error('Error in cleargpt command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error clearing conversation history: ' + error.message
-            });
-        }
-    },
-    blackbox: async (sock, msg, args) => {
-        const userId = msg.key.participant || msg.key.remoteJid;
-
-        if (isOnCooldown(userId, 'chat')) {
-            return await sock.sendMessage(msg.key.remoteJid, {
-                text: '⏳ Please wait a few seconds before using this command again.'
-            });
-        }
-
-        if (!args.length) {
-            return await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Please provide a code-related question!\nUsage: !blackbox <question>'
-            });
-        }
-
-        try {
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '💻 Generating code solution...'
-            });
-
-            const prompt = `You are an expert programmer. Please provide a code solution for the following request: ${args.join(' ')}. 
-                          Include clear comments and error handling. Format the response as a code block with the appropriate language.`;
-
-            const response = await openai.chat.completions.create({
-                model: "gpt-3.5-turbo",
-                messages: [
-                    {
-                        role: "system",
-                        content: "You are a coding assistant focused on providing clear, well-documented code solutions."
-                    },
-                    {
-                        role: "user",
-                        content: prompt
-                    }
-                ],
-                temperature: 0.7,
-                max_tokens: 1000
-            });
-
-            const code = response.choices[0].message.content.trim();
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `💡 *Code Solution*\n\n\`\`\`\n${code}\n\`\`\`\n\n⚠️ Remember to test the code and adjust it to your specific needs.`
-            });
-
-            setCooldown(userId, 'chat');
-
-        } catch (error) {
-            logger.error('Error in blackbox command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to generate code: ' + error.message
             });
         }
     },

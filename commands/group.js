@@ -839,31 +839,72 @@ const groupCommands = {
 
     tagall: async (sock, msg, args) => {
         try {
-            const groupMetadata = await validateGroupContext(sock, msg, true);
+            const groupMetadata = await validateGroupContext(sock, msg, false);
             if (!groupMetadata) return;
 
+            // Get all participants' JIDs
             const participants = groupMetadata.participants.map(p => p.id);
+
+            // Construct message with mentions
             const message = args.length > 0 ? args.join(' ') : 'Attention everyone!';
             const mentionTags = participants.map(jid => `@${jid.split('@')[0]}`).join(' ');
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `👥 *Group Announcement*\n\n${message}\n\n${mentionTags}`,
+                text: `*📢 Group Notice*\n\n${message}\n\n${mentionTags}`,
                 mentions: participants
             });
 
-            logger.info('Everyone mentioned:', {
+            logger.info('Tagged all members:', {
                 group: msg.key.remoteJid,
-                sender: msg.key.participant,
                 participants: participants.length
             });
         } catch (error) {
             logger.error('Error in tagall command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to mention everyone: ' + error.message
+                text: '❌ Failed to tag members: ' + error.message
             });
         }
     },
-    tagadmin: async (sock, msg, args) => {
+
+    setppgc: async (sock, msg) => {
+        try {
+            const groupMetadata = await validateGroupContext(sock, msg, true);
+            if (!groupMetadata) return;
+
+            const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!quotedMsg?.imageMessage) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please reply to an image to set as group profile picture!'
+                });
+            }
+
+            const media = await downloadMediaMessage(
+                {
+                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    message: quotedMsg,
+                    messageTimestamp: msg.messageTimestamp
+                },
+                'buffer',
+                {},
+                {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                }
+            );
+
+            await sock.updateProfilePicture(msg.key.remoteJid, media);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '✅ Group profile picture updated successfully!'
+            });
+        } catch (error) {
+            logger.error('Error in setppgc command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to update group profile picture: ' + error.message
+            });
+        }
+    },
+
+    listadmins: async (sock, msg) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, false);
             if (!groupMetadata) return;
@@ -872,168 +913,193 @@ const groupCommands = {
                 .filter(p => p.admin)
                 .map(p => p.id);
 
-            const message = args.length > 0 ? args.join(' ') : 'Attention admins!';
-            const mentionTags = admins.map(jid => `@${jid.split('@')[0]}`).join(' ');
+            if (!admins.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ No admins found in this group!'
+                });
+            }
+
+            let text = '*Group Admins*\n\n';
+            admins.forEach((admin, i) => {
+                text += `${i + 1}. @${admin.split('@')[0]}\n`;
+            });
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `👮‍♂️ *Admin Notification*\n\n${message}\n\n${mentionTags}`,
+                text,
                 mentions: admins
             });
-
-            logger.info('Admins tagged:', {
-                group: msg.key.remoteJid,
-                sender: msg.key.participant,
-                adminCount: admins.length
-            });
         } catch (error) {
-            logger.error('Error in tagadmin command:', error);
+            logger.error('Error in listadmins command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to tag admins: ' + error.message
+                text: '❌ Failed to list admins: ' + error.message
             });
         }
     },
 
-    leave: async (sock, msg) => {
+    groupsettings: async (sock, msg, args) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
             if (!groupMetadata) return;
 
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '👋 Goodbye! Bot is leaving the group as requested by admin.'
-            });
-
-            setTimeout(async () => {
-                try {
-                    await sock.groupLeave(msg.key.remoteJid);
-                    logger.info('Left group successfully:', {
-                        group: msg.key.remoteJid,
-                        requestedBy: msg.key.participant
-                    });
-                } catch (error) {
-                    logger.error('Failed to leave group:', error);
-                }
-            }, 1000);
-        } catch (error) {
-            logger.error('Error in leave command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to leave group: ' + error.message
-            });
-        }
-    },
-
-    join: async (sock, msg, args) => {
-        try {
-            if (!args[0]) {
+            if (!args[0] || !['close', 'open', 'locked', 'unlocked'].includes(args[0].toLowerCase())) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Please provide a group invite link!\nUsage: .join <link>'
+                    text: '❌ Please specify a valid setting!\nUsage: !groupsettings <close/open/locked/unlocked>'
                 });
             }
 
-            // Extract invite code from the link
-            let code = args[0];
-            if (code.includes('chat.whatsapp.com/')) {
-                code = code.split('chat.whatsapp.com/')[1];
-            }
-
-            logger.info('Attempting to join group with code:', {
-                code: code,
-                user: msg.key.participant
-            });
-
-            try {
-                const response = await sock.groupAcceptInvite(code);
-                if (response) {
+            const setting = args[0].toLowerCase();
+            switch (setting) {
+                case 'close':
+                    await sock.groupSettingUpdate(msg.key.remoteJid, 'announcement');
                     await sock.sendMessage(msg.key.remoteJid, {
-                        text: '✅ Successfully joined the group!'
+                        text: '🔒 Group settings updated: Only admins can send messages'
                     });
-                    logger.info('Successfully joined group:', {
-                        groupId: response,
-                        user: msg.key.participant
+                    break;
+                case 'open':
+                    await sock.groupSettingUpdate(msg.key.remoteJid, 'not_announcement');
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        text: '🔓 Group settings updated: All participants can send messages'
                     });
-                } else {
-                    throw new Error('Failed to join group');
-                }
-            } catch (joinError) {
-                logger.error('Failed to join group:', joinError);
-                throw new Error('Invalid invite link or group is full');
+                    break;
+                case 'locked':
+                    await sock.groupSettingUpdate(msg.key.remoteJid, 'locked');
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        text: '🔒 Group settings updated: Group is locked'
+                    });
+                    break;
+                case 'unlocked':
+                    await sock.groupSettingUpdate(msg.key.remoteJid, 'unlocked');
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        text: '🔓 Group settings updated: Group is unlocked'
+                    });
+                    break;
             }
-        } catch (error) {
-            logger.error('Error in join command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to join group: ' + error.message
-            });
-        }
-    },
 
-    settings: async (sock, msg) => {
-        try {
-            const groupMetadata = await validateGroupContext(sock, msg, false);
-            if (!groupMetadata) return;
-
-            const settings = await store.getGroupSettings(msg.key.remoteJid);
-
-            const settingsText = `⚙️ *Group Settings*\n\n` +
-                             `• Anti-link: ${settings?.antilink ? '✅' : '❌'}\n` +
-                             `• Anti-spam: ${settings?.antispam ? '✅' : '❌'}\n` +
-                             `• Anti-toxic: ${settings?.antitoxic ? '✅' : '❌'}\n` +
-                             `• NSFW: ${settings?.nsfw ? '✅' : '❌'}\n` +
-                             `• Welcome Message: ${settings?.welcomeMessage ? '✅' : '❌'}\n` +
-                             `• Goodbye Message: ${settings?.goodbyeMessage ? '✅' : '❌'}\n` +
-                             `• Max Warnings: ${settings?.maxWarnings || 3}\n\n` +
-                             `*Admin Commands:*\n` +
-                             `• .antilink <on/off>\n` +
-                             `• .antispam <on/off>\n` +
-                             `• .antitoxic <on/off>\n` +
-                             `• .setnsfw <on/off>\n` +
-                             `• .setwelcome <message>\n` +
-                             `• .setgoodbye <message>\n` +
-                             `• .setmaxwarn <number>`;
-
-            await sock.sendMessage(msg.key.remoteJid, { text: settingsText });
-
-            logger.info('Group settings displayed:', {
+            logger.info('Group settings updated:', {
                 group: msg.key.remoteJid,
-                requestedBy: msg.key.participant
+                setting: setting,
+                updatedBy: msg.key.participant
             });
         } catch (error) {
-            logger.error('Error in settings command:', error);
+            logger.error('Error in groupsettings command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to display group settings: ' + error.message
+                text: '❌ Failed to update group settings: ' + error.message
             });
         }
     },
 
-    antilink: async (sock, msg, args) => {
+    welcome: async (sock, msg, args) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
             if (!groupMetadata) return;
 
             if (!args[0] || !['on', 'off'].includes(args[0].toLowerCase())) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Please specify on/off!\nUsage: .antilink <on/off>'
+                    text: '❌ Please specify on/off!\nUsage: !welcome on/off'
                 });
             }
 
             const status = args[0].toLowerCase() === 'on';
-            await store.setGroupSetting(msg.key.remoteJid, 'antilink', status);
-
+            await store.setGroupSetting(msg.key.remoteJid, 'welcome', status);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `✅ Anti-link has been ${status ? 'enabled' : 'disabled'}`
-            });
-
-            logger.info('Anti-link setting updated:', {
-                group: msg.key.remoteJid,
-                status: status,
-                updatedBy: msg.key.participant
+                text: `✅ Welcome messages have been ${status ? 'enabled' : 'disabled'}`
             });
         } catch (error) {
-            logger.error('Error in antilink command:', error);
+            logger.error('Error in welcome command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to update anti-link setting: ' + error.message
+                text: '❌ Failed to update welcome message settings: ' + error.message
             });
         }
     },
 
+    goodbye: async (sock, msg, args) => {
+        try {
+            const groupMetadata = await validateGroupContext(sock, msg, true);
+            if (!groupMetadata) return;
+
+            if (!args[0] || !['on', 'off'].includes(args[0].toLowerCase())) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please specify on/off!\nUsage: !goodbye on/off'
+                });
+            }
+
+            const status = args[0].toLowerCase() === 'on';
+            await store.setGroupSetting(msg.key.remoteJid, 'goodbye', status);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Goodbye messages have been ${status ? 'enabled' : 'disabled'}`
+            });
+        } catch (error) {
+            logger.error('Error in goodbye command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to update goodbye message settings: ' + error.message
+            });
+        }
+    },
+
+    invitelink: async (sock, msg) => {
+        try {
+            const groupMetadata = await validateGroupContext(sock, msg, false);
+            if (!groupMetadata) return;
+
+            const inviteCode = await sock.groupInviteCode(msg.key.remoteJid);
+            if (!inviteCode) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Failed to generate invite link!'
+                });
+            }
+
+            const inviteLink = `https://chat.whatsapp.com/${inviteCode}`;
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🔗 *Group Invite Link*\n\n${inviteLink}`
+            });
+        } catch (error) {
+            logger.error('Error in invitelink command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to get invite link: ' + error.message
+            });
+        }
+    },
+
+    // Add event handler for group updates
+    handleGroupUpdate: async (sock, update) => {
+        try {
+            const { id, participants, action } = update;
+            const groupMetadata = await sock.groupMetadata(id);
+            const settings = await store.getGroupSettings(id);
+
+            if (!settings) return;
+
+            switch (action) {
+                case 'add':
+                    if (settings.welcome) {
+                        for (const participant of participants) {
+                            const welcomeMsg = settings.welcomeMessage || 
+                                `Welcome @${participant.split('@')[0]} to ${groupMetadata.subject}! 👋`;
+                            await sock.sendMessage(id, {
+                                text: welcomeMsg,
+                                mentions: [participant]
+                            });
+                        }
+                    }
+                    break;
+
+                case 'remove':
+                    if (settings.goodbye) {
+                        for (const participant of participants) {
+                            const goodbyeMsg = settings.goodbyeMessage || 
+                                `Goodbye @${participant.split('@')[0]}! 👋`;
+                            await sock.sendMessage(id, {
+                                text: goodbyeMsg,
+                                mentions: [participant]
+                            });
+                        }
+                    }
+                    break;
+            }
+        } catch (error) {
+            logger.error('Error handling group update:', error);
+        }
+    }
 };
 
 module.exports = groupCommands;
