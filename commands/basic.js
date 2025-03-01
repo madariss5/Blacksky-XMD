@@ -125,7 +125,12 @@ const basicCommands = {
                     `• ${config.prefix}setprefix - Change command prefix`,
                     `• ${config.prefix}addcmd - Add custom command`,
                     `• ${config.prefix}delcmd - Delete custom command`,
-                    `• ${config.prefix}listcmd - List custom commands`
+                    `• ${config.prefix}listcmd - List custom commands`,
+                    `• ${config.prefix}setmaintenance - Set maintenance mode`,
+                    `• ${config.prefix}antispam - Toggle anti-spam protection`,
+                    `• ${config.prefix}antiporn - Toggle anti-porn filter`,
+                    `• ${config.prefix}antilink - Toggle anti-link protection`,
+                    `• ${config.prefix}getlogs - View bot logs`
                 ]
             };
 

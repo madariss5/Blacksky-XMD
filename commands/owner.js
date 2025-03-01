@@ -6,6 +6,7 @@ const path = require('path');
 const logger = require('pino')();
 const tempDir = os.tmpdir();
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
+const { exec } = require('child_process');
 
 // Custom commands storage
 let customCommands = new Map();
@@ -840,6 +841,122 @@ const ownerCommands = {
         } catch (error) {
             logger.error('Error in shutdown command:', error);
             await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to shutdown: ' + error.message });
+        }
+    },
+    exec: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        if (!args.length) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a command to execute!' });
+        }
+        try {
+            const command = args.join(' ');
+            const { stdout, stderr } = await exec(command);
+            const output = stdout || stderr || 'Command executed successfully with no output';
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `📟 *Command Output*\n\n\`\`\`${output}\`\`\``
+            });
+        } catch (error) {
+            logger.error('Error in exec command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to execute command: ' + error.message });
+        }
+    },
+
+    setmaintenance: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        const mode = args[0]?.toLowerCase();
+        if (!['on', 'off'].includes(mode)) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please specify on/off!' });
+        }
+        try {
+            config.maintenanceMode = mode === 'on';
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Maintenance mode ${mode === 'on' ? 'enabled' : 'disabled'}`
+            });
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to set maintenance mode: ' + error.message });
+        }
+    },
+
+    antispam: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        const mode = args[0]?.toLowerCase();
+        if (!['on', 'off'].includes(mode)) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please specify on/off!' });
+        }
+        try {
+            config.antiSpam = mode === 'on';
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Anti-spam ${mode === 'on' ? 'enabled' : 'disabled'}`
+            });
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to set anti-spam: ' + error.message });
+        }
+    },
+
+    antiporn: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        const mode = args[0]?.toLowerCase();
+        if (!['on', 'off'].includes(mode)) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please specify on/off!' });
+        }
+        try {
+            config.antiPorn = mode === 'on';
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Anti-porn ${mode === 'on' ? 'enabled' : 'disabled'}`
+            });
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to set anti-porn: ' + error.message });
+        }
+    },
+
+    antilink: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        const mode = args[0]?.toLowerCase();
+        if (!['on', 'off'].includes(mode)) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please specify on/off!' });
+        }
+        try {
+            config.antiLink = mode === 'on';
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Anti-link ${mode === 'on' ? 'enabled' : 'disabled'}`
+            });
+        } catch (error) {
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to set anti-link: ' + error.message });
+        }
+    },
+
+    getlogs: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        try {
+            const lines = args[0] ? parseInt(args[0]) : 50;
+            const logPath = path.join(process.cwd(), 'logs.txt');
+            let logs = '';
+
+            if (fs.existsSync(logPath)) {
+                const fileContent = await fs.readFile(logPath, 'utf8');
+                logs = fileContent.split('\n').slice(-lines).join('\n');
+            } else {
+                logs = 'No logs found';
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `📋 *Last ${lines} Log Lines*\n\n${logs}`
+            });
+        } catch (error) {
+            logger.error('Error in getlogs command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to get logs: ' + error.message });
         }
     }
 };
