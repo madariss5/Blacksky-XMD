@@ -6,11 +6,11 @@ const server = http.createServer((req, res) => {
     res.end('Server is running\n');
 });
 
-// Try to start server only on port 5000
-console.log('Attempting to start server on port 5000...');
+// Try to start server on port 8080
+console.log('Attempting to start server on port 8080...');
 
-server.listen(5000, '0.0.0.0', () => {
-    console.log('Server successfully started and listening on port 5000');
+server.listen(8080, '0.0.0.0', () => {
+    console.log('Server successfully started and listening on port 8080');
 });
 
 server.on('error', (err) => {
@@ -18,7 +18,7 @@ server.on('error', (err) => {
     process.exit(1);
 });
 
-// Handle process termination (from original code)
+// Handle process termination
 process.on('SIGTERM', () => {
     server.close(() => {
         console.log('Server shutdown complete');
