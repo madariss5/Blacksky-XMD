@@ -17,7 +17,7 @@ module.exports = {
         status: { description: 'View bot status and info', category: 'Basic' },
         dashboard: { description: 'View bot statistics dashboard', category: 'Basic' },
 
-        // Game Commands - Updated and new additions
+        // Game Commands
         rpg: { description: 'View RPG game status', category: 'Game' },
         quest: { description: 'Start a new RPG quest', category: 'Game' },
         battle: { description: 'Battle another player', category: 'Game' },
@@ -36,6 +36,36 @@ module.exports = {
         tebakbendera: { description: 'Play Flag Quiz game', category: 'Game' },
         tebakkabupaten: { description: 'Play Region Quiz game', category: 'Game' },
         werewolf: { description: 'Play Werewolf game (Coming Soon)', category: 'Game' },
+
+        // Updated Downloader Commands
+        ytmp3: { description: 'Download YouTube audio in high quality', category: 'Downloader' },
+        ytmp4: { description: 'Download YouTube videos in HD', category: 'Downloader' },
+        ythdmp4: { description: 'Download YouTube videos in highest quality', category: 'Downloader' },
+        ytsearch: { description: 'Search YouTube videos', category: 'Downloader' },
+        ytplaylist: { description: 'Get YouTube playlist info and download options', category: 'Downloader' },
+        instagram: { description: 'Download Instagram photos and videos', category: 'Downloader' },
+        igdl: { description: 'Download Instagram posts, reels, and stories', category: 'Downloader' },
+        igreel: { description: 'Download Instagram reels in high quality', category: 'Downloader' },
+        igstory: { description: 'Download Instagram stories (Coming Soon)', category: 'Downloader' },
+        fb: { description: 'Download Facebook videos', category: 'Downloader' },
+        fbhd: { description: 'Download Facebook videos in HD quality', category: 'Downloader' },
+        tiktok: { description: 'Download TikTok videos without watermark', category: 'Downloader' },
+        tiktokmp3: { description: 'Extract audio from TikTok videos', category: 'Downloader' },
+        spotify: { description: 'Get Spotify track information', category: 'Downloader' },
+        mediafire: { description: 'Download files from MediaFire', category: 'Downloader' },
+        gitclone: { description: 'Clone GitHub repositories', category: 'Downloader' },
+        apk: { description: 'Download Android APK files', category: 'Downloader' },
+
+        // Media Commands
+        sticker: { description: 'Create sticker from image/video', category: 'Media' },
+        toimg: { description: 'Convert sticker to image', category: 'Media' },
+        tomp3: { description: 'Convert video to audio', category: 'Media' },
+        tovn: { description: 'Convert audio to voice note', category: 'Media' },
+        togif: { description: 'Convert video sticker to gif', category: 'Media' },
+        tourl: { description: 'Upload media to url', category: 'Media' },
+        song: { description: 'Download and play songs', category: 'Media' },
+        video: { description: 'Download and play videos', category: 'Media' },
+        playlist: { description: 'Create and play playlists', category: 'Media' },
 
         // User & Profile Commands
         profile: { description: 'View user profile', category: 'User' },
@@ -69,27 +99,6 @@ module.exports = {
         revoke: { description: 'Reset group invite link', category: 'Group' },
         leave: { description: 'Make bot leave the group', category: 'Group' },
 
-        // Media Commands
-        sticker: { description: 'Create sticker from image/video', category: 'Media' },
-        toimg: { description: 'Convert sticker to image', category: 'Media' },
-        tomp3: { description: 'Convert video to audio', category: 'Media' },
-        tovn: { description: 'Convert audio to voice note', category: 'Media' },
-        togif: { description: 'Convert video sticker to gif', category: 'Media' },
-        tourl: { description: 'Upload media to url', category: 'Media' },
-        song: { description: 'Download and play songs', category: 'Media' },
-        video: { description: 'Download and play videos', category: 'Media' },
-        playlist: { description: 'Create and play playlists', category: 'Media' },
-
-        // Downloader Commands
-        ytmp3: { description: 'Download YouTube audio', category: 'Downloader' },
-        ytmp4: { description: 'Download YouTube video', category: 'Downloader' },
-        ytsearch: { description: 'Search YouTube videos', category: 'Downloader' },
-        instagram: { description: 'Download Instagram media', category: 'Downloader' },
-        fb: { description: 'Download Facebook videos', category: 'Downloader' },
-        tiktok: { description: 'Download TikTok videos', category: 'Downloader' },
-        tiktokaudio: { description: 'Download TikTok audio', category: 'Downloader' },
-        spotify: { description: 'Download Spotify tracks', category: 'Downloader' },
-        gitclone: { description: 'Clone GitHub repositories', category: 'Downloader' },
 
         // Fun Commands
         reaction: { description: 'Add reaction to message', category: 'Fun' },
