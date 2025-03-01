@@ -90,13 +90,29 @@ const basicCommands = {
                     `• ${config.prefix}delwarn - Remove a warning`,
                     `• ${config.prefix}warnlist - List member warnings`,
                     `• ${config.prefix}groupinfo - Show group info`
+                ],
+                'NSFW': [
+                    `• ${config.prefix}register - Register age (18+ required)`,
+                    `• ${config.prefix}setnsfw - Enable/disable NSFW in group`,
+                    `• ${config.prefix}nsfwcheck - Check NSFW permissions`,
+                    `• ${config.prefix}waifu - NSFW waifu content`,
+                    `• ${config.prefix}neko - NSFW neko content`,
+                    `• ${config.prefix}trap - NSFW trap content`,
+                    `• ${config.prefix}blowjob - NSFW blowjob content`,
+                    `• ${config.prefix}ass - NSFW ass content`,
+                    `• ${config.prefix}hentai - NSFW hentai content`,
+                    `• ${config.prefix}milf - NSFW milf content`,
+                    `• ${config.prefix}oral - NSFW oral content`,
+                    `• ${config.prefix}paizuri - NSFW paizuri content`,
+                    `• ${config.prefix}ecchi - NSFW ecchi content`,
+                    `• ${config.prefix}ero - NSFW ero content`
                 ]
             };
 
             // Add other command categories from config
             Object.entries(config.commands).forEach(([cmd, info]) => {
                 const category = info.category || 'Uncategorized';
-                if (category !== 'Basic' && category !== 'User' && category !== 'Group') {
+                if (category !== 'Basic' && category !== 'User' && category !== 'Group' && category !== 'NSFW') {
                     if (!categories[category]) {
                         categories[category] = [];
                     }

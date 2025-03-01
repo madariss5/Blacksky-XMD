@@ -9,7 +9,8 @@ const aiCommands = require('./commands/ai');
 const downloaderCommands = require('./commands/downloader');
 const socialCommands = require('./commands/social');
 const musicCommands = require('./commands/music');
-const groupCommands = require('./commands/group'); // Added group commands
+const groupCommands = require('./commands/group');
+const nsfwCommands = require('./commands/nsfw'); // Added NSFW commands
 const logger = require('pino')({ level: 'info' });
 
 module.exports = async (hans, m, chatUpdate, store) => {
@@ -58,6 +59,24 @@ module.exports = async (hans, m, chatUpdate, store) => {
                 });
                 await hans.sendMessage(m.key.remoteJid, { 
                     text: `❌ Error executing group command: ${error.message}` 
+                });
+            }
+        }
+        // NSFW Commands - Add with age verification
+        else if (Object.prototype.hasOwnProperty.call(nsfwCommands, command)) {
+            try {
+                logger.info('Executing NSFW command:', { command });
+                await nsfwCommands[command](hans, m, args);
+                commandExecuted = true;
+                logger.info('NSFW command executed successfully:', { command });
+            } catch (error) {
+                logger.error('Error executing NSFW command:', {
+                    command,
+                    error: error.message,
+                    stack: error.stack
+                });
+                await hans.sendMessage(m.key.remoteJid, { 
+                    text: `❌ Error executing NSFW command: ${error.message}` 
                 });
             }
         }
