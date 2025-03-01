@@ -10,6 +10,17 @@ const {
 } = require("@whiskeysockets/baileys");
 
 const pino = require('pino');
+const logger = pino({
+    level: process.env.LOG_LEVEL || 'info',
+    transport: {
+        target: 'pino-pretty',
+        options: {
+            translateTime: 'SYS:standard',
+            ignore: 'pid,hostname'
+        }
+    }
+});
+
 const { Boom } = require('@hapi/boom');
 const fs = require('fs-extra');
 const chalk = require('chalk');
@@ -21,6 +32,8 @@ const express = require('express');
 const { exec, spawn, execSync } = require('child_process');
 const ffmpeg = require('fluent-ffmpeg');
 const { smsg } = require('./lib/simple');
+const qrcode = require('qrcode-terminal');
+
 
 // Global state for auth
 global.authState = null;
@@ -77,27 +90,27 @@ async function saveCredsToFile() {
         if (global.authState) {
             const credsFile = path.join(process.cwd(), 'creds.json');
             await fs.writeJson(credsFile, global.authState, { spaces: 2 });
-            console.log(chalk.green('✓ Credentials saved successfully'));
+            logger.info('✓ Credentials saved successfully');
         }
     } catch (error) {
-        console.error(chalk.red('Error saving credentials:'), error);
+        logger.error('Error saving credentials:', error);
     }
 }
 
 async function startHANS() {
     try {
         await startServer();
-        console.log(chalk.yellow('\nLoading WhatsApp session...'));
+        logger.info('\nLoading WhatsApp session...');
 
         const { state, saveCreds } = await useMultiFileAuthState(`./auth_info_baileys`);
-        global.authState = state; // Store auth state globally
+        global.authState = state;
 
         const { version, isLatest } = await fetchLatestBaileysVersion();
-        console.log(chalk.yellow(`Using WA v${version.join('.')}, isLatest: ${isLatest}`));
+        logger.info(`Using WA v${version.join('.')}, isLatest: ${isLatest}`);
 
         const hans = makeWASocket({
             version,
-            logger: pino({ level: 'silent' }),
+            logger: pino({ level: 'silent' }), // Set Baileys logger to silent
             printQRInTerminal: true,
             auth: state,
             browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49'],
@@ -110,49 +123,92 @@ async function startHANS() {
             markOnlineOnConnect: true,
             getMessage: async (key) => {
                 if (store) {
-                    const msg = await store.loadMessage(key.remoteJid, key.id)
-                    return msg?.message || undefined
+                    const msg = await store.loadMessage(key.remoteJid, key.id);
+                    return msg?.message || undefined;
                 }
-                return {
-                    conversation: ''
-                }
+                return { conversation: '' };
             }
         });
 
         store.bind(hans.ev);
 
+        // Batch connection updates to reduce spam
+        let connectionUpdateTimeout;
         hans.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
 
+            // Clear existing timeout
+            if (connectionUpdateTimeout) {
+                clearTimeout(connectionUpdateTimeout);
+            }
+
+            // Batch updates with 1 second delay
+            connectionUpdateTimeout = setTimeout(() => {
+                logger.debug('Connection state updated:', {
+                    currentState: connection,
+                    hasQR: !!qr,
+                    disconnectReason: lastDisconnect?.error?.output?.statusCode
+                });
+            }, 1000);
+
             if (qr) {
-                console.log(chalk.cyan('\nScan this QR code to connect:'));
+                logger.info('Please scan this QR code to connect:');
+                qrcode.generate(qr, { small: true });
             }
 
             if (connection === 'close') {
                 let reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
-                console.log(chalk.red('Connection closed due to:', reason));
+                logger.warn('Connection closed due to:', reason);
 
                 if (reason === DisconnectReason.loggedOut) {
-                    console.log(chalk.red('Device Logged Out, Please Delete Session and Scan Again.'));
+                    logger.warn('Device Logged Out, Please Delete Session and Scan Again.');
                     await fs.remove('./auth_info_baileys');
                     process.exit(0);
                 } else if (!isShuttingDown) {
-                    console.log(chalk.yellow('Reconnecting...'));
+                    logger.info('Reconnecting...');
                     setTimeout(startHANS, 3000);
                 }
             }
 
             if (connection === 'open') {
-                console.log(chalk.green('\n✓ Successfully connected to WhatsApp\n'));
-                console.log(chalk.cyan('• Bot Status: Online'));
-                console.log(chalk.cyan('• Type .menu to see available commands\n'));
-
-                // Save credentials for Heroku deployment
+                logger.info('WhatsApp connection established successfully!');
                 await saveCredsToFile();
 
                 hans.sendMessage(hans.user.id, { 
                     text: `🟢 ${botName} is now active and ready to use!`
                 });
+            }
+        });
+
+        // Batch message updates
+        let messageUpdateTimeout;
+        hans.ev.on('messages.upsert', async chatUpdate => {
+            try {
+                // Clear existing timeout
+                if (messageUpdateTimeout) {
+                    clearTimeout(messageUpdateTimeout);
+                }
+
+                // Batch message processing with 500ms delay
+                messageUpdateTimeout = setTimeout(async () => {
+                    try {
+                        let msg = JSON.parse(JSON.stringify(chatUpdate.messages[0]));
+                        if (!msg.message) return;
+
+                        msg.message = (Object.keys(msg.message)[0] === 'ephemeralMessage') 
+                            ? msg.message.ephemeralMessage.message 
+                            : msg.message;
+
+                        if (msg.key && msg.key.remoteJid === 'status@broadcast') return;
+
+                        const m = smsg(hans, msg, store);
+                        require('./handler')(hans, m, chatUpdate, store);
+                    } catch (parseError) {
+                        logger.error('Error parsing message:', parseError);
+                    }
+                }, 500);
+            } catch (err) {
+                logger.error('Error in message handler:', err);
             }
         });
 
@@ -177,18 +233,18 @@ async function startHANS() {
                     const m = smsg(hans, msg, store);
                     require('./handler')(hans, m, chatUpdate, store);
                 } catch (parseError) {
-                    console.error('Error parsing message:', parseError);
+                    logger.error('Error parsing message:', parseError);
                 }
             } catch (err) {
-                console.error('Error in message handler:', err);
+                logger.error('Error in message handler:', err);
             }
         });
 
         return hans;
     } catch (err) {
-        console.error('Fatal error in startHANS:', err);
+        logger.error('Fatal error in startHANS:', err);
         if (!isShuttingDown) {
-            console.log(chalk.yellow('Attempting restart in 10 seconds...'));
+            logger.info('Attempting restart in 10 seconds...');
             setTimeout(startHANS, 10000);
         }
     }
@@ -198,12 +254,12 @@ async function startHANS() {
 const shutdown = async (signal) => {
     try {
         isShuttingDown = true;
-        console.log(chalk.yellow(`\nReceived ${signal}, shutting down gracefully...`));
+        logger.info(`\nReceived ${signal}, shutting down gracefully...`);
         // Save credentials one last time before shutting down
         await saveCredsToFile();
         process.exit(0);
     } catch (error) {
-        console.error('Error during shutdown:', error);
+        logger.error('Error during shutdown:', error);
         process.exit(1);
     }
 };
@@ -213,26 +269,26 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 
 // Handle uncaught errors
 process.on('uncaughtException', (err) => {
-    console.error('Uncaught Exception:', err);
+    logger.error('Uncaught Exception:', err);
     if (!isShuttingDown && err.code !== 'EADDRINUSE') {
-        console.log(chalk.yellow('Attempting restart after uncaught exception...'));
+        logger.info('Attempting restart after uncaught exception...');
         setTimeout(startHANS, 3000);
     }
 });
 
 process.on('unhandledRejection', (err) => {
-    console.error('Unhandled Promise Rejection:', err);
+    logger.error('Unhandled Promise Rejection:', err);
     if (!isShuttingDown && err.code !== 'EADDRINUSE') {
-        console.log(chalk.yellow('Attempting restart after unhandled rejection...'));
+        logger.info('Attempting restart after unhandled rejection...');
         setTimeout(startHANS, 3000);
     }
 });
 
 // Start the bot
 startHANS().catch(err => {
-    console.error('Fatal error:', err);
+    logger.error('Fatal error:', err);
     if (!isShuttingDown) {
-        console.log(chalk.yellow('Attempting restart after fatal error...'));
+        logger.info('Attempting restart after fatal error...');
         setTimeout(startHANS, 10000);
     }
 });
