@@ -13,10 +13,10 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "WhatsApp Bot"
+args = "WhatsApp Test"
 
 [[workflows.workflow]]
-name = "WhatsApp Bot"
+name = "WhatsApp Test"
 author = "agent"
 
 [workflows.workflow.metadata]
@@ -27,11 +27,11 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node server.js"
+args = "node test_whatsapp.js"
 waitForPort = 5000
 
 [deployment]
-run = ["sh", "-c", "node server.js"]
+run = ["sh", "-c", "node test_whatsapp.js"]
 
 [[ports]]
 localPort = 3000

@@ -1,3 +1,4 @@
+const express = require('express');
 const pino = require('pino');
 const logger = pino();
 const { 
@@ -17,14 +18,23 @@ const store = makeInMemoryStore({ logger: pino({ level: "silent" }) });
 const authDir = path.join(__dirname, 'auth_info_baileys');
 fs.ensureDirSync(authDir);
 
+// Initialize express app for workflow requirement
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Basic endpoint for health check
+app.get('/', (req, res) => {
+    res.json({ status: 'ok', service: 'WhatsApp Test Server' });
+});
+
 async function testWhatsApp() {
     try {
         logger.info('Starting WhatsApp test...');
-        
+
         // Clear existing auth info to force new QR code
         await fs.remove(authDir);
         await fs.ensureDir(authDir);
-        
+
         logger.info('Loading authentication state...');
         const { state, saveCreds } = await useMultiFileAuthState(authDir);
 
@@ -58,6 +68,9 @@ async function testWhatsApp() {
 
             if (qr) {
                 logger.info('New QR code received, displaying in terminal...');
+                // Log QR data for debugging
+                logger.info('QR data length:', qr.length);
+                logger.info('QR data first 50 chars:', qr.substring(0, 50));
                 qrcode.generate(qr, { small: true });
             }
 
@@ -69,7 +82,7 @@ async function testWhatsApp() {
             if (connection === 'close') {
                 const shouldReconnect = (lastDisconnect?.error instanceof Boom) ?
                     lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut : true;
-                
+
                 logger.info('Connection closed:', {
                     shouldReconnect,
                     statusCode: lastDisconnect?.error?.output?.statusCode,
@@ -104,8 +117,12 @@ async function testWhatsApp() {
     }
 }
 
-// Start the test
-testWhatsApp().catch(error => {
-    logger.error('Test failed:', error);
-    process.exit(1);
+// Start both the HTTP server and WhatsApp connection
+app.listen(PORT, '0.0.0.0', () => {
+    logger.info(`HTTP Server started on port ${PORT}`);
+    // Start the WhatsApp test
+    testWhatsApp().catch(error => {
+        logger.error('Test failed:', error);
+        process.exit(1);
+    });
 });
