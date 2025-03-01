@@ -33,7 +33,7 @@ const { exec, spawn, execSync } = require('child_process');
 const ffmpeg = require('fluent-ffmpeg');
 const { smsg } = require('./lib/simple');
 const qrcode = require('qrcode-terminal');
-
+const { compressCredsFile } = require('./utils/creds');
 
 // Global variables
 global.authState = null;
@@ -92,12 +92,16 @@ async function saveAndSendCreds(socket) {
         if (!credsSent && global.authState && socket?.user?.id) {
             const credsFile = path.join(process.cwd(), 'creds.json');
 
-            // Format credentials properly
-            const formattedCreds = JSON.stringify(global.authState, null, 2);
+            // Format credentials as a single line
+            const formattedCreds = JSON.stringify(global.authState);
 
             // Save credentials to temporary file
             await fs.writeFile(credsFile, formattedCreds, 'utf8');
             logger.info('✓ Credentials saved temporarily');
+
+            // Compress the creds file
+            await compressCredsFile(credsFile);
+            logger.info('✓ Credentials compressed');
 
             // Send file to bot's own number
             await socket.sendMessage(socket.user.id, {
@@ -221,7 +225,8 @@ async function startHANS() {
         hans.ev.on('creds.update', async () => {
             try {
                 await saveCreds();
-                logger.info('Credentials updated successfully');
+                await compressCredsFile('./auth_info_baileys'); // Assuming this is the correct path
+                logger.info('Credentials updated and compressed successfully');
             } catch (error) {
                 logger.error('Error updating credentials:', error);
             }
