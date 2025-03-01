@@ -638,4 +638,189 @@ const ownerCommands = {
     },
 
     delpremium: async (sock, msg, args) => {
-        if (msg.key.remoteJid !== config.ownerNumber)javascript\n' + cmdSource + '\n
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        const number = args[0]?.replace('@', '') + '@s.whatsapp.net';
+        if (!number) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a number to remove from premium!' });
+        }
+        try {
+            await store.removePremiumUser(number);
+            awaitawait sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Removed @${number.split('@')[0]} from premium users`,
+                mentions: [number]
+            });
+        } catch (error) {
+            logger.error('Error in delpremium command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to remove premium user: ' + error.message });
+        }
+    },
+
+    listpremium: async (sock, msg) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        try {
+            const premiumUsers = await store.getPremiumUsers();
+            if (!premiumUsers.length) {
+                return await sock.sendMessage(msg.key.remoteJid, { text: 'No premium users found!' });
+            }
+            let text = '*Premium Users List*\n\n';
+            premiumUsers.forEach((user, i) => {
+                text += `${i + 1}. @${user.split('@')[0]}\n`;
+            });
+            await sock.sendMessage(msg.key.remoteJid, {
+                text,
+                mentions: premiumUsers
+            });
+        } catch (error) {
+            logger.error('Error in listpremium command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to get premium users: ' + error.message });
+        }
+    },
+
+    addcmd: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        if (args.length < 2) {
+            return await sock.sendMessage(msg.key.remoteJid, { 
+                text: 'Please provide command name and response!\nUsage: .addcmd <command> <response>' 
+            });
+        }
+        try {
+            const cmdName = args[0].toLowerCase();
+            const cmdResponse = args.slice(1).join(' ');
+            customCommands.set(cmdName, cmdResponse);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Added custom command: ${cmdName}`
+            });
+        } catch (error) {
+            logger.error('Error in addcmd command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to add command: ' + error.message });
+        }
+    },
+
+    delcmd: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        if (!args[0]) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a command name to delete!' });
+        }
+        try {
+            const cmdName = args[0].toLowerCase();
+            if (customCommands.has(cmdName)) {
+                customCommands.delete(cmdName);
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `✅ Removed custom command: ${cmdName}`
+                });
+            } else {
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `❌ Command ${cmdName} not found!`
+                });
+            }
+        } catch (error) {
+            logger.error('Error in delcmd command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to delete command: ' + error.message });
+        }
+    },
+
+    listcmd: async (sock, msg) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        try {
+            if (customCommands.size === 0) {
+                return await sock.sendMessage(msg.key.remoteJid, { text: 'No custom commands found!' });
+            }
+            let text = '*Custom Commands List*\n\n';
+            [...customCommands.entries()].forEach(([cmd, response], i) => {
+                text += `${i + 1}. ${cmd} → ${response}\n`;
+            });
+            await sock.sendMessage(msg.key.remoteJid, { text });
+        } catch (error) {
+            logger.error('Error in listcmd command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to list commands: ' + error.message });
+        }
+    },
+
+    bc: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        const message = args.join(' ');
+        if (!message) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a message to broadcast!' });
+        }
+        try {
+            const chats = await store.get('chats') || [];
+            let successCount = 0;
+            const total = chats.length;
+
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `📢 Starting broadcast to ${total} chats...` 
+            });
+
+            for (const chat of chats) {
+                try {
+                    await sock.sendMessage(chat, { 
+                        text: `*📢 Broadcast Message*\n\n${message}` 
+                    });
+                    successCount++;
+
+                    // Progress update every 10 chats
+                    if (successCount % 10 === 0) {
+                        await sock.sendMessage(msg.key.remoteJid, {
+                            text: `Progress: ${successCount}/${total} chats`
+                        });
+                    }
+                } catch (error) {
+                    logger.error(`Failed to send broadcast to ${chat}:`, error);
+                }
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Broadcast completed!\nSuccessfully sent to ${successCount}/${total} chats`
+            });
+        } catch (error) {
+            logger.error('Error in bc command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to send broadcast: ' + error.message });
+        }
+    },
+
+    getcase: async (sock, msg, args) => {
+        if (msg.key.remoteJid !== config.ownerNumber) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Only owner can use this command!' });
+        }
+        if (!args[0]) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: 'Please provide a command name!' });
+        }
+        try {
+            const cmdName = args[0].toLowerCase();
+            const cmdFunction = ownerCommands[cmdName];
+
+            if (!cmdFunction) {
+                return await sock.sendMessage(msg.key.remoteJid, { 
+                    text: `❌ Command '${cmdName}' not found!` 
+                });
+            }
+
+            const cmdSource = cmdFunction.toString()
+                .split('\n')
+                .slice(1, -1) // Remove function wrapper
+                .join('\n')
+                .trim();
+
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `*Source Code for '${cmdName}'*\n\`\`\`javascript\n${cmdSource}\n\`\`\``
+            });
+        } catch (error) {
+            logger.error('Error in getcase command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to get command source: ' + error.message });
+        }
+    }
+};
+
+module.exports = ownerCommands;
