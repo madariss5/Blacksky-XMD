@@ -9,6 +9,8 @@ const groupCommands = require('./commands/group');
 const ownerCommands = require('./commands/owner');
 const utilityCommands = require('./commands/utility');
 const educationCommands = require('./commands/education');
+const economyCommands = require('./commands/economy');
+const gameCommands = require('./commands/game');
 
 // Debug logging for module imports
 logger.info('Starting command registration...');
@@ -40,18 +42,26 @@ const modules = {
     'Group': groupCommands,
     'Owner': ownerCommands,
     'Utility': utilityCommands,
-    'Education': educationCommands
+    'Education': educationCommands,
+    'Economy': economyCommands,
+    'Game': gameCommands
 };
+
+// Count commands per category for logging
+const categoryStats = {};
 
 Object.entries(modules).forEach(([name, commands]) => {
     try {
         registerCommands(commands, name);
+        categoryStats[name] = Object.keys(commands).length;
     } catch (error) {
         logger.error(`Error registering ${name} commands:`, error);
+        categoryStats[name] = 0;
     }
 });
 
-// Log total registered commands
+// Log detailed registration statistics
+logger.info('Command registration statistics:', categoryStats);
 logger.info('Total registered commands:', Object.keys(allCommands).length);
 logger.info('Available commands:', Object.keys(allCommands));
 

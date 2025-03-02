@@ -7,43 +7,51 @@ const basicCommands = {
         try {
             logger.info('Starting menu generation...');
 
-            // Basic header
-            let menuText = `*${config.botName} MENU*\n\n`;
-            menuText += `User: ${msg.pushName || 'User'}\n`;
-            menuText += `Time: ${moment().format('HH:mm:ss')}\n`;
-            menuText += `Date: ${moment().format('DD/MM/YYYY')}\n\n`;
-
-            // Simplified category display
-            const categories = {};
+            // Basic header with bot info and user details
+            let menuText = `*${config.botName} Command Menu*\n\n`;
+            menuText += `👤 User: ${msg.pushName || 'User'}\n`;
+            menuText += `⏰ Time: ${moment().format('HH:mm:ss')}\n`;
+            menuText += `📅 Date: ${moment().format('DD/MM/YYYY')}\n\n`;
 
             // Group commands by category
+            const categories = {};
             for (const [cmd, info] of Object.entries(config.commands)) {
                 if (!categories[info.category]) {
                     categories[info.category] = [];
                 }
                 categories[info.category].push({
                     command: cmd,
-                    description: info.description || 'No description available'
+                    description: info.description
                 });
             }
 
-            // Add each category and its commands
-            for (const [category, commands] of Object.entries(categories)) {
-                menuText += `*${category}*\n`;
-                for (const cmd of commands) {
-                    menuText += `• ${config.prefix}${cmd.command} - ${cmd.description}\n`;
+            // Sort categories alphabetically
+            const sortedCategories = Object.keys(categories).sort();
+
+            // Add each category with its commands
+            for (const category of sortedCategories) {
+                // Add category header with emoji
+                const emoji = getCategoryEmoji(category);
+                menuText += `${emoji} *${category}*\n`;
+
+                // Sort commands within category
+                categories[category].sort((a, b) => a.command.localeCompare(b.command));
+
+                // Add commands
+                for (const cmd of categories[category]) {
+                    menuText += `➤ ${config.prefix}${cmd.command} - ${cmd.description}\n`;
                 }
                 menuText += '\n';
             }
 
-            menuText += `\nType ${config.prefix}help for more information.`;
+            // Footer
+            menuText += `\n📝 Use ${config.prefix}help [command] for detailed info about a command`;
 
-            logger.info('Menu text generated successfully');
-
-            // Send the menu
             await sock.sendMessage(msg.key.remoteJid, {
                 text: menuText
             });
+
+            logger.info('Menu generated and sent successfully');
 
         } catch (error) {
             logger.error('Error in menu command:', error);
@@ -53,13 +61,33 @@ const basicCommands = {
         }
     },
 
-    help: async (sock, msg) => {
+    help: async (sock, msg, args) => {
         try {
-            const text = `*Basic Commands*\n\n` +
-                        `• ${config.prefix}menu - Show all commands\n` +
-                        `• ${config.prefix}help - Show this help message`;
+            if (!args.length) {
+                const text = `*Command Help*\n\n` +
+                    `• Use ${config.prefix}menu to see all commands\n` +
+                    `• Use ${config.prefix}help [command] for specific help\n\n` +
+                    `Example: ${config.prefix}help sticker`;
+
+                return await sock.sendMessage(msg.key.remoteJid, { text });
+            }
+
+            const command = args[0].toLowerCase();
+            const cmdInfo = config.commands[command];
+
+            if (!cmdInfo) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `❌ Command "${command}" not found.\nUse ${config.prefix}menu to see available commands.`
+                });
+            }
+
+            const text = `*Command: ${command}*\n\n` +
+                        `Category: ${cmdInfo.category}\n` +
+                        `Description: ${cmdInfo.description}\n` +
+                        `Usage: ${config.prefix}${command}`;
 
             await sock.sendMessage(msg.key.remoteJid, { text });
+
         } catch (error) {
             logger.error('Help command failed:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -68,5 +96,20 @@ const basicCommands = {
         }
     }
 };
+
+// Helper function to get emoji for each category
+function getCategoryEmoji(category) {
+    const emojis = {
+        'Basic': '📌',
+        'AI': '🤖',
+        'Game': '🎮',
+        'Media': '📷',
+        'Group': '👥',
+        'Education': '📚',
+        'Economy': '💰',
+        'Utility': '🛠️'
+    };
+    return emojis[category] || '📋';
+}
 
 module.exports = basicCommands;
