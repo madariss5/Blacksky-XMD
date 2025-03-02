@@ -80,6 +80,7 @@ async function startBot() {
 startBot();
 
 // Handle graceful shutdown
+let isShuttingDown = false;
 const shutdown = async (signal) => {
     try {
         isShuttingDown = true;
@@ -94,7 +95,7 @@ const shutdown = async (signal) => {
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
-// Handle uncaught errors with rate limiting
+// Handle uncaught errors
 process.on('uncaughtException', (err) => {
     logger.error('Uncaught Exception:', err);
     if (!isShuttingDown && err.code !== 'EADDRINUSE') {
