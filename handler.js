@@ -1,7 +1,25 @@
 const config = require('./config');
 const logger = require('./utils/logger');
 const basicCommands = require('./commands/basic');
+const utilityCommands = require('./commands/utility');
 const userCommands = require('./commands/user');
+const ownerCommands = require('./commands/owner');
+const groupCommands = require('./commands/group');
+const mediaCommands = require('./commands/media');
+const funCommands = require('./commands/fun');
+const aiCommands = require('./commands/ai');
+
+// Combine all command modules
+const allCommands = {
+    ...basicCommands,
+    ...utilityCommands,
+    ...userCommands,
+    ...ownerCommands,
+    ...groupCommands,
+    ...mediaCommands,
+    ...funCommands,
+    ...aiCommands
+};
 
 module.exports = async (sock, msg, { messages }, store) => {
     try {
@@ -35,14 +53,11 @@ module.exports = async (sock, msg, { messages }, store) => {
         const args = messageContent.slice(prefix.length).trim().split(/\s+/);
         const command = args.shift()?.toLowerCase();
 
-        // Execute command
-        if (basicCommands[command]) {
-            await basicCommands[command](sock, msg, args);
-            return;
-        }
+        logger.info(`Executing command: ${command} with args:`, args);
 
-        if (userCommands[command]) {
-            await userCommands[command](sock, msg, args);
+        // Execute command from combined commands
+        if (allCommands[command]) {
+            await allCommands[command](sock, msg, args);
             return;
         }
 
