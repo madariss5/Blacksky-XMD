@@ -220,8 +220,11 @@ async function startHANS() {
             const { connection, lastDisconnect, qr } = update;
 
             if (qr) {
-                logger.info('Please scan this QR code to connect:');
+                logger.info('New QR Code received, please scan:');
                 qrcode.generate(qr, { small: true });
+
+                // Also send a message to indicate QR code is ready
+                console.log('\n🔍 Please scan the QR code above to connect your WhatsApp\n');
             }
 
             if (connection === 'close') {
