@@ -8,6 +8,7 @@ const logger = require('./utils/logger');
 const { getUptime } = require('./utils');
 const fs = require('fs-extra');
 const path = require('path');
+const config = require('./config'); // Assuming config file exists
 
 // Command handlers
 const commandsPath = path.join(__dirname, 'commands');
@@ -28,8 +29,12 @@ for (const file of commandFiles) {
             Object.entries(command).forEach(([cmdName, handler]) => {
                 // Skip if command already exists (prevent duplicates)
                 if (!commands.has(cmdName)) {
-                    commands.set(cmdName, handler);
-                    logger.info(`Loaded command: ${cmdName} from ${file}`);
+                    if (config.commands[cmdName]) { // Only load commands defined in config
+                        commands.set(cmdName, handler);
+                        logger.info(`Loaded command: ${cmdName} from ${file}`);
+                    } else {
+                        logger.warn(`Command ${cmdName} not found in config, skipping...`);
+                    }
                 } else {
                     logger.warn(`Skipping duplicate command: ${cmdName} in ${file}`);
                 }
@@ -64,13 +69,14 @@ async function startBot() {
                                   msg.message?.videoMessage?.caption || '';
 
                 // Process command if message starts with prefix
-                if (messageText.startsWith('.')) {
-                    const args = messageText.slice(1).trim().split(/\s+/);
+                if (messageText.startsWith(config.prefix)) {
+                    const args = messageText.slice(config.prefix.length).trim().split(/\s+/);
                     const command = args.shift().toLowerCase();
 
                     if (commands.has(command)) {
                         try {
                             await commands.get(command)(sock, msg, args);
+                            logger.info(`Executed command: ${command}`);
                         } catch (error) {
                             logger.error(`Error executing command ${command}:`, error);
                             await sock.sendMessage(msg.key.remoteJid, {
