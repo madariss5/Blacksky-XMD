@@ -85,7 +85,56 @@ async function cleanupTempFiles(...filePaths) {
     }
 }
 
-// Media Commands Object
+// Enhance sticker creation options
+const stickerOptions = {
+    processSticker: async (inputPath, outputPath, options = {}) => {
+        const {
+            text,
+            fontSize = 40,
+            quality = 80,
+            size = 512,
+            animated = false
+        } = options;
+
+        if (animated) {
+            return new Promise((resolve, reject) => {
+                ffmpeg(inputPath)
+                    .fps(10)
+                    .size(`${size}x${size}`)
+                    .videoFilter('crop=w=ih:h=ih')
+                    .save(outputPath)
+                    .on('end', resolve)
+                    .on('error', reject);
+            });
+        }
+
+        let image = sharp(inputPath)
+            .resize(size, size, {
+                fit: 'contain',
+                background: { r: 0, g: 0, b: 0, alpha: 0 }
+            })
+            .webp({ quality });
+
+        if (text) {
+            const textBuffer = await sharp({
+                text: {
+                    text: text,
+                    fontSize,
+                    rgba: true
+                }
+            }).toBuffer();
+
+            image = image.composite([{
+                input: textBuffer,
+                gravity: 'center'
+            }]);
+        }
+
+        return image.toFile(outputPath);
+    }
+};
+
+// Update sticker command to use new options
 const mediaCommands = {
     meme: async (sock, msg) => {
         try {
@@ -143,13 +192,13 @@ const mediaCommands = {
         }
     },
 
-    sticker: async (sock, msg) => {
+    sticker: async (sock, msg, args) => {
         const tempFiles = [];
         try {
             const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
             if (!quotedMsg || (!quotedMsg.imageMessage && !quotedMsg.videoMessage)) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Please reply to an image or video with !sticker'
+                    text: '❌ Please reply to an image or video with !sticker [text] [size] [quality]'
                 });
             }
 
@@ -172,25 +221,17 @@ const mediaCommands = {
 
             await fs.writeFile(inputPath, buffer);
 
-            if (quotedMsg.videoMessage) {
-                const framePath = path.join(tempDir, 'frame.jpg');
-                tempFiles.push(framePath);
+            // Parse sticker options
+            const text = args.length ? args.join(' ') : '';
+            const size = Math.min(Math.max(parseInt(args[1]) || 512, 128), 512);
+            const quality = Math.min(Math.max(parseInt(args[2]) || 80, 1), 100);
 
-                await new Promise((resolve, reject) => {
-                    ffmpeg(inputPath)
-                        .screenshots({
-                            timestamps: ['00:00:00'],
-                            filename: 'frame.jpg',
-                            folder: tempDir
-                        })
-                        .on('end', resolve)
-                        .on('error', reject);
-                });
-
-                await fs.move(framePath, inputPath, { overwrite: true });
-            }
-
-            await convertToWebp(inputPath, outputPath);
+            await stickerOptions.processSticker(inputPath, outputPath, {
+                text,
+                size,
+                quality,
+                animated: !!quotedMsg.videoMessage
+            });
 
             const webpBuffer = await fs.readFile(outputPath);
             await sock.sendMessage(msg.key.remoteJid, {
