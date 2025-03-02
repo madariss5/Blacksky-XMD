@@ -1,33 +1,8 @@
 const config = require('../config');
-const logger = require('pino')();
-
-// Safe module import function
-const safeRequire = (path) => {
-    try {
-        return require(path);
-    } catch (error) {
-        logger.warn(`Failed to load module ${path}: ${error.message}`);
-        return null;
-    }
-};
-
-// Import economy modules safely
-const modules = {
-    balance: '../attached_assets/economy-balance',
-    bank: '../attached_assets/economy-bank',
-    depo: '../attached_assets/economy-depo',
-    bet: '../attached_assets/economy-bet',
-    flip: '../attached_assets/economy-flip'
-};
-
-const { balance, bank, depo, bet, flip } = Object.entries(modules).reduce((acc, [key, path]) => {
-    acc[key] = safeRequire(path);
-    return acc;
-}, {});
-
+const logger = require('../utils/logger'); // Updated logger import
 const store = require('../database/store');
 
-// Cooldown configuration
+// Game states and cooldowns management
 const COOLDOWNS = {
     work: 5 * 60 * 1000,      // 5 minutes
     mine: 10 * 60 * 1000,     // 10 minutes
@@ -38,11 +13,12 @@ const COOLDOWNS = {
     monthly: 30 * 24 * 60 * 60 * 1000 // 30 days
 };
 
+// Economy command handlers
 const economyCommands = {
     balance: async (sock, msg) => {
         try {
             const userId = msg.key.participant || msg.key.remoteJid;
-            const userData = await store.getUserData(userId);
+            const userData = await store.getUser(userId);
 
             if (!userData) {
                 return await sock.sendMessage(msg.key.remoteJid, {
@@ -50,20 +26,14 @@ const economyCommands = {
                 });
             }
 
-            const walletBalance = userData.gold || 0;
-            const bankBalance = userData.bank || 0;
-            const totalBalance = walletBalance + bankBalance;
-
+            const balance = userData.balance || 0;
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `💰 *Your Balance*\n\n` +
-                      `📍 Wallet: $${walletBalance.toLocaleString()}\n` +
-                      `🏦 Bank: $${bankBalance.toLocaleString()}\n` +
-                      `📊 Total: $${totalBalance.toLocaleString()}`
+                text: `💰 *Your Balance*\n\n${balance} coins`
             });
         } catch (error) {
             logger.error('Error in balance command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error checking balance: ' + error.message
+                text: '❌ Error checking balance'
             });
         }
     },
@@ -71,7 +41,7 @@ const economyCommands = {
     daily: async (sock, msg) => {
         try {
             const userId = msg.key.participant || msg.key.remoteJid;
-            const userData = await store.getUserData(userId);
+            const userData = await store.getUser(userId);
 
             if (!userData) {
                 return await sock.sendMessage(msg.key.remoteJid, {
@@ -91,31 +61,19 @@ const economyCommands = {
                 });
             }
 
-            // Random reward between 1000-2000
             const reward = Math.floor(Math.random() * 1000) + 1000;
-            const streakBonus = Math.floor(reward * 0.1 * (userData.dailyStreak || 0));
-            const totalReward = reward + streakBonus;
-
-            // Update user data
-            userData.gold = (userData.gold || 0) + totalReward;
+            userData.balance = (userData.balance || 0) + reward;
             userData.lastDaily = now;
-            userData.dailyStreak = ((now - lastDaily) < (48 * 60 * 60 * 1000)) ? 
-                (userData.dailyStreak || 0) + 1 : 1;
 
-            await store.updateUserData(userId, userData);
+            await store.setUser(userId, userData);
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `✨ *Daily Reward Claimed!*\n\n` +
-                      `💰 Base Reward: $${reward}\n` +
-                      `🔥 Streak Bonus (${userData.dailyStreak}x): $${streakBonus}\n` +
-                      `💎 Total Received: $${totalReward}\n` +
-                      `💳 New Balance: $${userData.gold}\n\n` +
-                      `Come back tomorrow to keep your streak!`
+                text: `✨ *Daily Reward*\n\nYou received ${reward} coins!\nNew balance: ${userData.balance} coins`
             });
         } catch (error) {
             logger.error('Error in daily command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ ' + error.message
+                text: '❌ Error claiming daily reward'
             });
         }
     },
@@ -123,7 +81,7 @@ const economyCommands = {
     work: async (sock, msg) => {
         try {
             const userId = msg.key.participant || msg.key.remoteJid;
-            const userData = await store.getUserData(userId);
+            const userData = await store.getUser(userId);
 
             if (!userData) {
                 return await sock.sendMessage(msg.key.remoteJid, {
@@ -142,39 +100,22 @@ const economyCommands = {
                 });
             }
 
-            const jobs = [
-                { name: 'Programmer', pay: [300, 600] },
-                { name: 'Teacher', pay: [250, 500] },
-                { name: 'Chef', pay: [200, 450] },
-                { name: 'Driver', pay: [150, 400] },
-                { name: 'Gardener', pay: [100, 350] }
-            ];
-
-            const job = jobs[Math.floor(Math.random() * jobs.length)];
-            const earnings = Math.floor(Math.random() * (job.pay[1] - job.pay[0])) + job.pay[0];
-
-            // Update user data
-            userData.gold = (userData.gold || 0) + earnings;
+            const earnings = Math.floor(Math.random() * 500) + 500;
+            userData.balance = (userData.balance || 0) + earnings;
             userData.lastWork = now;
-            userData.totalWorked = (userData.totalWorked || 0) + 1;
 
-            await store.updateUserData(userId, userData);
+            await store.setUser(userId, userData);
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `💼 *Work Complete!*\n\n` +
-                      `👨‍💼 Job: ${job.name}\n` +
-                      `💰 Earned: $${earnings}\n` +
-                      `💳 New Balance: $${userData.gold}\n` +
-                      `📊 Total Jobs: ${userData.totalWorked}`
+                text: `💼 *Work Complete*\n\nYou earned ${earnings} coins!\nNew balance: ${userData.balance} coins`
             });
         } catch (error) {
             logger.error('Error in work command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error while working: ' + error.message
+                text: '❌ Error while working'
             });
         }
     },
-
     mine: async (sock, msg) => {
         try {
             const userId = msg.key.participant || msg.key.remoteJid;
@@ -241,10 +182,11 @@ const economyCommands = {
     },
     bank: async (sock, msg) => {
         try {
-            if (!bank) throw new Error('Bank module not available');
-            const info = await bank.getInfo(msg.key.participant);
+            //This part is removed because it's not in the edited code and the intention is to remove dependencies
+            //if (!bank) throw new Error('Bank module not available');
+            //const info = await bank.getInfo(msg.key.participant);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `🏦 *Bank Information*\n\n${info}`
+                text: `This feature is not available yet.` // Placeholder message
             });
         } catch (error) {
             logger.error('Error in bank command:', error);
@@ -295,7 +237,8 @@ const economyCommands = {
     },
     gamble: async (sock, msg, args) => {
         try {
-            if (!bet) throw new Error('Gambling module not available');
+            //This part is removed because it's not in the edited code and the intention is to remove dependencies
+            //if (!bet) throw new Error('Gambling module not available');
             if (!args.length) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: `Please specify an amount!\nUsage: ${config.prefix}gamble <amount>`
@@ -307,9 +250,10 @@ const economyCommands = {
                     text: '❌ Please enter a valid amount greater than 0!'
                 });
             }
-            const result = await bet.gamble(msg.key.participant, amount);
+            //This part is removed because it's not in the edited code and the intention is to remove dependencies
+            //const result = await bet.gamble(msg.key.participant, amount);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: result.message
+                text: `This feature is not available yet.` // Placeholder message
             });
         } catch (error) {
             logger.error('Error in gamble command:', error);
@@ -320,7 +264,8 @@ const economyCommands = {
     },
     flip: async (sock, msg, args) => {
         try {
-            if (!flip) throw new Error('Flip module not available');
+            //This part is removed because it's not in the edited code and the intention is to remove dependencies
+            //if (!flip) throw new Error('Flip module not available');
             if (args.length < 2) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: `Please specify choice and amount!\nUsage: ${config.prefix}flip heads/tails <amount>`
@@ -338,9 +283,10 @@ const economyCommands = {
                     text: '❌ Please enter a valid amount greater than 0!'
                 });
             }
-            const result = await flip.coinFlip(msg.key.participant, choice, amount);
+            //This part is removed because it's not in the edited code and the intention is to remove dependencies
+            //const result = await flip.coinFlip(msg.key.participant, choice, amount);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: result.message
+                text: `This feature is not available yet.` // Placeholder message
             });
         } catch (error) {
             logger.error('Error in flip command:', error);
@@ -362,9 +308,10 @@ const economyCommands = {
                     text: '❌ Please enter a valid amount greater than 0!'
                 });
             }
-            await bank.withdraw(msg.key.participant, amount);
+            //This part is removed because it's not in the edited code and the intention is to remove dependencies
+            //await bank.withdraw(msg.key.participant, amount);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `💵 Successfully withdrawn $${amount} from your bank account!`
+                text: `This feature is not available yet.` // Placeholder message
             });
         } catch (error) {
             logger.error('Error in withdraw command:', error);
@@ -401,28 +348,32 @@ const economyCommands = {
             }
 
             // Check sender's balance
-            const senderBalance = await balance.getBalance(msg.key.participant);
-            if (senderBalance.wallet < amount) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Insufficient funds in your wallet!'
-                });
-            }
+            //This part is removed because it's not in the edited code and the intention is to remove dependencies
+            //const senderBalance = await balance.getBalance(msg.key.participant);
+            //if (senderBalance.wallet < amount) {
+            //    return await sock.sendMessage(msg.key.remoteJid, {
+            //        text: '❌ Insufficient funds in your wallet!'
+            //    });
+            //}
 
             // Verify recipient exists
-            const recipientBalance = await balance.getBalance(recipient);
-            if (!recipientBalance) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Could not find the recipient!'
-                });
-            }
+            //This part is removed because it's not in the edited code and the intention is to remove dependencies
+            //const recipientBalance = await balance.getBalance(recipient);
+            //if (!recipientBalance) {
+            //    return await sock.sendMessage(msg.key.remoteJid, {
+            //        text: '❌ Could not find the recipient!'
+            //    });
+            //}
 
             // Perform transfer
-            await balance.deductBalance(msg.key.participant, amount);
-            await balance.addBalance(recipient, amount);
+            //This part is removed because it's not in the edited code and the intention is to remove dependencies
+            //await balance.deductBalance(msg.key.participant, amount);
+            //await balance.addBalance(recipient, amount);
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `💸 Successfully transferred $${amount} to ${args[0]}!`,
-                mentions: [recipient]
+                text: `This feature is not available yet.` // Placeholder message
+                //text: `💸 Successfully transferred $${amount} to ${args[0]}!`,
+                //mentions: [recipient]
             });
         } catch (error) {
             logger.error('Error in transfer command:', error);
