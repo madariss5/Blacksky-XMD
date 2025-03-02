@@ -26,6 +26,7 @@ const { Boom } = require('@hapi/boom');
 require('dotenv').config();
 const antiBan = require('./middleware/antiban');
 const { formatPhoneNumber, addWhatsAppSuffix, formatOwnerNumbers } = require('./utils/phoneNumber');
+const config = require('./config'); // Import config.js
 
 // Global variables
 global.authState = null;
@@ -39,8 +40,8 @@ const PORT = process.env.PORT || 5000;
 
 // Bot configuration
 const owner = formatOwnerNumbers(process.env.OWNER_NUMBER || '254710772666');
-const sessionName = "blacksky-md";
-const botName = process.env.BOT_NAME || "𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻";
+const sessionName = config.session.id;
+const botName = config.botName;
 const TIME_ZONE = process.env.TIME_ZONE || "Africa/Nairobi";
 
 // Initialize store with proper pino instance
@@ -49,12 +50,21 @@ const store = makeInMemoryStore({
 });
 const msgRetryCounterCache = new NodeCache();
 
+// Enhanced logging for session configuration
+logger.info('Bot startup configuration:', {
+    sessionId: sessionName,
+    authDir: config.session.authDir,
+    owner: owner,
+    botName: botName
+});
+
 // Keep-alive ping endpoint
 app.get('/', (req, res) => {
     res.json({
         status: 'WhatsApp Bot Server Running',
         botName: botName,
-        uptime: process.uptime()
+        uptime: process.uptime(),
+        sessionId: sessionName
     });
 });
 
@@ -83,20 +93,10 @@ const startServer = () => {
     });
 };
 
-// Update the sessionConfig object with environment variables
+// Use session configuration from config.js
 const sessionConfig = {
-    sessionName: process.env.SESSION_NAME || 'blacksky-md',
-    authDir: process.env.AUTH_DIR || './auth_info',
-    printQRInTerminal: true,
-    logger: pino({ level: process.env.LOG_LEVEL || 'info' }),
-    browser: ['BLACKSKY-MD', 'Safari', '1.0.0'],
-    defaultQueryTimeoutMs: 60000,
-    connectTimeoutMs: 60000,
-    qrTimeout: 60000,
-    keepAliveIntervalMs: 30000,
-    emitOwnEvents: true,
-    markOnlineOnConnect: true,
-    retryRequestDelayMs: 2000
+    ...config.session,
+    logger: pino({ level: config.session.logLevel })
 };
 
 // Enhanced auth state loading with better error handling
@@ -252,7 +252,11 @@ async function startHANS() {
 
             if (connection === 'open') {
                 connectionRetryCount = 0;
-                logger.info('WhatsApp connection established successfully!');
+                logger.info('WhatsApp connection established successfully!', {
+                    sessionId: sessionName,
+                    authDir: config.session.authDir,
+                    botNumber: hans?.user?.id
+                });
 
                 try {
                     if (!credsSent) {
@@ -261,11 +265,17 @@ async function startHANS() {
 
                     // Verify hans.user exists before sending message
                     if (hans?.user?.id) {
-                        logger.info('Sending success message to bot number:', hans.user.id);
+                        const cleanBotNumber = formatPhoneNumber(hans.user.id);
+                        logger.info('Bot connected successfully:', {
+                            botNumber: cleanBotNumber,
+                            sessionId: sessionName
+                        });
 
                         // Send success message to bot's own number
                         await hans.sendMessage(hans.user.id, {
-                            text: `🟢 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 bot successfully connected! Enjoy using the bot.\n\n` +
+                            text: `🟢 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 bot successfully connected!\n\n` +
+                                  `Session ID: ${sessionName}\n` +
+                                  `Bot Number: ${cleanBotNumber}\n\n` +
                                   `Type .help or .menu to see available commands.`
                         }).catch(err => {
                             logger.error('Failed to send success message:', err);

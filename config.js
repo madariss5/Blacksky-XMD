@@ -14,47 +14,51 @@ if (!formattedOwnerNumber) {
     process.exit(1);
 }
 
+// Session configuration
+const sessionConfig = {
+    // Session identification
+    id: process.env.SESSION_ID || 'blacksky-md',
+
+    // Auth directory
+    authDir: process.env.AUTH_DIR || './auth_info',
+
+    // Connection settings
+    printQRInTerminal: true,
+    browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49'],
+
+    // Timeouts and intervals
+    defaultQueryTimeoutMs: parseInt(process.env.QUERY_TIMEOUT) || 60000,
+    connectTimeoutMs: parseInt(process.env.CONNECT_TIMEOUT) || 60000,
+    qrTimeout: parseInt(process.env.QR_TIMEOUT) || 40000,
+    keepAliveIntervalMs: parseInt(process.env.KEEP_ALIVE_INTERVAL) || 10000,
+
+    // Behavior configuration
+    emitOwnEvents: true,
+    markOnlineOnConnect: true,
+    retryRequestDelayMs: parseInt(process.env.RETRY_DELAY) || 2000,
+
+    // Logging configuration
+    logLevel: process.env.LOG_LEVEL || 'silent',
+
+    // Backup settings
+    backupInterval: parseInt(process.env.BACKUP_INTERVAL) || 24 * 60 * 60 * 1000, // 24 hours
+    maxBackupFiles: parseInt(process.env.MAX_BACKUPS) || 7,
+    backupDir: process.env.BACKUP_DIR || './session_backups'
+};
+
 module.exports = {
-    prefix: '.',  // Command prefix
-    ownerNumber: formattedOwnerNumber,  // Clean number format without suffix
+    // Basic configuration
+    prefix: process.env.PREFIX || '.',
+    ownerNumber: formattedOwnerNumber,
     ownerName: process.env.OWNER_NAME || 'BLACKSKY',
-    botName: '𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻',
+    botName: process.env.BOT_NAME || '𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻',
     botNumber: '', // Will be set after connection
-    menuImage: 'https://raw.githubusercontent.com/your-repo/assets/main/f9.jpg',
-    // Session Configuration
-    session: {
-        // Session identification
-        id: "blacksky-md",
+    menuImage: process.env.MENU_IMAGE || 'https://raw.githubusercontent.com/your-repo/assets/main/f9.jpg',
 
-        // Authentication settings
-        authDir: './auth_info_baileys',
-        printQRInTerminal: true,
-
-        // Browser identification
-        browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49'],
-
-        // Connection timeouts
-        defaultQueryTimeoutMs: 60000,
-        connectTimeoutMs: 60000,
-        qrTimeout: 40000,
-        keepAliveIntervalMs: 10000,
-
-        // Connection behavior
-        emitOwnEvents: true,
-        markOnlineOnConnect: true,
-        retryRequestDelayMs: 2000,
-
-        // Logging
-        logLevel: 'silent',
-
-        // Backup settings
-        backupInterval: 24 * 60 * 60 * 1000, // 24 hours
-        maxBackupFiles: 7,
-        backupDir: './session_backups'
-    },
+    // Session configuration
+    session: sessionConfig,
 
     commands: {
-        // AI Commands (Updated)
         ai: { description: 'Chat with AI assistant (GPT-3.5)', category: 'AI' },
         gpt: { description: 'Advanced chat with GPT-4', category: 'AI' },
         imagine: { description: 'Generate images with Stable Diffusion', category: 'AI' },
@@ -64,8 +68,6 @@ module.exports = {
         img2txt: { description: 'Analyze and describe images', category: 'AI' },
         tts: { description: 'Convert text to speech', category: 'AI' },
         cleargpt: { description: 'Clear GPT chat history', category: 'AI' },
-
-        // Media Commands (Extended)
         sticker: { description: 'Create sticker from image/video', category: 'Media' },
         toimg: { description: 'Convert sticker to image', category: 'Media' },
         tomp3: { description: 'Convert video to audio', category: 'Media' },
@@ -83,7 +85,6 @@ module.exports = {
         rotate: { description: 'Rotate image by specified degrees', category: 'Media' },
         blur: { description: 'Apply blur effect to image', category: 'Media' },
         circle: { description: 'Make image circular', category: 'Media' },
-        // New Media Commands
         bass: { description: 'Enhance bass in audio', category: 'Media' },
         nightcore: { description: 'Apply nightcore effect to audio', category: 'Media' },
         slow: { description: 'Slow down audio', category: 'Media' },
@@ -103,15 +104,12 @@ module.exports = {
         meme: { description: 'Generate custom meme', category: 'Media' },
         qrcode: { description: 'Generate QR code', category: 'Media' },
         ocr: { description: 'Extract text from image', category: 'Media' },
-
-        // Game Commands (Extended)
         rpg: { description: 'View RPG game status', category: 'Game' },
         quest: { description: 'Start a new RPG quest', category: 'Game' },
         battle: { description: 'Battle another player', category: 'Game' },
         tictactoe: { description: 'Play TicTacToe', category: 'Game' },
         chess: { description: 'Play chess', category: 'Game' },
         suit: { description: 'Play Rock Paper Scissors', category: 'Game' },
-        // New Game Commands
         adventure: { description: 'Start an adventure', category: 'Game' },
         mining: { description: 'Mine for resources', category: 'Game' },
         fishing: { description: 'Go fishing for items', category: 'Game' },
@@ -127,13 +125,10 @@ module.exports = {
         typing: { description: 'Typing speed game', category: 'Game' },
         mathquiz: { description: 'Math quiz game', category: 'Game' },
         trivial: { description: 'Trivia quiz game', category: 'Game' },
-
-        // Tools Commands (Extended)
         calc: { description: 'Calculator', category: 'Tools' },
         translate: { description: 'Translate text', category: 'Tools' },
         weather: { description: 'Check weather info', category: 'Tools' },
         dictionary: { description: 'Look up word definitions', category: 'Tools' },
-        // New Tools Commands
         covid: { description: 'Get COVID-19 statistics', category: 'Tools' },
         currency: { description: 'Currency converter', category: 'Tools' },
         ip: { description: 'IP address lookup', category: 'Tools' },
@@ -149,11 +144,8 @@ module.exports = {
         reminder: { description: 'Set reminders', category: 'Tools' },
         poll: { description: 'Create polls', category: 'Tools' },
         schedule: { description: 'Schedule messages', category: 'Tools' },
-
-        // Fun Commands (Extended)
         truth: { description: 'Get a truth question', category: 'Fun' },
         dare: { description: 'Get a dare challenge', category: 'Fun' },
-        // New Fun Commands
         ship: { description: 'Ship two users', category: 'Fun' },
         roast: { description: 'Roast someone', category: 'Fun' },
         compliment: { description: 'Compliment someone', category: 'Fun' },
@@ -169,13 +161,10 @@ module.exports = {
         wholesome: { description: 'Wholesome messages', category: 'Fun' },
         fortune: { description: 'Get fortune cookie', category: 'Fun' },
         horoscope: { description: 'Daily horoscope', category: 'Fun' },
-
-        // Group Commands (Extended)
         kick: { description: 'Kick member from group', category: 'Group' },
         add: { description: 'Add member to group', category: 'Group' },
         promote: { description: 'Promote member to admin', category: 'Group' },
         demote: { description: 'Demote admin to member', category: 'Group' },
-        // New Group Commands
         warn: { description: 'Warn a member', category: 'Group' },
         unwarn: { description: 'Remove warning from member', category: 'Group' },
         warnings: { description: 'Check member warnings', category: 'Group' },
@@ -191,12 +180,9 @@ module.exports = {
         groupsettings: { description: 'Group settings menu', category: 'Group' },
         groupinfo: { description: 'Get group information', category: 'Group' },
         grouplink: { description: 'Get group invite link', category: 'Group' },
-
-        // Reaction Commands (Extended)
         slap: { description: 'Slap someone', category: 'Reactions' },
         hug: { description: 'Hug someone', category: 'Reactions' },
         pat: { description: 'Pat someone', category: 'Reactions' },
-        // New Reaction Commands
         bite: { description: 'Bite someone', category: 'Reactions' },
         blush: { description: 'Show that you are blushing', category: 'Reactions' },
         cry: { description: 'Show that you are crying', category: 'Reactions' },
@@ -211,8 +197,6 @@ module.exports = {
         thumbsup: { description: 'Give thumbs up', category: 'Reactions' },
         thumbsdown: { description: 'Give thumbs down', category: 'Reactions' },
         highfive: { description: 'High five someone', category: 'Reactions' },
-
-        // NSFW Commands
         nsfwcheck: { description: 'Check NSFW status', category: 'NSFW' },
         setnsfw: { description: 'Enable/disable NSFW in group', category: 'NSFW' },
         waifu: { description: 'Get NSFW waifu image', category: 'NSFW' },
@@ -226,8 +210,6 @@ module.exports = {
         paizuri: { description: 'Get NSFW paizuri image', category: 'NSFW' },
         ecchi: { description: 'Get NSFW ecchi image', category: 'NSFW' },
         ero: { description: 'Get NSFW ero image', category: 'NSFW' },
-
-        // Owner Commands
         broadcast: { description: 'Send message to all chats', category: 'Owner' },
         block: { description: 'Block a user', category: 'Owner' },
         unblock: { description: 'Unblock a user', category: 'Owner' },

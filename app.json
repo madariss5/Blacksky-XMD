@@ -10,8 +10,9 @@
       "required": true
     },
     "OWNER_NUMBER": {
-      "description": "Your WhatsApp number with country code (e.g., 1234567890@s.whatsapp.net)",
-      "required": true
+      "description": "Your WhatsApp number with country code (e.g., 491234567890 for +49 123 456 7890)",
+      "required": true,
+      "value": "491234567890"
     },
     "BOT_NAME": {
       "description": "Name of your bot",
@@ -21,6 +22,11 @@
     "PREFIX": {
       "description": "Command prefix for the bot",
       "value": "!",
+      "required": true
+    },
+    "SESSION_ID": {
+      "description": "Unique identifier for your bot session",
+      "value": "blacksky-md",
       "required": true
     },
     "LOG_LEVEL": {
