@@ -26,7 +26,7 @@ const utilityCommands = require('./commands/utility');
 logger.info('Importing command modules...');
 
 // Debug each module's commands
-Object.entries({
+const commandModules = {
     AI: aiCommands,
     Anime: animeCommands,
     Basic: basicCommands,
@@ -46,32 +46,31 @@ Object.entries({
     Tool: toolCommands,
     User: userCommands,
     Utility: utilityCommands
-}).forEach(([category, commands]) => {
+};
+
+// Log each module's commands
+Object.entries(commandModules).forEach(([category, commands]) => {
     logger.info(`${category} commands:`, Object.keys(commands || {}));
 });
 
-// Combine all command modules
-const allCommands = {
-    ...aiCommands,
-    ...animeCommands,
-    ...basicCommands,
-    ...downloaderCommands,
-    ...economyCommands,
-    ...educationCommands,
-    ...funCommands,
-    ...gameCommands,
-    ...groupCommands,
-    ...mediaCommands,
-    ...musicCommands,
-    ...nsfwCommands,
-    ...ownerCommands,
-    ...reactionsCommands,
-    ...searchCommands,
-    ...socialCommands,
-    ...toolCommands,
-    ...userCommands,
-    ...utilityCommands
-};
+// Initialize allCommands as an empty object
+const allCommands = {};
+
+// Merge commands with detailed logging
+Object.entries(commandModules).forEach(([category, commands]) => {
+    if (commands && typeof commands === 'object') {
+        Object.entries(commands).forEach(([cmdName, cmdFunction]) => {
+            if (typeof cmdFunction === 'function') {
+                allCommands[cmdName] = cmdFunction;
+                logger.info(`Registered command: ${cmdName} from ${category}`);
+            } else {
+                logger.warn(`Invalid command: ${cmdName} in ${category}`);
+            }
+        });
+    } else {
+        logger.warn(`Empty or invalid module: ${category}`);
+    }
+});
 
 // Debug logging for available commands
 logger.info('Total available commands:', Object.keys(allCommands).length);
