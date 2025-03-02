@@ -24,11 +24,11 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "LOG_LEVEL=info node index.js"
+args = "LOG_LEVEL=debug node index.js"
 waitForPort = 5000
 
 [deployment]
-run = ["sh", "-c", "LOG_LEVEL=info node index.js"]
+run = ["sh", "-c", "LOG_LEVEL=debug node index.js"]
 
 [[ports]]
 localPort = 5000
