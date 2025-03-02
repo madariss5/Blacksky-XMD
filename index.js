@@ -109,7 +109,49 @@ async function startBot() {
     }
 }
 
-startBot();
+// Express server setup for Heroku
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+app.get('/', (req, res) => {
+    res.json({
+        status: 'WhatsApp Bot Server Running',
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Start server before bot to ensure port is available
+const startServer = async () => {
+    try {
+        const server = await new Promise((resolve, reject) => {
+            const server = app.listen(PORT, '0.0.0.0', () => {
+                logger.info(`Server started on port ${PORT}`);
+                resolve(server);
+            }).on('error', (err) => {
+                if (err.code === 'EADDRINUSE') {
+                    logger.error(`Port ${PORT} is busy`);
+                }
+                reject(err);
+            });
+        });
+
+        // Start bot after server is running
+        await startBot();
+        return server;
+    } catch (error) {
+        logger.error('Failed to start server:', error);
+        process.exit(1);
+    }
+};
+
+// Initialize the application
+startServer().catch(err => {
+    logger.error('Startup failed:', err);
+    process.exit(1);
+});
+
 
 // Handle graceful shutdown
 const shutdown = async (signal) => {
@@ -142,32 +184,3 @@ process.on('unhandledRejection', (err) => {
         setTimeout(startBot, 3000);
     }
 });
-
-// Express server setup for Heroku
-const app = express();
-const PORT = process.env.PORT || 5000;
-
-app.get('/', (req, res) => {
-    res.json({
-        status: 'WhatsApp Bot Server Running',
-        uptime: process.uptime()
-    });
-});
-
-const startServer = () => {
-    return new Promise((resolve) => {
-        const server = app.listen(PORT, '0.0.0.0')
-            .once('error', (err) => {
-                if (err.code === 'EADDRINUSE') {
-                    logger.warn(`Port ${PORT} is busy, trying alternative port`);
-                    resolve(false);
-                }
-            })
-            .once('listening', () => {
-                logger.info(`Server started on port ${PORT}`);
-                resolve(true);
-            });
-    });
-};
-
-startServer();
