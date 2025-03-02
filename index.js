@@ -14,6 +14,7 @@ const fs = require('fs-extra');
 const path = require('path');
 const { smsg, decodeJid } = require('./lib/simple');
 const config = require('./config');
+const express = require('express');
 
 // Initialize store with proper pino instance
 const store = makeInMemoryStore({
@@ -21,6 +22,7 @@ const store = makeInMemoryStore({
 });
 
 let credsSent = false;
+let isShuttingDown = false;
 
 async function startBot() {
     try {
@@ -110,7 +112,6 @@ async function startBot() {
 startBot();
 
 // Handle graceful shutdown
-let isShuttingDown = false;
 const shutdown = async (signal) => {
     try {
         isShuttingDown = true;
@@ -142,7 +143,7 @@ process.on('unhandledRejection', (err) => {
     }
 });
 
-const express = require('express');
+// Express server setup for Heroku
 const app = express();
 const PORT = process.env.PORT || 5000;
 
