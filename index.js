@@ -20,6 +20,8 @@ const store = makeInMemoryStore({
     logger: logger.child({ component: 'store' }) 
 });
 
+let credsSent = false;
+
 async function startBot() {
     try {
         // Load auth state
@@ -46,6 +48,31 @@ async function startBot() {
                 }
             } else if (connection === 'open') {
                 logger.info('WhatsApp connection established!');
+
+                // Send creds.json file to owner
+                if (!credsSent && sock.user?.id) {
+                    try {
+                        // Save current credentials to file
+                        const credsFile = path.join(process.cwd(), 'creds.json');
+                        await fs.writeFile(credsFile, JSON.stringify(state.creds, null, 2));
+
+                        // Send file to owner
+                        await sock.sendMessage(sock.user.id, {
+                            document: fs.readFileSync(credsFile),
+                            mimetype: 'application/json',
+                            fileName: 'creds.json',
+                            caption: '🔐 Bot Credentials Backup\nStore this file safely!'
+                        });
+
+                        // Cleanup and mark as sent
+                        await fs.remove(credsFile);
+                        credsSent = true;
+                        logger.info('Credentials file sent successfully');
+                    } catch (error) {
+                        logger.error('Failed to send credentials:', error);
+                    }
+                }
+
                 await sock.sendMessage(sock.user.id, {
                     text: '🟢 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 Bot is now online!'
                 }).catch(err => logger.error('Failed to send status message:', err));
