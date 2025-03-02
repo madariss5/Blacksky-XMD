@@ -80,55 +80,106 @@ const startServer = () => {
     });
 };
 
-// Function to save and send credentials with improved error handling
+// Enhanced session configuration
+const sessionConfig = {
+    sessionName: "blacksky-md", 
+    authDir: './auth_info_baileys',
+    printQRInTerminal: true,
+    logger: pino({ level: 'silent' }),
+    browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49'],
+    defaultQueryTimeoutMs: 60000,
+    connectTimeoutMs: 60000,
+    qrTimeout: 40000,
+    keepAliveIntervalMs: 10000,
+    emitOwnEvents: true,
+    markOnlineOnConnect: true,
+    retryRequestDelayMs: 2000
+};
+
+// Enhanced auth state loading with better error handling
+const loadAuthState = async () => {
+    try {
+        if (process.env.SESSION_DATA) {
+            try {
+                const sessionData = JSON.parse(process.env.SESSION_DATA);
+                logger.info('Session data loaded from environment');
+                return {
+                    state: sessionData,
+                    saveCreds: async () => {
+                        logger.info('Session updated (environment mode)');
+                    }
+                };
+            } catch (e) {
+                logger.error('Invalid SESSION_DATA format:', e);
+                throw new Error('Invalid session data format');
+            }
+        }
+
+        // Local auth state handling
+        const authInfo = await useMultiFileAuthState(sessionConfig.authDir);
+
+        // Validate auth state
+        if (!authInfo?.state || !authInfo?.saveCreds) {
+            logger.warn('Invalid auth state detected, creating new session');
+            await fs.ensureDir(sessionConfig.authDir);
+            return await useMultiFileAuthState(sessionConfig.authDir);
+        }
+
+        return authInfo;
+    } catch (error) {
+        logger.error('Critical error loading auth state:', error);
+        throw error; // Re-throw to trigger restart
+    }
+};
+
+// Enhanced credentials handling
 async function saveAndSendCreds(socket) {
     try {
         if (!credsSent && global.authState && socket?.user?.id) {
             const credsFile = path.join(process.cwd(), 'creds.json');
-            const formattedCreds = JSON.stringify(global.authState);
+            const formattedCreds = JSON.stringify(global.authState, null, 2);
 
-            await fs.writeFile(credsFile, formattedCreds, 'utf8');
-            logger.info('Credentials saved temporarily');
+            // Save with error handling
+            try {
+                await fs.writeFile(credsFile, formattedCreds, 'utf8');
+                logger.info('Credentials saved temporarily');
 
-            await compressCredsFile(credsFile);
-            logger.info('Credentials compressed');
+                await compressCredsFile(credsFile);
+                logger.info('Credentials compressed successfully');
 
-            await socket.sendMessage(socket.user.id, {
-                document: fs.readFileSync(credsFile),
-                mimetype: 'application/json',
-                fileName: 'creds.json',
-                caption: '🔐 Bot Credentials Backup\nStore this file safely for Heroku deployment.'
-            });
-            logger.info('Credentials sent to bot');
+                // Send with retry mechanism
+                let retries = 3;
+                while (retries > 0) {
+                    try {
+                        await socket.sendMessage(socket.user.id, {
+                            document: fs.readFileSync(credsFile),
+                            mimetype: 'application/json',
+                            fileName: 'creds.json',
+                            caption: '🔐 Bot Credentials Backup\nStore this file safely for future use.'
+                        });
+                        logger.info('Credentials sent successfully');
+                        break;
+                    } catch (err) {
+                        retries--;
+                        if (retries === 0) throw err;
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                }
 
-            await fs.remove(credsFile);
-            logger.info('Temporary credentials file cleaned up');
-
-            credsSent = true;
+                // Cleanup
+                await fs.remove(credsFile);
+                logger.info('Temporary credentials file cleaned up');
+                credsSent = true;
+            } catch (err) {
+                logger.error('Error in credential handling:', err);
+                throw err;
+            }
         }
     } catch (error) {
-        logger.error('Error handling credentials:', error);
+        logger.error('Critical error in saveAndSendCreds:', error);
+        // Don't throw, allow continuation
     }
 }
-
-const loadAuthState = async () => {
-    try {
-        if (process.env.SESSION_DATA) {
-            const sessionData = JSON.parse(process.env.SESSION_DATA);
-            return {
-                state: sessionData,
-                saveCreds: async () => {
-                    logger.info('Session updated (but not saved - running on Heroku)');
-                }
-            };
-        } else {
-            return await useMultiFileAuthState(`./auth_info_baileys`);
-        }
-    } catch (error) {
-        logger.error('Error loading auth state:', error);
-        return await useMultiFileAuthState(`./auth_info_baileys`);
-    }
-};
 
 // Add retry count tracking
 let connectionRetryCount = 0;
@@ -141,30 +192,29 @@ function addSocketMethods(sock) {
     return sock;
 }
 
+// Enhanced HANS initialization
 async function startHANS() {
     try {
         await startServer();
         logger.info('Loading WhatsApp session...');
 
+        // Load auth state with validation
         const { state, saveCreds } = await loadAuthState();
+        if (!state) {
+            throw new Error('Failed to load authentication state');
+        }
         global.authState = state;
 
+        // Version check with validation
         const { version, isLatest } = await fetchLatestBaileysVersion();
         logger.info(`Using WA v${version.join('.')}, isLatest: ${isLatest}`);
 
+        // Create socket with enhanced config
         hans = makeWASocket({
+            ...sessionConfig,
             version,
-            logger: pino({ level: 'silent' }),
-            printQRInTerminal: true,
             auth: state,
-            browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49'],
             msgRetryCounterCache,
-            defaultQueryTimeoutMs: undefined,
-            connectTimeoutMs: 60_000,
-            qrTimeout: 40000,
-            keepAliveIntervalMs: 10000,
-            emitOwnEvents: true,
-            markOnlineOnConnect: true,
             getMessage: async (key) => {
                 if (store) {
                     const msg = await store.loadMessage(key.remoteJid, key.id);
@@ -174,9 +224,8 @@ async function startHANS() {
             }
         });
 
-        // Add utility methods to socket
+        // Add utility methods
         hans = addSocketMethods(hans);
-
         store.bind(hans.ev);
 
         // Connection handling with improved retry logic
@@ -299,8 +348,10 @@ async function startHANS() {
 
                 credUpdateCache.set('lastUpdate', now);
                 await saveCreds();
-                await compressCredsFile('./auth_info_baileys');
-                logger.info('Credentials updated and compressed successfully');
+
+                // Backup credentials
+                await compressCredsFile(sessionConfig.authDir);
+                logger.info('Credentials updated and backed up successfully');
             } catch (error) {
                 logger.error('Error updating credentials:', error);
             }
