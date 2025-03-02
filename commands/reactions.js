@@ -1,7 +1,5 @@
 const config = require('../config');
 const logger = require('pino')();
-const fs = require('fs-extra');
-const path = require('path');
 const { sendGifReaction } = require('../utils/mediaHandler');
 
 const reactionCommands = {
@@ -9,13 +7,10 @@ const reactionCommands = {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const caption = `*${msg.pushName}* slapped ${target}! 👋`;
 
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `*${msg.pushName}* slapped ${target}! 👋`,
-                mentions: mentions
-            });
-
-            await sendGifReaction(sock, msg, './media/anime-slap.gif', '👋', mentions);
+            logger.info('Executing slap command:', { target, mentions });
+            await sendGifReaction(sock, msg, 'slap', caption, mentions);
         } catch (error) {
             logger.error('Error in slap command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -28,13 +23,10 @@ const reactionCommands = {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const caption = `*${msg.pushName}* hugged ${target}! 🤗`;
 
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `*${msg.pushName}* hugged ${target}! 🤗`,
-                mentions: mentions
-            });
-
-            await sendGifReaction(sock, msg, './media/anime-hug.gif', '🤗', mentions);
+            logger.info('Executing hug command:', { target, mentions });
+            await sendGifReaction(sock, msg, 'hug', caption, mentions);
         } catch (error) {
             logger.error('Error in hug command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -47,13 +39,10 @@ const reactionCommands = {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const caption = `*${msg.pushName}* patted ${target}! 🥰`;
 
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `*${msg.pushName}* patted ${target}! 🥰`,
-                mentions: mentions
-            });
-
-            await sendGifReaction(sock, msg, './media/anime-pat.gif', '🥰', mentions);
+            logger.info('Executing pat command:', { target, mentions });
+            await sendGifReaction(sock, msg, 'pat', caption, mentions);
         } catch (error) {
             logger.error('Error in pat command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -66,13 +55,10 @@ const reactionCommands = {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const caption = `*${msg.pushName}* kissed ${target}! 💋`;
 
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `*${msg.pushName}* kissed ${target}! 💋`,
-                mentions: mentions
-            });
-
-            await sendGifReaction(sock, msg, './media/anime-kiss.gif', '💋', mentions);
+            logger.info('Executing kiss command:', { target, mentions });
+            await sendGifReaction(sock, msg, 'kiss', caption, mentions);
         } catch (error) {
             logger.error('Error in kiss command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -85,13 +71,10 @@ const reactionCommands = {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const caption = `*${msg.pushName}* punched ${target}! 👊`;
 
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `*${msg.pushName}* punched ${target}! 👊`,
-                mentions: mentions
-            });
-
-            await sendGifReaction(sock, msg, './media/anime-punch.gif', '👊', mentions);
+            logger.info('Executing punch command:', { target, mentions });
+            await sendGifReaction(sock, msg, 'punch', caption, mentions);
         } catch (error) {
             logger.error('Error in punch command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -104,13 +87,10 @@ const reactionCommands = {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const caption = `*${msg.pushName}* eliminated ${target}! ☠️`;
 
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `*${msg.pushName}* eliminated ${target}! ☠️`,
-                mentions: mentions
-            });
-
-            await sendGifReaction(sock, msg, './media/anime-kill.gif', '☠️', mentions);
+            logger.info('Executing kill command:', { target, mentions });
+            await sendGifReaction(sock, msg, 'kill', caption, mentions);
         } catch (error) {
             logger.error('Error in kill command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -147,19 +127,16 @@ const reactionCommands = {
     },
     wasted: async (sock, msg, args) => {
         try {
-            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const caption = `💀 *WASTED*\n${target} has been wasted!`;
 
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `*${msg.pushName}* wasted ${target}! 💀`,
-                mentions: mentions
-            });
-
-            await sendGifReaction(sock, msg, './media/anime-wasted.gif', '💀', mentions);
+            logger.info('Executing wasted command:', { target, mentions });
+            await sendGifReaction(sock, msg, 'wasted', caption, mentions);
         } catch (error) {
             logger.error('Error in wasted command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '😅 Failed to execute wasted command!'
+                text: '❌ Failed to execute wasted command!'
             });
         }
     }

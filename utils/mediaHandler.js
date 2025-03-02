@@ -30,6 +30,12 @@ class MediaHandler {
             const mp4Path = path.join(this.tempDir, `${path.basename(gifPath, '.gif')}.mp4`);
             logger.info('Converting GIF to MP4:', { input: gifPath, output: mp4Path });
 
+            // Verify input file exists and has content
+            const stats = await fs.stat(gifPath);
+            if (stats.size === 0) {
+                throw new Error(`GIF file is empty: ${gifPath}`);
+            }
+
             return new Promise((resolve, reject) => {
                 ffmpeg(gifPath)
                     .toFormat('mp4')
@@ -45,7 +51,7 @@ class MediaHandler {
                         logger.info('Started ffmpeg with command:', commandLine);
                     })
                     .on('progress', (progress) => {
-                        logger.info('Processing: ', progress);
+                        logger.info('Processing:', progress);
                     })
                     .on('end', () => {
                         logger.info('Successfully converted GIF to MP4:', mp4Path);
@@ -67,12 +73,16 @@ class MediaHandler {
         try {
             logger.info('Attempting to send GIF reaction:', { gifPath });
 
+            // List available GIFs
+            const files = await fs.readdir(this.mediaDir);
+            logger.info('Available GIFs in media directory:', files);
+
             // Verify file exists
             if (!fs.existsSync(gifPath)) {
                 throw new Error(`GIF not found at path: ${gifPath}`);
             }
 
-            // Get file stats to verify it's a valid file
+            // Get file stats
             const stats = await fs.stat(gifPath);
             if (stats.size === 0) {
                 throw new Error('GIF file is empty');
@@ -80,7 +90,16 @@ class MediaHandler {
 
             // Convert GIF to MP4
             const mp4Path = await this.convertGifToMp4(gifPath);
+
+            // Read the converted file
+            logger.info('Reading converted MP4 file:', mp4Path);
             const buffer = await fs.readFile(mp4Path);
+
+            logger.info('Sending video message with GIF playback', {
+                bufferSize: buffer.length,
+                remoteJid: msg.key.remoteJid,
+                mimetype: 'video/mp4'
+            });
 
             // Send message
             await sock.sendMessage(msg.key.remoteJid, {
@@ -88,12 +107,13 @@ class MediaHandler {
                 caption: caption,
                 mentions: mentions,
                 gifPlayback: true,
-                mimetype: 'video/mp4'
+                mimetype: 'video/mp4',
+                jpegThumbnail: null
             });
 
             // Cleanup
             await fs.remove(mp4Path);
-            logger.info('Successfully sent GIF reaction');
+            logger.info('Successfully sent GIF reaction and cleaned up temp file');
             return true;
         } catch (error) {
             logger.error('Error in sendGifReaction:', error);
@@ -109,33 +129,6 @@ class MediaHandler {
             return false;
         }
     }
-
-    async downloadAndSaveGif(url, filename) {
-        try {
-            logger.info(`Downloading GIF from ${url}`);
-            const response = await axios({
-                method: 'GET',
-                url: url,
-                responseType: 'arraybuffer',
-                timeout: 10000
-            });
-
-            const outputPath = path.join(this.mediaDir, filename);
-            await fs.writeFile(outputPath, response.data);
-
-            // Verify the file was saved correctly
-            const stats = await fs.stat(outputPath);
-            if (stats.size === 0) {
-                throw new Error('Downloaded file is empty');
-            }
-
-            logger.info(`Successfully saved GIF to ${outputPath}`);
-            return outputPath;
-        } catch (error) {
-            logger.error(`Error downloading/saving GIF: ${error.message}`);
-            throw error;
-        }
-    }
 }
 
 // Create a singleton instance
@@ -147,6 +140,7 @@ module.exports = {
     sendGifReaction: async (sock, msg, gifName, caption = '', mentions = []) => {
         try {
             const gifPath = path.join(mediaHandler.mediaDir, `${gifName}.gif`);
+            logger.info('Full GIF path:', gifPath);
             return await mediaHandler.sendGifReaction(sock, msg, gifPath, caption, mentions);
         } catch (error) {
             logger.error(`Error in sendGifReaction helper: ${error.message}`);

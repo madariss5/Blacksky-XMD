@@ -60,8 +60,26 @@ module.exports = async (hans, m, chatUpdate, store) => {
         // Try each command module in order
         let commandExecuted = false;
 
-        // Owner Commands - Process first for security
-        if (Object.prototype.hasOwnProperty.call(ownerCommands, command)) {
+        // Process reactions commands first
+        if (Object.prototype.hasOwnProperty.call(reactionsCommands, command)) {
+            try {
+                logger.info('Executing reaction command:', { command });
+                await reactionsCommands[command](hans, m, args);
+                commandExecuted = true;
+                logger.info('Reaction command executed successfully:', { command });
+            } catch (error) {
+                logger.error('Error executing reaction command:', {
+                    command,
+                    error: error.message,
+                    stack: error.stack
+                });
+                await hans.sendMessage(remoteJid, { 
+                    text: `❌ Error executing reaction command: ${error.message}` 
+                });
+            }
+        }
+        // Owner Commands
+        else if (Object.prototype.hasOwnProperty.call(ownerCommands, command)) {
             try {
                 logger.info('Executing owner command:', { command });
                 await ownerCommands[command](hans, m, args);
@@ -265,23 +283,8 @@ module.exports = async (hans, m, chatUpdate, store) => {
                     text: `❌ Error executing social command: ${error.message}`
                 });
             }
-        } else if (Object.prototype.hasOwnProperty.call(reactionsCommands, command)) {
-            try {
-                logger.info('Executing reaction command:', { command });
-                await reactionsCommands[command](hans, m, args);
-                commandExecuted = true;
-                logger.info('Reaction command executed successfully:', { command });
-            } catch (error) {
-                logger.error('Error executing reaction command:', {
-                    command,
-                    error: error.message,
-                    stack: error.stack
-                });
-                await hans.sendMessage(remoteJid, {
-                    text: `❌ Error executing reaction command: ${error.message}`
-                });
-            }
         }
+
 
         // Command not found
         if (!commandExecuted) {
