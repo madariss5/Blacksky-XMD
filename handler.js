@@ -10,20 +10,32 @@ const freshConfig = require('./config');
 // Track successful imports
 const loadedModules = new Map();
 
+// Track command sources for duplicate detection
+const commandSources = new Map();
+
 function loadCommandModule(name, path) {
     try {
         logger.info(`Loading command module: ${name} from ${path}`);
-        // Check if file exists
         if (!fs.existsSync(path)) {
             logger.error(`Module file not found: ${path}`);
             loadedModules.set(name, false);
             return {};
         }
-        // Clear require cache for the module
+
         delete require.cache[require.resolve(path)];
         const module = require(path);
         const commands = Object.keys(module);
-        logger.info(`Successfully loaded ${name} module with commands:`, commands);
+
+        // Check for duplicates before registering
+        commands.forEach(cmd => {
+            if (commandSources.has(cmd)) {
+                logger.warn(`Skipping duplicate command: ${cmd} in ${name}. Already registered in ${commandSources.get(cmd)}`);
+            } else {
+                commandSources.set(cmd, name);
+                logger.info(`Registered command: ${cmd} from ${name}`);
+            }
+        });
+
         loadedModules.set(name, true);
         return module;
     } catch (error) {
