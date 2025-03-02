@@ -16,27 +16,22 @@ const basicCommands = {
             let menuText = `*${config.botName} Commands*\n\n`;
 
             // Group commands by category
-            const categories = {};
-            Object.entries(config.commands).forEach(([cmd, info]) => {
-                if (!categories[info.category]) {
-                    categories[info.category] = [];
-                }
-                categories[info.category].push({
-                    command: cmd,
-                    description: info.description
-                });
-            });
-
-            logger.info('Command categories built:', {
-                totalCategories: Object.keys(categories).length,
-                categoriesList: Object.keys(categories)
-            });
+            const categories = {
+                '🎯 Basic': ['help', 'ping'],
+                '🤖 AI': ['ai', 'gpt', 'dalle'],
+                '🎮 Games': ['numguess', 'hangman', 'leaderboard'],
+                '📚 Education': ['math', 'dictionary', 'wiki', 'translate'],
+                '💰 Economy': ['balance', 'bank', 'work', 'shop', 'inventory'],
+                '🎵 Media': ['sticker', 'toimg', 'tomp3', 'ytmp3', 'ytmp4'],
+                '👥 Group': ['welcome', 'goodbye', 'invitelink']
+            };
 
             // Add commands by category
-            Object.keys(categories).sort().forEach(category => {
-                menuText += `*${category}*\n`;
-                categories[category].forEach(cmd => {
-                    menuText += `• ${config.prefix}${cmd.command} - ${cmd.description}\n`;
+            Object.entries(categories).forEach(([category, commands]) => {
+                menuText += `${category}\n`;
+                commands.forEach(cmd => {
+                    const cmdInfo = config.commands[cmd] || { description: 'No description available' };
+                    menuText += `• ${config.prefix}${cmd} - ${cmdInfo.description}\n`;
                 });
                 menuText += '\n';
             });
