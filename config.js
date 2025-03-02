@@ -443,6 +443,47 @@ const config = {
             category: 'Owner',
             usage: '.restart'
         },
+        eval: {
+            description: 'Evaluate JavaScript code',
+            category: 'Owner',
+            usage: '.eval <code>'
+        },
+        getStatus: {
+            description: 'Get bot status and statistics',
+            category: 'Owner',
+            usage: '.status'
+        },
+        setprefix: {
+            description: 'Change bot command prefix',
+            category: 'Owner',
+            usage: '.setprefix <new_prefix>'
+        },
+        setname: {
+            description: 'Change bot display name',
+            category: 'Owner',
+            usage: '.setname <new_name>'
+        },
+        setbio: {
+            description: 'Change bot bio/status',
+            category: 'Owner',
+            usage: '.setbio <new_bio>'
+        },
+        setppbot: {
+            description: 'Change bot profile picture',
+            category: 'Owner',
+            usage: '.setppbot [reply to image]'
+        },
+        ban: {
+            description: 'Ban user from using bot',
+            category: 'Owner',
+            usage: '.ban @user'
+        },
+        unban: {
+            description: 'Unban user from using bot',
+            category: 'Owner',
+            usage: '.unban @user'
+        },
+
 
         // Economy Commands
         balance: {
