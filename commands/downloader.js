@@ -1,38 +1,25 @@
 const config = require('../config');
-const logger = require('pino')();
+const logger = require('../utils/logger');
 const fs = require('fs-extra');
 const path = require('path');
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
-const { ytmp3 } = require('../attached_assets/downloader-ytmp3');
-const { ytmp4 } = require('../attached_assets/downloader-ytmp4');
-const { fbdl } = require('../attached_assets/downloader-fbdl');
-const { mediafire } = require('../attached_assets/downloader-mediafire');
-
-// Import fetch dynamically
-let fetchModule;
-(async () => {
-    fetchModule = await import('node-fetch');
-})().catch(err => {
-    logger.error('Error importing node-fetch:', err);
-});
+const ytdl = require('@distube/ytdl-core');
+const axios = require('axios');
 
 const tempDir = path.join(__dirname, '../temp');
 fs.ensureDirSync(tempDir);
 
-// Download progress tracking
-const downloadProgress = new Map();
+// Rate limiting configuration
+const userCooldowns = new Map();
+const COOLDOWN_PERIOD = 60000; // 1 minute
 
-// Rate limiting
-const rateLimiter = new Map();
-const RATE_LIMIT = 60000; // 1 minute
-
-const isRateLimited = (userId) => {
-    if (!rateLimiter.has(userId)) return false;
-    return Date.now() - rateLimiter.get(userId) < RATE_LIMIT;
+const isOnCooldown = (userId) => {
+    if (!userCooldowns.has(userId)) return false;
+    return Date.now() - userCooldowns.get(userId) < COOLDOWN_PERIOD;
 };
 
 const setRateLimit = (userId) => {
-    rateLimiter.set(userId, Date.now());
+    userCooldowns.set(userId, Date.now());
 };
 
 // Utility function to clean up temp files
@@ -56,7 +43,7 @@ const downloaderCommands = {
             }
 
             const userId = msg.key.participant || msg.key.remoteJid;
-            if (isRateLimited(userId)) {
+            if (isOnCooldown(userId)) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '⏳ Please wait a minute before downloading another audio.'
                 });
@@ -66,21 +53,24 @@ const downloaderCommands = {
                 text: '⏳ Processing your request...'
             });
 
-            const result = await ytmp3.download(args[0]);
+            const videoInfo = await ytdl.getInfo(args[0]);
+            const audioFormat = ytdl.chooseFormat(videoInfo.formats, { quality: 'highestaudio' });
             const tempFile = path.join(tempDir, `yt_${Date.now()}.mp3`);
 
-            const fileStream = fs.createWriteStream(tempFile);
-            const response = await (await fetchModule).default(result.url);
             await new Promise((resolve, reject) => {
-                response.body.pipe(fileStream)
-                    .on('finish', resolve)
-                    .on('error', reject);
+                ytdl(args[0], {
+                    format: audioFormat,
+                    filter: 'audioonly'
+                })
+                .pipe(fs.createWriteStream(tempFile))
+                .on('finish', resolve)
+                .on('error', reject);
             });
 
             await sock.sendMessage(msg.key.remoteJid, {
                 audio: { url: tempFile },
                 mimetype: 'audio/mp4',
-                fileName: `${result.title}.mp3`
+                fileName: `${videoInfo.videoDetails.title}.mp3`
             });
 
             setRateLimit(userId);
@@ -103,7 +93,7 @@ const downloaderCommands = {
             }
 
             const userId = msg.key.participant || msg.key.remoteJid;
-            if (isRateLimited(userId)) {
+            if (isOnCooldown(userId)) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '⏳ Please wait a minute before downloading another video.'
                 });
@@ -113,21 +103,23 @@ const downloaderCommands = {
                 text: '⏳ Processing your request...'
             });
 
-            const result = await ytmp4.download(args[0]);
+            const videoInfo = await ytdl.getInfo(args[0]);
+            const videoFormat = ytdl.chooseFormat(videoInfo.formats, { quality: '18' }); // 360p
             const tempFile = path.join(tempDir, `yt_${Date.now()}.mp4`);
 
-            const fileStream = fs.createWriteStream(tempFile);
-            const response = await (await fetchModule).default(result.url);
             await new Promise((resolve, reject) => {
-                response.body.pipe(fileStream)
-                    .on('finish', resolve)
-                    .on('error', reject);
+                ytdl(args[0], {
+                    format: videoFormat
+                })
+                .pipe(fs.createWriteStream(tempFile))
+                .on('finish', resolve)
+                .on('error', reject);
             });
 
             await sock.sendMessage(msg.key.remoteJid, {
                 video: { url: tempFile },
-                caption: result.title,
-                fileName: `${result.title}.mp4`
+                caption: videoInfo.videoDetails.title,
+                fileName: `${videoInfo.videoDetails.title}.mp4`
             });
 
             setRateLimit(userId);
@@ -149,35 +141,9 @@ const downloaderCommands = {
                 });
             }
 
-            const userId = msg.key.participant || msg.key.remoteJid;
-            if (isRateLimited(userId)) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '⏳ Please wait a minute before downloading another video.'
-                });
-            }
-
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '⏳ Processing your request...'
+                text: 'Facebook video download is temporarily unavailable. Please try again later.'
             });
-
-            const result = await fbdl.download(args[0]);
-            const tempFile = path.join(tempDir, `fb_${Date.now()}.mp4`);
-
-            const fileStream = fs.createWriteStream(tempFile);
-            const response = await (await fetchModule).default(result.url);
-            await new Promise((resolve, reject) => {
-                response.body.pipe(fileStream)
-                    .on('finish', resolve)
-                    .on('error', reject);
-            });
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                video: { url: tempFile },
-                caption: result.title || '📱 Facebook Video'
-            });
-
-            setRateLimit(userId);
-            await cleanupTempFiles(tempFile);
 
         } catch (error) {
             logger.error('Error in facebook command:', error);
@@ -195,36 +161,9 @@ const downloaderCommands = {
                 });
             }
 
-            const userId = msg.key.participant || msg.key.remoteJid;
-            if (isRateLimited(userId)) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '⏳ Please wait a minute before downloading another file.'
-                });
-            }
-
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '⏳ Processing your request...'
+                text: 'MediaFire download is temporarily unavailable. Please try again later.'
             });
-
-            const result = await mediafire.download(args[0]);
-            const tempFile = path.join(tempDir, result.filename);
-
-            const fileStream = fs.createWriteStream(tempFile);
-            const response = await (await fetchModule).default(result.url);
-            await new Promise((resolve, reject) => {
-                response.body.pipe(fileStream)
-                    .on('finish', resolve)
-                    .on('error', reject);
-            });
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                document: { url: tempFile },
-                mimetype: result.mime,
-                fileName: result.filename
-            });
-
-            setRateLimit(userId);
-            await cleanupTempFiles(tempFile);
 
         } catch (error) {
             logger.error('Error in mediafire command:', error);
