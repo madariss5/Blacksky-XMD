@@ -6,7 +6,6 @@ const { formatPhoneNumber, addWhatsAppSuffix, formatDisplayNumber } = require('.
 // Helper function for safely fetching profile pictures
 async function safeProfilePicture(sock, jid) {
     try {
-        // Add WhatsApp suffix for API call
         const whatsappId = addWhatsAppSuffix(formatPhoneNumber(jid));
         const pp = await sock.profilePictureUrl(whatsappId, 'image');
         logger.info('Profile picture fetched successfully');
@@ -17,36 +16,13 @@ async function safeProfilePicture(sock, jid) {
     }
 }
 
-// Core user commands
-const coreUserCommands = {
+const userCommands = {
     profile: async (sock, msg, args) => {
         try {
             // Get target user (mentioned user or command sender)
-            let targetUser;
-            if (args[0]) {
-                // If a user is mentioned, use their number directly
-                targetUser = formatPhoneNumber(args[0]);
-            } else {
-                // For sender, get clean number format
-                targetUser = formatPhoneNumber(msg.key.participant || msg.key.remoteJid);
-            }
-
-            // Enhanced logging for debugging
-            logger.info('Profile command execution:', {
-                args: args,
-                targetUser: targetUser,
-                participant: msg.key.participant,
-                remoteJid: msg.key.remoteJid,
-                isGroup: msg.key.remoteJid?.includes('@g.us')
-            });
-
-            // Validate we have a user to look up
-            if (!targetUser) {
-                logger.error('Invalid user identifier:', { targetUser, args });
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Could not identify target user. Please mention a user or try in a private chat.'
-                });
-            }
+            const targetUser = args[0] ? 
+                formatPhoneNumber(args[0]) : 
+                formatPhoneNumber(msg.key.participant || msg.key.remoteJid);
 
             const userData = await store.getUserData(targetUser) || {};
             const pp = await safeProfilePicture(sock, targetUser);
@@ -80,36 +56,7 @@ const coreUserCommands = {
             });
         }
     },
-    join: async (sock, msg, args) => {
-        try {
-            if (!args[0]) {
-                return await sock.sendMessage(msg.key.remoteJid, { 
-                    text: '❌ Please provide a group link!\nUsage: .join <group_link>' 
-                });
-            }
 
-            // Extract invite code from link
-            const linkParts = args[0].split('whatsapp.com/');
-            if (linkParts.length < 2) {
-                return await sock.sendMessage(msg.key.remoteJid, { 
-                    text: '❌ Invalid group link provided!' 
-                });
-            }
-
-            const inviteCode = linkParts[1];
-            await sock.groupAcceptInvite(inviteCode);
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: '✅ Successfully joined the group!' 
-            });
-
-            logger.info('Successfully joined group with code:', inviteCode);
-        } catch (error) {
-            logger.error('Error in join command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: '❌ Failed to join group: ' + error.message 
-            });
-        }
-    },
     me: async (sock, msg) => {
         try {
             const userId = formatPhoneNumber(msg.key.participant || msg.key.remoteJid);
@@ -138,6 +85,36 @@ const coreUserCommands = {
             logger.error('Error in me command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error showing your profile. Please try again later.'
+            });
+        }
+    },
+    join: async (sock, msg, args) => {
+        try {
+            if (!args[0]) {
+                return await sock.sendMessage(msg.key.remoteJid, { 
+                    text: '❌ Please provide a group link!\nUsage: .join <group_link>' 
+                });
+            }
+
+            // Extract invite code from link
+            const linkParts = args[0].split('whatsapp.com/');
+            if (linkParts.length < 2) {
+                return await sock.sendMessage(msg.key.remoteJid, { 
+                    text: '❌ Invalid group link provided!' 
+                });
+            }
+
+            const inviteCode = linkParts[1];
+            await sock.groupAcceptInvite(inviteCode);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '✅ Successfully joined the group!' 
+            });
+
+            logger.info('Successfully joined group with code:', inviteCode);
+        } catch (error) {
+            logger.error('Error in join command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '❌ Failed to join group: ' + error.message 
             });
         }
     },
@@ -232,35 +209,5 @@ const coreUserCommands = {
         }
     }
 };
-
-// Initialize user commands object
-const userCommands = {
-    ...coreUserCommands
-};
-
-// Add dynamic user commands
-for (let i = 1; i <= 94; i++) {
-    userCommands[`user${i}`] = async (sock, msg, args) => {
-        try {
-            const cleanNumber = formatPhoneNumber(msg.key.participant || msg.key.remoteJid);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `👤 Executed user command ${i}!\n` +
-                      `Args: ${args.join(' ')}\n` +
-                      `User: ${msg.pushName || formatDisplayNumber(cleanNumber)}`
-            });
-
-            logger.info(`User command ${i} executed:`, {
-                command: `user${i}`,
-                user: cleanNumber,
-                args: args
-            });
-        } catch (error) {
-            logger.error(`Error in user${i} command:`, error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `❌ Failed to execute user command ${i}: ${error.message}`
-            });
-        }
-    };
-}
 
 module.exports = userCommands;

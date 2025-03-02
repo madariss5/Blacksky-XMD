@@ -67,14 +67,6 @@ async function startBot() {
 
                 if (!command) return;
 
-                // Log command processing
-                logger.info('Processing command:', { command, args });
-
-                // Send acknowledgment
-                await sock.sendMessage(msg.key.remoteJid, {
-                    text: `📝 Processing command: ${command}`
-                });
-
                 // Process command
                 const handler = require('./handler');
                 await handler(sock, msg, { messages }, {});
