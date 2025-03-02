@@ -7,25 +7,20 @@ const gtts = require('node-gtts');
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 const axios = require('axios');
 const Replicate = require('replicate');
-const { createCanvas, loadImage } = require('canvas');
-
-const tempDir = path.join(__dirname, '../temp');
-fs.ensureDirSync(tempDir);
 
 // Initialize OpenAI with API key from environment
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
 });
 
-// Initialize Replicate for additional AI models
+// Initialize Replicate for Stable Diffusion
 const replicate = process.env.REPLICATE_API_TOKEN ? new Replicate({
     auth: process.env.REPLICATE_API_TOKEN,
 }) : null;
 
-// Enhanced conversation management
+// Conversation management
 const conversationHistory = new Map();
 const MAX_HISTORY = 10;
-const MAX_CONTEXT_LENGTH = 2000;
 
 // Rate limiting configuration
 const userCooldowns = new Map();
@@ -48,69 +43,41 @@ const setCooldown = (userId, type = 'default') => {
     userCooldowns.set(key, Date.now());
 };
 
-const getConversationHistory = (userId) => {
-    if (!conversationHistory.has(userId)) {
-        conversationHistory.set(userId, []);
-    }
-    return conversationHistory.get(userId);
-};
-
-const addToConversationHistory = (userId, message) => {
-    if (!conversationHistory.has(userId)) {
-        conversationHistory.set(userId, []);
-    }
-    const history = conversationHistory.get(userId);
-    history.push(message);
-    if (history.length > MAX_HISTORY) {
-        history.shift();
-    }
-};
 
 // AI Commands Implementation
 const aiCommands = {
     gpt: async (sock, msg, args) => {
-        const userId = msg.key.participant || msg.key.remoteJid;
-
-        if (isOnCooldown(userId, 'chat')) {
-            return await sock.sendMessage(msg.key.remoteJid, {
-                text: '⏳ Please wait before sending another message.'
-            });
-        }
-
-        if (!args.length) {
-            return await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Please provide a message to chat about!'
-            });
-        }
-
         try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+            if (isOnCooldown(userId, 'chat')) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '⏳ Please wait before sending another message.'
+                });
+            }
+
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a message to chat about!'
+                });
+            }
+
             await sock.sendPresenceUpdate('composing', msg.key.remoteJid);
 
-            const history = getConversationHistory(userId);
             const userInput = args.join(' ');
 
-            const messages = [
-                { role: "system", content: "You are a helpful, friendly, and knowledgeable assistant." },
-                ...history,
-                { role: "user", content: userInput }
-            ];
-
             const response = await openai.chat.completions.create({
-                model: "gpt-3.5-turbo", // Using GPT-3.5-turbo instead of GPT-4
-                messages: messages,
+                model: "gpt-3.5-turbo",
+                messages: [
+                    { role: "system", content: "You are a helpful WhatsApp assistant." },
+                    { role: "user", content: userInput }
+                ],
                 temperature: 0.7,
-                max_tokens: 2000,
-                top_p: 1,
-                frequency_penalty: 0,
-                presence_penalty: 0
+                max_tokens: 2000
             });
 
-            const aiResponse = response.choices[0].message.content;
-
-            addToConversationHistory(userId, { role: "user", content: userInput });
-            addToConversationHistory(userId, { role: "assistant", content: aiResponse });
-
-            await sock.sendMessage(msg.key.remoteJid, { text: aiResponse });
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: response.choices[0].message.content 
+            });
             setCooldown(userId, 'chat');
 
         } catch (error) {
@@ -123,26 +90,24 @@ const aiCommands = {
 
     dalle: async (sock, msg, args) => {
         const userId = msg.key.participant || msg.key.remoteJid;
-
         if (isOnCooldown(userId, 'image')) {
             return await sock.sendMessage(msg.key.remoteJid, {
                 text: '⏳ Please wait before generating another image.'
             });
         }
-
-        if (!args.length) {
-            return await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Please provide an image description!'
-            });
-        }
-
         try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide an image description!'
+                });
+            }
+
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '🎨 Creating your masterpiece with DALL-E...'
+                text: '🎨 Creating your image with DALL-E...'
             });
 
             const response = await openai.images.generate({
-                model: "dall-e-2", // Using DALL-E 2 which is more widely available
+                model: "dall-e-2",
                 prompt: args.join(' '),
                 n: 1,
                 size: "1024x1024"
@@ -153,9 +118,8 @@ const aiCommands = {
 
             await sock.sendMessage(msg.key.remoteJid, {
                 image: Buffer.from(imageResponse.data),
-                caption: `✨ Here's your AI-generated image for: "${args.join(' ')}"`
+                caption: `✨ Here's your AI-generated image!`
             });
-
             setCooldown(userId, 'image');
 
         } catch (error) {
@@ -306,11 +270,11 @@ const aiCommands = {
     },
 
     cleargpt: async (sock, msg) => {
-        const userId = msg.key.participant || msg.key.remoteJid;
         try {
+            const userId = msg.key.participant || msg.key.remoteJid;
             conversationHistory.delete(userId);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '🗑️ Conversation history cleared successfully!'
+                text: '🗑️ Conversation history cleared!'
             });
         } catch (error) {
             logger.error('Error in cleargpt command:', error);

@@ -15,7 +15,7 @@ const basicCommands = {
             menuText += `║ 📅 Date: ${moment().format('DD/MM/YYYY')}\n`;
             menuText += `╚════════════════════╝\n\n`;
 
-            // Category emojis
+            // Category emojis mapping
             const categoryEmojis = {
                 'AI': '🤖', 'Basic': '📌', 'Fun': '🎮', 'Game': '🎲',
                 'Group': '👥', 'Media': '📸', 'Owner': '👑', 'Search': '🔍',
@@ -36,8 +36,6 @@ const basicCommands = {
                     description: info.description
                 });
             });
-
-            logger.info(`Found ${Object.keys(categories).length} categories with commands`);
 
             // Add commands by category
             Object.entries(categories)
@@ -68,7 +66,6 @@ const basicCommands = {
                 gifPlayback: false
             });
 
-            logger.info('Menu sent successfully');
         } catch (error) {
             logger.error('Error in menu command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
