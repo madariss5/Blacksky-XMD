@@ -2,6 +2,7 @@ const logger = require('pino')();
 const os = require('os');
 const moment = require('moment-timezone');
 const config = require('../config');
+const { allCommands } = require('../handler');
 
 const basicCommands = {
     menu: async (sock, msg) => {
@@ -27,13 +28,16 @@ const basicCommands = {
             // Organize commands by category
             const categories = {};
             Object.entries(config.commands).forEach(([cmd, info]) => {
-                if (!categories[info.category]) {
-                    categories[info.category] = [];
+                // Only show commands that are actually implemented
+                if (allCommands[cmd]) {
+                    if (!categories[info.category]) {
+                        categories[info.category] = [];
+                    }
+                    categories[info.category].push({
+                        command: cmd,
+                        description: info.description
+                    });
                 }
-                categories[info.category].push({
-                    command: cmd,
-                    description: info.description
-                });
             });
 
             // Add commands by category

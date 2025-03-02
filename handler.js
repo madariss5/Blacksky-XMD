@@ -133,5 +133,6 @@ async function messageHandler(sock, msg, { messages }, store) {
     }
 }
 
+// Export both the message handler and allCommands
 module.exports = messageHandler;
 module.exports.allCommands = allCommands;
