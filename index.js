@@ -5,16 +5,32 @@ const {
 } = require("@whiskeysockets/baileys");
 const pino = require('pino');
 const logger = require('./utils/logger');
-const express = require('express');
-const messageHandler = require('./handler');
-const basicCommands = require('./commands/basic');
-const aiCommands = require('./commands/ai');
-const mediaCommands = require('./commands/media');
-const groupCommands = require('./commands/group');
-const gameCommands = require('./commands/game');
-const educationCommands = require('./commands/education');
-const economyCommands = require('./commands/economy');
-const utilityCommands = require('./commands/utility');
+const { getUptime } = require('./utils');
+const fs = require('fs-extra');
+const path = require('path');
+
+// Command handlers
+const commandsPath = path.join(__dirname, 'commands');
+const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+
+// Initialize command map
+const commands = new Map();
+
+// Load commands
+logger.info('Loading commands...');
+for (const file of commandFiles) {
+    try {
+        const command = require(path.join(commandsPath, file));
+        if (typeof command === 'object') {
+            Object.entries(command).forEach(([cmdName, handler]) => {
+                commands.set(cmdName, handler);
+                logger.info(`Loaded command: ${cmdName} from ${file}`);
+            });
+        }
+    } catch (error) {
+        logger.error(`Error loading commands from ${file}:`, error);
+    }
+}
 
 async function startBot() {
     try {
@@ -28,40 +44,33 @@ async function startBot() {
             browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49']
         });
 
-        // Register all commands with logging
-        const commandModules = {
-            ...basicCommands,
-            ...aiCommands,
-            ...mediaCommands,
-            ...groupCommands,
-            ...gameCommands,
-            ...educationCommands,
-            ...economyCommands,
-            ...utilityCommands
-        };
-
-        logger.info('Loading command modules:', {
-            moduleNames: ['basic', 'ai', 'media', 'group', 'game', 'education', 'economy', 'utility'],
-            totalCommands: Object.keys(commandModules).length
-        });
-
-        Object.entries(commandModules).forEach(([name, handler]) => {
-            messageHandler.register(name, handler);
-            logger.info(`Registered command: ${name}`);
-        });
-
-        // Log total registered commands
-        logger.info('Command registration complete:', {
-            totalCommands: messageHandler.getCommands().length,
-            availableCommands: messageHandler.getCommands()
-        });
-
         // Handle messages
         sock.ev.on('messages.upsert', async ({ messages }) => {
             try {
                 const msg = messages[0];
-                if (!msg || !msg.message) return;
-                await messageHandler(sock, msg);
+                if (!msg?.message) return;
+
+                const messageText = msg.message?.conversation || 
+                                  msg.message?.extendedTextMessage?.text || 
+                                  msg.message?.imageMessage?.caption || 
+                                  msg.message?.videoMessage?.caption || '';
+
+                // Process command if message starts with prefix
+                if (messageText.startsWith('.')) {
+                    const args = messageText.slice(1).trim().split(/\s+/);
+                    const command = args.shift().toLowerCase();
+
+                    if (commands.has(command)) {
+                        try {
+                            await commands.get(command)(sock, msg, args);
+                        } catch (error) {
+                            logger.error(`Error executing command ${command}:`, error);
+                            await sock.sendMessage(msg.key.remoteJid, {
+                                text: '❌ Error executing command'
+                            });
+                        }
+                    }
+                }
             } catch (error) {
                 logger.error('Error in message handler:', error);
             }
@@ -88,17 +97,16 @@ async function startBot() {
     }
 }
 
-// Express server setup with debug endpoints
+// Express server for keeping the bot alive
+const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Debug endpoint to check registered commands
-app.get('/debug/commands', (req, res) => {
-    const commands = messageHandler.getCommands();
+app.get('/', (req, res) => {
     res.json({
-        totalCommands: commands.length,
-        registeredCommands: commands,
-        status: 'WhatsApp Bot Server Running'
+        status: 'Bot Running',
+        uptime: getUptime(),
+        commands: Array.from(commands.keys())
     });
 });
 

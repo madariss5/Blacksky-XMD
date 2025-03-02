@@ -1,32 +1,42 @@
 const logger = require('pino')();
 const moment = require('moment-timezone');
 const config = require('../config');
+const { getUptime } = require('../utils');
 
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            // Format menu text to match the screenshot exactly
-            let menuText = '🔧 Utility Commands\n\n';
+            const pushName = msg.pushName || 'User';
+            const userId = msg.key.participant || msg.key.remoteJid;
 
-            // Media Conversion section
-            menuText += 'Media Conversion:\n';
-            menuText += '!sticker - Create sticker from image/video\n';
-            menuText += '!tts <text> - Convert text to speech\n';
-            menuText += '!translate <lang> <text> - Translate text\n';
-            menuText += '!ytmp3 <url> - Download YouTube audio as MP3\n';
-            menuText += '!ytmp4 <url> - Download YouTube video as MP4\n\n';
+            let menuText = `🔧 *Utility Commands*\n\n`;
 
-            // Information section
-            menuText += 'Information:\n';
-            menuText += '!weather <city> - Get weather info\n';
-            menuText += '!calc <expression> - Calculate expression\n';
-            menuText += '!stats - Show bot statistics\n\n';
+            // Media Conversion
+            menuText += `Media Conversion:\n`;
+            menuText += `!sticker - Create sticker from image/video\n`;
+            menuText += `!tts <text> - Convert text to speech\n`;
+            menuText += `!translate <lang> <text> - Translate text\n`;
+            menuText += `!ytmp3 <url> - Download YouTube audio as MP3\n`;
+            menuText += `!ytmp4 <url> - Download YouTube video as MP4\n\n`;
 
-            // System section
-            menuText += 'System:\n';
-            menuText += '!ping - Check bot response time\n';
-            menuText += '!uptime - Show bot uptime\n';
-            menuText += '!report <issue> - Report an issue\n';
+            // Information
+            menuText += `Information:\n`;
+            menuText += `!weather <city> - Get weather info\n`;
+            menuText += `!calc <expression> - Calculate expression\n`;
+            menuText += `!stats - Show bot statistics\n\n`;
+
+            // System
+            menuText += `System:\n`;
+            menuText += `!ping - Check bot response time\n`;
+            menuText += `!uptime - Show bot uptime\n`;
+            menuText += `!report <issue> - Report an issue\n\n`;
+
+            menuText += `Statistics:\n`;
+            menuText += `• Status: Online\n`;
+            menuText += `• Uptime: ${getUptime()}\n`;
+            menuText += `• Memory: ${process.memoryUsage().heapUsed / 1024 / 1024} MB\n`;
+            menuText += `• Platform: ${process.platform}\n`;
+            menuText += `• Node.js: ${process.version}\n`;
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: menuText
@@ -71,11 +81,13 @@ const basicCommands = {
     ping: async (sock, msg) => {
         try {
             const start = Date.now();
-            await sock.sendMessage(msg.key.remoteJid, { text: 'Pinging...' });
+            await sock.sendMessage(msg.key.remoteJid, { text: 'Testing ping...' });
             const end = Date.now();
 
+            const response = `Pong!\n• Response time: ${end - start}ms\n• Uptime: ${getUptime()}`;
+
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `🏓 Pong!\nResponse time: ${end - start}ms`
+                text: response
             });
         } catch (error) {
             logger.error('Error in ping command:', error);
