@@ -23,57 +23,59 @@ const userCommands = require('./commands/user');
 const utilityCommands = require('./commands/utility');
 
 // Debug logging for module imports
-logger.info('Importing command modules...');
+logger.info('Starting command registration...');
 
-// Debug each module's commands
-const commandModules = {
-    AI: aiCommands,
-    Anime: animeCommands,
-    Basic: basicCommands,
-    Downloader: downloaderCommands,
-    Economy: economyCommands,
-    Education: educationCommands,
-    Fun: funCommands,
-    Game: gameCommands,
-    Group: groupCommands,
-    Media: mediaCommands,
-    Music: musicCommands,
-    NSFW: nsfwCommands,
-    Owner: ownerCommands,
-    Reactions: reactionsCommands,
-    Search: searchCommands,
-    Social: socialCommands,
-    Tool: toolCommands,
-    User: userCommands,
-    Utility: utilityCommands
-};
-
-// Log each module's commands
-Object.entries(commandModules).forEach(([category, commands]) => {
-    logger.info(`${category} commands:`, Object.keys(commands || {}));
-});
-
-// Initialize allCommands as an empty object
+// Initialize allCommands object
 const allCommands = {};
 
-// Merge commands with detailed logging
-Object.entries(commandModules).forEach(([category, commands]) => {
-    if (commands && typeof commands === 'object') {
-        Object.entries(commands).forEach(([cmdName, cmdFunction]) => {
-            if (typeof cmdFunction === 'function') {
-                allCommands[cmdName] = cmdFunction;
-                logger.info(`Registered command: ${cmdName} from ${category}`);
-            } else {
-                logger.warn(`Invalid command: ${cmdName} in ${category}`);
-            }
-        });
-    } else {
-        logger.warn(`Empty or invalid module: ${category}`);
+// Helper function to register commands from a module
+function registerCommandsFromModule(moduleCommands, moduleName) {
+    if (!moduleCommands || typeof moduleCommands !== 'object') {
+        logger.warn(`Invalid module: ${moduleName}`);
+        return;
     }
+
+    Object.entries(moduleCommands).forEach(([cmdName, cmdFunction]) => {
+        if (typeof cmdFunction === 'function') {
+            allCommands[cmdName] = cmdFunction;
+            logger.info(`Registered command: ${cmdName} from ${moduleName}`);
+        } else {
+            logger.warn(`Invalid command: ${cmdName} in ${moduleName}`);
+        }
+    });
+}
+
+// Register commands from each module
+const modules = {
+    'AI': aiCommands,
+    'Anime': animeCommands,
+    'Basic': basicCommands,
+    'Downloader': downloaderCommands,
+    'Economy': economyCommands,
+    'Education': educationCommands,
+    'Fun': funCommands,
+    'Game': gameCommands,
+    'Group': groupCommands,
+    'Media': mediaCommands,
+    'Music': musicCommands,
+    'NSFW': nsfwCommands,
+    'Owner': ownerCommands,
+    'Reactions': reactionsCommands,
+    'Search': searchCommands,
+    'Social': socialCommands,
+    'Tool': toolCommands,
+    'User': userCommands,
+    'Utility': utilityCommands
+};
+
+// Register all commands
+Object.entries(modules).forEach(([moduleName, moduleCommands]) => {
+    logger.info(`Registering commands from ${moduleName} module...`);
+    registerCommandsFromModule(moduleCommands, moduleName);
 });
 
 // Debug logging for available commands
-logger.info('Total available commands:', Object.keys(allCommands).length);
+logger.info('Total registered commands:', Object.keys(allCommands).length);
 logger.info('Available commands:', Object.keys(allCommands));
 
 async function messageHandler(sock, msg, { messages }, store) {
@@ -110,7 +112,7 @@ async function messageHandler(sock, msg, { messages }, store) {
 
         logger.info(`Received command: ${command} with args:`, args);
 
-        // Execute command from combined commands
+        // Execute command if it exists
         if (allCommands[command]) {
             logger.info(`Executing command: ${command}`);
             await allCommands[command](sock, msg, args);
@@ -120,7 +122,7 @@ async function messageHandler(sock, msg, { messages }, store) {
         // Command not found
         logger.info(`Command not found: ${command}`);
         await sock.sendMessage(msg.key.remoteJid, {
-            text: `❌ Command *${command}* not found.\nType ${prefix}help to see available commands.`
+            text: `❌ Command *${command}* not found.\nType ${prefix}menu to see available commands.`
         });
 
     } catch (error) {
