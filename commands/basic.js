@@ -2,29 +2,30 @@ const logger = require('pino')();
 const os = require('os');
 const moment = require('moment-timezone');
 const config = require('../config');
-const fs = require('fs').promises;
-const path = require('path');
 
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            let menuText = `╔═══════ஜ۩۞۩ஜ═══════╗\n`;
-            menuText += `║    ${config.botName} MENU    ║\n`;
-            menuText += `╚═══════ஜ۩۞۩ஜ═══════╝\n\n`;
+            // Header
+            let menuText = `╔══《 ${config.botName} MENU 》══╗\n`;
+            menuText += `║ 👤 User: ${msg.pushName}\n`;
+            menuText += `║ ⏰ Time: ${moment().format('HH:mm:ss')}\n`;
+            menuText += `║ 📅 Date: ${moment().format('DD/MM/YYYY')}\n`;
+            menuText += `╚════════════════════╝\n\n`;
 
-            // Bot Info Section
-            menuText += `┏━━━⟪ *BOT INFO* ⟫━━━┓\n`;
-            menuText += `┃ ⚡ *Bot Name:* ${config.botName}\n`;
-            menuText += `┃ 👤 *User:* ${msg.pushName}\n`;
-            menuText += `┃ ⏰ *Time:* ${moment().format('HH:mm:ss')}\n`;
-            menuText += `┃ 📅 *Date:* ${moment().format('DD/MM/YYYY')}\n`;
-            menuText += `┗━━━━━━━━━━━━━━━┛\n\n`;
+            // Get commands from config
+            const categories = {};
+            Object.entries(config.commands).forEach(([cmd, info]) => {
+                if (!categories[info.category]) {
+                    categories[info.category] = [];
+                }
+                categories[info.category].push({
+                    name: cmd,
+                    description: info.description
+                });
+            });
 
-            // Get commands directory
-            const commandsDir = path.join(__dirname);
-            const files = await fs.readdir(commandsDir);
-
-            // Category emoji mapping
+            // Category emojis
             const categoryEmojis = {
                 'AI': '🤖',
                 'Anime': '🎭',
@@ -43,49 +44,38 @@ const basicCommands = {
                 'Tool': '🛠️',
                 'User': '👤',
                 'Utility': '⚙️',
-                'Education': '📚',
-                'Misc': '📦'
+                'Education': '📚'
             };
 
-            // Process each command file
-            for (const file of files) {
-                if (file.endsWith('.js')) {
-                    try {
-                        const filePath = path.join(commandsDir, file);
-                        const category = file.replace('.js', '');
-                        const emoji = categoryEmojis[category] || '📌';
-
-                        // Clear require cache and load commands
-                        delete require.cache[require.resolve(filePath)];
-                        const commands = require(filePath);
-                        const commandList = Object.keys(commands);
-
-                        if (commandList.length > 0) {
-                            menuText += `┏━━━⟪ ${emoji} *${category.toUpperCase()}* ⟫━━━┓\n`;
-                            for (const cmd of commandList) {
-                                menuText += `┃ ඬ⃟ ${config.prefix}${cmd}\n`;
-                                if (config.commands[cmd]?.description) {
-                                    menuText += `┃ └ ${config.commands[cmd].description}\n`;
-                                }
-                            }
-                            menuText += `┗━━━━━━━━━━━━━━━┛\n\n`;
+            // Sort categories and add commands
+            Object.entries(categories)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .forEach(([category, commands]) => {
+                    const emoji = categoryEmojis[category] || '📌';
+                    menuText += `┏━━━《 ${emoji} ${category} 》━━━┓\n`;
+                    commands.forEach(cmd => {
+                        menuText += `┃ ⌬ ${config.prefix}${cmd.name}\n`;
+                        if (cmd.description) {
+                            menuText += `┃ └─ ${cmd.description}\n`;
                         }
-                    } catch (error) {
-                        logger.error(`Error loading commands from ${file}:`, error);
-                    }
-                }
-            }
+                    });
+                    menuText += `┗━━━━━━━━━━━━━━━┛\n\n`;
+                });
 
-            menuText += `╔═══════ஜ۩۞۩ஜ═══════╗\n`;
-            menuText += `║  Type ${config.prefix}help <command>  ║\n`;
-            menuText += `╚═══════ஜ۩۞۩ஜ═══════╝`;
+            // Footer
+            menuText += `╔════════════════════╗\n`;
+            menuText += `║ Type ${config.prefix}help <command> ║\n`;
+            menuText += `║    for detailed info     ║\n`;
+            menuText += `╚════════════════════╝`;
 
+            // Send menu with image
             await sock.sendMessage(msg.key.remoteJid, {
                 image: { url: config.menuImage },
                 caption: menuText,
                 gifPlayback: false
             });
 
+            logger.info('Menu command executed successfully');
         } catch (error) {
             logger.error('Menu command failed:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -103,7 +93,8 @@ const basicCommands = {
                 if (cmdInfo) {
                     const text = `*Command: ${config.prefix}${command}*\n\n` +
                                `📝 Description: ${cmdInfo.description}\n` +
-                               `📁 Category: ${cmdInfo.category}`;
+                               `📁 Category: ${cmdInfo.category}\n` +
+                               `ℹ️ Usage: ${cmdInfo.usage || `${config.prefix}${command}`}`;
                     await sock.sendMessage(msg.key.remoteJid, { text });
                     return;
                 }
@@ -119,7 +110,6 @@ const basicCommands = {
                         `${config.prefix}help <command>`;
 
             await sock.sendMessage(msg.key.remoteJid, { text });
-
         } catch (error) {
             logger.error('Help command failed:', error);
             await sock.sendMessage(msg.key.remoteJid, {
