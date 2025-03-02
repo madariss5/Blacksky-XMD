@@ -1,9 +1,9 @@
 {
   "name": "BlackSky-MD",
   "description": "A highly extensible WhatsApp Multi-Device bot designed for robust, scalable messaging interactions",
-  "repository": "https://github.com/yourusername/blacksky-md",
-  "logo": "https://raw.githubusercontent.com/yourusername/blacksky-md/main/generated-icon.png",
-  "keywords": ["whatsapp-bot", "baileys", "nodejs", "bot"],
+  "repository": "https://github.com/blacksky-algorithms/blacksky-md",
+  "logo": "https://raw.githubusercontent.com/blacksky-algorithms/blacksky-md/main/generated-icon.png",
+  "keywords": ["whatsapp-bot", "baileys", "nodejs", "bot", "whatsapp-md"],
   "env": {
     "OWNER_NAME": {
       "description": "Your name as the bot owner",

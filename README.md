@@ -22,7 +22,7 @@ Before running the bot, ensure you have the following installed:
 ## ⚡️ Local Installation
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/blacksky-md.git
+git clone https://github.com/blacksky-algorithms/blacksky-md.git
 
 # Enter the project directory
 cd blacksky-md
@@ -39,10 +39,11 @@ cp .env.example .env
 Create a `.env` file with the following variables:
 ```env
 # Required Configuration
-OWNER_NUMBER=your_whatsapp_number
+OWNER_NUMBER=your_whatsapp_number  # e.g., 491234567890 for +49 123 456 7890
 OWNER_NAME=your_name
-PREFIX=!
+PREFIX=.
 BOT_NAME=BLACKSKY-MD
+SESSION_ID=blacksky-md
 
 # Optional AI Features (if you want to use AI commands)
 OPENAI_API_KEY=your_openai_api_key
@@ -77,6 +78,20 @@ pm2 monit
 # View logs
 pm2 logs blacksky-bot
 ```
+
+## 🌐 Heroku Deployment
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/blacksky-algorithms/blacksky-md)
+
+1. Click the Deploy to Heroku button above
+2. Fill in the required environment variables:
+   - `OWNER_NUMBER`: Your WhatsApp number (e.g., 491234567890)
+   - `OWNER_NAME`: Your name
+   - `SESSION_ID`: Keep as 'blacksky-md' or set your own
+   - `BOT_NAME`: Your bot's name
+   - Other optional variables as needed
+3. Wait for the deployment to complete
+4. View the logs in Heroku dashboard to scan QR code
+5. The bot will save credentials and send them to your number
 
 ## 📚 Command Categories
 - 🎯 Basic Commands - General bot interactions
