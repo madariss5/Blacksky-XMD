@@ -9,7 +9,7 @@ const {
     getContentType
 } = require("@whiskeysockets/baileys");
 const pino = require('pino');
-const logger = require('./utils/logger');  // Using our enhanced logger
+const logger = require('./utils/logger');
 const fs = require('fs-extra');
 const chalk = require('chalk');
 const path = require('path');
@@ -25,14 +25,7 @@ const { compressCredsFile } = require('./utils/creds');
 const { Boom } = require('@hapi/boom');
 require('dotenv').config();
 const antiBan = require('./middleware/antiban');
-
-// Add this utility function at the top with other imports
-const formatPhoneNumber = (phone) => {
-    // Remove any @s.whatsapp.net suffix if present
-    const cleanNumber = phone.split('@')[0];
-    // Return clean number for storage, append suffix only when needed for WA operations
-    return cleanNumber;
-};
+const { formatPhoneNumber, addWhatsAppSuffix, formatOwnerNumbers } = require('./utils/phoneNumber');
 
 // Global variables
 global.authState = null;
@@ -45,7 +38,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Bot configuration
-const owner = [formatPhoneNumber(process.env.OWNER_NUMBER || '254710772666')];
+const owner = formatOwnerNumbers(process.env.OWNER_NUMBER || '254710772666');
 const sessionName = "blacksky-md";
 const botName = "𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻";
 const TIME_ZONE = "Africa/Nairobi";
