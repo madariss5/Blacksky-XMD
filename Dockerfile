@@ -20,8 +20,9 @@ COPY . .
 
 # Set environment variables
 ENV NODE_ENV=production
-ENV PREFIX=!
+ENV PREFIX=.
 ENV LOG_LEVEL=info
+ENV SESSION_ID=blacksky-md
 
 # Start the bot
 CMD [ "node", "index.js" ]

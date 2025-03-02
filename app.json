@@ -21,7 +21,7 @@
     },
     "PREFIX": {
       "description": "Command prefix for the bot",
-      "value": "!",
+      "value": ".",
       "required": true
     },
     "SESSION_ID": {
@@ -42,10 +42,6 @@
     "USE_PAIRING": {
       "description": "Enable pairing code for connection",
       "value": "true",
-      "required": false
-    },
-    "SESSION_DATA": {
-      "description": "WhatsApp session data (will be auto-generated on first run)",
       "required": false
     }
   },
