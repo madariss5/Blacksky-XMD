@@ -2,7 +2,6 @@ const logger = require('pino')();
 const os = require('os');
 const moment = require('moment-timezone');
 const config = require('../config');
-const handler = require('../handler');
 
 const basicCommands = {
     menu: async (sock, msg) => {
@@ -18,50 +17,41 @@ const basicCommands = {
 
             // Organize commands by category
             const categories = {};
-            const implementedCommands = handler.allCommands;
 
-            // Process commands from config and check if they're implemented
+            // Process commands from config
             Object.entries(config.commands).forEach(([cmd, info]) => {
-                if (implementedCommands[cmd]) {  // Only show implemented commands
-                    const category = info.category;
-                    if (!categories[category]) {
-                        categories[category] = [];
-                    }
-                    categories[category].push({
-                        command: cmd,
-                        description: info.description
-                    });
+                const category = info.category;
+                if (!categories[category]) {
+                    categories[category] = [];
                 }
+                categories[category].push({
+                    command: cmd,
+                    description: info.description
+                });
             });
 
-            // Category emojis
-            const categoryEmojis = {
-                'AI': '🤖',
-                'Anime': '🎭',
-                'Basic': '📌',
-                'Downloader': '📥',
-                'Economy': '💰',
-                'Fun': '🎮',
-                'Game': '🎲',
-                'Group': '👥',
-                'Media': '📸',
-                'Music': '🎵',
-                'NSFW': '🔞',
-                'Owner': '👑',
-                'Search': '🔍',
-                'Social': '🌐',
-                'Tool': '🛠️',
-                'User': '👤',
-                'Utility': '⚙️',
-                'Education': '📚'
-            };
+            logger.info('Processing categories:', Object.keys(categories));
 
             // Add commands by category
             Object.entries(categories)
                 .sort(([a], [b]) => a.localeCompare(b))
                 .forEach(([category, commands]) => {
                     if (commands.length > 0) {
-                        const emoji = categoryEmojis[category] || '📌';
+                        let emoji = '📌';
+                        switch(category) {
+                            case 'AI': emoji = '🤖'; break;
+                            case 'Basic': emoji = '📌'; break;
+                            case 'Fun': emoji = '🎮'; break;
+                            case 'Game': emoji = '🎲'; break;
+                            case 'Group': emoji = '👥'; break;
+                            case 'Media': emoji = '📸'; break;
+                            case 'Owner': emoji = '👑'; break;
+                            case 'Search': emoji = '🔍'; break;
+                            case 'Tool': emoji = '🛠️'; break;
+                            case 'Utility': emoji = '⚙️'; break;
+                            case 'Education': emoji = '📚'; break;
+                        }
+
                         menuText += `┏━━━《 ${emoji} ${category} 》━━━┓\n`;
                         commands.forEach(({command, description}) => {
                             menuText += `┃ ⌬ ${config.prefix}${command}\n`;
