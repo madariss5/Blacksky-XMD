@@ -1,5 +1,5 @@
 const NodeCache = require('node-cache');
-const logger = require('pino')();
+const logger = require('../utils/logger');
 
 // Cache for rate limiting
 const messageCache = new NodeCache({ stdTTL: 60 }); // 1 minute default TTL
@@ -11,7 +11,7 @@ class AntiBanMiddleware {
             min: 1000,  // Minimum delay 1 second
             max: 3000   // Maximum delay 3 seconds
         };
-        
+
         // Limits per minute
         this.limits = {
             messagesPerMinute: 10,
@@ -33,7 +33,7 @@ class AntiBanMiddleware {
     isRateLimited(jid, type = 'message') {
         const key = `${jid}_${type}`;
         const count = messageCache.get(key) || 0;
-        
+
         let limit;
         switch(type) {
             case 'media':
@@ -61,10 +61,10 @@ class AntiBanMiddleware {
     // Sanitize message content to prevent banned patterns
     sanitizeMessage(text) {
         if (!text) return text;
-        
+
         // Remove excessive symbols
         text = text.replace(/([!?.,-])\1{4,}/g, '$1$1$1');
-        
+
         // Remove excessive capital letters
         if (text.length > 10 && text.toUpperCase() === text) {
             text = text.toLowerCase();
@@ -100,10 +100,10 @@ class AntiBanMiddleware {
     handleReconnection(retryCount) {
         const baseDelay = 5000; // 5 seconds
         const maxDelay = 300000; // 5 minutes
-        
+
         // Exponential backoff
         const delay = Math.min(baseDelay * Math.pow(2, retryCount), maxDelay);
-        
+
         return new Promise(resolve => setTimeout(resolve, delay));
     }
 

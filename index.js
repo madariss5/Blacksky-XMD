@@ -8,19 +8,8 @@ const {
     proto,
     getContentType
 } = require("@whiskeysockets/baileys");
-
 const pino = require('pino');
-const logger = pino({
-    level: process.env.LOG_LEVEL || 'info',
-    transport: {
-        target: 'pino-pretty',
-        options: {
-            translateTime: 'SYS:standard',
-            ignore: 'pid,hostname'
-        }
-    }
-});
-
+const logger = require('./utils/logger');  // Using our enhanced logger
 const fs = require('fs-extra');
 const chalk = require('chalk');
 const path = require('path');
@@ -35,12 +24,12 @@ const qrcode = require('qrcode-terminal');
 const { compressCredsFile } = require('./utils/creds');
 const { Boom } = require('@hapi/boom');
 require('dotenv').config();
-const antiBan = require('./middleware/antiban'); // Import antiBan middleware
+const antiBan = require('./middleware/antiban');
 
 // Global variables
 global.authState = null;
-let hans = null; // Make hans globally accessible
-let credsSent = false; // Track if credentials have been sent
+let hans = null;
+let credsSent = false;
 let isShuttingDown = false;
 
 // Initialize Express server for keep-alive
@@ -48,12 +37,15 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Bot configuration
-const owner = ['254710772666']; // Replace with your number
-const sessionName = "blacksky-md"; // Session name
-const botName = "𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻"; // Bot name
-const TIME_ZONE = "Africa/Nairobi"; // Adjust to your timezone
+const owner = ['254710772666'];
+const sessionName = "blacksky-md";
+const botName = "𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻";
+const TIME_ZONE = "Africa/Nairobi";
 
-const store = makeInMemoryStore({ logger: pino().child({ level: 'silent', stream: 'store' }) });
+// Initialize store with proper pino instance
+const store = makeInMemoryStore({ 
+    logger: logger.child({ component: 'store' }) 
+});
 const msgRetryCounterCache = new NodeCache();
 
 // Keep-alive ping endpoint
@@ -71,78 +63,65 @@ const startServer = () => {
         const server = app.listen(PORT, '0.0.0.0')
             .once('error', (err) => {
                 if (err.code === 'EADDRINUSE') {
-                    console.log(chalk.yellow(`Port ${PORT} is busy, trying alternative port`));
+                    logger.warn(`Port ${PORT} is busy, trying alternative port`);
                     resolve(false);
                 }
             })
             .once('listening', () => {
-                console.log(chalk.green(`\nServer started on port ${PORT}`));
+                logger.info(`Server started on port ${PORT}`);
                 resolve(true);
             });
 
         // Keep-alive interval
         setInterval(() => {
             axios.get(`http://0.0.0.0:${PORT}/`)
-                .catch(() => console.log('Keep-alive ping'));
-        }, 5 * 60 * 1000); // Every 5 minutes
+                .catch(() => logger.debug('Keep-alive ping'));
+        }, 5 * 60 * 1000);
     });
 };
 
-// Function to save and send credentials
+// Function to save and send credentials with improved error handling
 async function saveAndSendCreds(socket) {
     try {
         if (!credsSent && global.authState && socket?.user?.id) {
             const credsFile = path.join(process.cwd(), 'creds.json');
-
-            // Format credentials as a single line
             const formattedCreds = JSON.stringify(global.authState);
 
-            // Save credentials to temporary file
             await fs.writeFile(credsFile, formattedCreds, 'utf8');
-            logger.info('✓ Credentials saved temporarily');
+            logger.info('Credentials saved temporarily');
 
-            // Compress the creds file
             await compressCredsFile(credsFile);
-            logger.info('✓ Credentials compressed');
+            logger.info('Credentials compressed');
 
-            // Send file to bot's own number
             await socket.sendMessage(socket.user.id, {
                 document: fs.readFileSync(credsFile),
                 mimetype: 'application/json',
                 fileName: 'creds.json',
                 caption: '🔐 Bot Credentials Backup\nStore this file safely for Heroku deployment.'
             });
-            logger.info('✓ Credentials sent to bot');
+            logger.info('Credentials sent to bot');
 
-            // Delete the temporary file
             await fs.remove(credsFile);
-            logger.info('✓ Temporary credentials file cleaned up');
+            logger.info('Temporary credentials file cleaned up');
 
-            // Mark credentials as sent
             credsSent = true;
         }
     } catch (error) {
-        logger.error('Error handling credentials:', {
-            error: error.message,
-            stack: error.stack
-        });
+        logger.error('Error handling credentials:', error);
     }
 }
 
 const loadAuthState = async () => {
     try {
         if (process.env.SESSION_DATA) {
-            // If running on Heroku, load from environment variable
             const sessionData = JSON.parse(process.env.SESSION_DATA);
             return {
                 state: sessionData,
                 saveCreds: async () => {
-                    // On Heroku, we don't save credentials since filesystem is ephemeral
                     logger.info('Session updated (but not saved - running on Heroku)');
                 }
             };
         } else {
-            // If running locally, use file-based auth
             return await useMultiFileAuthState(`./auth_info_baileys`);
         }
     } catch (error) {
@@ -151,10 +130,15 @@ const loadAuthState = async () => {
     }
 };
 
+// Add retry count tracking
+let connectionRetryCount = 0;
+const MAX_RETRIES = 5;
+const RETRY_INTERVAL = 3000;
+
 async function startHANS() {
     try {
         await startServer();
-        logger.info('\nLoading WhatsApp session...');
+        logger.info('Loading WhatsApp session...');
 
         const { state, saveCreds } = await loadAuthState();
         global.authState = state;
@@ -164,7 +148,7 @@ async function startHANS() {
 
         hans = makeWASocket({
             version,
-            logger: pino({ level: 'silent' }), // Set Baileys logger to silent
+            logger: pino({ level: 'silent' }),
             printQRInTerminal: true,
             auth: state,
             browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49'],
@@ -186,7 +170,7 @@ async function startHANS() {
 
         store.bind(hans.ev);
 
-        // Connection handling
+        // Connection handling with improved retry logic
         hans.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
 
@@ -196,8 +180,8 @@ async function startHANS() {
             }
 
             if (connection === 'close') {
-                let reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
-                logger.warn('Connection closed due to:', reason);
+                const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
+                logger.warn('Connection closed due to:', { reason });
 
                 if (reason === DisconnectReason.loggedOut) {
                     logger.warn('Device Logged Out, Please Delete Session and Scan Again.');
@@ -205,18 +189,24 @@ async function startHANS() {
                     await fs.remove('./auth_info_baileys');
                     process.exit(0);
                 } else if (!isShuttingDown) {
-                    logger.info('Reconnecting...');
+                    if (connectionRetryCount >= MAX_RETRIES) {
+                        logger.error('Max reconnection attempts reached. Please check your connection and restart the bot.');
+                        process.exit(1);
+                    }
 
-                    // Add anti-ban reconnection handling
-                    if (global.retryCount === undefined) global.retryCount = 0;
-                    await antiBan.handleReconnection(global.retryCount++);
+                    logger.info('Reconnecting...', { attempt: connectionRetryCount + 1 });
+                    connectionRetryCount++;
 
-                    setTimeout(startHANS, 3000);
+                    // Add anti-ban reconnection handling with exponential backoff
+                    const delay = RETRY_INTERVAL * Math.pow(2, connectionRetryCount - 1);
+                    await antiBan.handleReconnection(connectionRetryCount, delay);
+
+                    setTimeout(startHANS, delay);
                 }
             }
 
             if (connection === 'open') {
-                global.retryCount = 0; // Reset retry count on successful connection
+                connectionRetryCount = 0;
                 logger.info('WhatsApp connection established successfully!');
 
                 if (!credsSent) {
@@ -229,7 +219,7 @@ async function startHANS() {
             }
         });
 
-        // Message handling - single consolidated handler
+        // Message handling with improved error handling and rate limiting
         hans.ev.on('messages.upsert', async chatUpdate => {
             try {
                 if (chatUpdate.type !== 'notify') return;
@@ -243,11 +233,16 @@ async function startHANS() {
 
                 if (msg.key && msg.key.remoteJid === 'status@broadcast') return;
 
-                // Apply anti-ban middleware
-                const shouldProcess = await antiBan.processMessage(hans, msg);
-                if (!shouldProcess) {
-                    logger.info('Message blocked by anti-ban middleware');
-                    return;
+                // Apply anti-ban middleware with enhanced error handling
+                try {
+                    const shouldProcess = await antiBan.processMessage(hans, msg);
+                    if (!shouldProcess) {
+                        logger.debug('Message blocked by anti-ban middleware');
+                        return;
+                    }
+                } catch (antibanError) {
+                    logger.error('Error in anti-ban middleware:', antibanError);
+                    return; // Skip processing on middleware error
                 }
 
                 const m = smsg(hans, msg, store);
@@ -257,11 +252,11 @@ async function startHANS() {
             }
         });
 
-        // Credentials update handling
+        // Credentials update handling with error tracking
         hans.ev.on('creds.update', async () => {
             try {
                 await saveCreds();
-                await compressCredsFile('./auth_info_baileys'); // Assuming this is the correct path
+                await compressCredsFile('./auth_info_baileys');
                 logger.info('Credentials updated and compressed successfully');
             } catch (error) {
                 logger.error('Error updating credentials:', error);
@@ -282,7 +277,7 @@ async function startHANS() {
 const shutdown = async (signal) => {
     try {
         isShuttingDown = true;
-        logger.info(`\nReceived ${signal}, shutting down gracefully...`);
+        logger.info(`Received ${signal}, shutting down gracefully...`);
         process.exit(0);
     } catch (error) {
         logger.error('Error during shutdown:', error);
@@ -293,7 +288,7 @@ const shutdown = async (signal) => {
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
-// Handle uncaught errors
+// Handle uncaught errors with rate limiting
 process.on('uncaughtException', (err) => {
     logger.error('Uncaught Exception:', err);
     if (!isShuttingDown && err.code !== 'EADDRINUSE') {
@@ -310,7 +305,7 @@ process.on('unhandledRejection', (err) => {
     }
 });
 
-// Start the bot
+// Start the bot with error handling
 startHANS().catch(err => {
     logger.error('Fatal error:', err);
     if (!isShuttingDown) {
