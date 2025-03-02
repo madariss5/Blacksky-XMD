@@ -929,7 +929,7 @@ const mediaCommands = {
             }
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '⏳ Applying nightcore effect...'
+                text: '⏳ Creating nightcore effect...'
             });
 
             const buffer = await downloadMediaMessageWithLogging(
@@ -949,7 +949,7 @@ const mediaCommands = {
 
             await new Promise((resolve, reject) => {
                 ffmpeg(inputPath)
-                    .audioFilters('asetrate=44100*1.25,aresample=44100')
+                    .audioFilters('asetrate=44100*1.25,aresample=44100,atempo=1/1.25')
                     .toFormat('mp3')
                     .on('end', resolve)
                     .on('error', reject)
@@ -1084,14 +1084,14 @@ const mediaCommands = {
         const tempFiles = [];
         try {
             const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
-            if (!quotedMsg?.audioMessage && !quotedMsg?.videoMessage) {
+            if (!quotedMsg?.audioMessage) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Please reply to an audio or video with !reverse'
+                    text: '❌ Please reply to an audio with !reverse'
                 });
             }
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '⏳ Reversing media...'
+                text: '⏳ Reversing audio...'
             });
 
             const buffer = await downloadMediaMessageWithLogging(
@@ -1111,8 +1111,7 @@ const mediaCommands = {
 
             await new Promise((resolve, reject) => {
                 ffmpeg(inputPath)
-                    .complexFilter('[0:a]areverse[a]')
-                    .map('[a]')
+                    .audioFilters('areverse')
                     .toFormat('mp3')
                     .on('end', resolve)
                     .on('error', reject)
@@ -1128,7 +1127,7 @@ const mediaCommands = {
         } catch (error) {
             logger.error('Error in reverse command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to reverse media: ' + error.message
+                text: '❌ Failed to reverse audio: ' + error.message
             });
         } finally {
             await cleanupTempFiles(...tempFiles);
