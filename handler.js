@@ -12,6 +12,16 @@ const musicCommands = require('./commands/music');
 const groupCommands = require('./commands/group');
 const nsfwCommands = require('./commands/nsfw');
 const logger = require('./utils/logger');
+const config = require('./config');
+const { formatPhoneNumber } = require('./utils/phoneNumber');
+
+// Check if the sender is an owner
+const isOwner = (sender) => {
+    // Format both the sender's number and owner number for comparison
+    const formattedSender = formatPhoneNumber(sender);
+    const formattedOwner = formatPhoneNumber(config.ownerNumber);
+    return formattedSender === formattedOwner;
+};
 
 const commandModules = {
     reactions: reactionsCommands,
@@ -35,6 +45,18 @@ async function executeCommand(moduleName, command, hans, m, args) {
         const module = commandModules[moduleName];
         if (!module) {
             logger.warn(`Command module ${moduleName} not found`);
+            return false;
+        }
+
+        // For owner commands, verify ownership
+        if (moduleName === 'owner' && !isOwner(m.sender)) {
+            logger.warn(`Non-owner tried to use owner command: ${command}`, {
+                sender: m.sender,
+                command: command
+            });
+            await hans.sendMessage(m.key.remoteJid, { 
+                text: '❌ This command is only for the bot owner!' 
+            });
             return false;
         }
 
@@ -102,7 +124,8 @@ module.exports = async (hans, m, chatUpdate, store) => {
             command, 
             args,
             chat: m.chat,
-            sender: m.sender
+            sender: m.sender,
+            isOwner: isOwner(m.sender)
         });
 
         // Try to execute command in each module
