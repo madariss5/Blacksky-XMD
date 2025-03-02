@@ -2,7 +2,7 @@ const fs = require('fs-extra');
 const path = require('path');
 const ffmpeg = require('fluent-ffmpeg');
 const logger = require('./logger');
-const axios = require('axios');
+const { exec } = require('child_process');
 
 class MediaHandler {
     constructor() {
@@ -25,56 +25,23 @@ class MediaHandler {
         }
     }
 
-    async convertGifToMp4(gifPath) {
-        try {
-            const mp4Path = path.join(this.tempDir, `${Date.now()}.mp4`);
-            logger.info('Converting GIF to MP4:', { input: gifPath, output: mp4Path });
-
-            // Verify input file exists and has content
-            if (!fs.existsSync(gifPath)) {
-                throw new Error(`GIF file not found: ${gifPath}`);
-            }
-
-            const stats = await fs.stat(gifPath);
-            if (stats.size === 0) {
-                throw new Error(`GIF file is empty: ${gifPath}`);
-            }
-
-            return new Promise((resolve, reject) => {
-                ffmpeg(gifPath)
-                    .toFormat('mp4')
-                    .addOutputOptions([
-                        '-pix_fmt yuv420p',
-                        '-movflags +faststart',
-                        '-vf scale=320:-2',
-                        '-c:v libx264',
-                        '-preset ultrafast',
-                        '-b:v 500k'
-                    ])
-                    .on('start', (commandLine) => {
-                        logger.info('Started ffmpeg with command:', commandLine);
-                    })
-                    .on('progress', (progress) => {
-                        logger.debug('Processing:', progress);
-                    })
-                    .on('end', () => {
-                        logger.info('Successfully converted GIF to MP4');
-                        resolve(mp4Path);
-                    })
-                    .on('error', (err) => {
-                        logger.error('Error converting GIF to MP4:', err);
-                        reject(err);
-                    })
-                    .save(mp4Path);
+    // Direct ffmpeg command execution
+    async convertGifToVideo(inputPath, outputPath) {
+        return new Promise((resolve, reject) => {
+            exec(`ffmpeg -i "${inputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=320:-2" "${outputPath}"`, (error, stdout, stderr) => {
+                if (error) {
+                    logger.error('FFmpeg error:', { error, stderr });
+                    reject(error);
+                } else {
+                    logger.info('FFmpeg conversion successful');
+                    resolve(outputPath);
+                }
             });
-        } catch (error) {
-            logger.error('Error in convertGifToMp4:', error);
-            throw error;
-        }
+        });
     }
 
     async sendGifReaction(sock, msg, gifName, caption = '', mentions = []) {
-        let mp4Path = null;
+        let tempFile = null;
         try {
             // Ensure gif name has .gif extension
             if (!gifName.endsWith('.gif')) {
@@ -82,22 +49,21 @@ class MediaHandler {
             }
 
             // Get full path and verify file exists
-            const fullGifPath = path.join(this.mediaDir, gifName);
-            logger.info('Looking for GIF at:', { path: fullGifPath });
+            const gifPath = path.join(this.mediaDir, gifName);
+            logger.info('Looking for GIF at:', { path: gifPath });
 
-            // List available GIFs for debugging
-            const files = await fs.readdir(this.mediaDir);
-            logger.info('Available GIFs:', { files });
-
-            if (!fs.existsSync(fullGifPath)) {
+            if (!fs.existsSync(gifPath)) {
                 throw new Error(`GIF not found: ${gifName}`);
             }
 
+            // Create temp MP4 file
+            tempFile = path.join(this.tempDir, `${Date.now()}.mp4`);
+
             // Convert GIF to MP4
-            mp4Path = await this.convertGifToMp4(fullGifPath);
+            await this.convertGifToVideo(gifPath, tempFile);
 
             // Read the converted file
-            const buffer = await fs.readFile(mp4Path);
+            const buffer = await fs.readFile(tempFile);
 
             // Send message
             await sock.sendMessage(msg.key.remoteJid, {
@@ -113,22 +79,21 @@ class MediaHandler {
 
         } catch (error) {
             logger.error('Error in sendGifReaction:', error);
-            // Send fallback text message
             try {
                 await sock.sendMessage(msg.key.remoteJid, {
                     text: `${caption} (GIF not available)`,
                     mentions: mentions
                 });
-            } catch (fallbackError) {
-                logger.error('Error sending fallback message:', fallbackError);
+            } catch (sendError) {
+                logger.error('Error sending fallback message:', sendError);
             }
             return false;
         } finally {
             // Cleanup temp file
-            if (mp4Path) {
+            if (tempFile && await fs.pathExists(tempFile)) {
                 try {
-                    await fs.remove(mp4Path);
-                    logger.info('Cleaned up temp file:', mp4Path);
+                    await fs.remove(tempFile);
+                    logger.info('Cleaned up temp file:', tempFile);
                 } catch (cleanupError) {
                     logger.error('Error cleaning up temp file:', cleanupError);
                 }
