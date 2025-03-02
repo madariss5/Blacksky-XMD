@@ -37,22 +37,6 @@ const isOwner = (sender) => {
     }
 };
 
-const commandModules = {
-    reactions: reactionsCommands,
-    owner: ownerCommands,
-    group: groupCommands,
-    nsfw: nsfwCommands,
-    music: musicCommands,
-    ai: aiCommands,
-    basic: basicCommands,
-    user: userCommands,
-    downloader: downloaderCommands,
-    economy: economyCommands,
-    utility: utilityCommands,
-    fun: funCommands,
-    social: socialCommands
-};
-
 // Safely execute command with error handling
 async function executeCommand(moduleName, command, hans, m, args) {
     try {
@@ -63,9 +47,9 @@ async function executeCommand(moduleName, command, hans, m, args) {
         }
 
         // For owner commands, verify ownership
-        if (moduleName === 'owner' && !isOwner(m.sender)) {
+        if (moduleName === 'owner' && !isOwner(m.key.participant || m.key.remoteJid)) {
             logger.warn(`Non-owner tried to use owner command: ${command}`, {
-                sender: m.sender,
+                sender: m.key.participant || m.key.remoteJid,
                 command: command
             });
             await hans.sendMessage(m.key.remoteJid, { 
@@ -84,7 +68,7 @@ async function executeCommand(moduleName, command, hans, m, args) {
             module: moduleName,
             args: args,
             chat: m.chat,
-            sender: m.sender
+            sender: m.key.participant || m.key.remoteJid
         });
 
         await cmdFunc(hans, m, args);
@@ -95,10 +79,9 @@ async function executeCommand(moduleName, command, hans, m, args) {
             error: error.message,
             stack: error.stack,
             chat: m.chat,
-            sender: m.sender
+            sender: m.key.participant || m.key.remoteJid
         });
 
-        // Send a user-friendly error message
         try {
             await hans.sendMessage(m.key.remoteJid, { 
                 text: `❌ Sorry, there was an error executing the command. Please try again later.` 
@@ -112,21 +95,36 @@ async function executeCommand(moduleName, command, hans, m, args) {
     }
 }
 
+const commandModules = {
+    reactions: reactionsCommands,
+    owner: ownerCommands,
+    group: groupCommands,
+    nsfw: nsfwCommands,
+    music: musicCommands,
+    ai: aiCommands,
+    basic: basicCommands,
+    user: userCommands,
+    downloader: downloaderCommands,
+    economy: economyCommands,
+    utility: utilityCommands,
+    fun: funCommands,
+    social: socialCommands
+};
+
 module.exports = async (hans, m, chatUpdate, store) => {
     try {
-        // Basic validation and message type checking
-        if (!m || !m.body) {
+        if (!m || !m.key) {
             logger.debug('Invalid message received', { messageObject: m });
             return;
         }
 
         const prefix = '.';
-        if (!m.body.startsWith(prefix)) {
+        if (!m.body?.startsWith(prefix)) {
             logger.debug('Message does not start with prefix', { body: m.body });
             return;
         }
 
-        // Extract and validate command
+        // Extract command and args
         const [rawCommand, ...args] = m.body.slice(prefix.length).trim().split(/\s+/);
         if (!rawCommand) {
             logger.debug('No command provided');
@@ -134,12 +132,16 @@ module.exports = async (hans, m, chatUpdate, store) => {
         }
 
         const command = rawCommand.toLowerCase();
+
+        // Get the correct sender ID from either participant (group) or remoteJid (private)
+        const senderId = m.key.participant || m.key.remoteJid;
+
         logger.info('Processing command', { 
             command, 
             args,
             chat: m.chat,
-            sender: m.sender,
-            isOwner: isOwner(m.sender)
+            sender: senderId,
+            isOwner: isOwner(senderId)
         });
 
         // Try to execute command in each module
@@ -152,7 +154,7 @@ module.exports = async (hans, m, chatUpdate, store) => {
                     logger.info(`Command ${command} executed successfully`, {
                         module: moduleName,
                         chat: m.chat,
-                        sender: m.sender
+                        sender: senderId
                     });
                     break;
                 }
@@ -168,13 +170,12 @@ module.exports = async (hans, m, chatUpdate, store) => {
         }
 
     } catch (err) {
-        // Handle system-level errors gracefully
         logger.error('Fatal error in command handler', {
             error: err.message,
             stack: err.stack,
             command: m?.body,
             chat: m?.chat,
-            sender: m?.sender
+            sender: m?.key?.participant || m?.key?.remoteJid
         });
 
         try {
