@@ -46,19 +46,19 @@ async function executeCommand(moduleName, command, hans, m, args) {
 }
 
 const commandModules = {
-    reactions: reactionsCommands,
-    owner: ownerCommands.commands,
-    group: groupCommands,
-    nsfw: nsfwCommands,
-    music: musicCommands,
-    ai: aiCommands,
     basic: basicCommands,
     user: userCommands,
-    downloader: downloaderCommands,
+    reactions: reactionsCommands,
+    owner: ownerCommands.commands,
     economy: economyCommands,
     utility: utilityCommands,
     fun: funCommands,
-    social: socialCommands
+    ai: aiCommands,
+    downloader: downloaderCommands,
+    social: socialCommands,
+    music: musicCommands,
+    group: groupCommands,
+    nsfw: nsfwCommands
 };
 
 module.exports = async (hans, m, chatUpdate, store) => {
@@ -69,7 +69,7 @@ module.exports = async (hans, m, chatUpdate, store) => {
         }
 
         // Enhanced message structure logging
-        logger.info('Message structure:', {
+        logger.info('Message received:', {
             messageKey: JSON.stringify(m.key),
             messageType: m.type,
             fromGroup: m.key.remoteJid?.includes('@g.us'),
@@ -80,13 +80,19 @@ module.exports = async (hans, m, chatUpdate, store) => {
             timestamp: m.messageTimestamp
         });
 
+        // Check for command prefix
         const prefix = '.';
-        if (!m.body?.startsWith(prefix)) {
+        const body = m.message?.conversation || 
+                    m.message?.imageMessage?.caption || 
+                    m.message?.videoMessage?.caption || 
+                    m.message?.extendedTextMessage?.text || '';
+
+        if (!body?.startsWith(prefix)) {
             return;
         }
 
         // Parse command and args
-        const [rawCommand, ...args] = m.body.slice(prefix.length).trim().split(/\s+/);
+        const [rawCommand, ...args] = body.slice(prefix.length).trim().split(/\s+/);
         if (!rawCommand) {
             return;
         }
@@ -94,7 +100,7 @@ module.exports = async (hans, m, chatUpdate, store) => {
         const command = rawCommand.toLowerCase();
         const senderId = m.key.participant || m.key.remoteJid;
 
-        // Log command processing with enhanced details
+        // Log command processing
         logger.info('Processing command', { 
             command, 
             args,
