@@ -175,48 +175,35 @@ function addSocketMethods(sock) {
     return sock;
 }
 
-// Enhanced message handling
-async function handleIncomingMessage(sock, msg, chatUpdate) {
+// Enhanced message handling with proper command routing
+async function handleMessage(sock, msg) {
     try {
         if (!msg.message) return;
 
         const messageType = getContentType(msg.message);
-        if (!messageType) {
-            logger.debug('Skipping message with invalid type');
-            return;
-        }
+        if (!messageType) return;
 
-        // Extract message content
         const messageContent = msg.message[messageType]?.text || 
                              msg.message[messageType]?.caption || 
                              msg.message.conversation || '';
 
-        // Process commands
-        if (messageContent.startsWith(config.prefix)) {
-            const args = messageContent.slice(1).trim().split(/ +/);
-            const command = args.shift().toLowerCase();
+        // Process commands using the handler
+        const jid = msg.key.remoteJid;
+        const m = smsg(sock, msg, store);
 
-            // Load command handler
+        if (m) {
             try {
-                const commandsPath = path.join(__dirname, 'commands');
-                const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-
-                for (const file of commandFiles) {
-                    const commandModule = require(path.join(commandsPath, file));
-                    if (commandModule[command]) {
-                        await commandModule[command](sock, msg, args);
-                        break;
-                    }
-                }
+                const handler = require('./handler');
+                await handler(sock, m, { messages: [msg], type: 'notify' }, store);
             } catch (error) {
-                logger.error('Command execution failed:', error);
-                await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Error executing command: ' + error.message
+                logger.error('Error in message handler:', error);
+                await sock.sendMessage(jid, { 
+                    text: '❌ Error processing command' 
                 });
             }
         }
     } catch (error) {
-        logger.error('Message handling failed:', error);
+        logger.error('Error handling message:', error);
     }
 }
 
@@ -235,6 +222,7 @@ async function startHANS() {
         const sock = makeWASocket({
             version,
             logger: pino({ level: 'silent' }),
+            browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49'],
             printQRInTerminal: true,
             auth: state,
             msgRetryCounterCache,
@@ -275,7 +263,7 @@ async function startHANS() {
             if (connection === 'open') {
                 logger.info('WhatsApp connection established!');
                 await sock.sendMessage(sock.user.id, {
-                    text: '🟢 Bot is now online and ready!'
+                    text: '🟢 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 Bot is now online!'
                 }).catch(err => logger.error('Failed to send status message:', err));
             }
         });
@@ -285,7 +273,7 @@ async function startHANS() {
             if (type !== 'notify') return;
 
             for (const message of messages) {
-                await handleIncomingMessage(sock, message, type);
+                await handleMessage(sock, message);
             }
         });
 
