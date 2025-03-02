@@ -16,49 +16,63 @@ const basicCommands = {
             menuText += `┃ ⎆ Date: ${moment().format('DD/MM/YYYY')}\n`;
             menuText += `╰━━━━━━━━━━━━━━━━━━⊷\n\n`;
 
-            // Category icons
-            const categoryIcons = {
-                'ai': '🤖', 'anime': '🎭', 'basic': '📌',
-                'downloader': '📥', 'economy': '💰', 'fun': '🎮',
-                'game': '🎲', 'group': '👥', 'media': '📸',
-                'music': '🎵', 'nsfw': '🔞', 'owner': '👑',
-                'reactions': '🎭', 'social': '🌐', 'tool': '🛠️',
-                'user': '👤', 'utility': '⚙️'
+            // Category emojis
+            const categoryEmojis = {
+                'AI': '🤖',
+                'Anime': '🎭',
+                'Downloader': '📥',
+                'Economy': '💰',
+                'Fun': '🎮',
+                'Game': '🎲',
+                'Group': '👥',
+                'Media': '📸',
+                'Music': '🎵',
+                'NSFW': '🔞',
+                'Owner': '👑',
+                'Reactions': '🎭',
+                'Social': '🌐',
+                'Tool': '🛠️',
+                'User': '👤',
+                'Utility': '⚙️'
             };
 
-            // Read commands directory
+            // Read all command files
             const commandsDir = path.join(__dirname);
             const files = await fs.readdir(commandsDir);
-            const commandFiles = files.filter(file => file.endsWith('.js'));
 
             // Process each command file
-            for (const file of commandFiles) {
-                try {
-                    const category = file.replace('.js', '');
-                    const icon = categoryIcons[category.toLowerCase()] || '📌';
-                    const commands = require(`./${file}`);
-                    const commandList = Object.keys(commands);
+            for (const file of files) {
+                if (file.endsWith('.js')) {
+                    try {
+                        // Clear require cache to ensure fresh load
+                        delete require.cache[require.resolve(path.join(commandsDir, file))];
 
-                    if (commandList.length > 0) {
-                        menuText += `╭━━━━『 ${icon} ${category.toUpperCase()} 』━━━━⊷\n`;
-                        commandList.forEach(cmd => {
-                            menuText += `┃ ❏ ${config.prefix}${cmd}\n`;
-                            if (config.commands[cmd]?.description) {
-                                menuText += `┃ └ ${config.commands[cmd].description}\n`;
-                            }
-                        });
-                        menuText += `╰━━━━━━━━━━━━━━━━━━⊷\n\n`;
+                        // Get category name from file name
+                        const category = file.replace('.js', '');
+                        const categoryName = category.charAt(0).toUpperCase() + category.slice(1);
+                        const emoji = categoryEmojis[categoryName] || '📌';
+
+                        // Import commands from file
+                        const commands = require(path.join(commandsDir, file));
+                        const commandList = Object.keys(commands);
+
+                        if (commandList.length > 0) {
+                            menuText += `╭━━━━『 ${emoji} ${categoryName.toUpperCase()} 』━━━━⊷\n`;
+                            commandList.forEach(cmd => {
+                                menuText += `┃ ⎆ ${config.prefix}${cmd}\n`;
+                            });
+                            menuText += `╰━━━━━━━━━━━━━━━━━━⊷\n\n`;
+                        }
+                    } catch (error) {
+                        logger.error(`Error loading commands from ${file}:`, error);
                     }
-                } catch (error) {
-                    logger.error(`Error loading commands from ${file}:`, error);
                 }
             }
 
             // Add footer
-            menuText += `╭━━━━『 ℹ️ INFO 』━━━━⊷\n`;
-            menuText += `┃ ❏ Prefix: ${config.prefix}\n`;
-            menuText += `┃ ❏ Owner: ${config.ownerName}\n`;
-            menuText += `┃ ❏ Total Commands: ${Object.keys(config.commands).length}\n`;
+            menuText += `╭━━━━『 INFO 』━━━━⊷\n`;
+            menuText += `┃ ⎆ Prefix: ${config.prefix}\n`;
+            menuText += `┃ ⎆ Owner: ${config.ownerName}\n`;
             menuText += `╰━━━━━━━━━━━━━━━━━━⊷\n\n`;
             menuText += `Type ${config.prefix}help <command> for details`;
 
