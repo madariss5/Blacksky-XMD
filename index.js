@@ -244,7 +244,10 @@ async function startHANS() {
 
                 // Check message type and format
                 const messageType = getContentType(msg.message);
-                if (!messageType) return;
+                if (!messageType) {
+                    logger.debug('Invalid message type, skipping');
+                    return;
+                }
 
                 // Apply anti-ban middleware with enhanced error handling
                 try {
@@ -260,13 +263,24 @@ async function startHANS() {
 
                 const m = smsg(hans, msg, store);
                 if (!m) {
-                    logger.debug('Invalid message format, skipping processing');
+                    logger.debug('Failed to parse message, skipping');
                     return;
                 }
 
-                require('./handler')(hans, m, chatUpdate, store);
+                // Load handler dynamically to prevent caching issues
+                try {
+                    const handler = require('./handler');
+                    await handler(hans, m, chatUpdate, store);
+                } catch (handlerError) {
+                    logger.error('Error in message handler:', {
+                        error: handlerError.message,
+                        messageType,
+                        chat: m.chat,
+                        sender: m.sender
+                    });
+                }
             } catch (err) {
-                logger.error('Error in message handler:', err);
+                logger.error('Error processing message:', err);
             }
         });
 
