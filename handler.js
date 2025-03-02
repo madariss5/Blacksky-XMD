@@ -2,135 +2,70 @@ const basicCommands = require('./commands/basic');
 const userCommands = require('./commands/user');
 const reactionsCommands = require('./commands/reactions');
 const ownerCommands = require('./commands/owner');
-const economyCommands = require('./commands/economy');
-const utilityCommands = require('./commands/utility');
 const funCommands = require('./commands/fun');
-const aiCommands = require('./commands/ai');
-const downloaderCommands = require('./commands/downloader');
-const socialCommands = require('./commands/social');
-const musicCommands = require('./commands/music');
-const groupCommands = require('./commands/group');
-const nsfwCommands = require('./commands/nsfw');
 const logger = require('./utils/logger');
 
-// Execute command with improved error handling
-async function executeCommand(moduleName, command, hans, m, args) {
-    try {
-        // Special handling for owner commands
-        if (moduleName === 'owner') {
-            return await ownerCommands.handleCommand(hans, m, command, args);
-        }
-
-        // Handle other commands
-        const module = commandModules[moduleName];
-        if (!module) {
-            logger.warn(`Module ${moduleName} not found`);
-            return null;
-        }
-
-        const cmdFunc = module[command];
-        if (typeof cmdFunc !== 'function') {
-            logger.warn(`Command ${command} not found in module ${moduleName}`);
-            return false;
-        }
-
-        await cmdFunc(hans, m, args);
-        return true;
-    } catch (error) {
-        logger.error(`Error executing command: ${command}`, error);
-        await hans.sendMessage(m.key.remoteJid, { 
-            text: '❌ An error occurred while processing your command.' 
-        }).catch(console.error);
-        return false;
-    }
-}
+const prefix = '.';
 
 const commandModules = {
     basic: basicCommands,
     user: userCommands,
     reactions: reactionsCommands,
     owner: ownerCommands.commands,
-    economy: economyCommands,
-    utility: utilityCommands,
-    fun: funCommands,
-    ai: aiCommands,
-    downloader: downloaderCommands,
-    social: socialCommands,
-    music: musicCommands,
-    group: groupCommands,
-    nsfw: nsfwCommands
+    fun: funCommands
 };
 
-module.exports = async (hans, m, chatUpdate, store) => {
+module.exports = async (sock, msg, { messages, type }, store) => {
     try {
-        if (!m || !m.key) {
-            logger.debug('Invalid message object');
-            return;
-        }
+        if (!msg.body) return;
 
-        // Enhanced message structure logging
+        // Check for prefix
+        if (!msg.body.startsWith(prefix)) return;
+
+        // Parse command
+        const args = msg.body.slice(1).trim().split(/\s+/);
+        const command = args.shift()?.toLowerCase();
+
+        if (!command) return;
+
+        // Enhanced message structure logging (from original)
         logger.info('Message received:', {
-            messageKey: JSON.stringify(m.key),
-            messageType: m.type,
-            fromGroup: m.key.remoteJid?.includes('@g.us'),
-            fromPrivate: m.key.remoteJid?.includes('@s.whatsapp.net'),
-            participant: m.key.participant,
-            remoteJid: m.key.remoteJid,
-            fromMe: m.key.fromMe,
-            timestamp: m.messageTimestamp
+            messageKey: JSON.stringify(msg.key),
+            messageType: msg.type,
+            fromGroup: msg.key.remoteJid?.includes('@g.us'),
+            fromPrivate: msg.key.remoteJid?.includes('@s.whatsapp.net'),
+            participant: msg.key.participant,
+            remoteJid: msg.key.remoteJid,
+            fromMe: msg.key.fromMe,
+            timestamp: msg.messageTimestamp
         });
 
-        // Check for command prefix
-        const prefix = '.';
-        const body = m.message?.conversation || 
-                    m.message?.imageMessage?.caption || 
-                    m.message?.videoMessage?.caption || 
-                    m.message?.extendedTextMessage?.text || '';
-
-        if (!body?.startsWith(prefix)) {
-            return;
-        }
-
-        // Parse command and args
-        const [rawCommand, ...args] = body.slice(prefix.length).trim().split(/\s+/);
-        if (!rawCommand) {
-            return;
-        }
-
-        const command = rawCommand.toLowerCase();
-        const senderId = m.key.participant || m.key.remoteJid;
-
-        // Log command processing
-        logger.info('Processing command', { 
-            command, 
+        // Log command processing (from original)
+        logger.info('Processing command', {
+            command,
             args,
-            chat: m.key.remoteJid,
-            sender: senderId
+            chat: msg.key.remoteJid,
+            sender: msg.key.participant || msg.key.remoteJid
         });
 
-        // Execute command
-        let commandExecuted = false;
-        for (const [moduleName, module] of Object.entries(commandModules)) {
-            if (module && (typeof module[command] === 'function' || moduleName === 'owner')) {
-                const success = await executeCommand(moduleName, command, hans, m, args);
-                if (success) {
-                    commandExecuted = true;
-                    break;
-                }
+
+        // Execute command if found
+        for (const [module, commands] of Object.entries(commandModules)) {
+            if (commands[command]) {
+                await commands[command](sock, msg, args);
+                return;
             }
         }
 
-        // Handle command not found
-        if (!commandExecuted) {
-            await hans.sendMessage(m.key.remoteJid, {
-                text: `Command *${command}* not found. Type ${prefix}menu to see available commands.`
-            });
-        }
+        // Command not found
+        await sock.sendMessage(msg.chat, {
+            text: `Command *${command}* not found. Use ${prefix}menu to see available commands.`
+        });
 
     } catch (err) {
-        logger.error('Fatal error in command handler', err);
-        await hans.sendMessage(m?.key?.remoteJid, { 
-            text: '❌ An error occurred while processing your command.' 
-        }).catch(console.error);
+        logger.error('Error in command handler:', err);
+        await sock.sendMessage(msg.chat, {
+            text: '❌ Error executing command'
+        });
     }
 };
