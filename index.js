@@ -40,8 +40,8 @@ const PORT = process.env.PORT || 5000;
 // Bot configuration
 const owner = formatOwnerNumbers(process.env.OWNER_NUMBER || '254710772666');
 const sessionName = "blacksky-md";
-const botName = "𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻";
-const TIME_ZONE = "Africa/Nairobi";
+const botName = process.env.BOT_NAME || "𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻";
+const TIME_ZONE = process.env.TIME_ZONE || "Africa/Nairobi";
 
 // Initialize store with proper pino instance
 const store = makeInMemoryStore({ 
@@ -73,50 +73,35 @@ const startServer = () => {
                 resolve(true);
             });
 
-        // Keep-alive interval
-        setInterval(() => {
-            axios.get(`http://0.0.0.0:${PORT}/`)
-                .catch(() => logger.debug('Keep-alive ping'));
-        }, 5 * 60 * 1000);
+        // Optional keep-alive ping for hosted environments
+        if (process.env.ENABLE_KEEP_ALIVE === 'true') {
+            setInterval(() => {
+                axios.get(`http://0.0.0.0:${PORT}/`)
+                    .catch(() => logger.debug('Keep-alive ping'));
+            }, 5 * 60 * 1000);
+        }
     });
 };
 
-// Update the sessionConfig object to use settings from config.js
-const config = require('./config');
+// Update the sessionConfig object with environment variables
 const sessionConfig = {
-    sessionName: config.session.id,
-    authDir: config.session.authDir,
-    printQRInTerminal: config.session.printQRInTerminal,
-    logger: pino({ level: config.session.logLevel }),
-    browser: config.session.browser,
-    defaultQueryTimeoutMs: config.session.defaultQueryTimeoutMs,
-    connectTimeoutMs: config.session.connectTimeoutMs,
-    qrTimeout: config.session.qrTimeout,
-    keepAliveIntervalMs: config.session.keepAliveIntervalMs,
-    emitOwnEvents: config.session.emitOwnEvents,
-    markOnlineOnConnect: config.session.markOnlineOnConnect,
-    retryRequestDelayMs: config.session.retryRequestDelayMs
+    sessionName: process.env.SESSION_NAME || 'blacksky-md',
+    authDir: process.env.AUTH_DIR || './auth_info',
+    printQRInTerminal: true,
+    logger: pino({ level: process.env.LOG_LEVEL || 'info' }),
+    browser: ['BLACKSKY-MD', 'Safari', '1.0.0'],
+    defaultQueryTimeoutMs: 60000,
+    connectTimeoutMs: 60000,
+    qrTimeout: 60000,
+    keepAliveIntervalMs: 30000,
+    emitOwnEvents: true,
+    markOnlineOnConnect: true,
+    retryRequestDelayMs: 2000
 };
 
 // Enhanced auth state loading with better error handling
 const loadAuthState = async () => {
     try {
-        if (process.env.SESSION_DATA) {
-            try {
-                const sessionData = JSON.parse(process.env.SESSION_DATA);
-                logger.info('Session data loaded from environment');
-                return {
-                    state: sessionData,
-                    saveCreds: async () => {
-                        logger.info('Session updated (environment mode)');
-                    }
-                };
-            } catch (e) {
-                logger.error('Invalid SESSION_DATA format:', e);
-                throw new Error('Invalid session data format');
-            }
-        }
-
         // Local auth state handling
         const authInfo = await useMultiFileAuthState(sessionConfig.authDir);
 
@@ -130,7 +115,7 @@ const loadAuthState = async () => {
         return authInfo;
     } catch (error) {
         logger.error('Critical error loading auth state:', error);
-        throw error; // Re-throw to trigger restart
+        throw error;
     }
 };
 

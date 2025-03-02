@@ -16,7 +16,7 @@ if (!formattedOwnerNumber) {
 
 module.exports = {
     prefix: '.',  // Command prefix
-    ownerNumber: formattedOwnerNumber,
+    ownerNumber: formattedOwnerNumber,  // Clean number format without suffix
     ownerName: process.env.OWNER_NAME || 'BLACKSKY',
     botName: '𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻',
     botNumber: '', // Will be set after connection

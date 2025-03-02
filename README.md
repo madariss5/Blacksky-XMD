@@ -1,4 +1,4 @@
-# 𝔹𝕃𝔸ℂ𝕂𝕊 KY-𝕄𝔻
+# 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻
 A highly advanced WhatsApp Multi-Device bot with AI capabilities and robust functionality.
 
 ## 🌟 Features
@@ -13,11 +13,13 @@ A highly advanced WhatsApp Multi-Device bot with AI capabilities and robust func
 - 🌐 Multi-Language Support
 
 ## 📋 Prerequisites
-- Node.js 16+
+Before running the bot, ensure you have the following installed:
+- Node.js 16+ (Download from [nodejs.org](https://nodejs.org))
 - A WhatsApp account
-- [FFmpeg](https://ffmpeg.org/download.html)
+- FFmpeg ([FFmpeg Installation Guide](https://ffmpeg.org/download.html))
+- Git (for cloning the repository)
 
-## ⚡️ Quick Installation
+## ⚡️ Local Installation
 ```bash
 # Clone the repository
 git clone https://github.com/yourusername/blacksky-md.git
@@ -28,71 +30,101 @@ cd blacksky-md
 # Install dependencies
 npm install
 
-# Setup environment variables
+# Create environment configuration
 cp .env.example .env
-# Edit .env with your values
-
-# Start the bot
-npm start
+# Edit .env with your configuration
 ```
 
-## 🔐 Environment Variables
-Create a `.env` file with:
+## 🔐 Environment Configuration
+Create a `.env` file with the following variables:
 ```env
-OWNER_NUMBER=your_number
+# Required Configuration
+OWNER_NUMBER=your_whatsapp_number
 OWNER_NAME=your_name
 PREFIX=!
 BOT_NAME=BLACKSKY-MD
+
+# Optional AI Features (if you want to use AI commands)
+OPENAI_API_KEY=your_openai_api_key
+REPLICATE_API_TOKEN=your_replicate_token
+
+# Optional API Keys for Additional Features
+NEWS_API_KEY=your_newsapi_key
+WEATHER_API_KEY=your_openweather_key
 ```
 
-## 🚀 Deployment
-### Local Deployment
-1. Complete the installation steps above
-2. Run `npm start`
-3. Scan the QR code with WhatsApp
+## 🚀 Running the Bot
+```bash
+# Start the bot
+npm start
 
-### Heroku Deployment
-[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/yourusername/blacksky-md)
+# The bot will generate a QR code
+# Scan the QR code with WhatsApp to log in
+```
 
-1. Click the deploy button above
-2. Set the required environment variables
-3. Deploy and scan the QR code
+## 🔄 Keeping the Bot Online
+For 24/7 operation, you can use process managers like PM2:
+```bash
+# Install PM2
+npm install -g pm2
 
-## 🛡️ Security
-- ✅ No API keys stored in code
-- ✅ Session file encryption
-- ✅ Anti-spam protection
-- ✅ Group invite filtering
-- ✅ Auto-ban for suspicious activity
+# Start the bot with PM2
+pm2 start index.js --name blacksky-bot
+
+# Monitor the bot
+pm2 monit
+
+# View logs
+pm2 logs blacksky-bot
+```
 
 ## 📚 Command Categories
-- 🎯 Basic Commands
-- 👥 Group Management
-- 🎮 Games & Fun
-- 🔧 Utility Tools
-- 🤖 AI Features
-- 📥 Downloaders
-- 🎵 Music & Media
-- 👑 Owner Commands
+- 🎯 Basic Commands - General bot interactions
+- 👥 Group Management - Manage group settings and members
+- 🎮 Games & Fun - Interactive commands and games
+- 🔧 Utility Tools - Helpful utilities and tools
+- 🤖 AI Features - AI-powered interactions
+- 📥 Downloaders - Media download capabilities
+- 🎵 Music & Media - Audio and media features
+- 👑 Owner Commands - Bot administration
+
+## ⚠️ Important Notes
+1. Keep your `.env` file private and never share it
+2. Regularly backup your `auth_info` directory
+3. Monitor your API usage if using AI features
+4. Follow WhatsApp's terms of service
+5. Update dependencies regularly for security
+
+## 🆘 Troubleshooting
+Common issues and solutions:
+1. **Connection Issues**
+   - Ensure stable internet connection
+   - Check if WhatsApp Web is accessible
+   - Clear the `auth_info` directory and rescan QR
+
+2. **Dependencies Issues**
+   ```bash
+   # Clear npm cache
+   npm cache clean --force
+
+   # Reinstall dependencies
+   rm -rf node_modules
+   npm install
+   ```
+
+3. **FFmpeg Issues**
+   - Verify FFmpeg installation: `ffmpeg -version`
+   - Add FFmpeg to system PATH
 
 ## 🤝 Contributing
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
 5. Open a Pull Request
-
-## ⚠️ Important Notes
-- Do not share your session files
-- Keep your `.env` file private
-- Regular updates recommended
-- Follow WhatsApp's terms of service
 
 ## 📄 License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-Join our WhatsApp support group: [Click Here](https://chat.whatsapp.com/your-group-link)
 
 ## 🙏 Credits
 - [WhiskeySockets/Baileys](https://github.com/WhiskeySockets/Baileys)
