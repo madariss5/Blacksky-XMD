@@ -3,67 +3,78 @@ const logger = pino({ level: 'silent' });
 const os = require('os');
 const moment = require('moment-timezone');
 const config = require('../config');
-const fs = require('fs').promises;
-const path = require('path');
 
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            const time = moment().format('HH:mm:ss');
-            const date = moment().format('DD/MM/YYYY');
-            const uptime = process.uptime();
-            const hours = Math.floor(uptime / 3600);
-            const minutes = Math.floor((uptime % 3600) / 60);
-            const seconds = Math.floor(uptime % 60);
+            const text = `╔═════[ *${config.botName}* ]═════⊱
+┃ ╭═══〘 ꧁ INFO ꧂ 〙═══⊱
+┃ │ 
+┃ │ Prefix: ${config.prefix}
+┃ │ User: ${msg.pushName}
+┃ │ Time: ${moment().format('HH:mm:ss')}
+┃ │ Date: ${moment().format('DD/MM/YYYY')}
+┃ │
+┃ ╰═══════════════⊱
+┃
+┃ ╭═══〘 ꧁ AI COMMANDS ꧂ 〙
+┃ │ 
+┃ │ ➦ ${config.prefix}ai
+┃ │ ➦ ${config.prefix}gpt
+┃ │ ➦ ${config.prefix}dalle
+┃ │ ➦ ${config.prefix}imagine
+┃ │ ➦ ${config.prefix}remini
+┃ │ ➦ ${config.prefix}blackbox
+┃ │
+┃ ╰═══════════════⊱
+┃
+┃ ╭═══〘 ꧁ GROUP COMMANDS ꧂ 〙
+┃ │ 
+┃ │ ➦ ${config.prefix}kick
+┃ │ ➦ ${config.prefix}add
+┃ │ ➦ ${config.prefix}promote
+┃ │ ➦ ${config.prefix}demote
+┃ │ ➦ ${config.prefix}antilink
+┃ │ ➦ ${config.prefix}welcome
+┃ │
+┃ ╰═══════════════⊱
+┃
+┃ ╭═══〘 ꧁ MEDIA COMMANDS ꧂ 〙
+┃ │ 
+┃ │ ➦ ${config.prefix}sticker
+┃ │ ➦ ${config.prefix}toimg
+┃ │ ➦ ${config.prefix}tomp3
+┃ │ ➦ ${config.prefix}play
+┃ │ ➦ ${config.prefix}tiktok
+┃ │ ➦ ${config.prefix}instagram
+┃ │ ➦ ${config.prefix}facebook
+┃ │
+┃ ╰═══════════════⊱
+┃
+┃ ╭═══〘 ꧁ FUN COMMANDS ꧂ 〙
+┃ │ 
+┃ │ ➦ ${config.prefix}quote
+┃ │ ➦ ${config.prefix}joke
+┃ │ ➦ ${config.prefix}meme
+┃ │ ➦ ${config.prefix}truth
+┃ │ ➦ ${config.prefix}dare
+┃ │
+┃ ╰═══════════════⊱
+┃
+┃ ╭═══〘 ꧁ OWNER COMMANDS ꧂ 〙
+┃ │ 
+┃ │ ➦ ${config.prefix}broadcast
+┃ │ ➦ ${config.prefix}block
+┃ │ ➦ ${config.prefix}unblock
+┃ │ ➦ ${config.prefix}ban
+┃ │ ➦ ${config.prefix}unban
+┃ │ ➦ ${config.prefix}restart
+┃ │
+┃ ╰═══════════════⊱
+╚════════════════⊱
 
-            // Create fancy header
-            let text = `╔═══════ஜ۩۞۩ஜ═══════╗\n`;
-            text += `║    ⚡ ${config.botName} ⚡    ║\n`;
-            text += `╚═══════ஜ۩۞۩ஜ═══════╝\n\n`;
+Type ${config.prefix}help <command> for detailed info`;
 
-            // Bot Info Section
-            text += `┏━━━⟪ *BOT INFO* ⟫━━━┓\n`;
-            text += `┃ ⚡ *Bot Name:* ${config.botName}\n`;
-            text += `┃ 👤 *User:* ${msg.pushName}\n`;
-            text += `┃ ⏰ *Time:* ${time}\n`;
-            text += `┃ 📅 *Date:* ${date}\n`;
-            text += `┃ ⌛ *Uptime:* ${hours}h ${minutes}m ${seconds}s\n`;
-            text += `┗━━━━━━━━━━━━━━━┛\n\n`;
-
-            // Get commands directory path
-            const commandsDir = path.join(__dirname);
-            const files = await fs.readdir(commandsDir);
-            const commandFiles = files.filter(file => file.endsWith('.js'));
-
-            // Process each command file
-            for (const file of commandFiles) {
-                try {
-                    logger.info(`Loading commands from ${file}`);
-                    delete require.cache[require.resolve(path.join(commandsDir, file))];
-                    const commands = require(`./${file}`);
-
-                    const categoryName = file.replace('.js', '').toUpperCase();
-                    const commandList = Object.keys(commands);
-
-                    if (commandList.length > 0) {
-                        text += `┏━━━⟪ *${categoryName}* ⟫━━━┓\n`;
-                        for (const cmd of commandList) {
-                            text += `┃ ඬ⃟ ${config.prefix}${cmd}\n`;
-                        }
-                        text += `┗━━━━━━━━━━━━━━━┛\n\n`;
-                    }
-                } catch (error) {
-                    logger.error(`Error loading commands from ${file}:`, error);
-                }
-            }
-
-            // Footer
-            text += `╔═══════ஜ۩۞۩ஜ═══════╗\n`;
-            text += `║  Type ${config.prefix}help <command>  ║\n`;
-            text += `║     for detailed usage info    ║\n`;
-            text += `╚═══════ஜ۩۞۩ஜ═══════╝`;
-
-            // Send the menu with image
             await sock.sendMessage(msg.key.remoteJid, {
                 image: { url: config.menuImage },
                 caption: text,
