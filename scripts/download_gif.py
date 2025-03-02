@@ -34,10 +34,8 @@ def download_gif(url, filename):
         logger.error(f"Error downloading GIF: {str(e)}")
         return False
 
-# Let's try these URLs from the test data that we know work
-wave_url = "https://media.giphy.com/media/FvVtnY82LPxrG/giphy.gif"
-yeet_url = "https://media.giphy.com/media/WJjLyXCVvro2I/giphy.gif"
+# Using a more reliable CDN URL for anime throw GIF
+yeet_url = "https://c.tenor.com/X5nBN_p_j5IAAAAC/throw-yeet.gif"
 
-success_wave = download_gif(wave_url, "wave.gif")
-success_yeet = download_gif(yeet_url, "yeet.gif")
-sys.exit(0 if success_wave and success_yeet else 1)
+success = download_gif(yeet_url, "yeet.gif")
+sys.exit(0 if success else 1)

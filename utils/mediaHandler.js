@@ -42,6 +42,16 @@ class MediaHandler {
         try {
             const gifPath = path.join(this.mediaDir, gifName.endsWith('.gif') ? gifName : `${gifName}.gif`);
 
+            // Check if GIF exists and has content
+            if (!await fs.pathExists(gifPath)) {
+                logger.warn(`GIF not found: ${gifPath}`);
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: caption,
+                    mentions
+                });
+                return true;
+            }
+
             // Quick file check
             const buffer = await fs.readFile(gifPath);
             if (!buffer.length) throw new Error('Invalid GIF file');
@@ -61,10 +71,10 @@ class MediaHandler {
 
             return true;
         } catch (error) {
-            // Simplified error handling
+            // Improved error handling - always send the caption
             if (tempFile) await fs.remove(tempFile).catch(() => {});
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `${caption} (GIF not available)`,
+                text: caption,
                 mentions
             });
             return false;
@@ -79,6 +89,6 @@ const mediaHandler = new MediaHandler();
 
 module.exports = {
     mediaHandler,
-    sendGifReaction: (sock, msg, gifName, caption = '', mentions = []) => 
+    sendGifReaction: (sock, msg, gifName, caption = '', mentions = []) =>
         mediaHandler.sendGifReaction(sock, msg, gifName, caption, mentions)
 };

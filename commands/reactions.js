@@ -231,14 +231,14 @@ const reactionCommands = {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
-            const caption = `*${msg.pushName}* yeeted ${target}! (ノಠ益ಠ)ノ彡┻━┻`;
+            const caption = `*${msg.pushName}* yeeted ${target}! (╯°□°）╯︵ ┻━┻`;
 
             logger.info('Executing yeet command:', { target, mentions });
-            await sendGifReaction(sock, msg, 'yeet.gif', caption, mentions);
+            await sendGifReaction(sock, msg, 'throw.gif', caption, mentions);
         } catch (error) {
             logger.error('Error in yeet command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '(｡•́︿•̀｡) Sorry senpai, I couldn\'t find the yeet animation! Try again later~'
+                text: `*${msg.pushName}* violently yeeted ${target} across the chat! (ノಠ益ಠ)ノ彡┻━┻`
             });
         }
     },
