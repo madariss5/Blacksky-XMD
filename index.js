@@ -21,7 +21,6 @@ const logger = pino({
     }
 });
 
-const { Boom } = require('@hapi/boom');
 const fs = require('fs-extra');
 const chalk = require('chalk');
 const path = require('path');
@@ -34,6 +33,8 @@ const ffmpeg = require('fluent-ffmpeg');
 const { smsg } = require('./lib/simple');
 const qrcode = require('qrcode-terminal');
 const { compressCredsFile } = require('./utils/creds');
+const { Boom } = require('@hapi/boom');
+
 
 // Global variables
 global.authState = null;
