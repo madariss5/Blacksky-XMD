@@ -453,35 +453,45 @@ const config = {
             category: 'Owner',
             usage: '.status'
         },
-        setprefix: {
-            description: 'Change bot command prefix',
+        clearcache: {
+            description: 'Clear bot cache files',
             category: 'Owner',
-            usage: '.setprefix <new_prefix>'
+            usage: '.clearcache'
         },
-        setname: {
-            description: 'Change bot display name',
+        shutdown: {
+            description: 'Shut down the bot',
             category: 'Owner',
-            usage: '.setname <new_name>'
+            usage: '.shutdown'
         },
-        setbio: {
-            description: 'Change bot bio/status',
+        setowner: {
+            description: 'Set new bot owner',
             category: 'Owner',
-            usage: '.setbio <new_bio>'
+            usage: '.setowner <number>'
         },
-        setppbot: {
-            description: 'Change bot profile picture',
+        maintenance: {
+            description: 'Toggle maintenance mode',
             category: 'Owner',
-            usage: '.setppbot [reply to image]'
+            usage: '.maintenance on/off'
         },
-        ban: {
-            description: 'Ban user from using bot',
+        settings: {
+            description: 'View bot settings',
             category: 'Owner',
-            usage: '.ban @user'
+            usage: '.settings'
         },
-        unban: {
-            description: 'Unban user from using bot',
+        backup: {
+            description: 'Create bot backup',
             category: 'Owner',
-            usage: '.unban @user'
+            usage: '.backup'
+        },
+        update: {
+            description: 'Update bot from repository',
+            category: 'Owner',
+            usage: '.update'
+        },
+        config: {
+            description: 'View/edit bot configuration',
+            category: 'Owner',
+            usage: '.config [set <key> <value>]'
         },
 
 

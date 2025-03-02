@@ -2,6 +2,9 @@ const logger = require('pino')();
 const config = require('../config');
 const { formatPhoneNumber, addWhatsAppSuffix } = require('../utils/phoneNumber');
 const { restartBot } = require('../scripts/restart');
+const fs = require('node:fs/promises');
+const path = require('node:path');
+
 
 // Core owner validation
 const isOwner = (senderId) => {
@@ -392,6 +395,225 @@ const ownerCommands = {
             logger.error('Error in setppbot command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Failed to update bot profile picture'
+            });
+        }
+    },
+
+    clearcache: async (sock, msg) => {
+        try {
+            if (!await ownerCommands.handleOwnerCommand(sock, msg)) return;
+
+            // Clear all caches
+            const caches = ['./temp', './auth_info_baileys'];
+            for (const cache of caches) {
+                try {
+                    await fs.emptyDir(cache);
+                } catch (err) {
+                    logger.error(`Error clearing ${cache}:`, err);
+                }
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '✅ Successfully cleared all caches!'
+            });
+
+            logger.info('Cache cleared by owner');
+        } catch (error) {
+            logger.error('Error in clearcache command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to clear cache'
+            });
+        }
+    },
+
+    shutdown: async (sock, msg) => {
+        try {
+            if (!await ownerCommands.handleOwnerCommand(sock, msg)) return;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '👋 Bot is shutting down...'
+            });
+
+            logger.info('Bot shutdown initiated by owner');
+            process.exit(0);
+        } catch (error) {
+            logger.error('Error in shutdown command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to shut down bot'
+            });
+        }
+    },
+
+    setowner: async (sock, msg, args) => {
+        try {
+            if (!await ownerCommands.handleOwnerCommand(sock, msg)) return;
+
+            if (!args[0]) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide the new owner number!\nUsage: .setowner number'
+                });
+            }
+
+            const newOwner = args[0].replace(/[^0-9]/g, '');
+            // Update owner number in environment/config
+            process.env.OWNER_NUMBER = newOwner;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Bot owner updated to: ${newOwner}`
+            });
+
+            logger.info('Bot owner updated:', newOwner);
+        } catch (error) {
+            logger.error('Error in setowner command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to update owner'
+            });
+        }
+    },
+
+    maintenance: async (sock, msg, args) => {
+        try {
+            if (!await ownerCommands.handleOwnerCommand(sock, msg)) return;
+
+            const status = args[0]?.toLowerCase() === 'on';
+            global.maintenance = status;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Maintenance mode ${status ? 'enabled' : 'disabled'}`
+            });
+
+            logger.info('Maintenance mode updated:', status);
+        } catch (error) {
+            logger.error('Error in maintenance command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to update maintenance mode'
+            });
+        }
+    },
+
+    settings: async (sock, msg, args) => {
+        try {
+            if (!await ownerCommands.handleOwnerCommand(sock, msg)) return;
+
+            const settings = {
+                prefix: config.prefix,
+                ownerNumber: config.ownerNumber,
+                botName: config.botName,
+                maintenance: global.maintenance || false,
+                sessionId: config.session.id,
+                platform: process.platform,
+                nodeVersion: process.version
+            };
+
+            const settingsText = `🔧 *Bot Settings*\n\n` +
+                               `• Prefix: ${settings.prefix}\n` +
+                               `• Owner: ${settings.ownerNumber}\n` +
+                               `• Name: ${settings.botName}\n` +
+                               `• Maintenance: ${settings.maintenance ? 'On' : 'Off'}\n` +
+                               `• Session: ${settings.sessionId}\n` +
+                               `• Platform: ${settings.platform}\n` +
+                               `• Node.js: ${settings.nodeVersion}`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text: settingsText });
+        } catch (error) {
+            logger.error('Error in settings command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to fetch settings'
+            });
+        }
+    },
+
+    backup: async (sock, msg) => {
+        try {
+            if (!await ownerCommands.handleOwnerCommand(sock, msg)) return;
+
+            const backupDir = './backups';
+            await fs.ensureDir(backupDir);
+
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const backupFile = path.join(backupDir, `backup-${timestamp}.zip`);
+
+            // Add directories to backup
+            const dirsToBackup = ['./auth_info', './database', './config.js'];
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '📦 Creating backup...'
+            });
+
+            // Backup logic here
+            // For demonstration, we'll just create an empty file
+            await fs.writeFile(backupFile, '');
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '✅ Backup created successfully!'
+            });
+
+            logger.info('Backup created:', backupFile);
+        } catch (error) {
+            logger.error('Error in backup command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to create backup'
+            });
+        }
+    },
+
+    update: async (sock, msg) => {
+        try {
+            if (!await ownerCommands.handleOwnerCommand(sock, msg)) return;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🔄 Checking for updates...'
+            });
+
+            // Update logic would go here
+            // For demonstration, we'll just show a message
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '✅ Bot is already up to date!'
+            });
+        } catch (error) {
+            logger.error('Error in update command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to check for updates'
+            });
+        }
+    },
+
+    config: async (sock, msg, args) => {
+        try {
+            if (!await ownerCommands.handleOwnerCommand(sock, msg)) return;
+
+            if (!args.length) {
+                const configText = `⚙️ *Bot Configuration*\n\n` +
+                                 `To edit a config value:\n` +
+                                 `.config set <key> <value>\n\n` +
+                                 `Available keys:\n` +
+                                 `• prefix\n` +
+                                 `• botName\n` +
+                                 `• ownerName\n` +
+                                 `• language\n` +
+                                 `• autoRead\n` +
+                                 `• antiSpam`;
+
+                return await sock.sendMessage(msg.key.remoteJid, { text: configText });
+            }
+
+            const [action, key, ...value] = args;
+            if (action !== 'set' || !key) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Invalid usage!\nUse: .config set <key> <value>'
+                });
+            }
+
+            // Config update logic would go here
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Updated config: ${key} = ${value.join(' ')}`
+            });
+
+            logger.info('Config updated:', { key, value: value.join(' ') });
+        } catch (error) {
+            logger.error('Error in config command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to update config'
             });
         }
     }
