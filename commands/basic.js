@@ -3,8 +3,15 @@ const logger = pino({ level: 'silent' });
 const os = require('os');
 const moment = require('moment-timezone');
 const config = require('../config');
-const fs = require('fs').promises;
-const path = require('path');
+
+// Import all command modules
+const aiCommands = require('./ai');
+const utilityCommands = require('./utility');
+const groupCommands = require('./group');
+const mediaCommands = require('./media');
+const funCommands = require('./fun');
+const ownerCommands = require('./owner');
+const userCommands = require('./user');
 
 const basicCommands = {
     menu: async (sock, msg) => {
@@ -15,32 +22,31 @@ const basicCommands = {
             menuText += `┃ ⎆ Date: ${moment().format('DD/MM/YYYY')}\n`;
             menuText += `╚═════════════════════⊷\n\n`;
 
-            // Read command files
-            const commandFiles = await fs.readdir(__dirname);
+            // Create command groups
+            const commandGroups = {
+                'AI': aiCommands,
+                'UTILITY': utilityCommands,
+                'GROUP': groupCommands,
+                'MEDIA': mediaCommands,
+                'FUN': funCommands,
+                'OWNER': ownerCommands,
+                'USER': userCommands,
+                'BASIC': basicCommands
+            };
 
-            // Process each command file
-            for (const file of commandFiles) {
-                if (file.endsWith('.js')) {
-                    try {
-                        // Clear require cache to ensure fresh load
-                        delete require.cache[require.resolve(path.join(__dirname, file))];
-
-                        // Load commands from file
-                        const commands = require(path.join(__dirname, file));
-                        const category = file.replace('.js', '').toUpperCase();
-
-                        // Add category header
-                        menuText += `╔═══『 ${category} 』═══⊷\n`;
-
-                        // Add each command from the file
-                        Object.keys(commands).forEach(cmd => {
-                            menuText += `┃ ⎆ ${config.prefix}${cmd}\n`;
-                        });
-
-                        menuText += `╚═════════════════════⊷\n\n`;
-                    } catch (error) {
-                        logger.error(`Error loading commands from ${file}:`, error);
+            // Add each category and its commands
+            for (const [category, commands] of Object.entries(commandGroups)) {
+                const commandList = Object.keys(commands);
+                if (commandList.length > 0) {
+                    menuText += `╔═══『 ${category} 』═══⊷\n`;
+                    for (const cmd of commandList) {
+                        menuText += `┃ ⎆ ${config.prefix}${cmd}\n`;
+                        // Add description if available
+                        if (config.commands[cmd]?.description) {
+                            menuText += `┃ └ ${config.commands[cmd].description}\n`;
+                        }
                     }
+                    menuText += `╚═════════════════════⊷\n\n`;
                 }
             }
 
