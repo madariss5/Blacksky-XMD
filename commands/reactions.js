@@ -231,10 +231,10 @@ const reactionCommands = {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
             const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
-            const caption = `*${msg.pushName}* yeeted ${target}! 🚀`;
+            const caption = `*${msg.pushName}* yeeted ${target}! ＼(｀0´)／`;
 
             logger.info('Executing yeet command:', { target, mentions });
-            await sendGifReaction(sock, msg, 'yeet.gif', caption, mentions);
+            await sendGifReaction(sock, msg, 'anime-yeet.gif', caption, mentions);
         } catch (error) {
             logger.error('Error in yeet command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
