@@ -2,7 +2,8 @@ const logger = require('pino')();
 const os = require('os');
 const moment = require('moment-timezone');
 const config = require('../config');
-const { allCommands } = require('../handler');
+const fs = require('fs').promises;
+const path = require('path');
 
 const basicCommands = {
     menu: async (sock, msg) => {
@@ -19,19 +20,9 @@ const basicCommands = {
             menuText += `┃ 📅 *Date:* ${moment().format('DD/MM/YYYY')}\n`;
             menuText += `┗━━━━━━━━━━━━━━━┛\n\n`;
 
-            // Organize commands by category
-            const categories = {};
-            for (const [cmdName, cmdFunction] of Object.entries(allCommands)) {
-                // Get category from config or default to 'Misc'
-                const category = config.commands[cmdName]?.category || 'Misc';
-                if (!categories[category]) {
-                    categories[category] = [];
-                }
-                categories[category].push({
-                    command: cmdName,
-                    description: config.commands[cmdName]?.description || ''
-                });
-            }
+            // Get commands directory
+            const commandsDir = path.join(__dirname);
+            const files = await fs.readdir(commandsDir);
 
             // Category emoji mapping
             const categoryEmojis = {
@@ -56,20 +47,35 @@ const basicCommands = {
                 'Misc': '📦'
             };
 
-            // Add commands by category
-            Object.entries(categories).sort().forEach(([category, commands]) => {
-                const emoji = categoryEmojis[category] || '📌';
-                menuText += `┏━━━⟪ ${emoji} *${category}* ⟫━━━┓\n`;
-                commands.forEach(({command, description}) => {
-                    menuText += `┃ ඬ⃟ ${config.prefix}${command}\n`;
-                    if (description) {
-                        menuText += `┃ └ ${description}\n`;
-                    }
-                });
-                menuText += `┗━━━━━━━━━━━━━━━┛\n\n`;
-            });
+            // Process each command file
+            for (const file of files) {
+                if (file.endsWith('.js')) {
+                    try {
+                        const filePath = path.join(commandsDir, file);
+                        const category = file.replace('.js', '');
+                        const emoji = categoryEmojis[category] || '📌';
 
-            // Footer
+                        // Clear require cache and load commands
+                        delete require.cache[require.resolve(filePath)];
+                        const commands = require(filePath);
+                        const commandList = Object.keys(commands);
+
+                        if (commandList.length > 0) {
+                            menuText += `┏━━━⟪ ${emoji} *${category.toUpperCase()}* ⟫━━━┓\n`;
+                            for (const cmd of commandList) {
+                                menuText += `┃ ඬ⃟ ${config.prefix}${cmd}\n`;
+                                if (config.commands[cmd]?.description) {
+                                    menuText += `┃ └ ${config.commands[cmd].description}\n`;
+                                }
+                            }
+                            menuText += `┗━━━━━━━━━━━━━━━┛\n\n`;
+                        }
+                    } catch (error) {
+                        logger.error(`Error loading commands from ${file}:`, error);
+                    }
+                }
+            }
+
             menuText += `╔═══════ஜ۩۞۩ஜ═══════╗\n`;
             menuText += `║  Type ${config.prefix}help <command>  ║\n`;
             menuText += `╚═══════ஜ۩۞۩ஜ═══════╝`;
