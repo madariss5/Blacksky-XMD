@@ -39,59 +39,28 @@ const config = {
     ownerName: process.env.OWNER_NAME || 'BLACKSKY',
     botName: process.env.BOT_NAME || '𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻',
     botNumber: '',
-    menuImage: process.env.MENU_IMAGE || 'https://raw.githubusercontent.com/your-repo/assets/main/f9.jpg',
 
     // Session configuration
     session: sessionConfig,
 
     // Command configurations
     commands: {
-        // Basic Commands
-        menu: { description: 'Show all available commands', category: 'Basic' },
-        help: { description: 'Get help with commands', category: 'Basic' },
-        ping: { description: 'Check bot response time', category: 'Basic' },
-
-        // Game Commands
-        numguess: { description: 'Play number guessing game', category: 'Game' },
-        hangman: { description: 'Play hangman game', category: 'Game' },
-        leaderboard: { description: 'View game leaderboard', category: 'Game' },
-
-        // Media Commands
+        // Media Conversion Commands
         sticker: { description: 'Create sticker from image/video', category: 'Media' },
-        toimg: { description: 'Convert sticker to image', category: 'Media' },
-        meme: { description: 'Create or get random memes', category: 'Media' },
-        ytmp3: { description: 'Download YouTube audio', category: 'Media' },
-        ytmp4: { description: 'Download YouTube video', category: 'Media' },
+        tts: { description: 'Convert text to speech', category: 'Media' },
+        translate: { description: 'Translate text', category: 'Media' },
+        ytmp3: { description: 'Download YouTube audio as MP3', category: 'Media' },
+        ytmp4: { description: 'Download YouTube video as MP4', category: 'Media' },
 
-        // Group Commands
-        welcome: { description: 'Toggle welcome messages', category: 'Group' },
-        goodbye: { description: 'Toggle goodbye messages', category: 'Group' },
-        invitelink: { description: 'Get group invite link', category: 'Group' },
+        // Information Commands
+        weather: { description: 'Get weather info', category: 'Info' },
+        calc: { description: 'Calculate expression', category: 'Info' },
+        stats: { description: 'Show bot statistics', category: 'Info' },
 
-        // Education Commands
-        math: { description: 'Solve math expressions', category: 'Education' },
-        dictionary: { description: 'Look up word definitions', category: 'Education' },
-        wiki: { description: 'Search Wikipedia', category: 'Education' },
-        translate: { description: 'Translate text', category: 'Education' },
-
-        // Economy Commands
-        balance: { description: 'Check your balance', category: 'Economy' },
-        daily: { description: 'Claim daily rewards', category: 'Economy' },
-        work: { description: 'Work to earn coins', category: 'Economy' },
-        mine: { description: 'Mine for coins', category: 'Economy' },
-        bank: { description: 'View bank balance', category: 'Economy' },
-        deposit: { description: 'Deposit coins to bank', category: 'Economy' },
-        withdraw: { description: 'Withdraw coins from bank', category: 'Economy' },
-        transfer: { description: 'Transfer coins to others', category: 'Economy' },
-        shop: { description: 'View item shop', category: 'Economy' },
-        buy: { description: 'Buy items from shop', category: 'Economy' },
-        sell: { description: 'Sell items from inventory', category: 'Economy' },
-        inventory: { description: 'View your inventory', category: 'Economy' },
-
-        // AI Commands
-        ai: { description: 'Chat with AI assistant', category: 'AI' },
-        gpt: { description: 'Chat with GPT model', category: 'AI' },
-        dalle: { description: 'Generate images with DALL-E', category: 'AI' }
+        // System Commands
+        ping: { description: 'Check bot response time', category: 'System' },
+        uptime: { description: 'Show bot uptime', category: 'System' },
+        report: { description: 'Report an issue', category: 'System' }
     }
 };
 
