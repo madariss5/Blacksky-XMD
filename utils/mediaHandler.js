@@ -6,8 +6,8 @@ const axios = require('axios');
 
 class MediaHandler {
     constructor() {
-        this.mediaDir = path.join(process.cwd(), 'media');
-        this.tempDir = path.join(process.cwd(), 'temp');
+        this.mediaDir = path.join(__dirname, '../media');
+        this.tempDir = path.join(__dirname, '../temp');
         this.initializeDirs();
     }
 
@@ -58,7 +58,7 @@ class MediaHandler {
                         logger.debug('Processing:', progress);
                     })
                     .on('end', () => {
-                        logger.info('Successfully converted GIF to MP4:', mp4Path);
+                        logger.info('Successfully converted GIF to MP4');
                         resolve(mp4Path);
                     })
                     .on('error', (err) => {
@@ -76,13 +76,18 @@ class MediaHandler {
     async sendGifReaction(sock, msg, gifName, caption = '', mentions = []) {
         let mp4Path = null;
         try {
-            // Get full path
+            // Ensure gif name has .gif extension
+            if (!gifName.endsWith('.gif')) {
+                gifName = `${gifName}.gif`;
+            }
+
+            // Get full path and verify file exists
             const fullGifPath = path.join(this.mediaDir, gifName);
             logger.info('Looking for GIF at:', { path: fullGifPath });
 
             // List available GIFs for debugging
             const files = await fs.readdir(this.mediaDir);
-            logger.info('Available GIFs:', files);
+            logger.info('Available GIFs:', { files });
 
             if (!fs.existsSync(fullGifPath)) {
                 throw new Error(`GIF not found: ${gifName}`);
