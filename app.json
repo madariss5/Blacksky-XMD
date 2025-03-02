@@ -4,7 +4,13 @@
   "repository": "https://github.com/blacksky-algorithms/blacksky-md",
   "logo": "https://raw.githubusercontent.com/blacksky-algorithms/blacksky-md/main/generated-icon.png",
   "keywords": ["whatsapp-bot", "baileys", "nodejs", "bot", "whatsapp-md", "ai-bot", "multi-device"],
+  "success_url": "/",
   "env": {
+    "NODE_ENV": {
+      "description": "Runtime environment",
+      "value": "production",
+      "required": true
+    },
     "OWNER_NAME": {
       "description": "Your name as the bot owner",
       "required": true
@@ -26,11 +32,6 @@
     "SESSION_ID": {
       "description": "Unique identifier for your bot session",
       "value": "blacksky-md",
-      "required": true
-    },
-    "NODE_ENV": {
-      "description": "Node environment",
-      "value": "production",
       "required": true
     },
     "LOG_LEVEL": {
@@ -71,5 +72,8 @@
       "size": "basic"
     }
   },
-  "stack": "heroku-22"
+  "stack": "heroku-22",
+  "scripts": {
+    "postdeploy": "npm install"
+  }
 }
