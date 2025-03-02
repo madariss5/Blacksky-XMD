@@ -3,77 +3,46 @@ const logger = pino({ level: 'silent' });
 const os = require('os');
 const moment = require('moment-timezone');
 const config = require('../config');
+const fs = require('fs').promises;
+const path = require('path');
 
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            const text = `╔═════[ *${config.botName}* ]═════⊱
-┃ ╭═══〘 ꧁ INFO ꧂ 〙═══⊱
-┃ │ 
-┃ │ Prefix: ${config.prefix}
-┃ │ User: ${msg.pushName}
-┃ │ Time: ${moment().format('HH:mm:ss')}
-┃ │ Date: ${moment().format('DD/MM/YYYY')}
-┃ │
-┃ ╰═══════════════⊱
-┃
-┃ ╭═══〘 ꧁ AI COMMANDS ꧂ 〙
-┃ │ 
-┃ │ ➦ ${config.prefix}ai
-┃ │ ➦ ${config.prefix}gpt
-┃ │ ➦ ${config.prefix}dalle
-┃ │ ➦ ${config.prefix}imagine
-┃ │ ➦ ${config.prefix}remini
-┃ │ ➦ ${config.prefix}blackbox
-┃ │
-┃ ╰═══════════════⊱
-┃
-┃ ╭═══〘 ꧁ GROUP COMMANDS ꧂ 〙
-┃ │ 
-┃ │ ➦ ${config.prefix}kick
-┃ │ ➦ ${config.prefix}add
-┃ │ ➦ ${config.prefix}promote
-┃ │ ➦ ${config.prefix}demote
-┃ │ ➦ ${config.prefix}antilink
-┃ │ ➦ ${config.prefix}welcome
-┃ │
-┃ ╰═══════════════⊱
-┃
-┃ ╭═══〘 ꧁ MEDIA COMMANDS ꧂ 〙
-┃ │ 
-┃ │ ➦ ${config.prefix}sticker
-┃ │ ➦ ${config.prefix}toimg
-┃ │ ➦ ${config.prefix}tomp3
-┃ │ ➦ ${config.prefix}play
-┃ │ ➦ ${config.prefix}tiktok
-┃ │ ➦ ${config.prefix}instagram
-┃ │ ➦ ${config.prefix}facebook
-┃ │
-┃ ╰═══════════════⊱
-┃
-┃ ╭═══〘 ꧁ FUN COMMANDS ꧂ 〙
-┃ │ 
-┃ │ ➦ ${config.prefix}quote
-┃ │ ➦ ${config.prefix}joke
-┃ │ ➦ ${config.prefix}meme
-┃ │ ➦ ${config.prefix}truth
-┃ │ ➦ ${config.prefix}dare
-┃ │
-┃ ╰═══════════════⊱
-┃
-┃ ╭═══〘 ꧁ OWNER COMMANDS ꧂ 〙
-┃ │ 
-┃ │ ➦ ${config.prefix}broadcast
-┃ │ ➦ ${config.prefix}block
-┃ │ ➦ ${config.prefix}unblock
-┃ │ ➦ ${config.prefix}ban
-┃ │ ➦ ${config.prefix}unban
-┃ │ ➦ ${config.prefix}restart
-┃ │
-┃ ╰═══════════════⊱
-╚════════════════⊱
+            // Header
+            let text = `╔═════[ *${config.botName}* ]═════⊱\n`;
+            text += `┃ ╭═══〘 ꧁ INFO ꧂ 〙═══⊱\n`;
+            text += `┃ │ \n`;
+            text += `┃ │ Prefix: ${config.prefix}\n`;
+            text += `┃ │ User: ${msg.pushName}\n`;
+            text += `┃ │ Time: ${moment().format('HH:mm:ss')}\n`;
+            text += `┃ │ Date: ${moment().format('DD/MM/YYYY')}\n`;
+            text += `┃ │\n`;
+            text += `┃ ╰═══════════════⊱\n\n`;
 
-Type ${config.prefix}help <command> for detailed info`;
+            // Get all command categories from config.commands
+            const categories = {};
+            Object.entries(config.commands).forEach(([cmd, info]) => {
+                if (!categories[info.category]) {
+                    categories[info.category] = [];
+                }
+                categories[info.category].push(cmd);
+            });
+
+            // Add each category and its commands
+            Object.entries(categories).sort().forEach(([category, commands]) => {
+                text += `┃ ╭═══〘 ꧁ ${category} COMMANDS ꧂ 〙\n`;
+                text += `┃ │ \n`;
+                commands.forEach(cmd => {
+                    text += `┃ │ ➦ ${config.prefix}${cmd}\n`;
+                });
+                text += `┃ │\n`;
+                text += `┃ ╰═══════════════⊱\n\n`;
+            });
+
+            // Footer
+            text += `╚════════════════⊱\n\n`;
+            text += `Type ${config.prefix}help <command> for detailed info`;
 
             await sock.sendMessage(msg.key.remoteJid, {
                 image: { url: config.menuImage },
@@ -106,6 +75,7 @@ Type ${config.prefix}help <command> for detailed info`;
                 }
             }
 
+            // Show basic help menu if no specific command
             const text = `*🤖 ${config.botName} Help*\n\n` +
                         `Basic Commands:\n` +
                         `• ${config.prefix}help - Show this help message\n` +
