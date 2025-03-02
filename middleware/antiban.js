@@ -8,20 +8,20 @@ const userActionCache = new NodeCache({ stdTTL: 3600 }); // 1 hour for user acti
 class AntiBanMiddleware {
     constructor() {
         this.messageDelays = {
-            min: 1000,  // Minimum delay 1 second
-            max: 3000   // Maximum delay 3 seconds
+            min: 300,  // Minimum delay 300ms
+            max: 800   // Maximum delay 800ms
         };
 
-        // Limits per minute
+        // Increased limits per minute
         this.limits = {
-            messagesPerMinute: 10,
-            mediaPerMinute: 5,
-            groupMessagesPerMinute: 15,
-            broadcastLimit: 5
+            messagesPerMinute: 20,    // Increased from 10
+            mediaPerMinute: 8,        // Increased from 5
+            groupMessagesPerMinute: 25, // Increased from 15
+            broadcastLimit: 8         // Increased from 5
         };
     }
 
-    // Random delay to make bot behavior more human-like
+    // Optimized delay function
     async addDelay() {
         const delay = Math.floor(Math.random() * 
             (this.messageDelays.max - this.messageDelays.min + 1)) + 
@@ -29,24 +29,17 @@ class AntiBanMiddleware {
         await new Promise(resolve => setTimeout(resolve, delay));
     }
 
-    // Check if user or group has exceeded rate limits
+    // Optimized rate limit check
     isRateLimited(jid, type = 'message') {
         const key = `${jid}_${type}`;
         const count = messageCache.get(key) || 0;
 
         let limit;
         switch(type) {
-            case 'media':
-                limit = this.limits.mediaPerMinute;
-                break;
-            case 'group':
-                limit = this.limits.groupMessagesPerMinute;
-                break;
-            case 'broadcast':
-                limit = this.limits.broadcastLimit;
-                break;
-            default:
-                limit = this.limits.messagesPerMinute;
+            case 'media': limit = this.limits.mediaPerMinute; break;
+            case 'group': limit = this.limits.groupMessagesPerMinute; break;
+            case 'broadcast': limit = this.limits.broadcastLimit; break;
+            default: limit = this.limits.messagesPerMinute;
         }
 
         if (count >= limit) {
@@ -58,74 +51,57 @@ class AntiBanMiddleware {
         return false;
     }
 
-    // Sanitize message content to prevent banned patterns
+    // Optimized message sanitization
     sanitizeMessage(text) {
         if (!text) return text;
-
-        // Remove excessive symbols
-        text = text.replace(/([!?.,-])\1{4,}/g, '$1$1$1');
-
-        // Remove excessive capital letters
-        if (text.length > 10 && text.toUpperCase() === text) {
-            text = text.toLowerCase();
-        }
-
-        return text;
+        return text
+            .replace(/([!?.,-])\1{4,}/g, '$1$1$1')
+            .replace(/(.)\1{4,}/g, '$1$1$1');
     }
 
-    // Check for suspicious patterns
+    // Optimized pattern check
     isSuspiciousPattern(message) {
         if (!message) return false;
 
-        // Check for mass mentions
-        if (message.mentionedJid && message.mentionedJid.length > 5) {
-            return true;
-        }
+        // Quick checks first
+        if (message.mentionedJid?.length > 8) return true;
+        if (message.body?.length > 1500) return true;
 
-        // Check for very long messages
-        if (message.body && message.body.length > 1000) {
-            return true;
-        }
-
-        // Check for suspicious links
-        const suspiciousLinkPattern = /(https?:\/\/[^\s]+)/g;
-        if (message.body && message.body.match(suspiciousLinkPattern)?.length > 2) {
-            return true;
-        }
-
-        return false;
+        // Link check
+        const linkCount = (message.body?.match(/(https?:\/\/[^\s]+)/g) || []).length;
+        return linkCount > 3;
     }
 
-    // Handle connection to prevent aggressive reconnection
+    // Optimized reconnection handler
     handleReconnection(retryCount) {
-        const baseDelay = 5000; // 5 seconds
-        const maxDelay = 300000; // 5 minutes
-
-        // Exponential backoff
-        const delay = Math.min(baseDelay * Math.pow(2, retryCount), maxDelay);
-
-        return new Promise(resolve => setTimeout(resolve, delay));
+        const baseDelay = 3000; // Reduced from 5000
+        const maxDelay = 180000; // Reduced from 300000
+        return new Promise(resolve => 
+            setTimeout(resolve, Math.min(baseDelay * Math.pow(1.8, retryCount), maxDelay))
+        );
     }
 
-    // Main middleware function to process messages
+    // Main middleware function with optimizations
     async processMessage(sock, msg) {
         try {
-            // Add random delay
+            // Add optimized delay
             await this.addDelay();
 
-            // Check rate limits
+            // Quick return for invalid messages
+            if (!msg?.key?.remoteJid) return false;
+
+            // Check rate limits with group optimization
             const isGroup = msg.key.remoteJid.endsWith('@g.us');
             if (this.isRateLimited(msg.key.remoteJid, isGroup ? 'group' : 'message')) {
-                logger.info(`Rate limit applied for ${msg.key.remoteJid}`);
                 return false;
             }
 
-            // Sanitize message content
+            // Sanitize only if needed
             if (msg.message?.conversation) {
                 msg.message.conversation = this.sanitizeMessage(msg.message.conversation);
             }
 
-            // Check for suspicious patterns
+            // Quick pattern check
             if (this.isSuspiciousPattern(msg)) {
                 logger.warn(`Suspicious pattern detected from ${msg.key.remoteJid}`);
                 return false;
