@@ -10,46 +10,78 @@ const express = require('express');
 const fs = require('fs-extra');
 const path = require('path');
 
-// Initialize store with debug logging
-const store = {};
-
 async function startBot() {
     try {
         logger.info('Starting WhatsApp bot...');
-
         const { state, saveCreds } = await useMultiFileAuthState('auth_info');
 
         const sock = makeWASocket({
-            logger: pino({ level: 'debug' }), // Enable debug logging
+            logger: pino({ level: 'debug' }),
             printQRInTerminal: true,
             auth: state,
             browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49']
         });
 
-        // Handle messages
+        // Handle messages with direct command processing
         sock.ev.on('messages.upsert', async ({ messages, type }) => {
             try {
                 if (type !== 'notify') return;
 
                 const msg = messages[0];
-                if (!msg) return;
+                if (!msg?.message) {
+                    logger.debug('No message content found');
+                    return;
+                }
 
-                logger.debug('Received message:', {
-                    messageTypes: Object.keys(msg.message || {}),
-                    key: msg.key,
+                // Log raw message for debugging
+                logger.debug('Raw message structure:', {
+                    msg: JSON.stringify(msg, null, 2)
+                });
+
+                // Extract message content
+                const messageContent = (
+                    msg.message.conversation ||
+                    msg.message.extendedTextMessage?.text ||
+                    msg.message.imageMessage?.caption ||
+                    msg.message.videoMessage?.caption ||
+                    ''
+                ).trim();
+
+                logger.info('Processed message:', {
+                    content: messageContent,
                     from: msg.key.remoteJid,
                     participant: msg.key.participant
                 });
 
-                // Process message with handler
-                await require('./handler')(sock, msg, { messages, type }, store);
+                // Check for prefix
+                const prefix = config.prefix || '.';
+                if (messageContent.startsWith(prefix)) {
+                    // Process command directly here before passing to handler
+                    const args = messageContent.slice(prefix.length).trim().split(/\s+/);
+                    const command = args.shift()?.toLowerCase();
 
+                    if (command) {
+                        logger.info('Command detected:', {
+                            command,
+                            args,
+                            from: msg.key.remoteJid
+                        });
+
+                        // Send immediate response for testing
+                        await sock.sendMessage(msg.key.remoteJid, {
+                            text: `Processing command: ${command}`
+                        });
+
+                        // Process command through handler
+                        await require('./handler')(sock, msg, { messages, type }, {});
+                    }
+                }
             } catch (err) {
-                logger.error('Error processing message:', err);
+                logger.error('Error in message processing:', err);
             }
         });
 
-        // Handle connection updates
+        // Connection handling
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect } = update;
 
@@ -61,14 +93,12 @@ async function startBot() {
                 }
             } else if (connection === 'open') {
                 logger.info('WhatsApp connection established!');
-                // Send online status message
                 await sock.sendMessage(sock.user.id, {
                     text: '🟢 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 Bot is now online!'
                 }).catch(err => logger.error('Failed to send status message:', err));
             }
         });
 
-        // Save credentials
         sock.ev.on('creds.update', saveCreds);
 
     } catch (err) {

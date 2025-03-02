@@ -1,26 +1,23 @@
 const config = require('./config');
 const logger = require('./utils/logger');
-
-// Import command modules
 const basicCommands = require('./commands/basic');
 const userCommands = require('./commands/user');
 
 module.exports = async (sock, msg, { messages, type }, store) => {
     try {
-        // Debug log for incoming message
-        logger.debug('Raw message:', JSON.stringify(msg, null, 2));
-
-        // Get message content
-        const messageContent = msg.message?.conversation || 
-                             msg.message?.extendedTextMessage?.text || 
-                             msg.message?.imageMessage?.caption || 
-                             msg.message?.videoMessage?.caption || '';
-
-        logger.info('Processing message:', {
-            content: messageContent,
-            from: msg.key.remoteJid,
-            participant: msg.key.participant
+        // Log the incoming message structure
+        logger.debug('Handler received message:', {
+            msg: JSON.stringify(msg, null, 2)
         });
+
+        // Extract message content with fallbacks
+        const messageContent = (
+            msg.message?.conversation ||
+            msg.message?.extendedTextMessage?.text ||
+            msg.message?.imageMessage?.caption ||
+            msg.message?.videoMessage?.caption ||
+            ''
+        ).trim();
 
         // Check for prefix and command
         const prefix = config.prefix || '.';
@@ -29,7 +26,7 @@ module.exports = async (sock, msg, { messages, type }, store) => {
             return;
         }
 
-        // Extract command and arguments
+        // Parse command and arguments
         const args = messageContent.slice(prefix.length).trim().split(/\s+/);
         const command = args.shift()?.toLowerCase();
 
@@ -38,20 +35,21 @@ module.exports = async (sock, msg, { messages, type }, store) => {
             return;
         }
 
-        logger.info('Executing command:', {
+        logger.info('Processing command:', {
             command,
             args,
             from: msg.key.remoteJid
         });
 
-        // Try basic commands first
+        // Try to execute the command
         if (basicCommands[command]) {
+            logger.info('Executing basic command:', command);
             await basicCommands[command](sock, msg, args);
             return;
         }
 
-        // Try user commands next
         if (userCommands[command]) {
+            logger.info('Executing user command:', command);
             await userCommands[command](sock, msg, args);
             return;
         }
