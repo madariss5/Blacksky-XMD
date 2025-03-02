@@ -1,10 +1,15 @@
 const { exec } = require('child_process');
 const path = require('path');
 const logger = require('../utils/logger');
+const SessionManager = require('../utils/session');
 
-function restartBot() {
+async function restartBot() {
     try {
-        logger.info('Initiating bot restart...');
+        logger.info('Initiating bot restart with session cleanup...');
+
+        // Initialize session manager
+        const sessionManager = new SessionManager('./auth_info');
+        await sessionManager.cleanupAllSessions();
 
         // Path to main bot file
         const mainFile = path.join(__dirname, '..', 'index.js');
@@ -30,7 +35,7 @@ function restartBot() {
         // Unref parent from child to allow parent to exit
         child.unref();
 
-        logger.info('New bot process started, terminating old process');
+        logger.info('New bot process started with clean session, terminating old process');
 
         // Exit current process after a short delay to ensure new process starts
         setTimeout(() => {
