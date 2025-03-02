@@ -234,7 +234,7 @@ const reactionCommands = {
             const caption = `*${msg.pushName}* yeets ${target} across the chat! ヽ( >д<)ノ`;
 
             logger.info('Executing yeet command:', { target, mentions });
-            await sendGifReaction(sock, msg, 'throw.gif', caption, mentions);
+            await sendGifReaction(sock, msg, 'yeet.gif', caption, mentions);
         } catch (error) {
             logger.error('Error in yeet command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
