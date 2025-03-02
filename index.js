@@ -14,7 +14,7 @@ async function startBot() {
         const { state, saveCreds } = await useMultiFileAuthState('auth_info');
 
         const sock = makeWASocket({
-            logger: pino({ level: 'silent' }), // Reduce noise in logs
+            logger: pino({ level: 'silent' }),
             printQRInTerminal: true,
             auth: state,
             browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49']
@@ -49,13 +49,6 @@ async function startBot() {
                     default:
                         return; // Unsupported message type
                 }
-
-                // Debug log
-                logger.info('Message received:', {
-                    type: messageType,
-                    content: messageContent,
-                    from: msg.key.remoteJid
-                });
 
                 // Check for command prefix
                 const prefix = config.prefix || '.';

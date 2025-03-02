@@ -36,13 +36,6 @@ module.exports = async (sock, msg, { messages }, store) => {
         const args = messageContent.slice(prefix.length).trim().split(/\s+/);
         const command = args.shift()?.toLowerCase();
 
-        // Debug log
-        logger.info('Command details:', {
-            command,
-            args,
-            from: msg.key.remoteJid
-        });
-
         // Execute command
         if (basicCommands[command]) {
             await basicCommands[command](sock, msg, args);
