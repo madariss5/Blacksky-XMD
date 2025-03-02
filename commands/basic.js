@@ -2,13 +2,10 @@ const logger = require('pino')();
 const os = require('os');
 const moment = require('moment-timezone');
 const config = require('../config');
-const { allCommands } = require('../handler');
 
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            logger.info('Generating menu...');
-
             // Header
             let menuText = `╔══《 ${config.botName} MENU 》══╗\n`;
             menuText += `║ 👤 User: ${msg.pushName || 'User'}\n`;
@@ -28,21 +25,17 @@ const basicCommands = {
             // Organize commands by category
             const categories = {};
             Object.entries(config.commands).forEach(([cmd, info]) => {
-                // Only show commands that are actually implemented
-                if (allCommands[cmd]) {
-                    if (!categories[info.category]) {
-                        categories[info.category] = [];
-                    }
-                    categories[info.category].push({
-                        command: cmd,
-                        description: info.description
-                    });
+                if (!categories[info.category]) {
+                    categories[info.category] = [];
                 }
+                categories[info.category].push({
+                    command: cmd,
+                    description: info.description
+                });
             });
 
             // Add commands by category
-            Object.entries(categories)
-                .sort(([a], [b]) => a.localeCompare(b))
+            Object.entries(categories).sort(([a], [b]) => a.localeCompare(b))
                 .forEach(([category, commands]) => {
                     const emoji = categoryEmojis[category] || '📌';
                     menuText += `┏━━━《 ${emoji} ${category} 》━━━┓\n`;
