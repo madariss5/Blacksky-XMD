@@ -7,7 +7,7 @@ const pino = require('pino');
 const logger = require('./utils/logger');
 const config = require('./config');
 const express = require('express');
-const { handler } = require('./handler'); // Updated import
+const messageHandler = require('./handler'); // Import the default export
 
 async function startBot() {
     try {
@@ -28,7 +28,7 @@ async function startBot() {
                 if (!msg || !msg.message) return;
 
                 // Process command
-                await handler(sock, msg, { messages }, {});
+                await messageHandler(sock, msg, { messages }, {});
 
             } catch (error) {
                 logger.error('Error in message handler:', error);

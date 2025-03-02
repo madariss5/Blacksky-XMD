@@ -62,15 +62,17 @@ async function messageHandler(sock, msg, { messages }, store) {
         const args = messageContent.slice(prefix.length).trim().split(/\s+/);
         const command = args.shift()?.toLowerCase();
 
-        logger.info(`Executing command: ${command} with args:`, args);
+        logger.info(`Received command: ${command} with args:`, args);
 
         // Execute command from combined commands
         if (allCommands[command]) {
+            logger.info(`Executing command: ${command}`);
             await allCommands[command](sock, msg, args);
             return;
         }
 
         // Command not found
+        logger.info(`Command not found: ${command}`);
         await sock.sendMessage(msg.key.remoteJid, {
             text: `❌ Command *${command}* not found.\nType ${prefix}help to see available commands.`
         });
@@ -83,6 +85,5 @@ async function messageHandler(sock, msg, { messages }, store) {
     }
 }
 
-// Export both the handler function and allCommands
 module.exports = messageHandler;
 module.exports.allCommands = allCommands;
