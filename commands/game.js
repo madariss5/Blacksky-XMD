@@ -17,7 +17,7 @@ const logGameState = (gameId, action, game) => {
 // Add this at the start of the file, after the initial requires
 const validateGameState = (gameId, game) => {
     try {
-        const validTypes = ['family100', 'quiz', 'asahotak', 'tebakkata', 'tebaklagu', 'tebakkimia', 'picture'];
+        const validTypes = ['family100', 'quiz', 'asahotak', 'tebakkata', 'tebaklagu', 'tebakkimia', 'picture', 'numguess', 'hangman'];
         if (!validTypes.includes(game.type)) {
             logger.warn(`Invalid game type: ${game.type} for game ${gameId}`);
             return false;
@@ -986,7 +986,220 @@ const gameCommands = {
             });
             cleanupGame(msg.key.remoteJid);
         }
+    },
+    numguess: async (sock, msg, args) => {
+        try {
+            const gameId = msg.key.remoteJid;
+
+            // Start new game if none exists
+            if (!args.length) {
+                if (activeGames.has(gameId)) {
+                    return await sock.sendMessage(msg.key.remoteJid, {
+                        text: '❌ A game is already in progress! Use .guess [number] to play'
+                    });
+                }
+
+                const number = Math.floor(Math.random() * 100) + 1;
+                const game = {
+                    type: 'numguess',
+                    answer: number,
+                    attempts: 0,
+                    maxAttempts: 7,
+                    startTime: Date.now(),
+                    timeLimit: 120000 // 2 minutes
+                };
+
+                activeGames.set(gameId, game);
+                logGameState(gameId, 'started', game);
+
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `🎮 *Number Guessing Game*\n\n` +
+                          `I'm thinking of a number between 1 and 100.\n` +
+                          `You have ${game.maxAttempts} attempts to guess it!\n\n` +
+                          `Use .numguess [number] to make a guess.`
+                });
+            }
+
+            // Handle guess
+            const game = activeGames.get(gameId);
+            if (!game || game.type !== 'numguess') {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ No active number guessing game! Use .numguess to start'
+                });
+            }
+
+            // Check time limit
+            if (Date.now() - game.startTime > game.timeLimit) {
+                activeGames.delete(gameId);
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '⏰ Time\'s up! The number was ' + game.answer
+                });
+            }
+
+            const guess = parseInt(args[0]);
+            if (isNaN(guess) || guess < 1 || guess > 100) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please guess a number between 1 and 100!'
+                });
+            }
+
+            game.attempts++;
+
+            if (guess === game.answer) {
+                activeGames.delete(gameId);
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `🎉 *Correct!*\n\nYou got it in ${game.attempts} attempts!`
+                });
+            }
+
+            if (game.attempts >= game.maxAttempts) {
+                activeGames.delete(gameId);
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `💔 *Game Over!*\n\nThe number was ${game.answer}`
+                });
+            }
+
+            const hint = guess < game.answer ? 'higher' : 'lower';
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `❌ Wrong! Try a ${hint} number.\n${game.maxAttempts - game.attempts} attempts remaining.`
+            });
+
+        } catch (error) {
+            logger.error('Error in numguess command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error in number guessing game: ' + error.message
+            });
+        }
+    },
+
+    hangman: async (sock, msg, args) => {
+        try {
+            const gameId = msg.key.remoteJid;
+
+            // List of words for the game
+            const words = [
+                { word: 'PROGRAMMING', hint: 'Writing code' },
+                { word: 'JAVASCRIPT', hint: 'Popular web programming language' },
+                { word: 'DATABASE', hint: 'Stores information' },
+                { word: 'ALGORITHM', hint: 'Step by step problem solving' },
+                { word: 'NETWORK', hint: 'Computers connected together' }
+            ];
+
+            // Start new game
+            if (!args.length) {
+                if (activeGames.has(gameId)) {
+                    const game = activeGames.get(gameId);
+                    return await sock.sendMessage(msg.key.remoteJid, {
+                        text: `🎮 *Current Hangman Game*\n\n` +
+                              `Word: ${game.display.join(' ')}\n` +
+                              `Hint: ${game.hint}\n` +
+                              `Wrong guesses: ${game.wrongGuesses.join(', ') || 'None'}\n` +
+                              `Lives: ${'❤️'.repeat(game.lives)}\n\n` +
+                              `Use .hangman [letter] to guess!`
+                    });
+                }
+
+                const wordObj = words[Math.floor(Math.random() * words.length)];
+                const game = {
+                    type: 'hangman',
+                    word: wordObj.word,
+                    hint: wordObj.hint,
+                    guessed: new Set(),
+                    wrongGuesses: [],
+                    lives: 6,
+                    display: Array(wordObj.word.length).fill('_'),
+                    startTime: Date.now(),
+                    timeLimit: 300000 // 5 minutes
+                };
+
+                activeGames.set(gameId, game);
+                logGameState(gameId, 'started', game);
+
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `🎮 *Hangman Game*\n\n` +
+                          `Word: ${game.display.join(' ')}\n` +
+                          `Hint: ${game.hint}\n` +
+                          `Lives: ${'❤️'.repeat(game.lives)}\n\n` +
+                          `Use .hangman [letter] to guess!`
+                });
+            }
+
+            // Handle guess
+            const game = activeGames.get(gameId);
+            if (!game || game.type !== 'hangman') {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ No active hangman game! Use .hangman to start'
+                });
+            }
+
+            // Check time limit
+            if (Date.now() - game.startTime > game.timeLimit) {
+                activeGames.delete(gameId);
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `⏰ Time's up! The word was "${game.word}"`
+                });
+            }
+
+            const guess = args[0].toUpperCase();
+            if (guess.length !== 1 || !/[A-Z]/.test(guess)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please guess a single letter!'
+                });
+            }
+
+            if (game.guessed.has(guess)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ You already guessed that letter!'
+                });
+            }
+
+            game.guessed.add(guess);
+
+            if (game.word.includes(guess)) {
+                // Correct guess
+                for (let i = 0; i < game.word.length; i++) {
+                    if (game.word[i] === guess) {
+                        game.display[i] = guess;
+                    }
+                }
+            } else {
+                // Wrong guess
+                game.wrongGuesses.push(guess);
+                game.lives--;
+            }
+
+            // Check win/lose conditions
+            if (!game.display.includes('_')) {
+                activeGames.delete(gameId);
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `🎉 *You won!*\n\nThe word was "${game.word}"`
+                });
+            }
+
+            if (game.lives <= 0) {
+                activeGames.delete(gameId);
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `💔 *Game Over!*\n\nThe word was "${game.word}"`
+                });
+            }
+
+            // Game continues
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🎮 *Hangman*\n\n` +
+                      `Word: ${game.display.join(' ')}\n` +
+                      `Wrong guesses: ${game.wrongGuesses.join(', ') || 'None'}\n` +
+                      `Lives: ${'❤️'.repeat(game.lives)}\n\n` +
+                      `Keep guessing!`
+            });
+
+        } catch (error) {
+            logger.error('Error in hangman command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error in hangman game: ' + error.message
+            });
+        }
     }
+
 };
 
 // Helper functions
