@@ -1,77 +1,69 @@
 const config = require('../config');
 const { getUptime } = require('../utils');
-const logger = require('pino')();
 const moment = require('moment-timezone');
 
 const menuCommands = {
     menu: async (sock, msg) => {
         try {
             const pushName = msg.pushName || 'User';
+            const now = moment();
 
-            let menuText = `╭━━━『 ${config.botName} 』━━━⊷\n`;
-            menuText += `┃ ⛥┏━━━━━━━━━━━━\n`;
-            menuText += `┃ ⛥┃ User: ${pushName}\n`;
-            menuText += `┃ ⛥┃ Bot: ${config.botName}\n`;
-            menuText += `┃ ⛥┃ Prefix: ${config.prefix}\n`;
-            menuText += `┃ ⛥┃ Runtime: ${getUptime()}\n`;
-            menuText += `┃ ⛥┃ Time: ${moment().format('HH:mm:ss')}\n`;
-            menuText += `┃ ⛥┃ Date: ${moment().format('DD/MM/YYYY')}\n`;
-            menuText += `┃ ⛥┗━━━━━━━━━━━━\n`;
-            menuText += `╰━━━━━━━━━━━━━━━⊷\n\n`;
+            // Header with fancy styling
+            let menuText = `╔══❬ 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 ❭══╗\n\n`;
+            menuText += `┏━━『 User Info 』\n`;
+            menuText += `┃ ⚡ Name: ${pushName}\n`;
+            menuText += `┃ 🎭 Status: ${msg.key.fromMe ? 'Bot' : 'User'}\n`;
+            menuText += `┃ ⏰ Time: ${now.format('HH:mm:ss')}\n`;
+            menuText += `┃ 📅 Date: ${now.format('DD/MM/YYYY')}\n`;
+            menuText += `┗━━━━━━━━━━━━━\n\n`;
 
-            // Main Commands
-            menuText += `╭━━━『 Main 』\n`;
-            menuText += `┃ ⬡ ${config.prefix}ping\n`;
-            menuText += `┃ ⬡ ${config.prefix}runtime\n`;
-            menuText += `┃ ⬡ ${config.prefix}owner\n`;
-            menuText += `╰━━━━━━━━━━⊷\n\n`;
+            // Bot Info
+            menuText += `┏━━『 Bot Info 』\n`;
+            menuText += `┃ 🤖 Bot Name: ${config.botName}\n`;
+            menuText += `┃ 👑 Owner: ${config.ownerName}\n`;
+            menuText += `┃ ⚙️ Prefix: ${config.prefix}\n`;
+            menuText += `┃ ⌚ Runtime: ${getUptime()}\n`;
+            menuText += `┗━━━━━━━━━━━━━\n\n`;
 
-            // Group Commands
-            menuText += `╭━━━『 Group 』\n`;
-            menuText += `┃ ⬡ ${config.prefix}kick\n`;
-            menuText += `┃ ⬡ ${config.prefix}add\n`;
-            menuText += `┃ ⬡ ${config.prefix}promote\n`;
-            menuText += `┃ ⬡ ${config.prefix}demote\n`;
-            menuText += `┃ ⬡ ${config.prefix}setname\n`;
-            menuText += `┃ ⬡ ${config.prefix}hidetag\n`;
-            menuText += `┃ ⬡ ${config.prefix}grouplink\n`;
-            menuText += `╰━━━━━━━━━━⊷\n\n`;
+            // Command List by Category
+            const categories = {};
+            Object.entries(config.commands).forEach(([cmd, info]) => {
+                if (!categories[info.category]) {
+                    categories[info.category] = [];
+                }
+                categories[info.category].push(cmd);
+            });
 
-            // Economy Commands
-            menuText += `╭━━━『 Economy 』\n`;
-            menuText += `┃ ⬡ ${config.prefix}balance\n`;
-            menuText += `┃ ⬡ ${config.prefix}daily\n`;
-            menuText += `┃ ⬡ ${config.prefix}work\n`;
-            menuText += `┃ ⬡ ${config.prefix}rob\n`;
-            menuText += `┃ ⬡ ${config.prefix}transfer\n`;
-            menuText += `┃ ⬡ ${config.prefix}shop\n`;
-            menuText += `┃ ⬡ ${config.prefix}inventory\n`;
-            menuText += `╰━━━━━━━━━━⊷\n\n`;
+            // Category Icons
+            const categoryIcons = {
+                'Main': '🎯',
+                'Group': '👥',
+                'Economy': '💰',
+                'Owner': '👑'
+            };
 
-            // Fun Commands
-            menuText += `╭━━━『 Reactions 』\n`;
-            menuText += `┃ ⬡ ${config.prefix}slap\n`;
-            menuText += `┃ ⬡ ${config.prefix}hug\n`;
-            menuText += `┃ ⬡ ${config.prefix}pat\n`;
-            menuText += `┃ ⬡ ${config.prefix}kiss\n`;
-            menuText += `┃ ⬡ ${config.prefix}punch\n`;
-            menuText += `┃ ⬡ ${config.prefix}kill\n`;
-            menuText += `╰━━━━━━━━━━⊷\n\n`;
+            // Display Commands by Category
+            Object.entries(categories).forEach(([category, commands]) => {
+                const icon = categoryIcons[category] || '📌';
+                menuText += `┏━━『 ${icon} ${category} 』\n`;
+                commands.forEach(cmd => {
+                    const cmdInfo = config.commands[cmd];
+                    menuText += `┃ ❐ ${config.prefix}${cmd}\n`;
+                    menuText += `┃ └ ${cmdInfo.description}\n`;
+                });
+                menuText += `┗━━━━━━━━━━━━━\n\n`;
+            });
 
             // Footer
-            menuText += `╭━━━『 Note 』\n`;
-            menuText += `┃ Usage: ${config.prefix}help <command>\n`;
-            menuText += `┃ Example: ${config.prefix}help ping\n`;
-            menuText += `╰━━━━━━━━━━⊷`;
+            menuText += `╚══❬ BLACKSKY-MD ❭══╝\n`;
+            menuText += `Made with ❤️ by ${config.ownerName}`;
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: menuText
             });
 
-            logger.info('Menu command executed successfully');
-
         } catch (error) {
-            logger.error('Error in menu command:', error);
+            console.error('Error in menu command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error displaying menu'
             });

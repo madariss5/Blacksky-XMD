@@ -51,9 +51,9 @@ async function startBot() {
                 if (!msg?.message) return;
 
                 const messageText = msg.message?.conversation || 
-                              msg.message?.extendedTextMessage?.text || 
-                              msg.message?.imageMessage?.caption || 
-                              msg.message?.videoMessage?.caption || '';
+                                  msg.message?.extendedTextMessage?.text || 
+                                  msg.message?.imageMessage?.caption || 
+                                  msg.message?.videoMessage?.caption || '';
 
                 // Process command if message starts with prefix
                 if (messageText.startsWith('.')) {

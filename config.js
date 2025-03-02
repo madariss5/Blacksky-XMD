@@ -41,6 +41,7 @@ const config = {
         ping: { description: 'Check bot response time', category: 'Main' },
         owner: { description: 'Get bot owner contact', category: 'Main' },
 
+        // Group Commands
         kick: { description: 'Kick member from group', category: 'Group' },
         add: { description: 'Add member to group', category: 'Group' },
         promote: { description: 'Promote member to admin', category: 'Group' },
@@ -53,6 +54,7 @@ const config = {
         group: { description: 'Group settings', category: 'Group' },
         linkgroup: { description: 'Get group invite link', category: 'Group' },
 
+        // Economy Commands
         balance: { description: 'Check your balance', category: 'Economy' },
         daily: { description: 'Claim daily rewards', category: 'Economy' },
         work: { description: 'Work to earn coins', category: 'Economy' },
@@ -61,6 +63,7 @@ const config = {
         shop: { description: 'View available items', category: 'Economy' },
         inventory: { description: 'Check your inventory', category: 'Economy' },
 
+        // Owner Commands
         broadcast: { description: 'Broadcast message to all chats', category: 'Owner' },
         block: { description: 'Block user', category: 'Owner' },
         unblock: { description: 'Unblock user', category: 'Owner' },
