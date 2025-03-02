@@ -3,29 +3,55 @@ const logger = pino({ level: 'silent' });
 const os = require('os');
 const moment = require('moment-timezone');
 const config = require('../config');
+const fs = require('fs').promises;
+const path = require('path');
 
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            const text = `Fun Commands Menu\n\n` +
-                        `Games:\n` +
-                        `• ${config.prefix}magic8ball - Ask the magic 8 ball\n` +
-                        `• ${config.prefix}wordgame - Play word guessing game\n` +
-                        `• ${config.prefix}trivia - Play trivia quiz\n` +
-                        `• ${config.prefix}rps - Play rock paper scissors\n` +
-                        `• ${config.prefix}roll - Roll a dice\n` +
-                        `• ${config.prefix}coinflip - Flip a coin\n\n` +
-                        `Entertainment:\n` +
-                        `• ${config.prefix}joke - Get random jokes\n` +
-                        `• ${config.prefix}meme - Get random memes\n` +
-                        `• ${config.prefix}quote - Get inspirational quotes\n` +
-                        `• ${config.prefix}fact - Get random facts\n` +
-                        `• ${config.prefix}emojiart - Get random emoji art\n\n` +
-                        `Reactions:\n` +
-                        `Check ${config.prefix}reactions for animated reactions!\n\n` +
-                        `Type ${config.prefix}help for more info`;
+            // Create menu header
+            let menuText = `╭═══〘 ${config.botName} 〙═══⊷❍\n┃\n`;
+            menuText += `┃ 𝗨𝗦𝗘𝗥: ${msg.pushName}\n`;
+            menuText += `┃ 𝗧𝗜𝗠𝗘: ${moment().format('HH:mm:ss')}\n`;
+            menuText += `┃ 𝗗𝗔𝗧𝗘: ${moment().format('DD/MM/YYYY')}\n`;
+            menuText += `┃\n╰═══════════════════⊷❍\n\n`;
 
-            await sock.sendMessage(msg.key.remoteJid, { text });
+            // Add command sections
+            const commandSections = {
+                'Basic Commands': require('./basic'),
+                'User Commands': require('./user'),
+                'Group Commands': require('./group'),
+                'Media Commands': require('./media'),
+                'Fun Commands': require('./fun'),
+                'AI Commands': require('./ai'),
+                'Owner Commands': require('./owner'),
+                'Utility Commands': require('./utility')
+            };
+
+            // Add each section's commands to menu
+            for (const [section, commands] of Object.entries(commandSections)) {
+                if (Object.keys(commands).length > 0) {
+                    menuText += `╭─❏ *${section}*\n`;
+                    for (const cmd of Object.keys(commands)) {
+                        menuText += `│ ⭔ ${config.prefix}${cmd}\n`;
+                    }
+                    menuText += `╰─────────────────❍\n\n`;
+                }
+            }
+
+            // Add footer
+            menuText += `╭═══〘 INFO 〙═══⊷❍\n`;
+            menuText += `┃ Prefix: ${config.prefix}\n`;
+            menuText += `┃ Owner: ${config.ownerName}\n`;
+            menuText += `╰═══════════════════⊷❍`;
+
+            // Send menu with image
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: config.menuImage },
+                caption: menuText,
+                gifPlayback: false
+            });
+
             logger.info('Menu command executed successfully');
         } catch (error) {
             logger.error('Menu command failed:', error);
