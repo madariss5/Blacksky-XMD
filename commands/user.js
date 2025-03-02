@@ -181,39 +181,6 @@ const coreUserCommands = {
         }
     },
 
-    daily: async (sock, msg) => {
-        try {
-            const user = msg.key.participant || msg.key.remoteJid;
-            const lastDaily = store.getUserLastDaily(user);
-            const now = Date.now();
-
-            if (lastDaily && now - lastDaily < 24 * 60 * 60 * 1000) {
-                const remaining = 24 * 60 * 60 * 1000 - (now - lastDaily);
-                const hours = Math.floor(remaining / (60 * 60 * 1000));
-                const minutes = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
-
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `⏰ Please wait ${hours}h ${minutes}m before claiming daily rewards again!`
-                });
-            }
-
-            const reward = Math.floor(Math.random() * 1000) + 500;
-            await store.addXP(user, reward);
-            await store.setUserLastDaily(user, now);
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `🎁 *Daily Reward*\n\n` +
-                      `You received ${reward} XP!\n` +
-                      `Come back tomorrow for more rewards!`
-            });
-        } catch (error) {
-            logger.error('Error in daily command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error claiming daily reward. Please try again later.'
-            });
-        }
-    },
-
     bio: async (sock, msg, args) => {
         try {
             const user = msg.key.participant || msg.key.remoteJid;
@@ -253,7 +220,7 @@ const userCommands = {};
 // Add core commands
 Object.assign(userCommands, coreUserCommands);
 
-// Generate 94 additional user commands
+// Generate additional user commands
 for (let i = 1; i <= 94; i++) {
     userCommands[`user${i}`] = async (sock, msg, args) => {
         try {
