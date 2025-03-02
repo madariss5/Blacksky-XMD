@@ -1,48 +1,47 @@
 {
   "name": "BlackSky-MD",
-  "description": "A highly extensible WhatsApp Multi-Device bot designed for robust, scalable messaging interactions with advanced AI capabilities",
+  "description": "A highly extensible WhatsApp Multi-Device bot designed for advanced messaging and AI-powered interactions",
   "repository": "https://github.com/blacksky-algorithms/blacksky-md",
   "logo": "https://raw.githubusercontent.com/blacksky-algorithms/blacksky-md/main/generated-icon.png",
   "keywords": ["whatsapp-bot", "baileys", "nodejs", "bot", "whatsapp-md", "ai-bot", "multi-device"],
   "success_url": "/",
-  "website": "https://github.com/blacksky-algorithms/blacksky-md#readme",
   "stack": "container",
   "env": {
     "PREFIX": {
-      "description": "choose your prefix of bot",
+      "description": "Bot command prefix",
       "value": ".",
       "required": true
     },
     "AUTO_READ_STATUS": {
-      "description": "Your contact status will be read automatically(type yes to active or no to deactive  ; don't write in capital letter)",
+      "description": "Automatically read contact status",
       "value": "yes",
       "required": false
     },
     "AUTO_DOWNLOAD_STATUS": {
-      "description": "Your contact status will be download automatically and send to you(type yes to active or no to deactive ; don't write in capital letter)",
+      "description": "Automatically download contact status",
       "value": "no",
       "required": false
     },
     "PM_PERMIT": {
-      "description": "Other user can't use your bot in pm (type yes to active or no to deactive ; don't write in capital letter)",
+      "description": "Private message permissions",
       "value": "no",
       "required": false
     },
     "BOT_NAME": {
-      "description": "put A name for your bot",
+      "description": "Name for your bot",
       "value": "𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻",
       "required": false
     },
     "OWNER_NAME": {
-      "description": "Your Name",
+      "description": "Your name",
       "required": true
     },
     "OWNER_NUMBER": {
-      "description": "Your number, dont put '+' and put your area code",
+      "description": "Your WhatsApp number (without + and with country code)",
       "required": true
     },
     "SESSION_ID": {
-      "description": "put your session ID, the code you receive after scanning Qr code",
+      "description": "WhatsApp session ID",
       "required": true
     },
     "NODE_ENV": {
@@ -51,9 +50,15 @@
       "required": true
     },
     "LOG_LEVEL": {
-      "description": "Logging level (debug/info/warn/error)",
+      "description": "Logging level",
       "value": "info",
       "required": false
+    }
+  },
+  "formation": {
+    "worker": {
+      "quantity": 1,
+      "size": "basic"
     }
   },
   "buildpacks": [
@@ -67,12 +72,6 @@
       "url": "https://github.com/clhuang/heroku-buildpack-webp-binaries.git"
     }
   ],
-  "formation": {
-    "worker": {
-      "quantity": 1,
-      "size": "basic"
-    }
-  },
   "addons": [
     {
       "plan": "heroku-postgresql:essential-0"
