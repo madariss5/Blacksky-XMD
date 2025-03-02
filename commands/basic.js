@@ -6,24 +6,14 @@ const config = require('../config');
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
+            logger.info('Generating menu...');
+
             // Header
             let menuText = `╔══《 ${config.botName} MENU 》══╗\n`;
             menuText += `║ 👤 User: ${msg.pushName}\n`;
             menuText += `║ ⏰ Time: ${moment().format('HH:mm:ss')}\n`;
             menuText += `║ 📅 Date: ${moment().format('DD/MM/YYYY')}\n`;
             menuText += `╚════════════════════╝\n\n`;
-
-            // Get commands from config
-            const categories = {};
-            Object.entries(config.commands).forEach(([cmd, info]) => {
-                if (!categories[info.category]) {
-                    categories[info.category] = [];
-                }
-                categories[info.category].push({
-                    name: cmd,
-                    description: info.description
-                });
-            });
 
             // Category emojis
             const categoryEmojis = {
@@ -47,19 +37,38 @@ const basicCommands = {
                 'Education': '📚'
             };
 
-            // Sort categories and add commands
+            // Organize commands by category
+            const categories = {};
+
+            // Process commands from config
+            Object.entries(config.commands).forEach(([cmd, info]) => {
+                const category = info.category;
+                if (!categories[category]) {
+                    categories[category] = [];
+                }
+                categories[category].push({
+                    command: cmd,
+                    description: info.description
+                });
+            });
+
+            logger.info('Categories organized:', Object.keys(categories));
+
+            // Add commands by category
             Object.entries(categories)
                 .sort(([a], [b]) => a.localeCompare(b))
                 .forEach(([category, commands]) => {
-                    const emoji = categoryEmojis[category] || '📌';
-                    menuText += `┏━━━《 ${emoji} ${category} 》━━━┓\n`;
-                    commands.forEach(cmd => {
-                        menuText += `┃ ⌬ ${config.prefix}${cmd.name}\n`;
-                        if (cmd.description) {
-                            menuText += `┃ └─ ${cmd.description}\n`;
-                        }
-                    });
-                    menuText += `┗━━━━━━━━━━━━━━━┛\n\n`;
+                    if (commands.length > 0) {
+                        const emoji = categoryEmojis[category] || '📌';
+                        menuText += `┏━━━《 ${emoji} ${category} 》━━━┓\n`;
+                        commands.forEach(({command, description}) => {
+                            menuText += `┃ ⌬ ${config.prefix}${command}\n`;
+                            if (description) {
+                                menuText += `┃ └─ ${description}\n`;
+                            }
+                        });
+                        menuText += `┗━━━━━━━━━━━━━━━┛\n\n`;
+                    }
                 });
 
             // Footer
@@ -75,11 +84,11 @@ const basicCommands = {
                 gifPlayback: false
             });
 
-            logger.info('Menu command executed successfully');
+            logger.info('Menu sent successfully');
         } catch (error) {
-            logger.error('Menu command failed:', error);
+            logger.error('Error in menu command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error showing menu: ' + error.message
+                text: '❌ Error generating menu: ' + error.message
             });
         }
     },

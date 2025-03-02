@@ -27,6 +27,9 @@ const allCommands = {
     ...educationCommands
 };
 
+// Debug logging for available commands
+logger.info('Available commands:', Object.keys(allCommands));
+
 const handler = async (sock, msg, { messages }, store) => {
     try {
         // Get message content
@@ -80,4 +83,5 @@ const handler = async (sock, msg, { messages }, store) => {
     }
 };
 
-module.exports = handler;
+// Export both the handler and allCommands
+module.exports = { handler, allCommands };
