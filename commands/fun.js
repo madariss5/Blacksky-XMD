@@ -10,33 +10,6 @@ const gameStates = new Map();
 const cooldowns = new Map();
 
 const funCommands = {
-    menu: async (sock, msg) => {
-        try {
-            const menuText = `🎮 *Fun Commands Menu*\n\n` +
-                         `*Games:*\n` +
-                         `• ${config.prefix}magic8ball - Ask the magic 8 ball\n` +
-                         `• ${config.prefix}wordgame - Play word guessing game\n` +
-                         `• ${config.prefix}trivia - Play trivia quiz\n` +
-                         `• ${config.prefix}rps - Play rock paper scissors\n` +
-                         `• ${config.prefix}roll - Roll a dice\n` +
-                         `• ${config.prefix}coinflip - Flip a coin\n\n` +
-                         `*Entertainment:*\n` +
-                         `• ${config.prefix}joke - Get random jokes\n` +
-                         `• ${config.prefix}meme - Get random memes\n` +
-                         `• ${config.prefix}quote - Get inspirational quotes\n` +
-                         `• ${config.prefix}fact - Get random facts\n` +
-                         `• ${config.prefix}emojiart - Get random emoji art\n\n` +
-                         `*Reactions:*\n` +
-                         `Check ${config.prefix}reactions for animated reactions!`;
-
-            await sock.sendMessage(msg.key.remoteJid, { text: menuText });
-            logger.info('Fun menu command executed successfully');
-        } catch (error) {
-            logger.error('Error in fun menu command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to show fun menu' });
-        }
-    },
-
     magic8ball: async (sock, msg, args) => {
         try {
             if (!args.length) {

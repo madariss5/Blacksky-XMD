@@ -6,33 +6,6 @@ const path = require('path');
 const axios = require('axios');
 
 const utilityCommands = {
-    menu: async (sock, msg) => {
-        try {
-            const menuText = `🛠️ *Utility Commands*\n\n` +
-                           `*Media Conversion:*\n` +
-                           `!sticker - Create sticker from image/video\n` +
-                           `!tts <text> - Convert text to speech\n` +
-                           `!translate <lang> <text> - Translate text\n` +
-                           `!ytmp3 <url> - Download YouTube audio as MP3\n` +
-                           `!ytmp4 <url> - Download YouTube video as MP4\n\n` +
-                           `*Information:*\n` +
-                           `!weather <city> - Get weather info\n` +
-                           `!calc <expression> - Calculate expression\n` +
-                           `!stats - Show bot statistics\n\n` +
-                           `*System:*\n` +
-                           `!ping - Check bot response time\n` +
-                           `!uptime - Show bot uptime\n` +
-                           `!report <issue> - Report an issue`;
-
-            await sock.sendMessage(msg.key.remoteJid, { text: menuText });
-        } catch (error) {
-            logger.error('Error in menu command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to show menu'
-            });
-        }
-    },
-
     sticker: async (sock, msg) => {
         try {
             await sock.sendMessage(msg.key.remoteJid, {
@@ -114,12 +87,12 @@ const utilityCommands = {
 
             const weather = response.data;
             const weatherText = `🌤️ *Weather in ${weather.name}*\n\n` +
-                              `• Temperature: ${weather.main.temp}°C\n` +
-                              `• Feels like: ${weather.main.feels_like}°C\n` +
-                              `• Weather: ${weather.weather[0].main}\n` +
-                              `• Description: ${weather.weather[0].description}\n` +
-                              `• Humidity: ${weather.main.humidity}%\n` +
-                              `• Wind Speed: ${weather.wind.speed} m/s`;
+                                `• Temperature: ${weather.main.temp}°C\n` +
+                                `• Feels like: ${weather.main.feels_like}°C\n` +
+                                `• Weather: ${weather.weather[0].main}\n` +
+                                `• Description: ${weather.weather[0].description}\n` +
+                                `• Humidity: ${weather.main.humidity}%\n` +
+                                `• Wind Speed: ${weather.wind.speed} m/s`;
 
             await sock.sendMessage(msg.key.remoteJid, { text: weatherText });
         } catch (error) {
@@ -166,11 +139,11 @@ const utilityCommands = {
             };
 
             const statsText = `📊 *Bot Statistics*\n\n` +
-                            `• Status: Online\n` +
-                            `• Uptime: ${Math.floor(stats.uptime / 3600)}h ${Math.floor((stats.uptime % 3600) / 60)}m\n` +
-                            `• Memory: ${stats.memory.used}MB / ${stats.memory.total}MB\n` +
-                            `• Platform: ${stats.platform}\n` +
-                            `• Node.js: ${stats.version}`;
+                              `• Status: Online\n` +
+                              `• Uptime: ${Math.floor(stats.uptime / 3600)}h ${Math.floor((stats.uptime % 3600) / 60)}m\n` +
+                              `• Memory: ${stats.memory.used}MB / ${stats.memory.total}MB\n` +
+                              `• Platform: ${stats.platform}\n` +
+                              `• Node.js: ${stats.version}`;
 
             await sock.sendMessage(msg.key.remoteJid, { text: statsText });
         } catch (error) {
@@ -250,11 +223,6 @@ const utilityCommands = {
                 text: '❌ Failed to get uptime'
             });
         }
-    },
-
-    help: async (sock, msg) => {
-        // Alias for menu command
-        await utilityCommands.menu(sock, msg);
     },
     ytmp3: async (sock, msg, args) => {
         try {

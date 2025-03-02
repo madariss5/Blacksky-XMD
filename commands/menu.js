@@ -8,17 +8,18 @@ const menuCommands = {
         try {
             const pushName = msg.pushName || 'User';
 
-            // Fancy header with bot name
-            let menuText = `╭═══〘 ⚡ ${config.botName} ⚡ 〙═══⊷❍\n`;
-            menuText += `┃ ╭──────────────\n`;
-            menuText += `┃ │ 👋 Welcome, ${pushName}!\n`;
-            menuText += `┃ │ 🕐 ${moment().format('HH:mm:ss')}\n`;
-            menuText += `┃ │ 📅 ${moment().format('DD/MM/YYYY')}\n`;
-            menuText += `┃ │ ⚡ Prefix: ${config.prefix}\n`;
-            menuText += `┃ │ ⌛ Uptime: ${getUptime()}\n`;
-            menuText += `┃ ╰──────────────\n┃\n`;
+            // Modern Xeon-style header
+            let menuText = `╭─❏ 『 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 』 ❏\n`;
+            menuText += `│\n`;
+            menuText += `│ ⦿ User: ${pushName}\n`;
+            menuText += `│ ⦿ Time: ${moment().format('HH:mm:ss')}\n`;
+            menuText += `│ ⦿ Day: ${moment().format('dddd')}\n`;
+            menuText += `│ ⦿ Date: ${moment().format('DD/MM/YYYY')}\n`;
+            menuText += `│ ⦿ Runtime: ${getUptime()}\n`;
+            menuText += `│\n`;
+            menuText += `╰────────────⦿\n\n`;
 
-            // Organize commands by category
+            // Get commands by category
             const categories = {};
             Object.entries(config.commands).forEach(([cmd, info]) => {
                 const category = info.category || 'Misc';
@@ -28,30 +29,37 @@ const menuCommands = {
                 categories[category].push({ name: cmd, ...info });
             });
 
-            // Category emojis
-            const categoryEmojis = {
+            // Category icons (Xeon-style)
+            const categoryIcons = {
                 'Main': '🎯',
                 'Group': '👥',
                 'Economy': '💰',
+                'Fun': '🎮',
+                'Media': '📽️',
                 'Owner': '👑',
                 'Misc': '🎲'
             };
 
-            // Add commands by category
+            // List commands by category
             Object.entries(categories).forEach(([category, cmds]) => {
-                const emoji = categoryEmojis[category] || '📌';
-                menuText += `┃ ╭─❏ ${emoji} ${category}\n`;
+                const icon = categoryIcons[category] || '📌';
+                menuText += `╭─❏ ${icon} *${category}* ❏\n`;
                 cmds.forEach(cmd => {
-                    menuText += `┃ │ ➪ ${config.prefix}${cmd.name}\n`;
-                    menuText += `┃ │ ❋ ${cmd.description}\n`;
+                    menuText += `│ ⦿ ${config.prefix}${cmd.name}\n`;
+                    if (cmd.description) {
+                        menuText += `│ └─ ${cmd.description}\n`;
+                    }
                 });
-                menuText += `┃ ╰──────────────\n┃\n`;
+                menuText += `╰────────────⦿\n\n`;
             });
 
-            // Footer
-            menuText += `╰═══════════════════⊷❍\n`;
-            menuText += `\n乂 *${config.botName}* 乂\n`;
-            menuText += `Powered by BlackSky Algorithms`;
+            // Modern footer
+            menuText += `╭─❏ 『 Info 』 ❏\n`;
+            menuText += `│ To get detailed info:\n`;
+            menuText += `│ ${config.prefix}help <command>\n`;
+            menuText += `╰────────────⦿\n\n`;
+            menuText += `乂 *${config.botName}* 乂\n`;
+            menuText += `Powered by BlackSky Algorithms ⚡`;
 
             await sock.sendMessage(msg.key.remoteJid, { text: menuText });
             logger.info('Menu command executed successfully');
