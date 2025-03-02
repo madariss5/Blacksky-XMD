@@ -8,6 +8,7 @@ const mediaCommands = require('./commands/media');
 const groupCommands = require('./commands/group');
 const ownerCommands = require('./commands/owner');
 const utilityCommands = require('./commands/utility');
+const educationCommands = require('./commands/education');
 
 // Debug logging for module imports
 logger.info('Starting command registration...');
@@ -38,7 +39,8 @@ const modules = {
     'Media': mediaCommands,
     'Group': groupCommands,
     'Owner': ownerCommands,
-    'Utility': utilityCommands
+    'Utility': utilityCommands,
+    'Education': educationCommands
 };
 
 Object.entries(modules).forEach(([name, commands]) => {
