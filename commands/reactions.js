@@ -293,6 +293,42 @@ const reactionCommands = {
                 text: '😅 Failed to execute highfive command! (GIF not available)'
             });
         }
+    },
+
+    thumbsup: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : null;
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const caption = target ? 
+                `*${msg.pushName}* gives ${target} a thumbs up! 👍` :
+                `*${msg.pushName}* gives a thumbs up! 👍`;
+
+            logger.info('Executing thumbsup command:', { target, mentions });
+            await sendGifReaction(sock, msg, 'thumbsup.gif', caption, mentions);
+        } catch (error) {
+            logger.error('Error in thumbsup command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute thumbsup command! (GIF not available)'
+            });
+        }
+    },
+
+    thumbsdown: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : null;
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const caption = target ? 
+                `*${msg.pushName}* gives ${target} a thumbs down! 👎` :
+                `*${msg.pushName}* gives a thumbs down! 👎`;
+
+            logger.info('Executing thumbsdown command:', { target, mentions });
+            await sendGifReaction(sock, msg, 'thumbsdown.gif', caption, mentions);
+        } catch (error) {
+            logger.error('Error in thumbsdown command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute thumbsdown command! (GIF not available)'
+            });
+        }
     }
 };
 

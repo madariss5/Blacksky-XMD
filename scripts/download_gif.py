@@ -7,7 +7,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def download_gif(url, filename):
-    """Download test GIFs for the bot."""
+    """Download GIFs for the bot."""
     try:
         media_dir = os.path.join(os.getcwd(), 'media')
         os.makedirs(media_dir, exist_ok=True)
@@ -34,7 +34,15 @@ def download_gif(url, filename):
         logger.error(f"Error downloading GIF: {str(e)}")
         return False
 
-# Using a verified anime character throwing GIF from GIPHY's CDN
-yeet_url = "https://media4.giphy.com/media/iWkHDNtcHpB5e/giphy.gif"
-success = download_gif(yeet_url, "throw.gif")
+# Using verified anime reaction GIFs from GIPHY's CDN
+gifs = {
+    'thumbsup': 'https://media1.giphy.com/media/9Y5BbDSkSTiY8/giphy.gif',
+    'thumbsdown': 'https://media3.giphy.com/media/3o7TKr3nzbh5WgCFxe/giphy.gif'
+}
+
+success = True
+for name, url in gifs.items():
+    if not download_gif(url, f"{name}.gif"):
+        success = False
+
 sys.exit(0 if success else 1)
