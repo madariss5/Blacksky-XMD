@@ -9,7 +9,7 @@ gifs = {
     'bonk.gif': 'https://media0.giphy.com/media/30lxTuJueXE7C/giphy.gif',  # Anime bonk
     'rip.gif': 'https://media3.giphy.com/media/xT1XGFuvjWbaF7Klq0/giphy.gif',  # Anime RIP scene
     'wave.gif': 'https://media2.giphy.com/media/FvVtnY82LPxrG/giphy.gif',  # Anime waving
-    'yeet.gif': 'https://media4.giphy.com/media/WJjLyXCVvro2I/giphy.gif',  # Anime throwing/yeet
+    'yeet.gif': 'https://media.giphy.com/media/dZRlFW1sbFEzK/giphy.gif',  # Better anime throwing/yeet
     'smile.gif': 'https://media1.giphy.com/media/ellxlkgbPTiM0/giphy.gif',  # Anime smile
     'dance.gif': 'https://media3.giphy.com/media/mJIa7rg9VPEhzU1dyQ/giphy.gif'  # Anime dance
 }
