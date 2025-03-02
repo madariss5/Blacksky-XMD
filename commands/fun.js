@@ -2,201 +2,197 @@ const config = require('../config');
 const logger = require('pino')();
 const fs = require('fs-extra');
 const path = require('path');
-const ffmpeg = require('fluent-ffmpeg');
-const { exec } = require('child_process');
-const { downloadMediaMessage } = require('@whiskeysockets/baileys');
-const tempDir = require('os').tmpdir();
+const axios = require('axios');
 
+// Game states and cooldowns management
+const gameStates = new Map();
+const cooldowns = new Map();
+
+// Media directory initialization
 const mediaDir = path.join(__dirname, '../media');
 if (!fs.existsSync(mediaDir)) {
     fs.mkdirpSync(mediaDir);
     logger.info('Media directory created');
 }
 
-const convertGifToMp4 = async (inputPath) => {
-    try {
-        const outputPath = inputPath.replace('.gif', '.mp4');
-
-        // Check if converted file already exists
-        if (fs.existsSync(outputPath)) {
-            logger.info(`Using existing MP4: ${outputPath}`);
-            return outputPath;
-        }
-
-        return new Promise((resolve, reject) => {
-            ffmpeg(inputPath)
-                .toFormat('mp4')
-                .addOutputOptions([
-                    '-pix_fmt yuv420p',
-                    '-movflags +faststart',
-                    '-vf scale=trunc(iw/2)*2:trunc(ih/2)*2',
-                    '-c:v libx264',
-                    '-preset ultrafast',
-                    '-b:v 1M'
-                ])
-                .on('end', () => {
-                    logger.info(`Successfully converted GIF to MP4: ${outputPath}`);
-                    resolve(outputPath);
-                })
-                .on('error', (err) => {
-                    logger.error(`Error converting GIF to MP4: ${err.message}`);
-                    reject(err);
-                })
-                .save(outputPath);
-        });
-    } catch (error) {
-        logger.error('Error in convertGifToMp4:', error);
-        throw error;
-    }
-};
-
-const sendGifReaction = async (sock, msg, mediaPath, caption = '', mentions = []) => {
-    try {
-        // Check if the GIF exists
-        if (fs.existsSync(mediaPath)) {
-            // Convert GIF to MP4
-            const mp4Path = await convertGifToMp4(mediaPath);
-            const buffer = await fs.readFile(mp4Path);
-
-            try {
-                await sock.sendMessage(msg.key.remoteJid, {
-                    video: buffer,
-                    caption: caption,
-                    mentions: mentions,
-                    gifPlayback: true,
-                    mimetype: 'video/mp4',
-                    messageType: 'videoMessage',
-                    jpegThumbnail: null,
-                    seconds: 1,
-                    contextInfo: {
-                        isGif: true
-                    }
-                });
-                logger.info(`Successfully sent MP4: ${mp4Path}`);
-                return true;
-            } catch (sendError) {
-                logger.error('Error sending MP4 message:', sendError);
-                throw sendError;
-            }
-        } else {
-            logger.error(`GIF not found: ${mediaPath}`);
-            throw new Error('GIF not found');
-        }
-    } catch (error) {
-        logger.error('Error in sendGifReaction:', error);
-
-        // Send fallback text message
-        try {
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `${caption} (GIF not available: ${error.message})`,
-                mentions: mentions
-            });
-        } catch (fallbackError) {
-            logger.error('Error sending fallback message:', fallbackError);
-        }
-        return false;
-    }
-};
-
 const funCommands = {
     menu: async (sock, msg) => {
-        const commandList = `🎮 *Fun Commands Menu* 🎮\n
-🎯 *Games:*
-1. *!magic8ball* <question> - Ask the Magic 8 Ball
-2. *!wordgame* - Play word guessing game
-3. *!trivia* - Play trivia quiz
-4. *!dare* - Get a dare challenge
-5. *!truth* - Get a truth question
-6. *!rps* <choice> - Play Rock Paper Scissors
-7. *!roll* [max] - Roll a dice (default: 6)
+        try {
+            const menuText = `🎮 *Fun Commands Menu*\n\n` +
+                         `*Games:*\n` +
+                         `• ${config.prefix}magic8ball - Ask the magic 8 ball\n` +
+                         `• ${config.prefix}wordgame - Play word guessing game\n` +
+                         `• ${config.prefix}trivia - Play trivia quiz\n` +
+                         `• ${config.prefix}rps - Play rock paper scissors\n` +
+                         `• ${config.prefix}roll - Roll a dice\n` +
+                         `• ${config.prefix}coinflip - Flip a coin\n\n` +
+                         `*Entertainment:*\n` +
+                         `• ${config.prefix}joke - Get random jokes\n` +
+                         `• ${config.prefix}meme - Get random memes\n` +
+                         `• ${config.prefix}quote - Get inspirational quotes\n` +
+                         `• ${config.prefix}fact - Get random facts\n` +
+                         `• ${config.prefix}emojiart - Get random emoji art\n\n` +
+                         `*Reactions:*\n` +
+                         `• ${config.prefix}hug - Give someone a hug\n` +
+                         `• ${config.prefix}pat - Pat someone\n` +
+                         `• ${config.prefix}slap - Slap someone\n` +
+                         `• ${config.prefix}kiss - Kiss someone\n` +
+                         `• ${config.prefix}punch - Punch someone\n` +
+                         `• ${config.prefix}dance - Show your dance moves`;
 
-😊 *Entertainment:*
-8. *!joke* - Get random jokes
-9. *!meme* - Get random memes
-10. *!quote* - Get inspirational quotes
-11. *!fact* - Get random facts
-12. *!emojiart* - Get random emoji art
-
-
-🌟 *Reactions:*
-13. *!slap* [@user] - Slap someone
-14. *!hug* [@user] - Give someone a hug
-15. *!pat* [@user] - Pat someone gently
-16. *!kiss* [@user] - Kiss someone
-17. *!punch* [@user] - Punch someone
-18. *!bonk* [@user] - Bonk someone
-19. *!blush* - Show blushing reaction
-20. *!happy* - Show happy reaction
-21. *!smile* - Show smiling reaction
-22. *!smug* - Show smug reaction
-23. *!cry* - Show crying reaction
-24. *!bully* [@user] - Bully someone (playfully)
-25. *!lick* [@user] - Lick someone
-26. *!bite* [@user] - Bite someone
-27. *!nom* [@user] - Nom on someone
-28. *!glomp* [@user] - Tackle-hug someone
-29. *!dance* - Show off your dance moves
-30. *!highfive* [@user] - Give a high-five
-31. *!wave* [@user] - Wave at someone
-32. *!wink* [@user] - Wink at someone
-33. *!yeet* [@user] - Yeet someone
-34. *!poke* [@user] - Poke someone
-35. *!facepalm* - Express disappointment
-36. *!cuddle* [@user] - Cuddle someone
-37. *!boop* [@user] - Boop someone's nose
-38. *!trash* [@user] - Throw someone in the trash
-39. *!triggered* [@user] - Show triggered reaction
-40. *!rip* [@user] - Create a memorial
-41. *!jail* [@user] - Put behind bars
-42. *!wanted* [@user] - Mark as wanted
-43. *!awoo* - Make an awoo sound
-44. *!handhold* [@user] - Hold hands with someone
-45. *!baka* [@user] - Call someone baka
-46. *!neko* - Show a cute neko
-47. *!couple* - Tag random couples
-
-
-*How to use:*
-• Commands with [@user] can tag someone
-• [max] means optional number
-• <choice/question> means required text
-• Have fun and be respectful! 😊`;
-
-        await sock.sendMessage(msg.key.remoteJid, { text: commandList });
+            await sock.sendMessage(msg.key.remoteJid, { text: menuText });
+            logger.info('Fun menu command executed successfully');
+        } catch (error) {
+            logger.error('Error in fun menu command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to show fun menu' });
+        }
     },
 
     magic8ball: async (sock, msg, args) => {
         try {
             if (!args.length) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '🎱 Please ask a question! Example: !magic8ball will it rain today?'
+                return await sock.sendMessage(msg.key.remoteJid, { 
+                    text: '❌ Please ask a question!\nUsage: .magic8ball <question>' 
                 });
             }
 
             const responses = [
-                { text: "It is certain! ✨", gif: './media/anime-happy.gif' },
-                { text: "Without a doubt! 💫", gif: './media/anime-smile.gif' },
-                { text: "Most likely! 🌟", gif: './media/anime-smug.gif' },
-                { text: "Better not tell you now... 🤫", gif: './media/anime-shush.gif' },
-                { text: "Cannot predict now... 🤔", gif: './media/anime-think.gif' },
-                { text: "Don't count on it! 🚫", gif: './media/anime-no.gif' },
-                { text: "My sources say no! ❌", gif: './media/anime-cry.gif' },
-                { text: "Outlook not so good! 😕", gif: './media/anime-sad.gif' }
+                "It is certain! ✨",
+                "Without a doubt! 💫",
+                "Most likely! 🌟",
+                "Yes definitely! ✅",
+                "You may rely on it! 👍",
+                "Ask again later... 🤔",
+                "Better not tell you now... 🤫",
+                "Cannot predict now... 💭",
+                "Don't count on it! ❌",
+                "My sources say no! 🚫",
+                "Very doubtful! 😕",
+                "Outlook not so good! 😬"
             ];
 
             const response = responses[Math.floor(Math.random() * responses.length)];
-
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `🎱 *Magic 8 Ball*\n\nQ: ${args.join(' ')}\nA: ${response.text}`
+                text: `🎱 *Magic 8 Ball*\n\nQ: ${args.join(' ')}\nA: ${response}`
             });
-
-            await sendGifReaction(sock, msg, response.gif);
-
+            logger.info('Magic 8 Ball command executed successfully');
         } catch (error) {
             logger.error('Error in magic8ball command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to consult the Magic 8 Ball!' });
+        }
+    },
+
+    rps: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please make your choice!\nUsage: .rps <rock/paper/scissors>'
+                });
+            }
+
+            const choices = ['rock', 'paper', 'scissors'];
+            const userChoice = args[0].toLowerCase();
+
+            if (!choices.includes(userChoice)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Invalid choice! Please choose rock, paper, or scissors'
+                });
+            }
+
+            const botChoice = choices[Math.floor(Math.random() * choices.length)];
+            let result;
+
+            if (userChoice === botChoice) {
+                result = "It's a tie! 🤝";
+            } else if (
+                (userChoice === 'rock' && botChoice === 'scissors') ||
+                (userChoice === 'paper' && botChoice === 'rock') ||
+                (userChoice === 'scissors' && botChoice === 'paper')
+            ) {
+                result = "You win! 🎉";
+            } else {
+                result = "Bot wins! 🤖";
+            }
+
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to consult the Magic 8 Ball!'
+                text: `🎮 *Rock Paper Scissors*\n\nYour choice: ${userChoice}\nBot's choice: ${botChoice}\n\n${result}`
             });
+            logger.info('RPS command executed successfully');
+        } catch (error) {
+            logger.error('Error in rps command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to play Rock Paper Scissors!' });
+        }
+    },
+
+    roll: async (sock, msg, args) => {
+        try {
+            const max = args.length ? parseInt(args[0]) : 6;
+            if (isNaN(max) || max < 1) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a valid number!\nUsage: .roll [max number]'
+                });
+            }
+
+            const result = Math.floor(Math.random() * max) + 1;
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🎲 *Dice Roll*\n\nYou rolled: ${result} (1-${max})`
+            });
+            logger.info('Roll command executed successfully');
+        } catch (error) {
+            logger.error('Error in roll command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to roll the dice!' });
+        }
+    },
+
+    coinflip: async (sock, msg) => {
+        try {
+            const result = Math.random() < 0.5;
+            const text = result ? 'Heads! 👑' : 'Tails! 🪙';
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🎲 *Coin Flip*\n\n${text}`
+            });
+            logger.info('Coinflip command executed successfully');
+        } catch (error) {
+            logger.error('Error in coinflip command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to flip the coin!' });
+        }
+    },
+
+    joke: async (sock, msg) => {
+        try {
+            const response = await axios.get('https://v2.jokeapi.dev/joke/Any?safe-mode');
+            const joke = response.data;
+            let jokeText;
+
+            if (joke.type === 'single') {
+                jokeText = joke.joke;
+            } else {
+                jokeText = `${joke.setup}\n\n${joke.delivery}`;
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `😂 *Here's a joke:*\n\n${jokeText}`
+            });
+            logger.info('Joke command executed successfully');
+        } catch (error) {
+            logger.error('Error in joke command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to fetch a joke!' });
+        }
+    },
+
+    quote: async (sock, msg) => {
+        try {
+            const response = await axios.get('https://api.quotable.io/random');
+            const quote = response.data;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `📜 *Quote of the moment*\n\n"${quote.content}"\n\n- ${quote.author}`
+            });
+            logger.info('Quote command executed successfully');
+        } catch (error) {
+            logger.error('Error in quote command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to fetch a quote!' });
         }
     },
     wordgame: async (sock, msg) => {
@@ -411,107 +407,6 @@ const funCommands = {
         await sock.sendMessage(msg.key.remoteJid, {
             text: `🎯 *Truth Challenge*\n\n${truth}\n\nDare to answer honestly? 🤔`
         });
-    },
-    meme: async (sock, msg) => {
-        try {
-            const mediaPath = './media/anime-meme.gif';
-            if (fs.existsSync(mediaPath)) {
-                await sock.sendMessage(msg.key.remoteJid, {
-                    video: fs.readFileSync(mediaPath),
-                    gifPlayback: true,
-                    caption: '😂 Here\'s your meme!'
-                });
-            }
-        } catch (error) {
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '😅 Oops! Failed to fetch a meme. Try again later!'
-            });
-        }
-    },
-    joke: async (sock, msg) => {
-        const jokes = [
-            "Why don't scientists trust atoms? Because they make up everything! 😄",
-            "What did the grape say when it got stepped on? Nothing, it just let out a little wine! 🍷",
-            "Why don't eggs tell jokes? They'd crack up! 🥚",
-            "What do you call a bear with no teeth? A gummy bear! 🐻",
-            "Why did the scarecrow win an award? He was outstanding in his field! 🌾",
-            "What do you call a can opener that doesn't work? A can't opener! 🥫",
-            "Why did the cookie go to the doctor? Because it was feeling crumbly! 🍪",
-            "What do you call fake spaghetti? An impasta! 🍝"
-        ];
-        const joke = jokes[Math.floor(Math.random() * jokes.length)];
-        await sock.sendMessage(msg.key.remoteJid, {
-            text: `😂 *Here's a joke:*\n\n${joke}`
-        });
-    },
-    quote: async (sock, msg) => {
-        const quotes = [
-            "Life is what happens when you're busy making other plans. - John Lennon",
-            "The only way to do great work is to love what you do. - Steve Jobs",
-            "In three words I can sum up everything I've learned about life: it goes on. - Robert Frost",
-            "Success is not final, failure is not fatal. - Winston Churchill",
-            "Be yourself; everyone else is already taken. - Oscar Wilde",
-            "The future belongs to those who believe in the beauty of their dreams. - Eleanor Roosevelt",
-            "Do what you can, with what you have, where you are. - Theodore Roosevelt",
-            "Everything you've ever wanted is on the other side of fear. - George Addair"
-        ];
-        const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
-        await sock.sendMessage(msg.key.remoteJid, {
-            text: `📜 *Inspirational Quote:*\n\n${randomQuote}`
-        });
-    },
-    fact: async (sock, msg) => {
-        const facts = [
-            "Honey never spoils! 🍯",
-            "Bananas are berries, but strawberries aren't! 🍌",
-            "A day on Venus is longer than its year! 🌟",
-            "Octopuses have three hearts! 🐙",
-            "The Great Wall of China isn't visible from space! 🌍",
-            "Sloths can hold their breath for up to 40 minutes underwater! 🦥",
-            "Cows have best friends and get stressed when separated! 🐄",
-            "A cloud can weigh more than a million pounds! ☁️"
-        ];
-        const fact = facts[Math.floor(Math.random() * facts.length)];
-        await sock.sendMessage(msg.key.remoteJid, {
-            text: `🤓 *Random Fact:*\n\n${fact}`
-        });
-    },
-    emojiart: async (sock, msg) => {
-        const arts = [
-            "ʕ•ᴥ•ʔ",
-            "(づ｡◕‿‿◕｡)づ",
-            "(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧",
-            "▼・ᴥ・▼",
-            "(｡◕‿◕｡)",
-            "( ͡° ͜ʖ ͡°)",
-            "(╯°□°）╯︵ ┻━┻",
-            "┬─┬ノ( º _ ºノ)",
-            "(｡♥‿♥｡)",
-            "^_^"
-        ];
-        const art = arts[Math.floor(Math.random() * arts.length)];
-        await sock.sendMessage(msg.key.remoteJid, {
-            text: `🎨 *Here's your emoji art:*\n\n${art}`
-        });
-    },
-    coinflip: async (sock, msg) => {
-        try {
-            const result = Math.random() < 0.5;
-            const text = result ? 'Heads! 👑' : 'Tails! 🪙';
-            const gif = result ? './media/anime-happy.gif' : './media/anime-smile.gif';
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `🎲 *Coin Flip*\n\n${text}`
-            });
-
-            await sendGifReaction(sock, msg, gif);
-
-        } catch (error) {
-            logger.error('Error in coinflip command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to flip the coin!'
-            });
-        }
     },
     slap: async (sock, msg, args) => {
         try {
@@ -739,7 +634,7 @@ const funCommands = {
             });
         }
     },
-    wave: async (sock, msg, args) => {
+    wave: async(sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
@@ -1132,12 +1027,11 @@ const funCommands = {
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `*${msg.pushName}* blushes! 😊`
             });
-
             await sendGifReaction(sock, msg, './media/anime-blush.gif', '😊');
         } catch (error) {
             logger.error('Error in blush command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '😅 Failed to execute blush command!'
+                text: '❌ Failed to execute blush command!'
             });
         }
     },
@@ -1146,12 +1040,11 @@ const funCommands = {
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `*${msg.pushName}* smiles! 😊`
             });
-
             await sendGifReaction(sock, msg, './media/anime-smile.gif', '😊');
         } catch (error) {
             logger.error('Error in smile command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '😅 Failed to execute smile command!'
+                text: '❌ Failed to execute smile command!'
             });
         }
     },
@@ -1396,7 +1289,145 @@ const funCommands = {
                 text: '❌ Failed to execute dance command!'
             });
         }
-    }
+    },
+    fact: async (sock, msg) => {
+        try {
+            const response = await axios.get('https://uselessfacts.jsph.pl/random.json?language=en');
+            const fact = response.data;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🤓 *Random Fact*\n\n${fact.text}`
+            });
+            logger.info('Fact command executed successfully');
+        } catch (error) {
+            logger.error('Error in fact command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to fetch a fact!' });
+        }
+    },
+
+    emojiart: async (sock, msg) => {
+        try {
+            const arts = [
+                "ʕ•ᴥ•ʔ",
+                "(づ｡◕‿‿◕｡)づ",
+                "(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧",
+                "▼・ᴥ・▼",
+                "(｡◕‿◕｡)",
+                "( ͡° ͜ʖ ͡°)",
+                "(╯°□°）╯︵ ┻━┻",
+                "┬─┬ノ( º _ ºノ)",
+                "(｡♥‿♥｡)",
+                "^_^"
+            ];
+
+            const art = arts[Math.floor(Math.random() * arts.length)];
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🎨 *Here's your emoji art:*\n\n${art}`
+            });
+            logger.info('Emoji art command executed successfully');
+        } catch (error) {
+            logger.error('Error in emojiart command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to generate emoji art!' });
+        }
+    },
+    meme: async (sock, msg) => {
+        try {
+            const response = await axios.get('https://meme-api.com/gimme');
+            const meme = response.data;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: meme.url },
+                caption: `😂 ${meme.title}`
+            });
+            logger.info('Meme command executed successfully');
+        } catch (error) {
+            logger.error('Error in meme command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to fetch a meme!' });
+        }
+    },
+    convertGifToMp4: async (inputPath) => {
+        try {
+            const outputPath = inputPath.replace('.gif', '.mp4');
+
+            // Check if converted file already exists
+            if (fs.existsSync(outputPath)) {
+                logger.info(`Using existing MP4: ${outputPath}`);
+                return outputPath;
+            }
+
+            return new Promise((resolve, reject) => {
+                ffmpeg(inputPath)
+                    .toFormat('mp4')
+                    .addOutputOptions([
+                        '-pix_fmt yuv420p',
+                        '-movflags +faststart',
+                        '-vf scale=trunc(iw/2)*2:trunc(ih/2)*2',
+                        '-c:v libx264',
+                        '-preset ultrafast',
+                        '-b:v 1M'
+                    ])
+                    .on('end', () => {
+                        logger.info(`Successfully converted GIF to MP4: ${outputPath}`);
+                        resolve(outputPath);
+                    })
+                    .on('error', (err) => {
+                        logger.error(`Error converting GIF to MP4: ${err.message}`);
+                        reject(err);
+                    })
+                    .save(outputPath);
+            });
+        } catch (error) {
+            logger.error('Error in convertGifToMp4:', error);
+            throw error;
+        }
+    },
+    sendGifReaction: async (sock, msg, mediaPath, caption = '', mentions = []) => {
+        try {
+            // Check if the GIF exists
+            if (fs.existsSync(mediaPath)) {
+                // Convert GIF to MP4
+                const mp4Path = await convertGifToMp4(mediaPath);
+                const buffer = await fs.readFile(mp4Path);
+
+                try {
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        video: buffer,
+                        caption: caption,
+                        mentions: mentions,
+                        gifPlayback: true,
+                        mimetype: 'video/mp4',
+                        messageType: 'videoMessage',
+                        jpegThumbnail: null,
+                        seconds: 1,
+                        contextInfo: {
+                            isGif: true
+                        }
+                    });
+                    logger.info(`Successfully sent MP4: ${mp4Path}`);
+                    return true;
+                } catch (sendError) {
+                    logger.error('Error sending MP4 message:', sendError);
+                    throw sendError;
+                }
+            } else {
+                logger.error(`GIF not found: ${mediaPath}`);
+                throw new Error('GIF not found');
+            }
+        } catch (error) {
+            logger.error('Error in sendGifReaction:', error);
+
+            // Send fallback text message
+            try {
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `${caption} (GIF not available: ${error.message})`,
+                    mentions: mentions
+                });
+            } catch (fallbackError) {
+                logger.error('Error sending fallback message:', fallbackError);
+            }
+            return false;
+        }
+    },
 };
 
 module.exports = funCommands;
