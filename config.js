@@ -428,6 +428,11 @@ const config = {
             category: 'Owner',
             usage: '.unblock @user'
         },
+        banlist: {
+            description: 'View list of banned users',
+            category: 'Owner',
+            usage: '.banlist'
+        },
         join: { 
             description: 'Join a group via invite link', 
             category: 'Owner',
@@ -523,6 +528,7 @@ const config = {
             category: 'Owner',
             usage: '.unban @user'
         },
+
 
         // Economy Commands
         balance: {

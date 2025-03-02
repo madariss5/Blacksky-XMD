@@ -616,6 +616,40 @@ const ownerCommands = {
                 text: '❌ Failed to update config'
             });
         }
+    },
+    banlist: async (sock, msg) => {
+        try {
+            if (!await ownerCommands.handleOwnerCommand(sock, msg)) return;
+
+            // Get banned users from the database
+            const bannedUsers = await store.getBannedUsers();
+
+            if (!bannedUsers || bannedUsers.length === 0) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '📋 No banned users found'
+                });
+            }
+
+            let banlistText = '📋 *Banned Users List*\n\n';
+            bannedUsers.forEach((user, index) => {
+                banlistText += `${index + 1}. @${user.id.split('@')[0]}\n`;
+                if (user.reason) banlistText += `   Reason: ${user.reason}\n`;
+                if (user.bannedAt) banlistText += `   Date: ${new Date(user.bannedAt).toLocaleString()}\n`;
+                banlistText += '\n';
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: banlistText,
+                mentions: bannedUsers.map(user => user.id)
+            });
+
+            logger.info('Banlist command executed');
+        } catch (error) {
+            logger.error('Error in banlist command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to fetch banned users list'
+            });
+        }
     }
 };
 
