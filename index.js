@@ -34,7 +34,7 @@ const { smsg } = require('./lib/simple');
 const qrcode = require('qrcode-terminal');
 const { compressCredsFile } = require('./utils/creds');
 const { Boom } = require('@hapi/boom');
-
+require('dotenv').config();
 
 // Global variables
 global.authState = null;
@@ -57,7 +57,7 @@ const msgRetryCounterCache = new NodeCache();
 
 // Keep-alive ping endpoint
 app.get('/', (req, res) => {
-    res.json({ 
+    res.json({
         status: 'WhatsApp Bot Server Running',
         botName: botName,
         uptime: process.uptime()
@@ -128,12 +128,34 @@ async function saveAndSendCreds(socket) {
     }
 }
 
+const loadAuthState = async () => {
+    try {
+        if (process.env.SESSION_DATA) {
+            // If running on Heroku, load from environment variable
+            const sessionData = JSON.parse(process.env.SESSION_DATA);
+            return {
+                state: sessionData,
+                saveCreds: async () => {
+                    // On Heroku, we don't save credentials since filesystem is ephemeral
+                    logger.info('Session updated (but not saved - running on Heroku)');
+                }
+            };
+        } else {
+            // If running locally, use file-based auth
+            return await useMultiFileAuthState(`./auth_info_baileys`);
+        }
+    } catch (error) {
+        logger.error('Error loading auth state:', error);
+        return await useMultiFileAuthState(`./auth_info_baileys`);
+    }
+};
+
 async function startHANS() {
     try {
         await startServer();
         logger.info('\nLoading WhatsApp session...');
 
-        const { state, saveCreds } = await useMultiFileAuthState(`./auth_info_baileys`);
+        const { state, saveCreds } = await loadAuthState();
         global.authState = state;
 
         const { version, isLatest } = await fetchLatestBaileysVersion();
@@ -195,7 +217,7 @@ async function startHANS() {
                     await saveAndSendCreds(hans);
                 }
 
-                await hans.sendMessage(hans.user.id, { 
+                await hans.sendMessage(hans.user.id, {
                     text: `🟢 ${botName} is now active and ready to use!`
                 });
             }
@@ -209,8 +231,8 @@ async function startHANS() {
                 let msg = JSON.parse(JSON.stringify(chatUpdate.messages[0]));
                 if (!msg.message) return;
 
-                msg.message = (Object.keys(msg.message)[0] === 'ephemeralMessage') 
-                    ? msg.message.ephemeralMessage.message 
+                msg.message = (Object.keys(msg.message)[0] === 'ephemeralMessage')
+                    ? msg.message.ephemeralMessage.message
                     : msg.message;
 
                 if (msg.key && msg.key.remoteJid === 'status@broadcast') return;
