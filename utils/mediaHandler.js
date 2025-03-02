@@ -2,7 +2,6 @@ const fs = require('fs-extra');
 const path = require('path');
 const ffmpeg = require('fluent-ffmpeg');
 const logger = require('./logger');
-const { exec } = require('child_process');
 
 class MediaHandler {
     constructor() {
@@ -15,106 +14,125 @@ class MediaHandler {
         try {
             await fs.ensureDir(this.mediaDir);
             await fs.ensureDir(this.tempDir);
-            logger.info('Media and temp directories initialized:', {
-                mediaDir: this.mediaDir,
-                tempDir: this.tempDir
-            });
+            logger.info('Media and temp directories initialized');
         } catch (error) {
             logger.error('Error creating directories:', error);
             throw error;
         }
     }
 
-    // Direct ffmpeg command execution
     async convertGifToVideo(inputPath, outputPath) {
         return new Promise((resolve, reject) => {
-            exec(`ffmpeg -i "${inputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=320:-2" "${outputPath}"`, (error, stdout, stderr) => {
-                if (error) {
-                    logger.error('FFmpeg error:', { error, stderr });
-                    reject(error);
-                } else {
-                    logger.info('FFmpeg conversion successful');
+            ffmpeg(inputPath)
+                .outputOptions([
+                    '-movflags faststart',
+                    '-pix_fmt yuv420p',
+                    '-c:v libx264',
+                    '-profile:v baseline',
+                    '-level 3.0',
+                    '-preset ultrafast',
+                    '-vf scale=w=320:h=-2,fps=24',
+                    '-t 8',
+                    '-an',
+                    '-f mp4'
+                ])
+                .on('start', (commandLine) => {
+                    logger.info('Starting FFmpeg:', { command: commandLine });
+                })
+                .on('progress', (progress) => {
+                    logger.debug('Processing:', progress);
+                })
+                .on('end', () => {
+                    logger.info('Conversion complete:', { output: outputPath });
                     resolve(outputPath);
-                }
-            });
+                })
+                .on('error', (err) => {
+                    logger.error('Conversion failed:', err);
+                    reject(err);
+                })
+                .save(outputPath);
         });
     }
 
     async sendGifReaction(sock, msg, gifName, caption = '', mentions = []) {
         let tempFile = null;
+
         try {
-            // Ensure gif name has .gif extension
             if (!gifName.endsWith('.gif')) {
                 gifName = `${gifName}.gif`;
             }
 
-            // Get full path and verify file exists
             const gifPath = path.join(this.mediaDir, gifName);
-            logger.info('Looking for GIF at:', { path: gifPath });
 
-            if (!fs.existsSync(gifPath)) {
-                throw new Error(`GIF not found: ${gifName}`);
+            // Verify GIF exists and is valid
+            const stats = await fs.stat(gifPath);
+            if (stats.size === 0) {
+                throw new Error(`GIF is empty: ${gifName}`);
             }
 
-            // Create temp MP4 file
-            tempFile = path.join(this.tempDir, `${Date.now()}.mp4`);
+            logger.info('Processing GIF:', {
+                name: gifName,
+                size: stats.size,
+                path: gifPath
+            });
 
-            // Convert GIF to MP4
+            // Create unique temp file
+            const timestamp = Date.now();
+            const random = Math.random().toString(36).substring(7);
+            tempFile = path.join(this.tempDir, `${timestamp}_${random}.mp4`);
+
+            // Convert and verify
             await this.convertGifToVideo(gifPath, tempFile);
 
-            // Read the converted file
-            const buffer = await fs.readFile(tempFile);
+            const videoStats = await fs.stat(tempFile);
+            if (videoStats.size === 0) {
+                throw new Error('Converted file is empty');
+            }
 
-            // Send message
+            // Send as video message
+            const buffer = await fs.readFile(tempFile);
             await sock.sendMessage(msg.key.remoteJid, {
                 video: buffer,
                 caption: caption,
-                mentions: mentions,
                 gifPlayback: true,
+                mentions: mentions,
                 mimetype: 'video/mp4'
             });
 
-            logger.info('Successfully sent GIF reaction');
             return true;
 
         } catch (error) {
-            logger.error('Error in sendGifReaction:', error);
-            try {
-                await sock.sendMessage(msg.key.remoteJid, {
-                    text: `${caption} (GIF not available)`,
-                    mentions: mentions
-                });
-            } catch (sendError) {
-                logger.error('Error sending fallback message:', sendError);
-            }
+            logger.error('GIF reaction failed:', {
+                error: error.message,
+                gif: gifName
+            });
+
+            // Send fallback message
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `${caption} (GIF not available - ${error.message})`,
+                mentions: mentions
+            });
             return false;
+
         } finally {
-            // Cleanup temp file
-            if (tempFile && await fs.pathExists(tempFile)) {
+            // Cleanup
+            if (tempFile) {
                 try {
                     await fs.remove(tempFile);
-                    logger.info('Cleaned up temp file:', tempFile);
-                } catch (cleanupError) {
-                    logger.error('Error cleaning up temp file:', cleanupError);
+                } catch (err) {
+                    logger.error('Cleanup failed:', err);
                 }
             }
         }
     }
 }
 
-// Create a singleton instance
+// Singleton instance
 const mediaHandler = new MediaHandler();
 
 module.exports = {
     mediaHandler,
-    // Helper function for easier usage
     sendGifReaction: async (sock, msg, gifName, caption = '', mentions = []) => {
-        try {
-            logger.info('Sending GIF reaction:', { gifName });
-            return await mediaHandler.sendGifReaction(sock, msg, gifName, caption, mentions);
-        } catch (error) {
-            logger.error('Error in sendGifReaction helper:', error);
-            return false;
-        }
+        return await mediaHandler.sendGifReaction(sock, msg, gifName, caption, mentions);
     }
 };
