@@ -269,13 +269,28 @@ async function startHANS() {
                 connectionRetryCount = 0;
                 logger.info('WhatsApp connection established successfully!');
 
-                if (!credsSent) {
-                    await saveAndSendCreds(hans);
-                }
+                try {
+                    if (!credsSent) {
+                        await saveAndSendCreds(hans);
+                    }
 
-                await hans.sendMessage(hans.user.id, {
-                    text: `🟢 ${botName} is now active and ready to use!`
-                });
+                    // Verify hans.user exists before sending message
+                    if (hans?.user?.id) {
+                        logger.info('Sending success message to bot number:', hans.user.id);
+
+                        // Send success message to bot's own number
+                        await hans.sendMessage(hans.user.id, {
+                            text: `🟢 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 bot successfully connected! Enjoy using the bot.\n\n` +
+                                  `Type .help or .menu to see available commands.`
+                        }).catch(err => {
+                            logger.error('Failed to send success message:', err);
+                        });
+                    } else {
+                        logger.warn('Bot user ID not available, skipping success message');
+                    }
+                } catch (error) {
+                    logger.error('Error in connection open handler:', error);
+                }
             }
         });
 
