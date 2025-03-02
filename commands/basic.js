@@ -7,21 +7,37 @@ const config = require('../config');
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            // Get all commands from config
+            // Get commands from config
             const commands = config.commands;
 
-            // Create menu message with image
+            // Group commands by category
+            const categories = {};
+            Object.entries(commands).forEach(([cmd, info]) => {
+                if (!categories[info.category]) {
+                    categories[info.category] = [];
+                }
+                categories[info.category].push(`⭔ ${config.prefix}${cmd} - ${info.description}`);
+            });
+
+            // Build the menu message
+            let menuText = `┏━━⊱『 *${config.botName}* 』⊰━━┓\n\n`;
+            menuText += `📜 *COMMAND LIST*\n\n`;
+
+            // Add commands by category
+            Object.entries(categories)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .forEach(([category, cmds]) => {
+                    menuText += `*${category}*\n${cmds.join('\n')}\n\n`;
+                });
+
+            menuText += `┗━━⊱ Total: ${Object.keys(commands).length} Commands ⊰━━┛\n\n`;
+            menuText += `*Note:* Type ${config.prefix}help <command> for details\n`;
+            menuText += `*Prefix:* ${config.prefix}`;
+
+            // Send menu with image
             await sock.sendMessage(msg.key.remoteJid, { 
                 image: { url: config.menuImage },
-                caption: `┏━━⊱『 ${config.botName} 』⊰━━┓\n\n` +
-                        `📜 *COMMAND LIST*\n\n` +
-                        `${Object.entries(commands)
-                            .sort(([a], [b]) => a.localeCompare(b))
-                            .map(([cmd, info]) => `⭔ ${config.prefix}${cmd} - ${info.description}`)
-                            .join('\n')}\n\n` +
-                        `┗━━⊱ Total: ${Object.keys(commands).length} Commands ⊰━━┛\n\n` +
-                        `*Note:* Type ${config.prefix}help <command> for details\n` +
-                        `*Prefix:* ${config.prefix}`
+                caption: menuText
             });
 
             logger.info('Menu command executed successfully');
