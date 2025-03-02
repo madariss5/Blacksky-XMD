@@ -3,8 +3,6 @@ const logger = pino({ level: 'silent' });
 const os = require('os');
 const moment = require('moment-timezone');
 const config = require('../config');
-const fs = require('fs').promises;
-const path = require('path');
 
 const basicCommands = {
     menu: async (sock, msg) => {
@@ -16,39 +14,32 @@ const basicCommands = {
             menuText += `┃ ⎆ Date: ${moment().format('DD/MM/YYYY')}\n`;
             menuText += `╰━━━━━━━━━━━━━━━━━━⊷\n\n`;
 
-            // Read commands directory
-            const commandsDir = path.join(__dirname);
-            const files = await fs.readdir(commandsDir);
-            const commandFiles = files.filter(file => file.endsWith('.js'));
-
-            // Process each command file
-            for (const file of commandFiles) {
-                try {
-                    const category = file.replace('.js', '').toUpperCase();
-                    const commands = require(`./${file}`);
-                    const commandList = Object.keys(commands);
-
-                    if (commandList.length > 0) {
-                        // Add category header
-                        menuText += `╭━━━━〘 ${category} 〙━━━⊷\n`;
-
-                        // Add each command
-                        commandList.forEach(cmd => {
-                            menuText += `┃ ⎆ ${config.prefix}${cmd}\n`;
-                        });
-
-                        menuText += `╰━━━━━━━━━━━━━━━━━━⊷\n\n`;
-                    }
-                } catch (error) {
-                    logger.error(`Error loading commands from ${file}:`, error);
+            // Group commands by category
+            const categories = {};
+            Object.entries(config.commands).forEach(([cmd, info]) => {
+                if (!categories[info.category]) {
+                    categories[info.category] = [];
                 }
-            }
+                categories[info.category].push({ cmd, description: info.description });
+            });
+
+            // Add each category to menu
+            Object.keys(categories).sort().forEach(category => {
+                menuText += `╭━━━━〘 ${category} 〙━━━⊷\n`;
+                categories[category].forEach(({ cmd, description }) => {
+                    menuText += `┃ ⎆ ${config.prefix}${cmd}\n`;
+                    menuText += `┃ └ ${description}\n`;
+                });
+                menuText += `╰━━━━━━━━━━━━━━━━━━⊷\n\n`;
+            });
 
             // Add footer
             menuText += `╭━━━━〘 INFO 〙━━━⊷\n`;
+            menuText += `┃ ⎆ Total Commands: ${Object.keys(config.commands).length}\n`;
             menuText += `┃ ⎆ Prefix: ${config.prefix}\n`;
             menuText += `┃ ⎆ Owner: ${config.ownerName}\n`;
-            menuText += `╰━━━━━━━━━━━━━━━━━━⊷`;
+            menuText += `╰━━━━━━━━━━━━━━━━━━⊷\n\n`;
+            menuText += `Type ${config.prefix}help <command> for more details`;
 
             // Send the menu
             await sock.sendMessage(msg.key.remoteJid, {
