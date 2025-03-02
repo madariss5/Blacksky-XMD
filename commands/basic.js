@@ -1,68 +1,92 @@
 const logger = require('pino')();
-const handler = require('../handler');
+const moment = require('moment-timezone');
 const config = require('../config');
 
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            if (!sock || !msg?.key?.remoteJid) {
-                logger.error('Invalid menu command parameters');
-                return;
-            }
+            logger.info('Starting menu generation...');
 
-            logger.info('Building menu with available commands');
+            // Basic header with bot info and time
+            let menuText = `*${config.botName || 'BLACKSKY-MD'} BOT*\n`;
+            menuText += `─`.repeat(15) + `\n\n`;
+            menuText += `👤 User: ${msg.pushName || 'User'}\n`;
+            menuText += `⏰ Time: ${moment().format('HH:mm:ss')}\n`;
+            menuText += `📅 Date: ${moment().format('DD/MM/YYYY')}\n\n`;
 
-            // Create menu text with categories
-            let menuText = `*${config.botName} Commands*\n\n`;
-
-            // Group commands by category
+            // Organize commands by category
             const categories = {
-                '🎯 Basic': ['help', 'ping'],
-                '🤖 AI': ['ai', 'gpt', 'dalle'],
-                '🎮 Games': ['numguess', 'hangman', 'leaderboard'],
-                '📚 Education': ['math', 'dictionary', 'wiki', 'translate'],
-                '💰 Economy': ['balance', 'bank', 'work', 'shop', 'inventory'],
-                '🎵 Media': ['sticker', 'toimg', 'tomp3', 'ytmp3', 'ytmp4'],
-                '👥 Group': ['welcome', 'goodbye', 'invitelink']
+                '🎯 Basic': [],
+                '🎮 Games': [],
+                '🤖 AI': [],
+                '📚 Education': [],
+                '💰 Economy': [],
+                '🎵 Media': [],
+                '👥 Group': []
             };
 
-            // Add commands by category
-            Object.entries(categories).forEach(([category, commands]) => {
-                menuText += `${category}\n`;
-                commands.forEach(cmd => {
-                    const cmdInfo = config.commands[cmd] || { description: 'No description available' };
-                    menuText += `• ${config.prefix}${cmd} - ${cmdInfo.description}\n`;
+            // Get all registered commands from the config
+            Object.entries(config.commands).forEach(([cmd, info]) => {
+                const categoryEmoji = {
+                    'Basic': '🎯',
+                    'Game': '🎮',
+                    'AI': '🤖',
+                    'Education': '📚',
+                    'Economy': '💰',
+                    'Media': '🎵',
+                    'Group': '👥'
+                };
+
+                const categoryKey = `${categoryEmoji[info.category] || '📦'} ${info.category}`;
+                if (!categories[categoryKey]) {
+                    categories[categoryKey] = [];
+                }
+
+                categories[categoryKey].push({
+                    command: cmd,
+                    description: info.description || 'No description available'
                 });
-                menuText += '\n';
             });
 
-            menuText += `\nType ${config.prefix}help <command> for more details`;
+            // Build menu text with categories
+            Object.entries(categories).forEach(([category, commands]) => {
+                if (commands.length > 0) {
+                    menuText += `${category}\n`;
+                    commands.forEach(cmd => {
+                        menuText += `• ${config.prefix}${cmd.command} - ${cmd.description}\n`;
+                    });
+                    menuText += '\n';
+                }
+            });
 
-            logger.info('Sending menu message');
+            menuText += `\n📝 Send ${config.prefix}help <command> for detailed info`;
+
+            logger.info('Menu text generated successfully');
+
+            // Send the menu
             await sock.sendMessage(msg.key.remoteJid, {
                 text: menuText
             });
 
-            logger.info('Menu sent successfully');
-
         } catch (error) {
-            logger.error('Menu command error:', error);
-            if (sock && msg?.key?.remoteJid) {
-                await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Error showing menu. Please try again.'
-                });
-            }
+            logger.error('Error in menu command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error generating menu. Please try again.'
+            });
         }
     },
 
     help: async (sock, msg, args) => {
         try {
-            if (!sock || !msg?.key?.remoteJid) return;
-
             if (!args.length) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Use ${config.prefix}menu to see all commands\nOr ${config.prefix}help <command> for specific help`
-                });
+                const text = `*Command Help*\n\n` +
+                           `To get help for a specific command:\n` +
+                           `${config.prefix}help <command>\n\n` +
+                           `Example: ${config.prefix}help sticker\n\n` +
+                           `For all commands:\n` +
+                           `${config.prefix}menu`;
+
+                return await sock.sendMessage(msg.key.remoteJid, { text });
             }
 
             const command = args[0].toLowerCase();
@@ -70,42 +94,39 @@ const basicCommands = {
 
             if (!cmdInfo) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `❌ Command "${command}" not found\nUse ${config.prefix}menu to see available commands`
+                    text: `❌ Command "${command}" not found.`
                 });
             }
 
-            const helpText = `*Command: ${command}*\n` +
+            const helpText = `*Command: ${config.prefix}${command}*\n\n` +
                            `Category: ${cmdInfo.category}\n` +
-                           `Description: ${cmdInfo.description}`;
+                           `Description: ${cmdInfo.description}\n` +
+                           `Usage: ${cmdInfo.usage || config.prefix + command}\n` +
+                           (cmdInfo.example ? `Example: ${cmdInfo.example}\n` : '') +
+                           (cmdInfo.cooldown ? `Cooldown: ${cmdInfo.cooldown}s\n` : '');
 
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: helpText
-            });
-
+            await sock.sendMessage(msg.key.remoteJid, { text: helpText });
         } catch (error) {
-            logger.error('Help command error:', error);
+            logger.error('Help command failed:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error showing help'
+                text: '❌ Error showing help.'
             });
         }
     },
 
     ping: async (sock, msg) => {
         try {
-            if (!sock || !msg?.key?.remoteJid) return;
-
             const start = Date.now();
-            await sock.sendMessage(msg.key.remoteJid, { text: 'Measuring ping...' });
-            const ping = Date.now() - start;
+            await sock.sendMessage(msg.key.remoteJid, { text: 'Pinging...' });
+            const end = Date.now();
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `🏓 Pong!\nResponse time: ${ping}ms`
+                text: `🏓 Pong!\nResponse time: ${end - start}ms`
             });
-
         } catch (error) {
-            logger.error('Ping command error:', error);
+            logger.error('Error in ping command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error measuring ping'
+                text: '❌ Error checking ping'
             });
         }
     }

@@ -8,10 +8,8 @@ logger.info('Starting config initialization...');
 const rawOwnerNumber = process.env.OWNER_NUMBER || '4915561048015';
 const ownerToken = process.env.OWNER_TOKEN;
 
-console.log('Startup: Raw OWNER_NUMBER from env:', rawOwnerNumber);
-
 const formattedOwnerNumber = formatPhoneNumber(rawOwnerNumber);
-console.log('Startup: Formatted owner number:', formattedOwnerNumber);
+logger.info('Startup: Formatted owner number:', formattedOwnerNumber);
 
 if (!formattedOwnerNumber) {
     console.error('Invalid OWNER_NUMBER format in environment variables');
@@ -20,7 +18,6 @@ if (!formattedOwnerNumber) {
 
 // Session configuration
 const sessionConfig = {
-    // Session identification
     id: process.env.SESSION_ID || 'blacksky-md',
     authDir: process.env.AUTH_DIR || './auth_info',
     printQRInTerminal: true,
@@ -32,10 +29,7 @@ const sessionConfig = {
     emitOwnEvents: true,
     markOnlineOnConnect: true,
     retryRequestDelayMs: parseInt(process.env.RETRY_DELAY) || 2000,
-    logLevel: process.env.LOG_LEVEL || 'silent',
-    backupInterval: parseInt(process.env.BACKUP_INTERVAL) || 24 * 60 * 60 * 1000,
-    maxBackupFiles: parseInt(process.env.MAX_BACKUPS) || 7,
-    backupDir: process.env.BACKUP_DIR || './session_backups'
+    logLevel: process.env.LOG_LEVEL || 'silent'
 };
 
 const config = {
@@ -50,25 +44,24 @@ const config = {
     // Session configuration
     session: sessionConfig,
 
+    // Command configurations
     commands: {
         // Basic Commands
         menu: { description: 'Show all available commands', category: 'Basic' },
         help: { description: 'Get help with commands', category: 'Basic' },
         ping: { description: 'Check bot response time', category: 'Basic' },
 
-        // AI Commands
-        ai: { description: 'Chat with AI assistant (GPT-3.5)', category: 'AI' },
-        gpt: { description: 'Advanced chat with GPT-4', category: 'AI' },
-        dalle: { description: 'Generate images with DALL-E', category: 'AI' },
-
         // Game Commands
         numguess: { description: 'Play number guessing game', category: 'Game' },
         hangman: { description: 'Play hangman game', category: 'Game' },
+        leaderboard: { description: 'View game leaderboard', category: 'Game' },
 
         // Media Commands
         sticker: { description: 'Create sticker from image/video', category: 'Media' },
         toimg: { description: 'Convert sticker to image', category: 'Media' },
         meme: { description: 'Create or get random memes', category: 'Media' },
+        ytmp3: { description: 'Download YouTube audio', category: 'Media' },
+        ytmp4: { description: 'Download YouTube video', category: 'Media' },
 
         // Group Commands
         welcome: { description: 'Toggle welcome messages', category: 'Group' },
@@ -77,17 +70,28 @@ const config = {
 
         // Education Commands
         math: { description: 'Solve math expressions', category: 'Education' },
+        dictionary: { description: 'Look up word definitions', category: 'Education' },
         wiki: { description: 'Search Wikipedia', category: 'Education' },
         translate: { description: 'Translate text', category: 'Education' },
 
         // Economy Commands
-        bank: { description: 'Check bank balance', category: 'Economy' },
-        flip: { description: 'Flip a coin to earn/lose money', category: 'Economy' },
-        withdraw: { description: 'Withdraw money from bank', category: 'Economy' },
+        balance: { description: 'Check your balance', category: 'Economy' },
+        daily: { description: 'Claim daily rewards', category: 'Economy' },
+        work: { description: 'Work to earn coins', category: 'Economy' },
+        mine: { description: 'Mine for coins', category: 'Economy' },
+        bank: { description: 'View bank balance', category: 'Economy' },
+        deposit: { description: 'Deposit coins to bank', category: 'Economy' },
+        withdraw: { description: 'Withdraw coins from bank', category: 'Economy' },
+        transfer: { description: 'Transfer coins to others', category: 'Economy' },
+        shop: { description: 'View item shop', category: 'Economy' },
+        buy: { description: 'Buy items from shop', category: 'Economy' },
+        sell: { description: 'Sell items from inventory', category: 'Economy' },
+        inventory: { description: 'View your inventory', category: 'Economy' },
 
-        // Utility Commands
-        ytmp3: { description: 'Download YouTube audio', category: 'Utility' },
-        ytmp4: { description: 'Download YouTube video', category: 'Utility' }
+        // AI Commands
+        ai: { description: 'Chat with AI assistant', category: 'AI' },
+        gpt: { description: 'Chat with GPT model', category: 'AI' },
+        dalle: { description: 'Generate images with DALL-E', category: 'AI' }
     }
 };
 
