@@ -3,6 +3,7 @@ const logger = require('pino')();
 const fs = require('fs-extra');
 const path = require('path');
 const axios = require('axios');
+const { sendGifReaction } = require('../utils/mediaHandler');
 
 // Game states and cooldowns management
 const gameStates = new Map();
@@ -51,11 +52,10 @@ const funCommands = {
             ];
 
             const roast = roasts[Math.floor(Math.random() * roasts.length)];
+            const caption = `🔥 *Roast*\n\n${roast}`;
 
-            // Send roast message with emoji
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `🔥 *Roast*\n\n${roast}`
-            });
+            // Send roast message with GIF
+            await sendGifReaction(sock, msg, 'roast', caption);
 
             logger.info('Roastme command executed successfully');
         } catch (error) {
@@ -97,7 +97,6 @@ const funCommands = {
             await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to consult the Magic 8 Ball!' });
         }
     },
-
     rps: async (sock, msg, args) => {
         try {
             if (!args.length) {
@@ -759,8 +758,7 @@ const funCommands = {
     },
     ponk: async (sock, msg, args) => {
         try {
-            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
-            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
 
             // Send message first
             await sock.sendMessage(msg.key.remoteJid, {
