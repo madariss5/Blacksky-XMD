@@ -389,6 +389,31 @@ const config = {
             category: 'Game',
             usage: '.leaderboard'
         },
+        wordgame: {
+            description: 'Play word guessing game',
+            category: 'Game',
+            usage: '.wordgame'
+        },
+        guess: {
+            description: 'Make a guess in word game',
+            category: 'Game',
+            usage: '.guess <word>'
+        },
+        trivia: {
+            description: 'Play trivia quiz',
+            category: 'Game',
+            usage: '.trivia'
+        },
+        answer: {
+            description: 'Answer trivia question',
+            category: 'Game',
+            usage: '.answer <number>'
+        },
+        rps: {
+            description: 'Play Rock Paper Scissors',
+            category: 'Game',
+            usage: '.rps <rock/paper/scissors>'
+        },
 
         // Education Commands
         math: { 
@@ -632,31 +657,6 @@ const config = {
             description: 'Ask the Magic 8 Ball',
             category: 'Fun',
             usage: '.magic8ball <question>'
-        },
-        wordgame: {
-            description: 'Play word guessing game',
-            category: 'Fun',
-            usage: '.wordgame'
-        },
-        guess: {
-            description: 'Make a guess in word game',
-            category: 'Fun',
-            usage: '.guess <word>'
-        },
-        trivia: {
-            description: 'Play trivia quiz',
-            category: 'Fun',
-            usage: '.trivia'
-        },
-        answer: {
-            description: 'Answer trivia question',
-            category: 'Fun',
-            usage: '.answer <number>'
-        },
-        rps: {
-            description: 'Play Rock Paper Scissors',
-            category: 'Fun',
-            usage: '.rps <rock/paper/scissors>'
         },
         roll: {
             description: 'Roll a dice',
