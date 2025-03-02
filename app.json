@@ -3,32 +3,16 @@
   "description": "Best whatsapp bot developed by BlackSky",
   "repository": "https://github.com/blacksky-algorithms/blacksky-md",
   "logo": "https://raw.githubusercontent.com/blacksky-algorithms/blacksky-md/main/generated-icon.png",
-  "keywords": ["bot", "node", "baileys", "whatsapp"],
-  "success_url": "/",
+  "keywords": ["bot", "whatsapp", "baileys"],
   "stack": "container",
   "env": {
     "PREFIX": {
-      "description": "choose your prefix of bot",
+      "description": "Bot command prefix",
       "value": "*",
       "required": true
     },
-    "AUTO_READ_STATUS": {
-      "description": "Your contact status will be read automatically(type yes to active or no to deactive)",
-      "value": "yes",
-      "required": false
-    },
-    "AUTO_DOWNLOAD_STATUS": {
-      "description": "Your contact status will be download automatically and send to you(type yes to active or no to deactive)",
-      "value": "no",
-      "required": false
-    },
-    "PM_PERMIT": {
-      "description": "Other user can't use your bot in pm (type yes to active or no to deactive)",
-      "value": "no",
-      "required": false
-    },
     "BOT_NAME": {
-      "description": "put A name for your bot",
+      "description": "Name for your bot",
       "value": "𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻",
       "required": false
     },
@@ -37,11 +21,11 @@
       "required": true
     },
     "OWNER_NUMBER": {
-      "description": "Your number , dont put '+' and put your area code",
+      "description": "Your WhatsApp number",
       "required": true
     },
     "SESSION_ID": {
-      "description": "put your session ID , the code you receive after scanning Qr code",
+      "description": "WhatsApp session ID",
       "required": true
     }
   },
@@ -59,12 +43,7 @@
   "formation": {
     "worker": {
       "quantity": 1,
-      "size": "standard-2x"
+      "size": "basic"
     }
-  },
-  "addons": [
-    {
-      "plan": "heroku-postgresql:essential-0"
-    }
-  ]
+  }
 }
