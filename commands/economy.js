@@ -2,6 +2,15 @@ const config = require('../config');
 const logger = require('../utils/logger');
 const store = require('../database/store');
 
+// Define cooldown periods
+const COOLDOWNS = {
+    work: 5 * 60 * 1000,      // 5 minutes
+    mine: 10 * 60 * 1000,     // 10 minutes
+    fish: 7 * 60 * 1000,      // 7 minutes
+    hunt: 15 * 60 * 1000,     // 15 minutes
+    rob: 30 * 60 * 1000       // 30 minutes
+};
+
 const economyCommands = {
     balance: async (sock, msg) => {
         try {
@@ -71,13 +80,11 @@ const economyCommands = {
             }
 
             const earnings = Math.floor(Math.random() * 500) + 500;
-            userData.balance = (userData.balance || 0) + earnings;
-            userData.lastWork = now;
-
-            await store.setUser(userId, userData);
+            await store.updateBalance(userId, earnings);
+            await store.setUser(userId, { lastWork: now });
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `💼 *Work Complete*\n\nYou earned ${earnings} coins!\nNew balance: ${userData.balance} coins`
+                text: `💼 *Work Complete*\n\nYou earned ${earnings} coins!`
             });
         } catch (error) {
             logger.error('Error in work command:', error);
@@ -209,19 +216,45 @@ const economyCommands = {
                     text: `Please specify an amount!\nUsage: ${config.prefix}gamble <amount>`
                 });
             }
+
             const amount = parseInt(args[0]);
             if (isNaN(amount) || amount <= 0) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '❌ Please enter a valid amount greater than 0!'
                 });
             }
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `This feature is not available yet.` 
-            });
+
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const balance = await store.getUserBalance(userId);
+
+            if (balance < amount) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Insufficient balance!'
+                });
+            }
+
+            // 45% chance to win
+            const win = Math.random() < 0.45;
+            const multiplier = win ? 2 : 0;
+            const finalAmount = amount * multiplier;
+
+            // Update balance
+            await store.updateBalance(userId, -amount + finalAmount);
+            const newBalance = await store.getUserBalance(userId);
+
+            if (win) {
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `🎰 You won ${finalAmount} coins!\n\nNew balance: ${newBalance} coins`
+                });
+            } else {
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `💸 You lost ${amount} coins!\n\nNew balance: ${newBalance} coins`
+                });
+            }
         } catch (error) {
             logger.error('Error in gamble command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ ' + error.message
+                text: '❌ Error while gambling'
             });
         }
     },
@@ -514,106 +547,65 @@ const economyCommands = {
                 });
             }
 
-            // Get target user from mention
-            const target = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
-            if (target === msg.key.participant) {
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const userData = await store.getUser(userId);
+
+            if (!userData) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ You cannot rob yourself!'
+                    text: '❌ You need to register first! Use .register'
                 });
             }
 
-            const userId = msg.key.participant || msg.key.remoteJid;
-            const cooldown = await store.getActivityCooldown(userId, 'Rob');
-            if (!cooldown.canDo) {
-                const minutesLeft = Math.ceil(cooldown.timeLeft / (60 * 1000));
-                throw new Error(`You can rob again in ${minutesLeft} minutes`);
+            const lastRob = userData.lastRob || 0;
+            const now = Date.now();
+            const timeLeft = lastRob + COOLDOWNS.rob - now;
+
+            if (timeLeft > 0) {
+                const minutes = Math.ceil(timeLeft / (60 * 1000));
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `⏳ You can rob again in ${minutes} minutes`
+                });
             }
 
-            // Get balances
-            const robberData = await store.getUserData(userId);
-            const victimData = await store.getUserData(target);
+            const targetId = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+            const targetBalance = await store.getUserBalance(targetId);
 
-            if (!victimData || victimData.gold < 100) {
-                throw new Error('This user doesn\'t have enough gold to rob!');
+            if (targetBalance < 100) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ This user doesn\'t have enough coins to rob!'
+                });
             }
 
             // 40% chance to succeed
             const success = Math.random() < 0.4;
-            const amount = Math.floor(Math.random() * 200) + 100; // 100-300 gold
+            const amount = Math.min(
+                Math.floor(Math.random() * 200) + 100,
+                Math.floor(targetBalance * 0.3)
+            );
+
+            await store.setUser(userId, { lastRob: now });
 
             if (success) {
-                // Update balances
-                await store.updateUserGold(userId, robberData.gold + amount);
-                await store.updateUserGold(target, Math.max(0, victimData.gold - amount));
+                await store.updateBalance(userId, amount);
+                await store.updateBalance(targetId, -amount);
 
                 await sock.sendMessage(msg.key.remoteJid, {
-                    text: `🦹 Successfully robbed ${args[0]} and got away with ${amount} gold!`,
-                    mentions: [target]
+                    text: `🦹 Successfully robbed ${args[0]} and got away with ${amount} coins!`,
+                    mentions: [targetId]
                 });
             } else {
-                // Penalty for failed robbery
-                const penalty = Math.floor(amount * 0.5);
-                await store.updateUserGold(userId, Math.max(0, robberData.gold - penalty));
+                const fine = Math.floor(amount * 0.5);
+                await store.updateBalance(userId, -fine);
 
                 await sock.sendMessage(msg.key.remoteJid, {
-                    text: `👮 You got caught trying to rob ${args[0]} and had to pay a fine of ${penalty} gold!`,
-                    mentions: [target]
+                    text: `👮 You got caught trying to rob ${args[0]} and had to pay a fine of ${fine} coins!`,
+                    mentions: [targetId]
                 });
             }
-
-            await store.updateActivity(userId, 'Rob');
-
         } catch (error) {
             logger.error('Error in rob command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ ' + error.message
-            });
-        }
-    },
-    gamble: async (sock, msg, args) => {
-        try {
-            if (!args.length) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Please specify an amount!\nUsage: ${config.prefix}gamble <amount>`
-                });
-            }
-
-            const amount = parseInt(args[0]);
-            if (isNaN(amount) || amount <= 0) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Please enter a valid amount greater than 0!'
-                });
-            }
-
-            const userId = msg.key.participant || msg.key.remoteJid;
-            const userData = await store.getUserData(userId);
-
-            if (!userData || userData.gold < amount) {
-                throw new Error('You don\'t have enough gold!');
-            }
-
-            // 45% chance to win
-            const win = Math.random() < 0.45;
-            const multiplier = win ? 2 : 0;
-            const finalAmount = amount * multiplier;
-
-            // Update balance
-            await store.updateUserGold(userId, userData.gold - amount + finalAmount);
-
-            if (win) {
-                await sock.sendMessage(msg.key.remoteJid, {
-                    text: `🎰 You won ${finalAmount} gold!\n\nNew balance: ${userData.gold - amount + finalAmount} gold`
-                });
-            } else {
-                await sock.sendMessage(msg.key.remoteJid, {
-                    text: `💸 You lost ${amount} gold!\n\nNew balance: ${userData.gold - amount} gold`
-                });
-            }
-
-        } catch (error) {
-            logger.error('Error in gamble command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ ' + error.message
+                text: '❌ Error while attempting to rob'
             });
         }
     },
