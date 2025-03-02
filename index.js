@@ -45,15 +45,6 @@ app.get('/', (req, res) => {
     });
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-    logger.error('Express error:', err);
-    res.status(500).json({
-        error: 'Internal Server Error',
-        message: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
-});
-
 // Start server and bot
 const startApplication = async () => {
     try {
@@ -72,7 +63,6 @@ const startApplication = async () => {
         });
 
         logger.info('Starting WhatsApp bot...');
-        // Start WhatsApp bot
         await startBot();
 
     } catch (error) {
@@ -81,10 +71,37 @@ const startApplication = async () => {
     }
 };
 
-// Initialize the application
-startApplication().catch(err => {
-    logger.error('Startup failed:', err);
-    process.exit(1);
+
+// Handle graceful shutdown
+const shutdown = async (signal) => {
+    try {
+        isShuttingDown = true;
+        logger.info(`Received ${signal}, shutting down gracefully...`);
+        process.exit(0);
+    } catch (error) {
+        logger.error('Error during shutdown:', error);
+        process.exit(1);
+    }
+};
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+// Handle uncaught errors
+process.on('uncaughtException', (err) => {
+    logger.error('Uncaught Exception:', err);
+    if (!isShuttingDown && err.code !== 'EADDRINUSE') {
+        logger.info('Attempting restart after uncaught exception...');
+        setTimeout(startBot, 3000);
+    }
+});
+
+process.on('unhandledRejection', (err) => {
+    logger.error('Unhandled Promise Rejection:', err);
+    if (!isShuttingDown && err.code !== 'EADDRINUSE') {
+        logger.info('Attempting restart after unhandled rejection...');
+        setTimeout(startBot, 3000);
+    }
 });
 
 async function startBot() {
@@ -174,34 +191,8 @@ async function startBot() {
     }
 }
 
-// Handle graceful shutdown
-const shutdown = async (signal) => {
-    try {
-        isShuttingDown = true;
-        logger.info(`Received ${signal}, shutting down gracefully...`);
-        process.exit(0);
-    } catch (error) {
-        logger.error('Error during shutdown:', error);
-        process.exit(1);
-    }
-};
-
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
-
-// Handle uncaught errors
-process.on('uncaughtException', (err) => {
-    logger.error('Uncaught Exception:', err);
-    if (!isShuttingDown && err.code !== 'EADDRINUSE') {
-        logger.info('Attempting restart after uncaught exception...');
-        setTimeout(startBot, 3000);
-    }
-});
-
-process.on('unhandledRejection', (err) => {
-    logger.error('Unhandled Promise Rejection:', err);
-    if (!isShuttingDown && err.code !== 'EADDRINUSE') {
-        logger.info('Attempting restart after unhandled rejection...');
-        setTimeout(startBot, 3000);
-    }
+// Initialize the application
+startApplication().catch(err => {
+    logger.error('Startup failed:', err);
+    process.exit(1);
 });
