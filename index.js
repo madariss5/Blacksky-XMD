@@ -35,6 +35,7 @@ const qrcode = require('qrcode-terminal');
 const { compressCredsFile } = require('./utils/creds');
 const { Boom } = require('@hapi/boom');
 require('dotenv').config();
+const antiBan = require('./middleware/antiban'); // Import antiBan middleware
 
 // Global variables
 global.authState = null;
@@ -200,19 +201,24 @@ async function startHANS() {
 
                 if (reason === DisconnectReason.loggedOut) {
                     logger.warn('Device Logged Out, Please Delete Session and Scan Again.');
-                    credsSent = false; // Reset credentials sent flag
+                    credsSent = false;
                     await fs.remove('./auth_info_baileys');
                     process.exit(0);
                 } else if (!isShuttingDown) {
                     logger.info('Reconnecting...');
+
+                    // Add anti-ban reconnection handling
+                    if (global.retryCount === undefined) global.retryCount = 0;
+                    await antiBan.handleReconnection(global.retryCount++);
+
                     setTimeout(startHANS, 3000);
                 }
             }
 
             if (connection === 'open') {
+                global.retryCount = 0; // Reset retry count on successful connection
                 logger.info('WhatsApp connection established successfully!');
 
-                // Only send credentials once on initial connection
                 if (!credsSent) {
                     await saveAndSendCreds(hans);
                 }
@@ -236,6 +242,13 @@ async function startHANS() {
                     : msg.message;
 
                 if (msg.key && msg.key.remoteJid === 'status@broadcast') return;
+
+                // Apply anti-ban middleware
+                const shouldProcess = await antiBan.processMessage(hans, msg);
+                if (!shouldProcess) {
+                    logger.info('Message blocked by anti-ban middleware');
+                    return;
+                }
 
                 const m = smsg(hans, msg, store);
                 require('./handler')(hans, m, chatUpdate, store);

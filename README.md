@@ -1,4 +1,4 @@
-# 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻
+# 𝔹𝕃𝔸ℂ𝕂𝕊 KY-𝕄𝔻
 A WhatsApp Multi-Device bot using Node.js and Baileys library.
 
 ## 🚀 Features
@@ -12,6 +12,32 @@ A WhatsApp Multi-Device bot using Node.js and Baileys library.
 - 📝 User Registration
 - 💫 100+ Dynamic Commands
 - 🔐 Dual Authentication (QR & Pairing)
+
+## 🛡️ Anti-Ban Protection
+The bot includes several safety measures to prevent WhatsApp bans:
+
+- Message rate limiting and delays
+- Automatic suspicious pattern detection
+- Smart reconnection handling
+- Content sanitization
+- Group message monitoring
+
+### Safety Guidelines
+To maintain account safety:
+1. Don't spam commands
+2. Avoid mass mentions
+3. Don't abuse broadcast features
+4. Keep messages within reasonable length
+5. Avoid excessive use of media commands
+
+The bot will automatically enforce these limits:
+- Max 10 messages per minute
+- Max 5 media messages per minute
+- Max 15 group messages per minute
+- Max 5 broadcast messages per hour
+
+⚠️ Note: These limits can be adjusted in the configuration but increasing them may risk account safety.
+
 
 ## 📦 Installation
 
