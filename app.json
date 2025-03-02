@@ -3,8 +3,8 @@
   "description": "Best whatsapp bot developed by BlackSky",
   "repository": "https://github.com/blacksky-algorithms/blacksky-md",
   "logo": "https://raw.githubusercontent.com/blacksky-algorithms/blacksky-md/main/generated-icon.png",
-  "keywords": ["bot", "whatsapp", "baileys"],
-  "stack": "container",
+  "keywords": ["nodejs", "whatsapp", "bot"],
+  "stack": "heroku-22",
   "env": {
     "PREFIX": {
       "description": "Bot command prefix",
@@ -32,18 +32,6 @@
   "buildpacks": [
     {
       "url": "heroku/nodejs"
-    },
-    {
-      "url": "https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git"
-    },
-    {
-      "url": "https://github.com/clhuang/heroku-buildpack-webp-binaries.git"
     }
-  ],
-  "formation": {
-    "worker": {
-      "quantity": 1,
-      "size": "basic"
-    }
-  }
+  ]
 }
