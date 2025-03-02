@@ -31,9 +31,9 @@ const MAX_CONTEXT_LENGTH = 2000;
 const userCooldowns = new Map();
 const COOLDOWN_PERIODS = {
     default: 10000,  // 10 seconds
-    image: 30000,    // 30 seconds for image generation
-    chat: 5000,      // 5 seconds for chat
-    vision: 20000    // 20 seconds for vision tasks
+    image: 30000,    // 30 seconds
+    chat: 5000,      // 5 seconds
+    vision: 20000    // 20 seconds
 };
 
 const isOnCooldown = (userId, type = 'default') => {
@@ -48,12 +48,11 @@ const setCooldown = (userId, type = 'default') => {
     userCooldowns.set(key, Date.now());
 };
 
-// Enhanced conversation history management
 const getConversationHistory = (userId) => {
     if (!conversationHistory.has(userId)) {
         conversationHistory.set(userId, []);
     }
-    return conversationHistory.get(userId).slice(-MAX_HISTORY);
+    return conversationHistory.get(userId);
 };
 
 const addToConversationHistory = (userId, message) => {
@@ -97,7 +96,7 @@ const aiCommands = {
             ];
 
             const response = await openai.chat.completions.create({
-                model: "gpt-4",
+                model: "gpt-3.5-turbo", // Using GPT-3.5-turbo instead of GPT-4
                 messages: messages,
                 temperature: 0.7,
                 max_tokens: 2000,
@@ -117,7 +116,7 @@ const aiCommands = {
         } catch (error) {
             logger.error('Error in gpt command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error processing your request: ' + error.message
+                text: '❌ Error processing your request. Please try again later.'
             });
         }
     },
@@ -139,15 +138,14 @@ const aiCommands = {
 
         try {
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '🎨 Creating your masterpiece with DALL-E 3...'
+                text: '🎨 Creating your masterpiece with DALL-E...'
             });
 
             const response = await openai.images.generate({
-                model: "dall-e-3",
+                model: "dall-e-2", // Using DALL-E 2 which is more widely available
                 prompt: args.join(' '),
                 n: 1,
-                size: "1024x1024",
-                quality: "hd"
+                size: "1024x1024"
             });
 
             const imageUrl = response.data[0].url;
@@ -163,7 +161,7 @@ const aiCommands = {
         } catch (error) {
             logger.error('Error in dalle command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to generate image: ' + error.message
+                text: '❌ Failed to generate image. Please try again later.'
             });
         }
     },
@@ -204,7 +202,7 @@ const aiCommands = {
             );
 
             const response = await openai.chat.completions.create({
-                model: "gpt-4-vision-preview",
+                model: "gpt-3.5-turbo", // Using GPT-3.5-turbo for image analysis
                 messages: [
                     {
                         role: "user",
@@ -231,7 +229,7 @@ const aiCommands = {
         } catch (error) {
             logger.error('Error in img2txt command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to analyze image: ' + error.message
+                text: '❌ Failed to analyze image. Please try again later.'
             });
         }
     },
@@ -302,7 +300,7 @@ const aiCommands = {
         } catch (error) {
             logger.error('Error in remini command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to enhance image: ' + error.message
+                text: '❌ Failed to enhance image. Please try again later.'
             });
         }
     },
@@ -317,7 +315,7 @@ const aiCommands = {
         } catch (error) {
             logger.error('Error in cleargpt command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error clearing conversation history: ' + error.message
+                text: '❌ Error clearing conversation history.'
             });
         }
     },
