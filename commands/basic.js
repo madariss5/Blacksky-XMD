@@ -7,39 +7,25 @@ const config = require('../config');
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            // Get commands from config
-            const commands = config.commands;
+            const text = `Fun Commands Menu\n\n` +
+                        `Games:\n` +
+                        `• ${config.prefix}magic8ball - Ask the magic 8 ball\n` +
+                        `• ${config.prefix}wordgame - Play word guessing game\n` +
+                        `• ${config.prefix}trivia - Play trivia quiz\n` +
+                        `• ${config.prefix}rps - Play rock paper scissors\n` +
+                        `• ${config.prefix}roll - Roll a dice\n` +
+                        `• ${config.prefix}coinflip - Flip a coin\n\n` +
+                        `Entertainment:\n` +
+                        `• ${config.prefix}joke - Get random jokes\n` +
+                        `• ${config.prefix}meme - Get random memes\n` +
+                        `• ${config.prefix}quote - Get inspirational quotes\n` +
+                        `• ${config.prefix}fact - Get random facts\n` +
+                        `• ${config.prefix}emojiart - Get random emoji art\n\n` +
+                        `Reactions:\n` +
+                        `Check ${config.prefix}reactions for animated reactions!\n\n` +
+                        `Type ${config.prefix}help for more info`;
 
-            // Group commands by category
-            const categories = {};
-            Object.entries(commands).forEach(([cmd, info]) => {
-                if (!categories[info.category]) {
-                    categories[info.category] = [];
-                }
-                categories[info.category].push(`⭔ ${config.prefix}${cmd} - ${info.description}`);
-            });
-
-            // Build the menu message
-            let menuText = `┏━━⊱『 *${config.botName}* 』⊰━━┓\n\n`;
-            menuText += `📜 *COMMAND LIST*\n\n`;
-
-            // Add commands by category
-            Object.entries(categories)
-                .sort(([a], [b]) => a.localeCompare(b))
-                .forEach(([category, cmds]) => {
-                    menuText += `*${category}*\n${cmds.join('\n')}\n\n`;
-                });
-
-            menuText += `┗━━⊱ Total: ${Object.keys(commands).length} Commands ⊰━━┛\n\n`;
-            menuText += `*Note:* Type ${config.prefix}help <command> for details\n`;
-            menuText += `*Prefix:* ${config.prefix}`;
-
-            // Send menu with image
-            await sock.sendMessage(msg.key.remoteJid, { 
-                image: { url: config.menuImage },
-                caption: menuText
-            });
-
+            await sock.sendMessage(msg.key.remoteJid, { text });
             logger.info('Menu command executed successfully');
         } catch (error) {
             logger.error('Menu command failed:', error);
