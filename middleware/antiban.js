@@ -1,27 +1,27 @@
 const NodeCache = require('node-cache');
 const logger = require('../utils/logger');
 
-// Cache for rate limiting
-const messageCache = new NodeCache({ stdTTL: 60 }); // 1 minute default TTL
-const userActionCache = new NodeCache({ stdTTL: 3600 }); // 1 hour for user actions
+// Optimized cache with shorter TTL
+const messageCache = new NodeCache({ stdTTL: 30 }); // 30 seconds TTL
+const userActionCache = new NodeCache({ stdTTL: 1800 }); // 30 minutes
 
 class AntiBanMiddleware {
     constructor() {
         this.messageDelays = {
-            min: 300,  // Minimum delay 300ms
-            max: 800   // Maximum delay 800ms
+            min: 50,   // Minimum delay 50ms
+            max: 200   // Maximum delay 200ms
         };
 
-        // Increased limits per minute
+        // Increased limits for faster responses
         this.limits = {
-            messagesPerMinute: 20,    // Increased from 10
-            mediaPerMinute: 8,        // Increased from 5
-            groupMessagesPerMinute: 25, // Increased from 15
-            broadcastLimit: 8         // Increased from 5
+            messagesPerMinute: 40,    // Doubled from 20
+            mediaPerMinute: 15,       // Almost doubled from 8
+            groupMessagesPerMinute: 45, // Increased from 25
+            broadcastLimit: 15        // Increased from 8
         };
     }
 
-    // Optimized delay function
+    // Ultra-fast delay function
     async addDelay() {
         const delay = Math.floor(Math.random() * 
             (this.messageDelays.max - this.messageDelays.min + 1)) + 
@@ -29,21 +29,14 @@ class AntiBanMiddleware {
         await new Promise(resolve => setTimeout(resolve, delay));
     }
 
-    // Optimized rate limit check
+    // Simplified rate limit check
     isRateLimited(jid, type = 'message') {
         const key = `${jid}_${type}`;
         const count = messageCache.get(key) || 0;
-
-        let limit;
-        switch(type) {
-            case 'media': limit = this.limits.mediaPerMinute; break;
-            case 'group': limit = this.limits.groupMessagesPerMinute; break;
-            case 'broadcast': limit = this.limits.broadcastLimit; break;
-            default: limit = this.limits.messagesPerMinute;
-        }
+        const limit = this.limits[type + 'PerMinute'] || this.limits.messagesPerMinute;
 
         if (count >= limit) {
-            logger.warn(`Rate limit exceeded for ${jid} (${type})`);
+            logger.warn(`Rate limit exceeded for ${jid}`);
             return true;
         }
 
@@ -51,63 +44,43 @@ class AntiBanMiddleware {
         return false;
     }
 
-    // Optimized message sanitization
+    // Minimal message sanitization
     sanitizeMessage(text) {
-        if (!text) return text;
-        return text
-            .replace(/([!?.,-])\1{4,}/g, '$1$1$1')
-            .replace(/(.)\1{4,}/g, '$1$1$1');
+        return text ? text.replace(/(.)\1{9,}/g, '$1$1$1') : text;
     }
 
-    // Optimized pattern check
+    // Quick pattern check
     isSuspiciousPattern(message) {
-        if (!message) return false;
-
-        // Quick checks first
-        if (message.mentionedJid?.length > 8) return true;
-        if (message.body?.length > 1500) return true;
-
-        // Link check
-        const linkCount = (message.body?.match(/(https?:\/\/[^\s]+)/g) || []).length;
-        return linkCount > 3;
+        return message?.mentionedJid?.length > 15 || 
+               (message?.body?.length || 0) > 2500;
     }
 
     // Optimized reconnection handler
     handleReconnection(retryCount) {
-        const baseDelay = 3000; // Reduced from 5000
-        const maxDelay = 180000; // Reduced from 300000
         return new Promise(resolve => 
-            setTimeout(resolve, Math.min(baseDelay * Math.pow(1.8, retryCount), maxDelay))
+            setTimeout(resolve, Math.min(2000 * Math.pow(1.5, retryCount), 60000))
         );
     }
 
-    // Main middleware function with optimizations
+    // Streamlined message processing
     async processMessage(sock, msg) {
         try {
-            // Add optimized delay
-            await this.addDelay();
-
-            // Quick return for invalid messages
             if (!msg?.key?.remoteJid) return false;
 
-            // Check rate limits with group optimization
-            const isGroup = msg.key.remoteJid.endsWith('@g.us');
-            if (this.isRateLimited(msg.key.remoteJid, isGroup ? 'group' : 'message')) {
+            await this.addDelay();
+
+            // Basic rate limiting
+            if (this.isRateLimited(msg.key.remoteJid, 
+                msg.key.remoteJid.endsWith('@g.us') ? 'group' : 'message')) {
                 return false;
             }
 
-            // Sanitize only if needed
+            // Quick sanitize and check
             if (msg.message?.conversation) {
                 msg.message.conversation = this.sanitizeMessage(msg.message.conversation);
             }
 
-            // Quick pattern check
-            if (this.isSuspiciousPattern(msg)) {
-                logger.warn(`Suspicious pattern detected from ${msg.key.remoteJid}`);
-                return false;
-            }
-
-            return true;
+            return !this.isSuspiciousPattern(msg);
 
         } catch (error) {
             logger.error('Error in anti-ban middleware:', error);
