@@ -28,7 +28,7 @@ module.exports = async (sock, msg, { messages, type }, store) => {
 
         if (!command) return;
 
-        // Enhanced message structure logging (from original)
+        // Enhanced message structure logging
         logger.info('Message received:', {
             messageKey: JSON.stringify(msg.key),
             messageType: msg.type,
@@ -40,14 +40,13 @@ module.exports = async (sock, msg, { messages, type }, store) => {
             timestamp: msg.messageTimestamp
         });
 
-        // Log command processing (from original)
+        // Log command processing
         logger.info('Processing command', {
             command,
             args,
             chat: msg.key.remoteJid,
             sender: msg.key.participant || msg.key.remoteJid
         });
-
 
         // Execute command if found
         for (const [module, commands] of Object.entries(commandModules)) {

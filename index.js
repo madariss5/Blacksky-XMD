@@ -99,7 +99,7 @@ process.on('uncaughtException', (err) => {
     logger.error('Uncaught Exception:', err);
     if (!isShuttingDown && err.code !== 'EADDRINUSE') {
         logger.info('Attempting restart after uncaught exception...');
-        setTimeout(startBot, 3000); // Use startBot here
+        setTimeout(startBot, 3000);
     }
 });
 
@@ -107,18 +107,9 @@ process.on('unhandledRejection', (err) => {
     logger.error('Unhandled Promise Rejection:', err);
     if (!isShuttingDown && err.code !== 'EADDRINUSE') {
         logger.info('Attempting restart after unhandled rejection...');
-        setTimeout(startBot, 3000); // Use startBot here
+        setTimeout(startBot, 3000);
     }
 });
-
-// Start the bot with error handling
-//startHANS().catch(err => { //Removed startHANS
-//    logger.error('Fatal error:', err);
-//    if (!isShuttingDown) {
-//        logger.info('Attempting restart after fatal error...');
-//        setTimeout(startHANS, 10000);
-//    }
-//});
 
 const express = require('express');
 const app = express();
@@ -144,13 +135,6 @@ const startServer = () => {
                 logger.info(`Server started on port ${PORT}`);
                 resolve(true);
             });
-
-        if (process.env.ENABLE_KEEP_ALIVE === 'true') {
-            setInterval(() => {
-                axios.get(`http://0.0.0.0:${PORT}/`)
-                    .catch(() => logger.debug('Keep-alive ping'));
-            }, 5 * 60 * 1000);
-        }
     });
 };
 
