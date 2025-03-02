@@ -1,6 +1,7 @@
 const config = require('../config');
 const logger = require('pino')();
 const { OpenAI } = require('openai');
+const axios = require('axios');
 
 // Initialize OpenAI with error handling
 let openai;
