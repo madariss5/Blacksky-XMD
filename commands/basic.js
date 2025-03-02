@@ -1,79 +1,55 @@
 const logger = require('pino')();
-const moment = require('moment-timezone');
 const config = require('../config');
 const { getUptime } = require('../utils');
 
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            const pushName = msg.pushName || 'User';
-            const userId = msg.key.participant || msg.key.remoteJid;
+            const menuText = `🔧 *Utility Commands*\n\n` +
+                           `Media Conversion:\n` +
+                           `!sticker - Create sticker from image/video\n` +
+                           `!tts <text> - Convert text to speech\n` +
+                           `!translate <lang> <text> - Translate text\n` +
+                           `!ytmp3 <url> - Download YouTube audio as MP3\n` +
+                           `!ytmp4 <url> - Download YouTube video as MP4\n\n` +
 
-            let menuText = `🔧 *Utility Commands*\n\n`;
+                           `Information:\n` +
+                           `!weather <city> - Get weather info\n` +
+                           `!calc <expression> - Calculate expression\n` +
+                           `!stats - Show bot statistics\n\n` +
 
-            // Media Conversion
-            menuText += `Media Conversion:\n`;
-            menuText += `!sticker - Create sticker from image/video\n`;
-            menuText += `!tts <text> - Convert text to speech\n`;
-            menuText += `!translate <lang> <text> - Translate text\n`;
-            menuText += `!ytmp3 <url> - Download YouTube audio as MP3\n`;
-            menuText += `!ytmp4 <url> - Download YouTube video as MP4\n\n`;
+                           `System:\n` +
+                           `!ping - Check bot response time\n` +
+                           `!uptime - Show bot uptime\n` +
+                           `!report <issue> - Report an issue\n`;
 
-            // Information
-            menuText += `Information:\n`;
-            menuText += `!weather <city> - Get weather info\n`;
-            menuText += `!calc <expression> - Calculate expression\n`;
-            menuText += `!stats - Show bot statistics\n\n`;
-
-            // System
-            menuText += `System:\n`;
-            menuText += `!ping - Check bot response time\n`;
-            menuText += `!uptime - Show bot uptime\n`;
-            menuText += `!report <issue> - Report an issue\n\n`;
-
-            menuText += `Statistics:\n`;
-            menuText += `• Status: Online\n`;
-            menuText += `• Uptime: ${getUptime()}\n`;
-            menuText += `• Memory: ${process.memoryUsage().heapUsed / 1024 / 1024} MB\n`;
-            menuText += `• Platform: ${process.platform}\n`;
-            menuText += `• Node.js: ${process.version}\n`;
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: menuText
-            });
+            await sock.sendMessage(msg.key.remoteJid, { text: menuText });
+            logger.info('Menu command executed successfully');
 
         } catch (error) {
             logger.error('Error in menu command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error generating menu'
+                text: '❌ Error displaying menu'
             });
         }
     },
 
-    help: async (sock, msg, args) => {
+    stats: async (sock, msg) => {
         try {
-            if (!args.length) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: 'Use !menu to see available commands'
-                });
-            }
+            const stats = `📊 *Bot Statistics*\n\n` +
+                         `• Status: Online\n` +
+                         `• Uptime: ${getUptime()}\n` +
+                         `• Memory: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} MB\n` +
+                         `• Platform: ${process.platform}\n` +
+                         `• Node.js: ${process.version}`;
 
-            const command = args[0].toLowerCase();
-            const cmdInfo = config.commands[command];
+            await sock.sendMessage(msg.key.remoteJid, { text: stats });
+            logger.info('Stats command executed successfully');
 
-            if (!cmdInfo) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Command not found'
-                });
-            }
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `*${command}*\n${cmdInfo.description || 'No description available'}`
-            });
         } catch (error) {
-            logger.error('Error in help command:', error);
+            logger.error('Error in stats command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error showing help'
+                text: '❌ Error displaying statistics'
             });
         }
     },
@@ -84,15 +60,57 @@ const basicCommands = {
             await sock.sendMessage(msg.key.remoteJid, { text: 'Testing ping...' });
             const end = Date.now();
 
-            const response = `Pong!\n• Response time: ${end - start}ms\n• Uptime: ${getUptime()}`;
+            const response = `🏓 *Ping Statistics*\n\n` +
+                           `• Response Time: ${end - start}ms\n` +
+                           `• Bot Status: Active\n` +
+                           `• Uptime: ${getUptime()}`;
 
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: response
-            });
+            await sock.sendMessage(msg.key.remoteJid, { text: response });
+            logger.info('Ping command executed successfully');
+
         } catch (error) {
             logger.error('Error in ping command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error checking ping'
+            });
+        }
+    },
+
+    uptime: async (sock, msg) => {
+        try {
+            const uptimeText = `⏱️ *Bot Uptime*\n\n` +
+                             `• Running Time: ${getUptime()}`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text: uptimeText });
+            logger.info('Uptime command executed successfully');
+
+        } catch (error) {
+            logger.error('Error in uptime command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error checking uptime'
+            });
+        }
+    },
+
+    report: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide an issue to report!\nUsage: !report <issue>'
+                });
+            }
+
+            const issue = args.join(' ');
+            logger.info('New issue reported:', issue);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '✅ Thank you for reporting the issue. The bot owner will look into it.'
+            });
+
+        } catch (error) {
+            logger.error('Error in report command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error submitting report'
             });
         }
     }
