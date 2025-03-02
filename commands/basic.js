@@ -1,5 +1,4 @@
-const pino = require('pino');
-const logger = pino({ level: 'silent' });
+const logger = require('pino')();
 const os = require('os');
 const moment = require('moment-timezone');
 const config = require('../config');
@@ -20,21 +19,46 @@ const basicCommands = {
             menuText += `┃ 📅 *Date:* ${moment().format('DD/MM/YYYY')}\n`;
             menuText += `┗━━━━━━━━━━━━━━━┛\n\n`;
 
-            // Get all commands from config
+            // Organize commands by category
             const categories = {};
+
+            // Go through each command in config.commands
             Object.entries(config.commands).forEach(([cmd, info]) => {
-                if (!categories[info.category]) {
-                    categories[info.category] = [];
+                const category = info.category;
+                if (!categories[category]) {
+                    categories[category] = [];
                 }
-                categories[info.category].push({
+                categories[category].push({
                     command: cmd,
                     description: info.description
                 });
             });
 
+            // Category emoji mapping
+            const categoryEmojis = {
+                'AI': '🤖',
+                'Anime': '🎭',
+                'Basic': '📌',
+                'Downloader': '📥',
+                'Economy': '💰',
+                'Fun': '🎮',
+                'Game': '🎲',
+                'Group': '👥',
+                'Media': '📸',
+                'Music': '🎵',
+                'NSFW': '🔞',
+                'Owner': '👑',
+                'Search': '🔍',
+                'Social': '🌐',
+                'Tool': '🛠️',
+                'User': '👤',
+                'Utility': '⚙️',
+                'Education': '📚'
+            };
+
             // Add commands by category
             Object.entries(categories).sort().forEach(([category, commands]) => {
-                const emoji = getEmoji(category);
+                const emoji = categoryEmojis[category] || '📌';
                 menuText += `┏━━━⟪ ${emoji} *${category}* ⟫━━━┓\n`;
                 commands.forEach(({command, description}) => {
                     menuText += `┃ ඬ⃟ ${config.prefix}${command}\n`;
@@ -147,29 +171,6 @@ const basicCommands = {
 };
 
 // Helper functions
-function getEmoji(category) {
-    const emojis = {
-        'AI': '🤖',
-        'Anime': '🎭',
-        'Basic': '📌',
-        'Downloader': '📥',
-        'Economy': '💰',
-        'Fun': '🎮',
-        'Game': '🎲',
-        'Group': '👥',
-        'Media': '📸',
-        'Music': '🎵',
-        'NSFW': '🔞',
-        'Owner': '👑',
-        'Reactions': '🎭',
-        'Social': '🌐',
-        'Tool': '🛠️',
-        'User': '👤',
-        'Utility': '⚙️'
-    };
-    return emojis[category] || '📌';
-}
-
 function formatUptime(uptime) {
     const days = Math.floor(uptime / 86400);
     const hours = Math.floor((uptime % 86400) / 3600);
