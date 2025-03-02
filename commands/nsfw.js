@@ -128,7 +128,7 @@ const verifyAge = async (sock, msg) => {
         const userId = msg.key.participant || msg.key.remoteJid;
         logger.debug('Verifying age for user', { userId });
 
-        const user = await store.getUserInfo(userId);
+        const user = await store.getUser(userId);
 
         if (!user) {
             logger.debug('User not found in database', { userId });
@@ -217,7 +217,11 @@ const nsfwCommands = {
             }
 
             const userId = msg.key.participant || msg.key.remoteJid;
-            await store.registerUser(userId, name, age);
+            await store.registerUser(userId, {
+                name,
+                age,
+                registrationTime: Date.now()
+            });
 
             logger.info('User registered successfully', {
                 userId,
