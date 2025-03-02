@@ -7,11 +7,10 @@ const path = require('path');
 delete require.cache[require.resolve('./config')];
 const freshConfig = require('./config');
 
-// Track successful imports
+// Track successful imports and command sources
 const loadedModules = new Map();
-
-// Track command sources for duplicate detection
 const commandSources = new Map();
+const allCommands = {};
 
 function loadCommandModule(name, path) {
     try {
@@ -32,6 +31,7 @@ function loadCommandModule(name, path) {
                 logger.warn(`Skipping duplicate command: ${cmd} in ${name}. Already registered in ${commandSources.get(cmd)}`);
             } else {
                 commandSources.set(cmd, name);
+                allCommands[cmd] = module[cmd];
                 logger.info(`Registered command: ${cmd} from ${name}`);
             }
         });
@@ -45,60 +45,27 @@ function loadCommandModule(name, path) {
     }
 }
 
+// Load all command modules
 const modules = {
     Basic: loadCommandModule('Basic', './commands/basic.js'),
     AI: loadCommandModule('AI', './commands/ai.js'),
     Media: loadCommandModule('Media', './commands/media.js'),
     Group: loadCommandModule('Group', './commands/group.js'),
     Owner: loadCommandModule('Owner', './commands/owner.js'),
-    Utility: loadCommandModule('Utility', './commands/utility.js'),
     Education: loadCommandModule('Education', './commands/education.js'),
     Economy: loadCommandModule('Economy', './commands/economy.js'),
-    Game: loadCommandModule('Game', './commands/game.js')
+    Game: loadCommandModule('Game', './commands/game.js'),
+    Utility: loadCommandModule('Utility', './commands/utility.js')
 };
 
-// Debug logging for module imports
-logger.info('Module load status:', Object.fromEntries(loadedModules));
-
-// Combine all command modules with error checking
-const allCommands = {};
-
-function registerCommands(commands, moduleName) {
-    if (!commands || typeof commands !== 'object') {
-        logger.error(`Invalid module: ${moduleName}`);
-        return;
-    }
-
-    Object.entries(commands).forEach(([cmdName, cmdFunction]) => {
-        if (typeof cmdFunction === 'function') {
-            if (allCommands[cmdName]) {
-                logger.warn(`Duplicate command found: ${cmdName} in ${moduleName}`);
-            }
-            allCommands[cmdName] = cmdFunction;
-            logger.info(`Registered command: ${cmdName} from ${moduleName}`);
-        } else {
-            logger.warn(`Invalid command: ${cmdName} in ${moduleName}`);
-        }
-    });
-}
-
-// Register commands from all modules
-const categoryStats = {};
-Object.entries(modules).forEach(([name, commands]) => {
-    try {
-        registerCommands(commands, name);
-        categoryStats[name] = Object.keys(commands || {}).length;
-        logger.info(`Registered ${categoryStats[name]} commands from ${name} module`);
-    } catch (error) {
-        logger.error(`Error registering ${name} commands:`, error);
-        categoryStats[name] = 0;
-    }
+// Log command registration statistics
+logger.info('Command registration statistics:', {
+    totalCommands: Object.keys(allCommands).length,
+    registeredCommands: Object.keys(allCommands),
+    moduleStatus: Object.fromEntries(loadedModules),
+    commandSources: Object.fromEntries(commandSources)
 });
 
-// Log detailed registration statistics
-logger.info('Command registration statistics:', categoryStats);
-logger.info('Total registered commands:', Object.keys(allCommands).length);
-logger.info('Available commands:', Object.keys(allCommands));
 
 // Compare registered commands with config
 const configuredCommands = Object.keys(freshConfig.commands);
@@ -147,7 +114,7 @@ async function messageHandler(sock, msg, { messages }, store) {
             command,
             args,
             availableCommands: Object.keys(allCommands),
-            registeredCategories: Object.keys(categoryStats)
+            registeredCategories: Object.keys(modules)
         });
 
         // Execute command if it exists
@@ -170,5 +137,8 @@ async function messageHandler(sock, msg, { messages }, store) {
         }).catch(err => logger.error('Error sending error message:', err));
     }
 }
+
+// Expose registered commands for menu
+messageHandler.getRegisteredCommands = () => Object.keys(allCommands);
 
 module.exports = messageHandler;

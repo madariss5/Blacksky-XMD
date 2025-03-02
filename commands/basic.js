@@ -1,15 +1,21 @@
 const logger = require('pino')();
 const moment = require('moment-timezone');
 const config = require('../config');
+const handler = require('../handler');
 
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            // Add diagnostic logging
-            logger.info('Starting menu generation with config:', {
-                totalCommands: Object.keys(config.commands).length,
-                availableCategories: [...new Set(Object.values(config.commands).map(cmd => cmd.category))],
-                commandList: Object.keys(config.commands)
+            // Validate input parameters
+            if (!sock || !msg || !msg.key || !msg.key.remoteJid) {
+                throw new Error('Invalid message or socket parameters');
+            }
+
+            // Get registered commands with logging
+            const registeredCommands = handler.getRegisteredCommands();
+            logger.info('Retrieved registered commands:', {
+                commands: registeredCommands,
+                count: registeredCommands.length
             });
 
             // Basic header with bot info and user details
@@ -18,13 +24,20 @@ const basicCommands = {
             menuText += `⏰ Time: ${moment().format('HH:mm:ss')}\n`;
             menuText += `📅 Date: ${moment().format('DD/MM/YYYY')}\n\n`;
 
-            // Group commands by category with logging
+            // Group commands by category with validation
             const categories = {};
-            for (const [cmd, info] of Object.entries(config.commands)) {
-                logger.info(`Processing command: ${cmd}`, {
+            Object.entries(config.commands).forEach(([cmd, info]) => {
+                // Log each command processing
+                logger.debug(`Processing command: ${cmd}`, {
                     category: info.category,
-                    description: info.description
+                    isRegistered: registeredCommands.includes(cmd)
                 });
+
+                // Only show commands that are actually implemented
+                if (!registeredCommands.includes(cmd)) {
+                    logger.warn(`Command ${cmd} in config but not implemented`);
+                    return;
+                }
 
                 if (!categories[info.category]) {
                     categories[info.category] = [];
@@ -33,17 +46,21 @@ const basicCommands = {
                     command: cmd,
                     description: info.description
                 });
-            }
+            });
 
             // Log categories found
-            logger.info('Categories after grouping:', Object.keys(categories));
+            logger.info('Categories after grouping:', {
+                categories: Object.keys(categories),
+                commandCounts: Object.fromEntries(
+                    Object.entries(categories).map(([cat, cmds]) => [cat, cmds.length])
+                )
+            });
 
             // Sort categories alphabetically
             const sortedCategories = Object.keys(categories).sort();
 
             // Add each category with its commands
             for (const category of sortedCategories) {
-                // Add category header with emoji
                 const emoji = getCategoryEmoji(category);
                 menuText += `${emoji} *${category}*\n`;
 
@@ -60,17 +77,42 @@ const basicCommands = {
             // Footer
             menuText += `\n📝 Use ${config.prefix}help [command] for detailed info about a command`;
 
+            // Log menu text before sending
+            logger.info('Generated menu text:', {
+                length: menuText.length,
+                categories: sortedCategories.length,
+                totalCommands: Object.values(categories).flat().length
+            });
+
             await sock.sendMessage(msg.key.remoteJid, {
                 text: menuText
             });
 
-            logger.info('Menu generated and sent successfully with categories:', sortedCategories);
+            logger.info('Menu sent successfully');
 
         } catch (error) {
-            logger.error('Error in menu command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error generating menu. Please try again.'
+            // Enhanced error logging
+            logger.error('Error in menu command:', {
+                error: {
+                    message: error.message,
+                    stack: error.stack,
+                    name: error.name
+                },
+                context: {
+                    remoteJid: msg?.key?.remoteJid,
+                    hasSocket: !!sock,
+                    hasMessage: !!msg
+                }
             });
+
+            // Attempt to send error message if possible
+            if (sock && msg?.key?.remoteJid) {
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Error generating menu. Please try again.'
+                }).catch(err => {
+                    logger.error('Failed to send error message:', err);
+                });
+            }
         }
     },
 
