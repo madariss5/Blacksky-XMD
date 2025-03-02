@@ -5,6 +5,7 @@
   "logo": "https://raw.githubusercontent.com/blacksky-algorithms/blacksky-md/main/generated-icon.png",
   "keywords": ["whatsapp-bot", "baileys", "nodejs", "bot", "whatsapp-md", "ai-bot", "multi-device"],
   "success_url": "/",
+  "website": "https://github.com/blacksky-algorithms/blacksky-md#readme",
   "env": {
     "NODE_ENV": {
       "description": "Runtime environment",
@@ -16,7 +17,7 @@
       "required": true
     },
     "OWNER_NUMBER": {
-      "description": "Your WhatsApp number with country code (e.g., 491234567890 for +49 123 456 7890)",
+      "description": "Your WhatsApp number (e.g., 491234567890)",
       "required": true
     },
     "BOT_NAME": {
@@ -37,18 +38,6 @@
     "LOG_LEVEL": {
       "description": "Logging level (debug/info/warn/error)",
       "value": "info",
-      "required": false
-    },
-    "OPENAI_API_KEY": {
-      "description": "OpenAI API key for AI features",
-      "required": false
-    },
-    "REPLICATE_API_TOKEN": {
-      "description": "Replicate API token for image generation",
-      "required": false
-    },
-    "WEATHER_API_KEY": {
-      "description": "OpenWeatherMap API key for weather commands",
       "required": false
     }
   },
@@ -74,6 +63,6 @@
   },
   "stack": "heroku-22",
   "scripts": {
-    "postdeploy": "npm install && node index.js"
+    "postdeploy": "npm install"
   }
 }

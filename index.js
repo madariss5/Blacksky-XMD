@@ -10,6 +10,9 @@ const {
 } = require("@whiskeysockets/baileys");
 const pino = require('pino');
 const logger = require('./utils/logger');
+logger.info('Starting application...');
+logger.info(`Environment: ${process.env.NODE_ENV}`);
+logger.info(`Port: ${process.env.PORT || 5000}`);
 const fs = require('fs-extra');
 const path = require('path');
 const { smsg, decodeJid } = require('./lib/simple');
@@ -24,8 +27,69 @@ const store = makeInMemoryStore({
 let credsSent = false;
 let isShuttingDown = false;
 
+// Express server setup for Heroku
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Basic middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Health check endpoint
+app.get('/', (req, res) => {
+    res.json({
+        status: 'WhatsApp Bot Server Running',
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+    logger.error('Express error:', err);
+    res.status(500).json({
+        error: 'Internal Server Error',
+        message: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+});
+
+// Start server and bot
+const startApplication = async () => {
+    try {
+        logger.info('Starting Express server...');
+        // Start Express server
+        await new Promise((resolve, reject) => {
+            const server = app.listen(PORT, '0.0.0.0')
+                .once('error', (err) => {
+                    logger.error('Failed to start server:', err);
+                    reject(err);
+                })
+                .once('listening', () => {
+                    logger.info(`Server started and listening on port ${PORT}`);
+                    resolve();
+                });
+        });
+
+        logger.info('Starting WhatsApp bot...');
+        // Start WhatsApp bot
+        await startBot();
+
+    } catch (error) {
+        logger.error('Application startup failed:', error);
+        process.exit(1);
+    }
+};
+
+// Initialize the application
+startApplication().catch(err => {
+    logger.error('Startup failed:', err);
+    process.exit(1);
+});
+
 async function startBot() {
     try {
+        logger.info('Initializing WhatsApp bot...');
         // Load auth state
         const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
 
@@ -45,6 +109,7 @@ async function startBot() {
 
             if (connection === 'close') {
                 const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+                logger.info('Connection closed. Should reconnect:', shouldReconnect);
                 if (shouldReconnect) {
                     startBot();
                 }
@@ -108,64 +173,6 @@ async function startBot() {
         startBot();
     }
 }
-
-// Express server setup for Heroku
-const app = express();
-const PORT = process.env.PORT || 5000;
-
-// Basic middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Health check endpoint
-app.get('/', (req, res) => {
-    res.json({
-        status: 'WhatsApp Bot Server Running',
-        uptime: process.uptime(),
-        memory: process.memoryUsage(),
-        timestamp: new Date().toISOString()
-    });
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-    logger.error('Express error:', err);
-    res.status(500).json({
-        error: 'Internal Server Error',
-        message: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
-});
-
-// Start server and bot
-const startApplication = async () => {
-    try {
-        // Start Express server
-        await new Promise((resolve, reject) => {
-            const server = app.listen(PORT, '0.0.0.0')
-                .once('error', (err) => {
-                    logger.error('Failed to start server:', err);
-                    reject(err);
-                })
-                .once('listening', () => {
-                    logger.info(`Server started on port ${PORT}`);
-                    resolve();
-                });
-        });
-
-        // Start WhatsApp bot
-        await startBot();
-
-    } catch (error) {
-        logger.error('Application startup failed:', error);
-        process.exit(1);
-    }
-};
-
-// Initialize the application
-startApplication().catch(err => {
-    logger.error('Startup failed:', err);
-    process.exit(1);
-});
 
 // Handle graceful shutdown
 const shutdown = async (signal) => {
