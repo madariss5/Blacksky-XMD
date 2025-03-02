@@ -1,12 +1,12 @@
 build:
   docker:
-    worker: Dockerfile
+    web: Dockerfile
   config:
     NODE_ENV: production
     LOG_LEVEL: info
 
 run:
-  worker: 
+  web:
     command:
       - node index.js
-    image: worker
+    image: web

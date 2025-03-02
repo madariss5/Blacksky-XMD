@@ -113,6 +113,11 @@ async function startBot() {
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Basic middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Health check endpoint
 app.get('/', (req, res) => {
     res.json({
         status: 'WhatsApp Bot Server Running',
@@ -122,36 +127,45 @@ app.get('/', (req, res) => {
     });
 });
 
-// Start server before bot to ensure port is available
-const startServer = async () => {
+// Error handling middleware
+app.use((err, req, res, next) => {
+    logger.error('Express error:', err);
+    res.status(500).json({
+        error: 'Internal Server Error',
+        message: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+});
+
+// Start server and bot
+const startApplication = async () => {
     try {
-        const server = await new Promise((resolve, reject) => {
-            const server = app.listen(PORT, '0.0.0.0', () => {
-                logger.info(`Server started on port ${PORT}`);
-                resolve(server);
-            }).on('error', (err) => {
-                if (err.code === 'EADDRINUSE') {
-                    logger.error(`Port ${PORT} is busy`);
-                }
-                reject(err);
-            });
+        // Start Express server
+        await new Promise((resolve, reject) => {
+            const server = app.listen(PORT, '0.0.0.0')
+                .once('error', (err) => {
+                    logger.error('Failed to start server:', err);
+                    reject(err);
+                })
+                .once('listening', () => {
+                    logger.info(`Server started on port ${PORT}`);
+                    resolve();
+                });
         });
 
-        // Start bot after server is running
+        // Start WhatsApp bot
         await startBot();
-        return server;
+
     } catch (error) {
-        logger.error('Failed to start server:', error);
+        logger.error('Application startup failed:', error);
         process.exit(1);
     }
 };
 
 // Initialize the application
-startServer().catch(err => {
+startApplication().catch(err => {
     logger.error('Startup failed:', err);
     process.exit(1);
 });
-
 
 // Handle graceful shutdown
 const shutdown = async (signal) => {

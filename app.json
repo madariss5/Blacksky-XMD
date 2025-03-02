@@ -71,8 +71,5 @@
       "size": "basic"
     }
   },
-  "stack": "heroku-22",
-  "scripts": {
-    "postdeploy": "npm install && npm start"
-  }
+  "stack": "heroku-22"
 }
