@@ -1,47 +1,21 @@
 const config = require('./config');
 const logger = require('./utils/logger');
 
-// Import all command modules
-const aiCommands = require('./commands/ai');
-const animeCommands = require('./commands/anime');
+// Import command modules
 const basicCommands = require('./commands/basic');
-const downloaderCommands = require('./commands/downloader');
-const economyCommands = require('./commands/economy');
-const educationCommands = require('./commands/education');
-const funCommands = require('./commands/fun');
-const gameCommands = require('./commands/game');
-const groupCommands = require('./commands/group');
+const aiCommands = require('./commands/ai');
 const mediaCommands = require('./commands/media');
-const musicCommands = require('./commands/music');
-const nsfwCommands = require('./commands/nsfw');
+const groupCommands = require('./commands/group');
 const ownerCommands = require('./commands/owner');
-const reactionsCommands = require('./commands/reactions');
-const searchCommands = require('./commands/search');
-const socialCommands = require('./commands/social');
-const toolCommands = require('./commands/tool');
-const userCommands = require('./commands/user');
 const utilityCommands = require('./commands/utility');
 
 // Combine all command modules
 const allCommands = {
-    ...aiCommands,
-    ...animeCommands,
     ...basicCommands,
-    ...downloaderCommands,
-    ...economyCommands,
-    ...educationCommands,
-    ...funCommands,
-    ...gameCommands,
-    ...groupCommands,
+    ...aiCommands,
     ...mediaCommands,
-    ...musicCommands,
-    ...nsfwCommands,
+    ...groupCommands,
     ...ownerCommands,
-    ...reactionsCommands,
-    ...searchCommands,
-    ...socialCommands,
-    ...toolCommands,
-    ...userCommands,
     ...utilityCommands
 };
 
@@ -97,4 +71,3 @@ async function messageHandler(sock, msg, { messages }, store) {
 }
 
 module.exports = messageHandler;
-module.exports.allCommands = allCommands;
