@@ -30,7 +30,7 @@ const allCommands = {
 // Debug logging for available commands
 logger.info('Available commands:', Object.keys(allCommands));
 
-const handler = async (sock, msg, { messages }, store) => {
+async function messageHandler(sock, msg, { messages }, store) {
     try {
         // Get message content
         const messageType = Object.keys(msg.message)[0];
@@ -81,7 +81,10 @@ const handler = async (sock, msg, { messages }, store) => {
             text: '❌ Error processing command. Please try again.'
         }).catch(err => logger.error('Error sending error message:', err));
     }
-};
+}
 
-// Export both the handler and allCommands
-module.exports = { handler, allCommands };
+// Export both the handler function and allCommands
+// Make the handler function the default export for backward compatibility
+module.exports = messageHandler;
+module.exports.handler = messageHandler;
+module.exports.allCommands = allCommands;

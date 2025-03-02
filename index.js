@@ -7,6 +7,7 @@ const pino = require('pino');
 const logger = require('./utils/logger');
 const config = require('./config');
 const express = require('express');
+const { handler } = require('./handler'); // Updated import
 
 async function startBot() {
     try {
@@ -26,40 +27,7 @@ async function startBot() {
                 const msg = messages[0];
                 if (!msg || !msg.message) return;
 
-                // Get the actual message content
-                const messageType = Object.keys(msg.message)[0];
-                let messageContent = '';
-
-                // Extract message based on type
-                switch (messageType) {
-                    case 'conversation':
-                        messageContent = msg.message.conversation;
-                        break;
-                    case 'extendedTextMessage':
-                        messageContent = msg.message.extendedTextMessage.text;
-                        break;
-                    case 'imageMessage':
-                        messageContent = msg.message.imageMessage.caption;
-                        break;
-                    case 'videoMessage':
-                        messageContent = msg.message.videoMessage.caption;
-                        break;
-                    default:
-                        return; // Unsupported message type
-                }
-
-                // Check for command prefix
-                const prefix = config.prefix || '.';
-                if (!messageContent.startsWith(prefix)) return;
-
-                // Parse command
-                const args = messageContent.slice(prefix.length).trim().split(/\s+/);
-                const command = args.shift()?.toLowerCase();
-
-                if (!command) return;
-
                 // Process command
-                const handler = require('./handler');
                 await handler(sock, msg, { messages }, {});
 
             } catch (error) {

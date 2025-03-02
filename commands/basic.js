@@ -2,6 +2,7 @@ const logger = require('pino')();
 const os = require('os');
 const moment = require('moment-timezone');
 const config = require('../config');
+const handler = require('../handler');
 
 const basicCommands = {
     menu: async (sock, msg) => {
@@ -14,6 +15,24 @@ const basicCommands = {
             menuText += `║ ⏰ Time: ${moment().format('HH:mm:ss')}\n`;
             menuText += `║ 📅 Date: ${moment().format('DD/MM/YYYY')}\n`;
             menuText += `╚════════════════════╝\n\n`;
+
+            // Organize commands by category
+            const categories = {};
+            const implementedCommands = handler.allCommands;
+
+            // Process commands from config and check if they're implemented
+            Object.entries(config.commands).forEach(([cmd, info]) => {
+                if (implementedCommands[cmd]) {  // Only show implemented commands
+                    const category = info.category;
+                    if (!categories[category]) {
+                        categories[category] = [];
+                    }
+                    categories[category].push({
+                        command: cmd,
+                        description: info.description
+                    });
+                }
+            });
 
             // Category emojis
             const categoryEmojis = {
@@ -36,23 +55,6 @@ const basicCommands = {
                 'Utility': '⚙️',
                 'Education': '📚'
             };
-
-            // Organize commands by category
-            const categories = {};
-
-            // Process commands from config
-            Object.entries(config.commands).forEach(([cmd, info]) => {
-                const category = info.category;
-                if (!categories[category]) {
-                    categories[category] = [];
-                }
-                categories[category].push({
-                    command: cmd,
-                    description: info.description
-                });
-            });
-
-            logger.info('Categories organized:', Object.keys(categories));
 
             // Add commands by category
             Object.entries(categories)
@@ -77,7 +79,6 @@ const basicCommands = {
             menuText += `║    for detailed info     ║\n`;
             menuText += `╚════════════════════╝`;
 
-            // Send menu with image
             await sock.sendMessage(msg.key.remoteJid, {
                 image: { url: config.menuImage },
                 caption: menuText,
@@ -102,8 +103,7 @@ const basicCommands = {
                 if (cmdInfo) {
                     const text = `*Command: ${config.prefix}${command}*\n\n` +
                                `📝 Description: ${cmdInfo.description}\n` +
-                               `📁 Category: ${cmdInfo.category}\n` +
-                               `ℹ️ Usage: ${cmdInfo.usage || `${config.prefix}${command}`}`;
+                               `📁 Category: ${cmdInfo.category}`;
                     await sock.sendMessage(msg.key.remoteJid, { text });
                     return;
                 }
