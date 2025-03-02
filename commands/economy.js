@@ -346,15 +346,28 @@ const economyCommands = {
     },
     monthly: async (sock, msg) => {
         try {
-            const reward = Math.floor(Math.random() * 5000) + 5000; // 5000-10000
-            await store.updateMonthlyReward(msg.key.participant, reward);
+            const userId = msg.key.participant || msg.key.remoteJid;
+            logger.info('Processing monthly claim for user:', userId);
+
+            // Check if user can claim monthly reward
+            const canClaim = await store.canClaimMonthly(userId);
+            if (!canClaim) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '⏰ You can claim your monthly reward once every 30 days!'
+                });
+            }
+
+            // Generate reward (5000-10000 coins)
+            const reward = Math.floor(Math.random() * 5000) + 5000;
+            const result = await store.updateMonthlyReward(userId, reward);
+
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `🎉 *Monthly Reward*\n\nYou received: $${reward}\nCome back next month!`
+                text: `🎉 *Monthly Reward*\n\nYou received ${reward} coins!\nNew balance: ${result.newBalance} coins`
             });
         } catch (error) {
             logger.error('Error in monthly command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ ' + error.message
+                text: '❌ Error claiming monthly reward: ' + error.message
             });
         }
     },
