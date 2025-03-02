@@ -4,6 +4,68 @@ const os = require('os');
 const moment = require('moment-timezone');
 
 const basicCommands = {
+    menu: async (sock, msg) => {
+        try {
+            const config = require('../config');
+
+            // Load all command modules
+            const basicCommands = require('./basic');
+            const userCommands = require('./user');
+            const groupCommands = require('./group');
+            const mediaCommands = require('./media');
+            const funCommands = require('./fun');
+            const aiCommands = require('./ai');
+            const ownerCommands = require('./owner');
+            const toolCommands = require('./tool');
+            const economyCommands = require('./economy');
+            const musicCommands = require('./music');
+
+            // Combine all commands
+            const allCommands = {
+                ...basicCommands,
+                ...userCommands,
+                ...groupCommands,
+                ...mediaCommands,
+                ...funCommands,
+                ...aiCommands,
+                ...ownerCommands,
+                ...toolCommands,
+                ...economyCommands,
+                ...musicCommands
+            };
+
+            // Build header with image
+            await sock.sendMessage(msg.key.remoteJid, { 
+                image: { url: config.menuImage },
+                caption: `╭━━━━━━━━━━━━━━━╮
+┃   *${config.botName}*   
+┃  Command List
+╰━━━━━━━━━━━━━━━╯
+
+📜 *Available Commands*
+
+${Object.entries(allCommands)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([cmd]) => `◦ ${config.prefix}${cmd}`)
+    .join('\n')}
+
+╭━━━━━━━━━━━━━━━╮
+┃ Total Commands: ${Object.keys(allCommands).length}
+┃ Prefix: ${config.prefix}
+╰━━━━━━━━━━━━━━━╯
+
+Type ${config.prefix}help <command> for detailed info!`
+            });
+
+            logger.info('Menu command executed successfully');
+        } catch (error) {
+            logger.error('Menu command failed:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error showing menu: ' + error.message
+            });
+        }
+    },
+
     help: async (sock, msg) => {
         try {
             const text = `*🤖 HANS MD Bot Help*\n\n` +
@@ -45,161 +107,6 @@ const basicCommands = {
             logger.error('Ping command failed:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error checking bot status: ' + error.message
-            });
-        }
-    },
-
-    menu: async (sock, msg) => {
-        try {
-            const config = require('../config');
-
-            // Group commands by category
-            const categories = {
-                'Basic': [
-                    `• ${config.prefix}help - Show help message`,
-                    `• ${config.prefix}ping - Check bot response time`,
-                    `• ${config.prefix}info - Show bot information`,
-                    `• ${config.prefix}menu - Show all commands`
-                ],
-                'User': [
-                    `• ${config.prefix}join - Join a group using invite link`,
-                    `• ${config.prefix}profile - View user profile`,
-                    `• ${config.prefix}me - Show your own profile`,
-                    `• ${config.prefix}register - Register new user`,
-                    `• ${config.prefix}level - View level stats`,
-                    `• ${config.prefix}daily - Claim daily rewards`,
-                    `• ${config.prefix}bio - Set or view bio`
-                ],
-                'Group': [
-                    `• ${config.prefix}kick - Remove a member from group`,
-                    `• ${config.prefix}promote - Promote member to admin`,
-                    `• ${config.prefix}demote - Demote admin to member`,
-                    `• ${config.prefix}mute - Mute group chat`,
-                    `• ${config.prefix}unmute - Unmute group chat`,
-                    `• ${config.prefix}link - Get group invite link`,
-                    `• ${config.prefix}revoke - Revoke group invite link`,
-                    `• ${config.prefix}everyone - Mention all members`,
-                    `• ${config.prefix}hidetag - Hidden mention all`,
-                    `• ${config.prefix}setname - Change group name`,
-                    `• ${config.prefix}setdesc - Change group description`,
-                    `• ${config.prefix}setwelcome - Set welcome message`,
-                    `• ${config.prefix}setgoodbye - Set goodbye message`,
-                    `• ${config.prefix}antilink - Enable/disable antilink`,
-                    `• ${config.prefix}antispam - Enable/disable antispam`,
-                    `• ${config.prefix}warn - Warn a member`,
-                    `• ${config.prefix}delwarn - Remove a warning`,
-                    `• ${config.prefix}warnlist - List member warnings`,
-                    `• ${config.prefix}groupinfo - Show group info`
-                ],
-                'NSFW': [
-                    `• ${config.prefix}register - Register age (18+ required)`,
-                    `• ${config.prefix}setnsfw - Enable/disable NSFW in group`,
-                    `• ${config.prefix}nsfwcheck - Check NSFW permissions`,
-                    `• ${config.prefix}waifu - NSFW waifu content`,
-                    `• ${config.prefix}neko - NSFW neko content`,
-                    `• ${config.prefix}trap - NSFW trap content`,
-                    `• ${config.prefix}blowjob - NSFW blowjob content`,
-                    `• ${config.prefix}ass - NSFW ass content`,
-                    `• ${config.prefix}hentai - NSFW hentai content`,
-                    `• ${config.prefix}milf - NSFW milf content`,
-                    `• ${config.prefix}oral - NSFW oral content`,
-                    `• ${config.prefix}paizuri - NSFW paizuri content`,
-                    `• ${config.prefix}ecchi - NSFW ecchi content`,
-                    `• ${config.prefix}ero - NSFW ero content`
-                ],
-                'Owner': [
-                    `• ${config.prefix}block - Block user from using bot`,
-                    `• ${config.prefix}unblock - Unblock user`,
-                    `• ${config.prefix}ban - Ban user from using bot`,
-                    `• ${config.prefix}unban - Unban user`,
-                    `• ${config.prefix}banlist - View banned users and groups`,
-                    `• ${config.prefix}broadcast - Send message to all users`,
-                    `• ${config.prefix}setbotbio - Set bot's bio`,
-                    `• ${config.prefix}setbotname - Set bot's name`,
-                    `• ${config.prefix}setbotpp - Set bot's profile picture`,
-                    `• ${config.prefix}leave - Leave current group`,
-                    `• ${config.prefix}eval - Evaluate JavaScript code`,
-                    `• ${config.prefix}exec - Execute terminal command`,
-                    `• ${config.prefix}getfile - Get file content`,
-                    `• ${config.prefix}savefile - Save file content`,
-                    `• ${config.prefix}restart - Restart the bot`,
-                    `• ${config.prefix}shutdown - Shutdown the bot`,
-                    `• ${config.prefix}clearcache - Clear bot cache`,
-                    `• ${config.prefix}setprefix - Change command prefix`,
-                    `• ${config.prefix}addcmd - Add custom command`,
-                    `• ${config.prefix}delcmd - Delete custom command`,
-                    `• ${config.prefix}listcmd - List custom commands`,
-                    `• ${config.prefix}setmaintenance - Set maintenance mode`,
-                    `• ${config.prefix}antispam - Toggle anti-spam protection`,
-                    `• ${config.prefix}antiporn - Toggle anti-porn filter`,
-                    `• ${config.prefix}antilink - Toggle anti-link protection`,
-                    `• ${config.prefix}getlogs - View bot logs`
-                ],
-                'Economy': [
-                    `• ${config.prefix}balance - Check your coin balance`,
-                    `• ${config.prefix}daily - Claim daily reward`,
-                    `• ${config.prefix}work - Earn coins by working`,
-                    `• ${config.prefix}mine - Mine for coins`,
-                    `• ${config.prefix}hunt - Hunt for rewards`,
-                    `• ${config.prefix}fish - Go fishing for coins`,
-                    `• ${config.prefix}transfer - Transfer coins to others`,
-                    `• ${config.prefix}rob - Try to steal coins (risky)`,
-                    `• ${config.prefix}gamble - Gamble your coins`,
-                    `• ${config.prefix}shop - View item shop`,
-                    `• ${config.prefix}buy - Buy items from shop`,
-                    `• ${config.prefix}sell - Sell your items`,
-                    `• ${config.prefix}inventory - Check your inventory`
-                ]
-            };
-
-            // Add other command categories from config
-            Object.entries(config.commands).forEach(([cmd, info]) => {
-                const category = info.category || 'Uncategorized';
-                if (category !== 'Basic' && category !== 'User' && category !== 'Group' && category !== 'NSFW' && category !== 'Owner' && category !== 'Economy') {
-                    if (!categories[category]) {
-                        categories[category] = [];
-                    }
-                    categories[category].push(`• ${config.prefix}${cmd} - ${info.description}`);
-                }
-            });
-
-            // Category icons
-            const categoryIcons = {
-                'Basic': '📌',
-                'User': '👤',
-                'Economy': '💰',
-                'Group': '👥',
-                'Media': '🎨',
-                'Downloader': '📥',
-                'Fun': '🎮',
-                'Reactions': '🎭',
-                'Tools': '🛠️',
-                'AI': '🤖',
-                'NSFW': '🔞',
-                'Owner': '👑',
-                'Music': '🎵'
-            };
-
-            // Build menu text
-            let text = `*${config.botName} Command Menu*\n\n`;
-
-            // Add categories in order
-            Object.entries(categories).forEach(([category, commands]) => {
-                if (commands.length > 0) {
-                    const icon = categoryIcons[category] || '📌';
-                    text += `${icon} *${category} Commands*\n${commands.join('\n')}\n\n`;
-                }
-            });
-
-            // Add footer
-            text += `💡 Type ${config.prefix}help <command> for detailed info!`;
-
-            await sock.sendMessage(msg.key.remoteJid, { text });
-            logger.info('Menu command executed successfully');
-        } catch (error) {
-            logger.error('Menu command failed:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error showing menu: ' + error.message
             });
         }
     },
