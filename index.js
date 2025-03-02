@@ -19,7 +19,7 @@ const moment = require('moment-timezone');
 const express = require('express');
 const { exec, spawn, execSync } = require('child_process');
 const ffmpeg = require('fluent-ffmpeg');
-const { smsg } = require('./lib/simple');
+const { smsg, decodeJid } = require('./lib/simple');
 const qrcode = require('qrcode-terminal');
 const { compressCredsFile } = require('./utils/creds');
 const { Boom } = require('@hapi/boom');
@@ -135,6 +135,12 @@ let connectionRetryCount = 0;
 const MAX_RETRIES = 5;
 const RETRY_INTERVAL = 3000;
 
+// Add decodeJid to the socket object
+function addSocketMethods(sock) {
+    sock.decodeJid = decodeJid;
+    return sock;
+}
+
 async function startHANS() {
     try {
         await startServer();
@@ -167,6 +173,9 @@ async function startHANS() {
                 return { conversation: '' };
             }
         });
+
+        // Add utility methods to socket
+        hans = addSocketMethods(hans);
 
         store.bind(hans.ev);
 
@@ -233,6 +242,10 @@ async function startHANS() {
 
                 if (msg.key && msg.key.remoteJid === 'status@broadcast') return;
 
+                // Check message type and format
+                const messageType = getContentType(msg.message);
+                if (!messageType) return;
+
                 // Apply anti-ban middleware with enhanced error handling
                 try {
                     const shouldProcess = await antiBan.processMessage(hans, msg);
@@ -242,19 +255,35 @@ async function startHANS() {
                     }
                 } catch (antibanError) {
                     logger.error('Error in anti-ban middleware:', antibanError);
-                    return; // Skip processing on middleware error
+                    return;
                 }
 
                 const m = smsg(hans, msg, store);
+                if (!m) {
+                    logger.debug('Invalid message format, skipping processing');
+                    return;
+                }
+
                 require('./handler')(hans, m, chatUpdate, store);
             } catch (err) {
                 logger.error('Error in message handler:', err);
             }
         });
 
-        // Credentials update handling with error tracking
+        // Add rate limiting for credential updates
+        const credUpdateCache = new NodeCache({ stdTTL: 5 }); // 5 seconds TTL
+
         hans.ev.on('creds.update', async () => {
             try {
+                const now = Date.now();
+                const lastUpdate = credUpdateCache.get('lastUpdate');
+
+                if (lastUpdate && (now - lastUpdate) < 5000) {
+                    logger.debug('Skipping rapid credential update');
+                    return;
+                }
+
+                credUpdateCache.set('lastUpdate', now);
                 await saveCreds();
                 await compressCredsFile('./auth_info_baileys');
                 logger.info('Credentials updated and compressed successfully');
