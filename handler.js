@@ -1,12 +1,11 @@
 const config = require('./config');
 const logger = require('./utils/logger');
+const fs = require('fs-extra');
+const path = require('path');
 
 // Clear require cache for config to ensure fresh load
 delete require.cache[require.resolve('./config')];
 const freshConfig = require('./config');
-
-// Import all command modules with logging
-logger.info('Starting command registration...');
 
 // Track successful imports
 const loadedModules = new Map();
@@ -14,6 +13,12 @@ const loadedModules = new Map();
 function loadCommandModule(name, path) {
     try {
         logger.info(`Loading command module: ${name} from ${path}`);
+        // Check if file exists
+        if (!fs.existsSync(path)) {
+            logger.error(`Module file not found: ${path}`);
+            loadedModules.set(name, false);
+            return {};
+        }
         // Clear require cache for the module
         delete require.cache[require.resolve(path)];
         const module = require(path);
@@ -28,15 +33,17 @@ function loadCommandModule(name, path) {
     }
 }
 
-const basicCommands = loadCommandModule('Basic', './commands/basic');
-const aiCommands = loadCommandModule('AI', './commands/ai');
-const mediaCommands = loadCommandModule('Media', './commands/media');
-const groupCommands = loadCommandModule('Group', './commands/group');
-const ownerCommands = loadCommandModule('Owner', './commands/owner');
-const utilityCommands = loadCommandModule('Utility', './commands/utility');
-const educationCommands = loadCommandModule('Education', './commands/education');
-const economyCommands = loadCommandModule('Economy', './commands/economy');
-const gameCommands = loadCommandModule('Game', './commands/game');
+const modules = {
+    Basic: loadCommandModule('Basic', './commands/basic.js'),
+    AI: loadCommandModule('AI', './commands/ai.js'),
+    Media: loadCommandModule('Media', './commands/media.js'),
+    Group: loadCommandModule('Group', './commands/group.js'),
+    Owner: loadCommandModule('Owner', './commands/owner.js'),
+    Utility: loadCommandModule('Utility', './commands/utility.js'),
+    Education: loadCommandModule('Education', './commands/education.js'),
+    Economy: loadCommandModule('Economy', './commands/economy.js'),
+    Game: loadCommandModule('Game', './commands/game.js')
+};
 
 // Debug logging for module imports
 logger.info('Module load status:', Object.fromEntries(loadedModules));
@@ -64,21 +71,7 @@ function registerCommands(commands, moduleName) {
 }
 
 // Register commands from all modules
-const modules = {
-    'Basic': basicCommands,
-    'AI': aiCommands,
-    'Media': mediaCommands,
-    'Group': groupCommands,
-    'Owner': ownerCommands,
-    'Utility': utilityCommands,
-    'Education': educationCommands,
-    'Economy': economyCommands,
-    'Game': gameCommands
-};
-
-// Count commands per category for logging
 const categoryStats = {};
-
 Object.entries(modules).forEach(([name, commands]) => {
     try {
         registerCommands(commands, name);
@@ -94,6 +87,16 @@ Object.entries(modules).forEach(([name, commands]) => {
 logger.info('Command registration statistics:', categoryStats);
 logger.info('Total registered commands:', Object.keys(allCommands).length);
 logger.info('Available commands:', Object.keys(allCommands));
+
+// Compare registered commands with config
+const configuredCommands = Object.keys(freshConfig.commands);
+const registeredCommands = Object.keys(allCommands);
+logger.info('Command comparison:', {
+    configured: configuredCommands.length,
+    registered: registeredCommands.length,
+    missingFromConfig: registeredCommands.filter(cmd => !configuredCommands.includes(cmd)),
+    missingImplementations: configuredCommands.filter(cmd => !registeredCommands.includes(cmd))
+});
 
 async function messageHandler(sock, msg, { messages }, store) {
     try {
@@ -120,7 +123,7 @@ async function messageHandler(sock, msg, { messages }, store) {
         }
 
         // Parse command with detailed logging
-        const prefix = config.prefix || '.';
+        const prefix = freshConfig.prefix || '.';
         if (!messageContent.startsWith(prefix)) {
             return;
         }
