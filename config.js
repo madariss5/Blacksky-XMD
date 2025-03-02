@@ -1,7 +1,7 @@
 const { formatPhoneNumber } = require('./utils/phoneNumber');
 const logger = require('pino')();
 
-// Add diagnostic logging for command configuration
+// Add diagnostic logging for config initialization
 logger.info('Starting config initialization...');
 
 // Validate and format owner number during startup

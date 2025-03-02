@@ -15,41 +15,35 @@ const basicCommands = {
             menuText += `📅 Date: ${moment().format('DD/MM/YYYY')}\n\n`;
 
             // Organize commands by category
-            const categories = {
-                '🎯 Basic': [],
-                '🎮 Games': [],
-                '🤖 AI': [],
-                '📚 Education': [],
-                '💰 Economy': [],
-                '🎵 Media': [],
-                '👥 Group': []
+            const categories = new Map();
+            const categoryEmojis = {
+                'Basic': '🎯',
+                'Game': '🎮',
+                'AI': '🤖',
+                'Education': '📚',
+                'Economy': '💰',
+                'Media': '🎵',
+                'Group': '👥'
             };
 
-            // Get all registered commands from the config
+            // Group commands by category
             Object.entries(config.commands).forEach(([cmd, info]) => {
-                const categoryEmoji = {
-                    'Basic': '🎯',
-                    'Game': '🎮',
-                    'AI': '🤖',
-                    'Education': '📚',
-                    'Economy': '💰',
-                    'Media': '🎵',
-                    'Group': '👥'
-                };
+                const categoryKey = info.category;
+                const categoryEmoji = categoryEmojis[categoryKey] || '📦';
+                const displayCategory = `${categoryEmoji} ${categoryKey}`;
 
-                const categoryKey = `${categoryEmoji[info.category] || '📦'} ${info.category}`;
-                if (!categories[categoryKey]) {
-                    categories[categoryKey] = [];
+                if (!categories.has(displayCategory)) {
+                    categories.set(displayCategory, []);
                 }
 
-                categories[categoryKey].push({
+                categories.get(displayCategory).push({
                     command: cmd,
-                    description: info.description || 'No description available'
+                    description: info.description
                 });
             });
 
             // Build menu text with categories
-            Object.entries(categories).forEach(([category, commands]) => {
+            for (const [category, commands] of categories) {
                 if (commands.length > 0) {
                     menuText += `${category}\n`;
                     commands.forEach(cmd => {
@@ -57,7 +51,7 @@ const basicCommands = {
                     });
                     menuText += '\n';
                 }
-            });
+            }
 
             menuText += `\n📝 Send ${config.prefix}help <command> for detailed info`;
 
