@@ -3,51 +3,73 @@ const logger = pino({ level: 'silent' });
 const os = require('os');
 const moment = require('moment-timezone');
 const config = require('../config');
+const fs = require('fs').promises;
+const path = require('path');
 
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            // Create header
-            let menuText = `╭━━━━〘 ${config.botName} 〙━━━⊷\n`;
+            // Create fancy header
+            let menuText = `╭━━━━『 ${config.botName} 』━━━━⊷\n`;
             menuText += `┃ ⎆ User: ${msg.pushName}\n`;
             menuText += `┃ ⎆ Time: ${moment().format('HH:mm:ss')}\n`;
             menuText += `┃ ⎆ Date: ${moment().format('DD/MM/YYYY')}\n`;
             menuText += `╰━━━━━━━━━━━━━━━━━━⊷\n\n`;
 
-            // Group commands by category
-            const categories = {};
-            Object.entries(config.commands).forEach(([cmd, info]) => {
-                if (!categories[info.category]) {
-                    categories[info.category] = [];
-                }
-                categories[info.category].push({ cmd, description: info.description });
-            });
+            // Category icons
+            const categoryIcons = {
+                'ai': '🤖', 'anime': '🎭', 'basic': '📌',
+                'downloader': '📥', 'economy': '💰', 'fun': '🎮',
+                'game': '🎲', 'group': '👥', 'media': '📸',
+                'music': '🎵', 'nsfw': '🔞', 'owner': '👑',
+                'reactions': '🎭', 'social': '🌐', 'tool': '🛠️',
+                'user': '👤', 'utility': '⚙️'
+            };
 
-            // Add each category to menu
-            Object.keys(categories).sort().forEach(category => {
-                menuText += `╭━━━━〘 ${category} 〙━━━⊷\n`;
-                categories[category].forEach(({ cmd, description }) => {
-                    menuText += `┃ ⎆ ${config.prefix}${cmd}\n`;
-                    menuText += `┃ └ ${description}\n`;
-                });
-                menuText += `╰━━━━━━━━━━━━━━━━━━⊷\n\n`;
-            });
+            // Read commands directory
+            const commandsDir = path.join(__dirname);
+            const files = await fs.readdir(commandsDir);
+            const commandFiles = files.filter(file => file.endsWith('.js'));
+
+            // Process each command file
+            for (const file of commandFiles) {
+                try {
+                    const category = file.replace('.js', '');
+                    const icon = categoryIcons[category.toLowerCase()] || '📌';
+                    const commands = require(`./${file}`);
+                    const commandList = Object.keys(commands);
+
+                    if (commandList.length > 0) {
+                        menuText += `╭━━━━『 ${icon} ${category.toUpperCase()} 』━━━━⊷\n`;
+                        commandList.forEach(cmd => {
+                            menuText += `┃ ❏ ${config.prefix}${cmd}\n`;
+                            if (config.commands[cmd]?.description) {
+                                menuText += `┃ └ ${config.commands[cmd].description}\n`;
+                            }
+                        });
+                        menuText += `╰━━━━━━━━━━━━━━━━━━⊷\n\n`;
+                    }
+                } catch (error) {
+                    logger.error(`Error loading commands from ${file}:`, error);
+                }
+            }
 
             // Add footer
-            menuText += `╭━━━━〘 INFO 〙━━━⊷\n`;
-            menuText += `┃ ⎆ Total Commands: ${Object.keys(config.commands).length}\n`;
-            menuText += `┃ ⎆ Prefix: ${config.prefix}\n`;
-            menuText += `┃ ⎆ Owner: ${config.ownerName}\n`;
+            menuText += `╭━━━━『 ℹ️ INFO 』━━━━⊷\n`;
+            menuText += `┃ ❏ Prefix: ${config.prefix}\n`;
+            menuText += `┃ ❏ Owner: ${config.ownerName}\n`;
+            menuText += `┃ ❏ Total Commands: ${Object.keys(config.commands).length}\n`;
             menuText += `╰━━━━━━━━━━━━━━━━━━⊷\n\n`;
-            menuText += `Type ${config.prefix}help <command> for more details`;
+            menuText += `Type ${config.prefix}help <command> for details`;
 
-            // Send the menu
+            // Send menu with image
             await sock.sendMessage(msg.key.remoteJid, {
                 image: { url: config.menuImage },
                 caption: menuText,
                 gifPlayback: false
             });
 
+            logger.info('Menu command executed successfully');
         } catch (error) {
             logger.error('Menu command failed:', error);
             await sock.sendMessage(msg.key.remoteJid, {
