@@ -316,10 +316,22 @@ const economyCommands = {
     },
     weekly: async (sock, msg) => {
         try {
-            const reward = Math.floor(Math.random() * 2000) + 1000; // 1000-3000
-            await store.updateWeeklyReward(msg.key.participant, reward);
+            const userId = msg.key.participant || msg.key.remoteJid;
+
+            // Check if user can claim weekly reward
+            const canClaim = await store.canClaimWeekly(userId);
+            if (!canClaim) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '⏰ You can claim your weekly reward once every 7 days!'
+                });
+            }
+
+            // Generate reward (1000-3000 coins)
+            const reward = Math.floor(Math.random() * 2000) + 1000;
+            const result = await store.updateWeeklyReward(userId, reward);
+
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `✨ *Weekly Reward*\n\nYou received: $${reward}\nCome back next week!`
+                text: `✨ *Weekly Reward*\n\nYou received ${reward} coins!\nNew balance: ${result.newBalance} coins`
             });
         } catch (error) {
             logger.error('Error in weekly command:', error);
