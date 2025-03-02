@@ -1,6 +1,6 @@
+const logger = require('pino')();
 const config = require('../config');
 const store = require('../database/store');
-const logger = require('pino')();
 
 // Helper function to validate group context and permissions
 async function validateGroupContext(sock, msg, requiresAdmin = true) {
@@ -28,7 +28,7 @@ async function validateGroupContext(sock, msg, requiresAdmin = true) {
     } catch (error) {
         logger.error('Group context validation error:', error);
         await sock.sendMessage(msg.key.remoteJid, { 
-            text: '❌ Error checking group permissions: ' + error.message 
+            text: '❌ Error checking group permissions' 
         });
         return null;
     }
@@ -860,25 +860,25 @@ const groupCommands = {
 
             if (!args[0] || !['on', 'off'].includes(args[0].toLowerCase())) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `❌ Please specify on/off!\nUsage: .welcome on/off`
+                    text: `❌ Please specify on/off!\nUsage: ${config.prefix}welcome on/off`
                 });
             }
 
             const status = args[0].toLowerCase() === 'on';
             await store.setGroupSetting(msg.key.remoteJid, 'welcome', status);
-            await sock.sendMessage(msg.key.remoteJid, {
+            await sock.sendMessage(msg.key.remoteJid, { 
                 text: `✅ Welcome messages have been turned ${status ? 'on' : 'off'}`
             });
 
-            logger.info('Welcome status updated:', {
+            logger.info('Welcome setting updated:', {
                 group: msg.key.remoteJid,
-                status: status,
-                updatedBy: msg.key.participant
+                status: status
             });
+
         } catch (error) {
-            logger.error('Error in welcome command:', error);
+            logger.error('Welcome command error:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to update welcome status: ' + error.message
+                text: '❌ Failed to update welcome setting'
             });
         }
     },
@@ -890,25 +890,25 @@ const groupCommands = {
 
             if (!args[0] || !['on', 'off'].includes(args[0].toLowerCase())) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `❌ Please specify on/off!\nUsage: .goodbye on/off`
+                    text: `❌ Please specify on/off!\nUsage: ${config.prefix}goodbye on/off`
                 });
             }
 
             const status = args[0].toLowerCase() === 'on';
             await store.setGroupSetting(msg.key.remoteJid, 'goodbye', status);
-            await sock.sendMessage(msg.key.remoteJid, {
+            await sock.sendMessage(msg.key.remoteJid, { 
                 text: `✅ Goodbye messages have been turned ${status ? 'on' : 'off'}`
             });
 
-            logger.info('Goodbye status updated:', {
+            logger.info('Goodbye setting updated:', {
                 group: msg.key.remoteJid,
-                status: status,
-                updatedBy: msg.key.participant
+                status: status
             });
+
         } catch (error) {
-            logger.error('Error in goodbye command:', error);
+            logger.error('Goodbye command error:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to update goodbye status: ' + error.message
+                text: '❌ Failed to update goodbye setting'
             });
         }
     },
@@ -919,20 +919,19 @@ const groupCommands = {
             if (!groupMetadata) return;
 
             const code = await sock.groupInviteCode(msg.key.remoteJid);
-            const link = `https://chat.whatsapp.com/${code}`;
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `🔗 *Group Invite Link*\n\n${link}\n\nNote: Only admins can generate invite links.`
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: `🔗 Group Invite Link:\nhttps://chat.whatsapp.com/${code}`
             });
 
             logger.info('Invite link generated:', {
                 group: msg.key.remoteJid,
                 by: msg.key.participant
             });
+
         } catch (error) {
-            logger.error('Error in invitelink command:', error);
+            logger.error('Invite link command error:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to generate invite link: ' + error.message
+                text: '❌ Failed to generate invite link'
             });
         }
     },

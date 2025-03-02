@@ -10,6 +10,10 @@ const messageHandler = require('./handler');
 const basicCommands = require('./commands/basic');
 const aiCommands = require('./commands/ai');
 const mediaCommands = require('./commands/media');
+const groupCommands = require('./commands/group');
+const gameCommands = require('./commands/game');
+const educationCommands = require('./commands/education');
+const economyCommands = require('./commands/economy');
 
 async function startBot() {
     try {
@@ -27,11 +31,15 @@ async function startBot() {
         const commandModules = {
             ...basicCommands,
             ...aiCommands,
-            ...mediaCommands
+            ...mediaCommands,
+            ...groupCommands,
+            ...gameCommands,
+            ...educationCommands,
+            ...economyCommands
         };
 
         logger.info('Loading command modules:', {
-            moduleNames: ['basic', 'ai', 'media'],
+            moduleNames: ['basic', 'ai', 'media', 'group', 'game', 'education', 'economy'],
             totalCommands: Object.keys(commandModules).length
         });
 
