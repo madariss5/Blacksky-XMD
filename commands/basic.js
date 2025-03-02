@@ -12,13 +12,17 @@ const basicCommands = {
             menuText += `║ 📅 Date: ${moment().format('DD/MM/YYYY')}\n`;
             menuText += `╚════════════════════╝\n\n`;
 
-            // Category emojis
+            // Simple category emojis
             const categoryEmojis = {
-                'AI': '🤖', 'Media': '📸', 'Group': '👥', 'Owner': '👑',
-                'Utility': '⚙️', 'Basic': '📌'
+                'Basic': '📌',
+                'AI': '🤖',
+                'Media': '📸',
+                'Group': '👥',
+                'Owner': '👑',
+                'Utility': '⚙️'
             };
 
-            // Sort and display commands by category
+            // Group commands by category
             const categories = {};
             Object.entries(config.commands).forEach(([cmd, info]) => {
                 if (!categories[info.category]) {
@@ -30,6 +34,7 @@ const basicCommands = {
                 });
             });
 
+            // Display commands by category
             Object.entries(categories).forEach(([category, commands]) => {
                 const emoji = categoryEmojis[category] || '📌';
                 menuText += `┏━━━《 ${emoji} ${category} 》━━━┓\n`;
@@ -59,7 +64,7 @@ const basicCommands = {
         }
     },
 
-    help: async (sock, msg, args) => {
+    help: async (sock, msg) => {
         try {
             const text = `*${config.botName} Help*\n\n` +
                         `To see all commands, type: ${config.prefix}menu\n\n` +

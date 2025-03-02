@@ -1,22 +1,10 @@
 const config = require('./config');
 const logger = require('./utils/logger');
-
-// Import command modules
 const basicCommands = require('./commands/basic');
-const aiCommands = require('./commands/ai');
-const mediaCommands = require('./commands/media');
-const groupCommands = require('./commands/group');
-const ownerCommands = require('./commands/owner');
-const utilityCommands = require('./commands/utility');
 
-// Combine all command modules
+// Just load basic commands first to ensure menu works
 const allCommands = {
-    ...basicCommands,
-    ...aiCommands,
-    ...mediaCommands,
-    ...groupCommands,
-    ...ownerCommands,
-    ...utilityCommands
+    ...basicCommands
 };
 
 async function messageHandler(sock, msg, { messages }, store) {
