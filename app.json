@@ -4,8 +4,6 @@
   "repository": "https://github.com/blacksky-algorithms/blacksky-md",
   "logo": "https://raw.githubusercontent.com/blacksky-algorithms/blacksky-md/main/generated-icon.png",
   "keywords": ["whatsapp-bot", "baileys", "nodejs", "bot", "whatsapp-md", "ai-bot", "multi-device"],
-  "success_url": "/",
-  "website": "https://github.com/blacksky-algorithms/blacksky-md#readme",
   "env": {
     "OWNER_NAME": {
       "description": "Your name as the bot owner",
@@ -13,8 +11,7 @@
     },
     "OWNER_NUMBER": {
       "description": "Your WhatsApp number with country code (e.g., 491234567890 for +49 123 456 7890)",
-      "required": true,
-      "value": "491234567890"
+      "required": true
     },
     "BOT_NAME": {
       "description": "Name of your bot",
@@ -31,69 +28,14 @@
       "value": "blacksky-md",
       "required": true
     },
-    "LOG_LEVEL": {
-      "description": "Logging level (info/debug/error)",
-      "value": "info",
-      "required": false
-    },
     "NODE_ENV": {
       "description": "Node environment",
       "value": "production",
       "required": true
     },
-    "USE_PAIRING": {
-      "description": "Enable pairing code for connection",
-      "value": "true",
-      "required": false
-    },
-    "QUERY_TIMEOUT": {
-      "description": "Timeout for WhatsApp queries in milliseconds",
-      "value": "60000",
-      "required": false
-    },
-    "CONNECT_TIMEOUT": {
-      "description": "Connection timeout in milliseconds",
-      "value": "60000",
-      "required": false
-    },
-    "QR_TIMEOUT": {
-      "description": "QR code timeout in milliseconds",
-      "value": "40000",
-      "required": false
-    },
-    "RETRY_DELAY": {
-      "description": "Delay between connection retry attempts in milliseconds",
-      "value": "2000",
-      "required": false
-    },
-    "ADM": {
-      "description": "Enable anti-delete message feature (yes/no)",
-      "value": "yes",
-      "required": false
-    },
-    "AUTO_READ_STATUS": {
-      "description": "Automatically read WhatsApp status updates (yes/no)",
-      "value": "yes",
-      "required": false
-    },
-    "AUTO_DOWNLOAD_STATUS": {
-      "description": "Automatically download WhatsApp status updates (yes/no)",
-      "value": "yes",
-      "required": false
-    },
-    "WARN_COUNT": {
-      "description": "Maximum number of warnings before action",
-      "value": "3",
-      "required": false
-    },
-    "PM_PERMIT": {
-      "description": "Enable private message permission control (yes/no)",
-      "value": "yes",
-      "required": false
-    },
-    "MODE": {
-      "description": "Bot operation mode (yes for public, no for private)",
-      "value": "yes",
+    "LOG_LEVEL": {
+      "description": "Logging level (debug/info/warn/error)",
+      "value": "info",
       "required": false
     },
     "OPENAI_API_KEY": {
@@ -104,46 +46,33 @@
       "description": "Replicate API token for image generation",
       "required": false
     },
-    "NEWS_API_KEY": {
-      "description": "NewsAPI key for news commands",
-      "required": false
-    },
     "WEATHER_API_KEY": {
       "description": "OpenWeatherMap API key for weather commands",
-      "required": false
-    },
-    "BACKUP_INTERVAL": {
-      "description": "Interval for session backup in milliseconds",
-      "value": "86400000",
-      "required": false
-    },
-    "MAX_BACKUPS": {
-      "description": "Maximum number of backup files to keep",
-      "value": "7",
       "required": false
     }
   },
   "buildpacks": [
     {
-      "url": "heroku/nodejs",
-      "name": "Node.js"
+      "url": "heroku/nodejs"
     },
     {
-      "url": "https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git",
-      "name": "FFmpeg for media processing"
+      "url": "https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git"
     },
     {
-      "url": "https://github.com/clhuang/heroku-buildpack-webp-binaries.git",
-      "name": "WebP support for stickers"
+      "url": "https://github.com/clhuang/heroku-buildpack-webp-binaries.git"
+    },
+    {
+      "url": "https://github.com/pathwaysmedical/heroku-buildpack-tesseract.git"
     }
   ],
   "formation": {
     "worker": {
       "quantity": 1,
-      "size": "eco",
-      "command": "npm start"
+      "size": "basic"
     }
   },
   "stack": "heroku-22",
-  "addons": []
+  "scripts": {
+    "postdeploy": "npm install && npm start"
+  }
 }
