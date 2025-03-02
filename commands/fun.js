@@ -3,6 +3,7 @@ const logger = require('pino')();
 const fs = require('fs-extra');
 const path = require('path');
 const axios = require('axios');
+const { sendGifReaction } = require('../utils/mediaHandler');
 
 // Game states and cooldowns management
 const gameStates = new Map();
@@ -31,7 +32,8 @@ const funCommands = {
                          `• ${config.prefix}meme - Get random memes\n` +
                          `• ${config.prefix}quote - Get inspirational quotes\n` +
                          `• ${config.prefix}fact - Get random facts\n` +
-                         `• ${config.prefix}emojiart - Get random emoji art\n\n` +
+                         `• ${config.prefix}emojiart - Get random emoji art\n` +
+                         `• ${config.prefix}roastme - Get playfully roasted\n\n` +
                          `*Reactions:*\n` +
                          `• ${config.prefix}hug - Give someone a hug\n` +
                          `• ${config.prefix}pat - Pat someone\n` +
@@ -45,6 +47,38 @@ const funCommands = {
         } catch (error) {
             logger.error('Error in fun menu command:', error);
             await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to show fun menu' });
+        }
+    },
+
+    roastme: async (sock, msg) => {
+        try {
+            const roasts = [
+                "You're the reason why shampoo has instructions! 🧴",
+                "I'd agree with you but then we'd both be wrong! 🤪",
+                "You must have been born on a highway because that's where most accidents happen! 🛣️",
+                "I'm not saying you're stupid, I'm just saying you've got bad luck when it comes to thinking! 🤔",
+                "If laughter is the best medicine, your face must be curing the world! 😂",
+                "You're like a cloud - when you disappear, it's a beautiful day! ☁️",
+                "I would roast you, but looks like nature already did! 🔥",
+                "You're living proof that evolution can go in reverse! 🦒",
+                "I bet your brain feels as good as new, seeing that you never use it! 🧠",
+                "Don't feel bad, your parents also had something perfect - until you were born! 👶"
+            ];
+
+            const roast = roasts[Math.floor(Math.random() * roasts.length)];
+
+            // Send roast message
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🔥 *Roast*\n\n${roast}`
+            });
+
+            // Send reaction GIF
+            await sendGifReaction(sock, msg, path.join(mediaDir, 'anime-roast.gif'), '🔥');
+
+            logger.info('Roastme command executed successfully');
+        } catch (error) {
+            logger.error('Error in roastme command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to execute roastme command!' });
         }
     },
 
@@ -704,7 +738,7 @@ const funCommands = {
                 text: '😅 Failed to execute wink command!'
             });
         }
-    },
+        },
     wasted: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
@@ -738,7 +772,7 @@ const funCommands = {
             logger.error('Error in rip command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Failed to execute rip command!'
-            });
+                        });
         }
     },
     triggered: async (sock, msg, args) => {
@@ -1428,6 +1462,38 @@ const funCommands = {
             return false;
         }
     },
+    roastme: async (sock, msg) => {
+        try {
+            const roasts = [
+                "You're the reason why shampoo has instructions! 🧴",
+                "I'd agree with you but then we'd both be wrong! 🤪",
+                "You must have been born on a highway because that's where most accidents happen! 🛣️",
+                "I'm not saying you're stupid, I'm just saying you've got bad luck when it comes to thinking! 🤔",
+                "If laughter is the best medicine, your face must be curing the world! 😂",
+                "You're like a cloud - when you disappear, it's a beautiful day! ☁️",
+                "I would roast you, but looks like nature already did! 🔥",
+                "You're living proof that evolution can go in reverse! 🦒",
+                "I bet your brain feels as good as new, seeing that you never use it! 🧠",
+                "Don't feel bad, your parents also had something perfect - until you were born! 👶"
+            ];
+
+            const roast = roasts[Math.floor(Math.random() * roasts.length)];
+
+            // Send roast message
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🔥 *Roast*\n\n${roast}`
+            });
+
+            // Send reaction GIF
+            await sendGifReaction(sock, msg, path.join(mediaDir, 'anime-roast.gif'), '🔥');
+
+            logger.info('Roastme command executed successfully');
+        } catch (error) {
+            logger.error('Error in roastme command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to execute roastme command!' });
+        }
+    },
+
 };
 
 module.exports = funCommands;
