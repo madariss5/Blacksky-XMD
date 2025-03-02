@@ -27,7 +27,7 @@ const store = makeInMemoryStore({
 let credsSent = false;
 let isShuttingDown = false;
 
-// Express server setup for Heroku
+// Express server setup for health checks
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -58,7 +58,7 @@ app.use((err, req, res, next) => {
 const startApplication = async () => {
     try {
         logger.info('Starting Express server...');
-        // Start Express server
+        // Start Express server for health checks
         await new Promise((resolve, reject) => {
             const server = app.listen(PORT, '0.0.0.0')
                 .once('error', (err) => {
