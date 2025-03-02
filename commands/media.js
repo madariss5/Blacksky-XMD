@@ -977,7 +977,7 @@ const mediaCommands = {
         try {
             const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
             if (!quotedMsg?.audioMessage) {
-                returnawait sock.sendMessage(msg.key.remoteJid, {
+                return await sock.sendMessage(msg.key.remoteJid, {
                     text: '❌ Please reply to an audio with !slow'
                 });
             }
