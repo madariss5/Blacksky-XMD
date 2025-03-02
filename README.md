@@ -18,8 +18,9 @@ A WhatsApp Multi-Device bot using Node.js and Baileys library.
 ### Prerequisites
 - Node.js 16 or higher
 - A WhatsApp account
+- Git
 
-### Setup
+### Local Setup
 1. Clone the repository:
 ```bash
 git clone https://github.com/yourusername/blacksky-md.git
@@ -31,12 +32,16 @@ cd blacksky-md
 npm install
 ```
 
-3. Start the bot:
+3. Configure environment:
+- Copy `.env.example` to `.env`
+- Update the variables in `.env` file
+
+4. Start the bot:
 ```bash
 npm start
 ```
 
-4. Scan the QR code with WhatsApp (Linked Devices > Link a Device)
+5. Scan the QR code with WhatsApp (Linked Devices > Link a Device)
 
 ## 🚀 Heroku Deployment
 
@@ -95,68 +100,20 @@ heroku logs --tail
 3. Test basic commands to ensure functionality
 
 
-## 🛠️ Configuration
-Create a `.env` file with:
-```env
-OWNER_NAME=Your Name
-OWNER_NUMBER=1234567890@s.whatsapp.net
-BOT_NAME=BlackSky-MD
-PREFIX=!
-LOG_LEVEL=info
-```
-
-## 📜 Available Commands
-
-### Basic Commands
-- `.menu` - Show command menu
-- `.help` - Show help message
-- `.ping` - Check bot response
-- `.info` - Get bot information
-
-### Group Commands
-- `.kick @user` - Kick user
-- `.promote @user` - Promote to admin
-- `.demote @user` - Demote from admin
-- `.everyone` - Tag all members
-
-### Fun Commands
-- `.slap @user` - Slap someone with sticker
-- `.hug @user` - Hug someone with sticker
-- `.pat @user` - Pat someone with sticker
-- `.dance` - Show dance sticker
-- `.rps` - Play rock, paper, scissors
-- `.meme` - Get random meme
-
-### User Commands
-- `.register <name> <age>` - Register your profile
-- `.profile` - View your profile
-- `.daily` - Get daily rewards
-- `.rank` - Check your rank
-- `.inventory` - View your inventory
-
-## 🔧 Development
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-## 📄 License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## 🤝 Contributing
-Contributions are welcome! Please feel free to submit a Pull Request.
+1. Fork the repository
+2. Create your feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
 
 ## ⚠️ Note
 This is not an official WhatsApp product. This project was created for educational purposes only. Use at your own risk.
 
-## Troubleshooting
-- If you see "Error: Invalid QR code", just wait - a new QR code will appear
-- If pairing code doesn't work, try scanning the QR code instead
-- If bot disconnects, it will automatically try to reconnect
-- For other issues, create an issue in this repository
+## 📜 License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Support
+## 🆘 Support
 For support:
 1. Open an issue in this repository
 2. Join our WhatsApp group [here](https://chat.whatsapp.com/your-group-link)
