@@ -414,6 +414,32 @@ const config = {
             category: 'Game',
             usage: '.rps <rock/paper/scissors>'
         },
+        roll: {
+            description: 'Roll a dice',
+            category: 'Game',
+            usage: '.roll [max number]'
+        },
+        coinflip: {
+            description: 'Flip a coin',
+            category: 'Game',
+            usage: '.coinflip'
+        },
+        would: {
+            description: 'Play Would You Rather game',
+            category: 'Game',
+            usage: '.would'
+        },
+        never: {
+            description: 'Play Never Have I Ever game',
+            category: 'Game',
+            usage: '.never'
+        },
+        riddle: {
+            description: 'Play riddle game',
+            category: 'Game',
+            usage: '.riddle'
+        },
+
 
         // Education Commands
         math: { 
@@ -658,16 +684,6 @@ const config = {
             category: 'Fun',
             usage: '.magic8ball <question>'
         },
-        roll: {
-            description: 'Roll a dice',
-            category: 'Fun',
-            usage: '.roll [max number]'
-        },
-        coinflip: {
-            description: 'Flip a coin',
-            category: 'Fun',
-            usage: '.coinflip'
-        },
         joke: {
             description: 'Get a random joke',
             category: 'Fun',
@@ -708,25 +724,10 @@ const config = {
             category: 'Fun',
             usage: '.pickup'
         },
-        riddle: {
-            description: 'Get a riddle',
-            category: 'Fun',
-            usage: '.riddle'
-        },
         fact: {
             description: 'Get an interesting fact',
             category: 'Fun',
             usage: '.fact'
-        },
-        would: {
-            description: 'Would you rather question',
-            category: 'Fun',
-            usage: '.would'
-        },
-        never: {
-            description: 'Never have I ever',
-            category: 'Fun',
-            usage: '.never'
         },
         darkjoke: {
             description: 'Get a dark humor joke',
