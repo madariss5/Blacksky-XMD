@@ -23,8 +23,11 @@ for (const file of commandFiles) {
         const command = require(path.join(commandsPath, file));
         if (typeof command === 'object') {
             Object.entries(command).forEach(([cmdName, handler]) => {
-                commands.set(cmdName, handler);
-                logger.info(`Loaded command: ${cmdName} from ${file}`);
+                // Skip menu command explicitly
+                if (cmdName !== 'menu' && cmdName !== 'help') {
+                    commands.set(cmdName, handler);
+                    logger.info(`Loaded command: ${cmdName} from ${file}`);
+                }
             });
         }
     } catch (error) {
@@ -51,9 +54,9 @@ async function startBot() {
                 if (!msg?.message) return;
 
                 const messageText = msg.message?.conversation || 
-                                  msg.message?.extendedTextMessage?.text || 
-                                  msg.message?.imageMessage?.caption || 
-                                  msg.message?.videoMessage?.caption || '';
+                              msg.message?.extendedTextMessage?.text || 
+                              msg.message?.imageMessage?.caption || 
+                              msg.message?.videoMessage?.caption || '';
 
                 // Process command if message starts with prefix
                 if (messageText.startsWith('.')) {

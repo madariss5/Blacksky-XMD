@@ -38,19 +38,9 @@ const config = {
     session: sessionConfig,
 
     commands: {
-        // Main Commands
-        menu: { description: 'Show all available commands', category: 'Main' },
-        help: { description: 'Get help with commands', category: 'Main' },
         ping: { description: 'Check bot response time', category: 'Main' },
         owner: { description: 'Get bot owner contact', category: 'Main' },
 
-        // Downloader Commands
-        ytmp3: { description: 'Download YouTube audio', category: 'Downloader' },
-        ytmp4: { description: 'Download YouTube video', category: 'Downloader' },
-        facebook: { description: 'Download Facebook video', category: 'Downloader' },
-        mediafire: { description: 'Download MediaFire files', category: 'Downloader' },
-
-        // Group Commands
         kick: { description: 'Kick member from group', category: 'Group' },
         add: { description: 'Add member to group', category: 'Group' },
         promote: { description: 'Promote member to admin', category: 'Group' },
@@ -63,7 +53,6 @@ const config = {
         group: { description: 'Group settings', category: 'Group' },
         linkgroup: { description: 'Get group invite link', category: 'Group' },
 
-        // Economy Commands
         balance: { description: 'Check your balance', category: 'Economy' },
         daily: { description: 'Claim daily rewards', category: 'Economy' },
         work: { description: 'Work to earn coins', category: 'Economy' },
@@ -72,23 +61,6 @@ const config = {
         shop: { description: 'View available items', category: 'Economy' },
         inventory: { description: 'Check your inventory', category: 'Economy' },
 
-        // Fun Commands
-        quote: { description: 'Get random quotes', category: 'Fun' },
-        meme: { description: 'Get random memes', category: 'Fun' },
-        joke: { description: 'Get random jokes', category: 'Fun' },
-        truth: { description: 'Get truth questions', category: 'Fun' },
-        dare: { description: 'Get dare challenges', category: 'Fun' },
-        fact: { description: 'Get random facts', category: 'Fun' },
-
-        // Media Commands
-        sticker: { description: 'Create sticker', category: 'Media' },
-        toimg: { description: 'Convert sticker to image', category: 'Media' },
-        tovideo: { description: 'Convert to video', category: 'Media' },
-        toaudio: { description: 'Convert to audio', category: 'Media' },
-        tomp3: { description: 'Convert to MP3', category: 'Media' },
-        togif: { description: 'Convert to GIF', category: 'Media' },
-
-        // Owner Commands
         broadcast: { description: 'Broadcast message to all chats', category: 'Owner' },
         block: { description: 'Block user', category: 'Owner' },
         unblock: { description: 'Unblock user', category: 'Owner' },
