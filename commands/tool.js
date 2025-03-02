@@ -357,6 +357,338 @@ const toolCommands = {
                 text: '❌ Failed to set reminder'
             });
         }
+    },
+    covid: async (sock, msg, args) => {
+        try {
+            const country = args.join(' ') || 'World';
+            const response = await axios.get(`https://disease.sh/v3/covid-19/${country === 'World' ? 'all' : 'countries/' + country}`);
+            const data = response.data;
+
+            const covidInfo = `🦠 *COVID-19 Statistics for ${country}*\n\n` +
+                            `Cases: ${data.cases.toLocaleString()}\n` +
+                            `Deaths: ${data.deaths.toLocaleString()}\n` +
+                            `Recovered: ${data.recovered.toLocaleString()}\n` +
+                            `Active: ${data.active.toLocaleString()}\n` +
+                            `Critical: ${data.critical.toLocaleString()}`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text: covidInfo });
+        } catch (error) {
+            logger.error('Error in covid command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to get COVID-19 statistics'
+            });
+        }
+    },
+
+    currency: async (sock, msg, args) => {
+        try {
+            if (args.length !== 3) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide amount and currencies!\nUsage: .currency 100 USD EUR'
+                });
+            }
+
+            const [amount, from, to] = args;
+            const response = await axios.get(`https://api.exchangerate-api.com/v4/latest/${from}`);
+            const rate = response.data.rates[to];
+            const converted = (parseFloat(amount) * rate).toFixed(2);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `💱 *Currency Conversion*\n\n${amount} ${from} = ${converted} ${to}`
+            });
+        } catch (error) {
+            logger.error('Error in currency command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to convert currency'
+            });
+        }
+    },
+
+    ip: async (sock, msg, args) => {
+        try {
+            if (!args[0]) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide an IP address!\nUsage: .ip <address>'
+                });
+            }
+
+            const response = await axios.get(`http://ip-api.com/json/${args[0]}`);
+            const data = response.data;
+
+            const ipInfo = `🌐 *IP Information*\n\n` +
+                         `IP: ${data.query}\n` +
+                         `Location: ${data.city}, ${data.country}\n` +
+                         `Region: ${data.regionName}\n` +
+                         `ISP: ${data.isp}\n` +
+                         `Timezone: ${data.timezone}`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text: ipInfo });
+        } catch (error) {
+            logger.error('Error in ip command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to get IP information'
+            });
+        }
+    },
+
+    whois: async (sock, msg, args) => {
+        try {
+            if (!args[0]) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a domain!\nUsage: .whois <domain>'
+                });
+            }
+
+            const response = await axios.get(`https://api.whoapi.com/?domain=${args[0]}&r=whois&apikey=${process.env.WHOIS_API_KEY}`);
+            const data = response.data;
+
+            const whoisInfo = `🔍 *Domain Information*\n\n` +
+                            `Domain: ${data.domain_name}\n` +
+                            `Registrar: ${data.registrar}\n` +
+                            `Creation Date: ${data.creation_date}\n` +
+                            `Expiration Date: ${data.expiration_date}`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text: whoisInfo });
+        } catch (error) {
+            logger.error('Error in whois command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to get domain information'
+            });
+        }
+    },
+
+    github: async (sock, msg, args) => {
+        try {
+            if (!args[0]) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a username!\nUsage: .github <username>'
+                });
+            }
+
+            const response = await axios.get(`https://api.github.com/users/${args[0]}`);
+            const user = response.data;
+
+            const githubInfo = `👨‍💻 *GitHub Profile*\n\n` +
+                             `Username: ${user.login}\n` +
+                             `Name: ${user.name || 'N/A'}\n` +
+                             `Bio: ${user.bio || 'N/A'}\n` +
+                             `Repositories: ${user.public_repos}\n` +
+                             `Followers: ${user.followers}\n` +
+                             `Following: ${user.following}`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text: githubInfo });
+        } catch (error) {
+            logger.error('Error in github command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to get GitHub profile'
+            });
+        }
+    },
+
+    wikipedia: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a search term!\nUsage: .wikipedia <search>'
+                });
+            }
+
+            const search = args.join(' ');
+            const response = await axios.get(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(search)}`);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `📚 *Wikipedia*\n\n${response.data.extract}`
+            });
+        } catch (error) {
+            logger.error('Error in wikipedia command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to get Wikipedia information'
+            });
+        }
+    },
+
+    urban: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a word to look up!\nUsage: .urban <word>'
+                });
+            }
+
+            const response = await axios.get(`https://api.urbandictionary.com/v0/define?term=${encodeURIComponent(args.join(' '))}`);
+            const definition = response.data.list[0];
+
+            if (!definition) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ No definition found!'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `📖 *Urban Dictionary*\n\n` +
+                      `Word: ${definition.word}\n\n` +
+                      `Definition: ${definition.definition}\n\n` +
+                      `Example: ${definition.example}`
+            });
+        } catch (error) {
+            logger.error('Error in urban command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to get Urban Dictionary definition'
+            });
+        }
+    },
+
+    lyrics: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a song name!\nUsage: .lyrics <song name>'
+                });
+            }
+
+            const response = await axios.get(`https://api.lyrics.ovh/v1/${encodeURIComponent(args.join(' '))}`);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🎵 *Song Lyrics*\n\n${response.data.lyrics}`
+            });
+        } catch (error) {
+            logger.error('Error in lyrics command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to get lyrics'
+            });
+        }
+    },
+
+    crypto: async (sock, msg, args) => {
+        try {
+            const coin = args[0]?.toLowerCase() || 'bitcoin';
+            const response = await axios.get(`https://api.coingecko.com/api/v3/simple/price?ids=${coin}&vs_currencies=usd&include_24hr_change=true`);
+
+            if (!response.data[coin]) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Cryptocurrency not found!'
+                });
+            }
+
+            const data = response.data[coin];
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `💰 *${coin.toUpperCase()}*\n\n` +
+                      `Price: $${data.usd}\n` +
+                      `24h Change: ${data.usd_24h_change.toFixed(2)}%`
+            });
+        } catch (error) {
+            logger.error('Error in crypto command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to get cryptocurrency information'
+            });
+        }
+    },
+
+    stocks: async (sock, msg, args) => {
+        try {
+            if (!args[0]) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a stock symbol!\nUsage: .stocks AAPL'
+                });
+            }
+
+            const symbol = args[0].toUpperCase();
+            const response = await axios.get(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${process.env.ALPHAVANTAGE_API_KEY}`);
+            const data = response.data['Global Quote'];
+
+            if (!data) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Stock not found!'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `📈 *${symbol} Stock Information*\n\n` +
+                      `Price: $${data['05. price']}\n` +
+                      `Change: ${data['09. change']}\n` +
+                      `Change %: ${data['10. change percent']}\n` +
+                      `Volume: ${data['06. volume']}`
+            });
+        } catch (error) {
+            logger.error('Error in stocks command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to get stock information'
+            });
+        }
+    },
+
+    news: async (sock, msg, args) => {
+        try {
+            const category = args[0]?.toLowerCase() || 'general';
+            const response = await axios.get(`https://newsapi.org/v2/top-headlines?country=us&category=${category}&apiKey=${process.env.NEWS_API_KEY}`);
+
+            const articles = response.data.articles.slice(0, 5);
+            let newsText = `📰 *Latest ${category.charAt(0).toUpperCase() + category.slice(1)} News*\n\n`;
+
+            articles.forEach((article, index) => {
+                newsText += `${index + 1}. ${article.title}\n`;
+                newsText += `${article.description}\n\n`;
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, { text: newsText });
+        } catch (error) {
+            logger.error('Error in news command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to get news'
+            });
+        }
+    },
+
+    timezone: async (sock, msg, args) => {
+        try {
+            if (!args[0]) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a city name!\nUsage: .timezone London'
+                });
+            }
+
+            const response = await axios.get(`http://worldtimeapi.org/api/timezone/${encodeURIComponent(args.join('_'))}`);
+            const data = response.data;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🕒 *Timezone Information*\n\n` +
+                      `Location: ${data.timezone}\n` +
+                      `Time: ${data.datetime}\n` +
+                      `Day of Week: ${data.day_of_week}\n` +
+                      `Day of Year: ${data.day_of_year}`
+            });
+        } catch (error) {
+            logger.error('Error in timezone command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to get timezone information'
+            });
+        }
+    },
+
+    poll: async (sock, msg, args) => {
+        try {
+            if (args.length < 3) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a question and at least 2 options!\nUsage: .poll "Question" "Option1" "Option2"'
+                });
+            }
+
+            const question = args[0];
+            const options = args.slice(1);
+
+            const pollMessage = {
+                text: `📊 *Poll: ${question}*\n\n` +
+                      options.map((opt, i) => `${i + 1}. ${opt}`).join('\n'),
+                pollOptions: options
+            };
+
+            await sock.sendMessage(msg.key.remoteJid, pollMessage);
+        } catch (error) {
+            logger.error('Error in poll command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to create poll'
+            });
+        }
     }
 };
 
