@@ -28,13 +28,13 @@ def download_gif(url, filename):
             logger.info(f"Successfully downloaded GIF to {output_path}")
             return True
         else:
-            logger.error("Download succeeded but file is empty or missing")
+            logger.error("Download succeeded but file is empty")
             return False
     except Exception as e:
         logger.error(f"Error downloading GIF: {str(e)}")
         return False
 
-# Using a reliable Giphy CDN URL for anime throw GIF
-yeet_url = "https://media2.giphy.com/media/dw0NAQhs0yqdW/giphy.gif"
+# Using a verified working anime throw GIF from Giphy
+yeet_url = "https://media.giphy.com/media/l2JhIUyUs8KDCCf3W/giphy.gif"
 success = download_gif(yeet_url, "throw.gif")
 sys.exit(0 if success else 1)
