@@ -2,29 +2,47 @@ const config = require('./config');
 const logger = require('./utils/logger');
 
 // Import all command modules
+const aiCommands = require('./commands/ai');
+const animeCommands = require('./commands/anime');
 const basicCommands = require('./commands/basic');
-const utilityCommands = require('./commands/utility');
-const userCommands = require('./commands/user');
-const ownerCommands = require('./commands/owner');
+const downloaderCommands = require('./commands/downloader');
+const economyCommands = require('./commands/economy');
+const educationCommands = require('./commands/education');
+const funCommands = require('./commands/fun');
+const gameCommands = require('./commands/game');
 const groupCommands = require('./commands/group');
 const mediaCommands = require('./commands/media');
-const funCommands = require('./commands/fun');
-const aiCommands = require('./commands/ai');
+const musicCommands = require('./commands/music');
+const nsfwCommands = require('./commands/nsfw');
+const ownerCommands = require('./commands/owner');
+const reactionsCommands = require('./commands/reactions');
 const searchCommands = require('./commands/search');
-const educationCommands = require('./commands/education');
+const socialCommands = require('./commands/social');
+const toolCommands = require('./commands/tool');
+const userCommands = require('./commands/user');
+const utilityCommands = require('./commands/utility');
 
-// Export the combined commands
+// Combine all command modules
 const allCommands = {
+    ...aiCommands,
+    ...animeCommands,
     ...basicCommands,
-    ...utilityCommands,
-    ...userCommands,
-    ...ownerCommands,
+    ...downloaderCommands,
+    ...economyCommands,
+    ...educationCommands,
+    ...funCommands,
+    ...gameCommands,
     ...groupCommands,
     ...mediaCommands,
-    ...funCommands,
-    ...aiCommands,
+    ...musicCommands,
+    ...nsfwCommands,
+    ...ownerCommands,
+    ...reactionsCommands,
     ...searchCommands,
-    ...educationCommands
+    ...socialCommands,
+    ...toolCommands,
+    ...userCommands,
+    ...utilityCommands
 };
 
 // Debug logging for available commands
