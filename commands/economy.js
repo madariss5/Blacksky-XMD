@@ -95,21 +95,16 @@ const economyCommands = {
     },
     mine: async (sock, msg) => {
         try {
-            const userId = msg.key.participant || msg.key.remoteJid;
-            const userData = await store.getUserData(userId);
-
+            const userData = await store.getUserData(msg.key.participant);
             if (!userData?.inventory?.pickaxe) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '❌ You need a pickaxe to mine! Buy one from the shop.'
                 });
             }
 
-            const lastMine = userData.lastMine || 0;
-            const now = Date.now();
-            const timeLeft = lastMine + COOLDOWNS.mine - now;
-
-            if (timeLeft > 0) {
-                const minutes = Math.ceil(timeLeft / (60 * 1000));
+            const status = await store.getActivityCooldown(msg.key.participant, 'Mining');
+            if (!status.canDo) {
+                const minutes = Math.ceil(status.timeLeft / (60 * 1000));
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: `⏳ You can mine again in ${minutes} minutes`
                 });
@@ -135,20 +130,12 @@ const economyCommands = {
             }
 
             const earnings = Math.floor(Math.random() * (mineral.reward[1] - mineral.reward[0])) + mineral.reward[0];
-
-            // Update user data
-            userData.gold = (userData.gold || 0) + earnings;
-            userData.lastMine = now;
-            userData.totalMined = (userData.totalMined || 0) + 1;
-
-            await store.updateUserData(userId, userData);
+            await store.updateActivity(msg.key.participant, 'Mining', earnings);
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `⛏️ *Mining Complete!*\n\n` +
                       `💎 Found: ${mineral.name}\n` +
-                      `💰 Earned: $${earnings}\n` +
-                      `💳 New Balance: $${userData.gold}\n` +
-                      `📊 Total Mining Trips: ${userData.totalMined}`
+                      `💰 Earned: ${earnings} coins`
             });
         } catch (error) {
             logger.error('Error in mine command:', error);
@@ -517,20 +504,24 @@ const economyCommands = {
         try {
             const userData = await store.getUserData(msg.key.participant);
             if (!userData?.inventory?.hunting_rifle) {
-                throw new Error('You need a hunting rifle to hunt! Buy one from the shop.');
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ You need a hunting rifle to hunt! Buy one from the shop.'
+                });
             }
 
             const status = await store.getActivityCooldown(msg.key.participant, 'Hunting');
             if (!status.canDo) {
-                const minutesLeft = Math.ceil(status.timeLeft / (60 * 1000));
-                throw new Error(`You can hunt again in ${minutesLeft} minutes`);
+                const minutes = Math.ceil(status.timeLeft / (60 * 1000));
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `⏳ You can hunt again in ${minutes} minutes`
+                });
             }
 
             const reward = Math.floor(Math.random() * 1000) + 500; // 500-1500
             await store.updateActivity(msg.key.participant, 'Hunting', reward);
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `🏹 *Hunting Complete*\n\nYou hunted and earned: $${reward}`
+                text: `🏹 *Hunting Complete*\n\nYou hunted and earned: ${reward} coins`
             });
         } catch (error) {
             logger.error('Error in hunt command:', error);
@@ -613,20 +604,24 @@ const economyCommands = {
         try {
             const userData = await store.getUserData(msg.key.participant);
             if (!userData?.inventory?.fishing_rod) {
-                throw new Error('You need a fishing rod to fish! Buy one from the shop.');
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ You need a fishing rod to fish! Buy one from the shop.'
+                });
             }
 
             const status = await store.getActivityCooldown(msg.key.participant, 'Fishing');
             if (!status.canDo) {
-                const minutesLeft = Math.ceil(status.timeLeft / (60 * 1000));
-                throw new Error(`You can fish again in ${minutesLeft} minutes`);
+                const minutes = Math.ceil(status.timeLeft / (60 * 1000));
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `⏳ You can fish again in ${minutes} minutes`
+                });
             }
 
             const reward = Math.floor(Math.random() * 600) + 300; // 300-900
             await store.updateActivity(msg.key.participant, 'Fishing', reward);
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `🎣 *Fishing Complete*\n\nYou caught fish worth: $${reward}`
+                text: `🎣 *Fishing Complete*\n\nYou caught fish worth: ${reward} coins`
             });
         } catch (error) {
             logger.error('Error in fish command:', error);
