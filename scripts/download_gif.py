@@ -34,7 +34,7 @@ def download_gif(url, filename):
         logger.error(f"Error downloading GIF: {str(e)}")
         return False
 
-# Using a verified anime character throwing GIF
-yeet_url = "https://media.giphy.com/media/CxQw7Rc4Fx4OBNBHWy/giphy.gif"
+# Using a verified anime character throwing GIF from GIPHY's CDN
+yeet_url = "https://media4.giphy.com/media/iWkHDNtcHpB5e/giphy.gif"
 success = download_gif(yeet_url, "throw.gif")
 sys.exit(0 if success else 1)
