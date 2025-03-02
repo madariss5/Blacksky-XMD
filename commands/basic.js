@@ -663,7 +663,10 @@ const basicCommands = {
 
 const startTime = Date.now();
 async function formatPhoneNumber(jid) {
-    return jid.split('@')[0].replace(/(\d{2})(\d{3})(\d{3})(\d{4})/, '+$1 $2 $3 $4');
+    // Remove any @s.whatsapp.net or @g.us suffix and format the number
+    const cleanNumber = jid.split('@')[0];
+    // Format with spaces for display (e.g., +49 123 456 7890)
+    return cleanNumber.replace(/(\d{2})(\d{3})(\d{3})(\d{4})/, '+$1 $2 $3 $4');
 }
 
 module.exports = basicCommands;

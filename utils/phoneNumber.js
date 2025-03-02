@@ -9,7 +9,10 @@ const formatPhoneNumber = (phone) => {
     const baseNumber = cleanNumber.split(':')[0];
 
     // Remove any non-numeric characters except '+'
-    return baseNumber.replace(/[^\d+]/g, '');
+    const formattedNumber = baseNumber.replace(/[^\d+]/g, '');
+
+    // Remove leading '+' if present
+    return formattedNumber.startsWith('+') ? formattedNumber.slice(1) : formattedNumber;
 };
 
 const addWhatsAppSuffix = (phone) => {
@@ -28,9 +31,19 @@ const formatOwnerNumbers = (numbers) => {
     return numbers.map(num => formatPhoneNumber(num));
 };
 
+// Add a display formatting function for user-facing output
+const formatDisplayNumber = (phone) => {
+    const cleanNumber = formatPhoneNumber(phone);
+    if (!cleanNumber) return '';
+
+    // Format with international format (e.g., +49 123 456 7890)
+    return '+' + cleanNumber.replace(/(\d{2})(\d{3})(\d{3})(\d{4})/, '$1 $2 $3 $4');
+};
+
 module.exports = {
     formatPhoneNumber,
     addWhatsAppSuffix,
     isGroupID,
-    formatOwnerNumbers
+    formatOwnerNumbers,
+    formatDisplayNumber
 };

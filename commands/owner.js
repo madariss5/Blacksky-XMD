@@ -1,6 +1,6 @@
 const config = require('../config');
 const logger = require('../utils/logger');
-const { formatPhoneNumber } = require('../utils/phoneNumber');
+const { formatPhoneNumber, addWhatsAppSuffix } = require('../utils/phoneNumber');
 const { restartBot } = require('../scripts/restart');
 
 // Simplified owner commands implementation
@@ -11,7 +11,7 @@ const ownerCommands = {
             const senderId = msg.key.participant || msg.key.remoteJid;
             const senderNumber = formatPhoneNumber(senderId);
 
-            // Simple owner verification
+            // Simple owner verification using clean number format
             if (senderNumber !== config.ownerNumber) {
                 await sock.sendMessage(msg.key.remoteJid, { 
                     text: '❌ This command is only for the bot owner!' 
@@ -46,12 +46,15 @@ const ownerCommands = {
             }
 
             try {
-                const number = args[0].replace('@', '') + '@s.whatsapp.net';
-                await sock.updateBlockStatus(number, "block");
+                // Clean the number format and add WhatsApp suffix only for API call
+                const cleanNumber = formatPhoneNumber(args[0]);
+                const whatsappId = addWhatsAppSuffix(cleanNumber);
+
+                await sock.updateBlockStatus(whatsappId, "block");
 
                 await sock.sendMessage(msg.key.remoteJid, {
-                    text: `✅ Banned @${number.split('@')[0]}`,
-                    mentions: [number]
+                    text: `✅ Banned ${cleanNumber}`,
+                    mentions: [whatsappId]
                 });
             } catch (error) {
                 logger.error('Error in ban command:', error);
@@ -69,12 +72,15 @@ const ownerCommands = {
             }
 
             try {
-                const number = args[0].replace('@', '') + '@s.whatsapp.net';
-                await sock.updateBlockStatus(number, "unblock");
+                // Clean the number format and add WhatsApp suffix only for API call
+                const cleanNumber = formatPhoneNumber(args[0]);
+                const whatsappId = addWhatsAppSuffix(cleanNumber);
+
+                await sock.updateBlockStatus(whatsappId, "unblock");
 
                 await sock.sendMessage(msg.key.remoteJid, {
-                    text: `✅ Unbanned @${number.split('@')[0]}`,
-                    mentions: [number]
+                    text: `✅ Unbanned ${cleanNumber}`,
+                    mentions: [whatsappId]
                 });
             } catch (error) {
                 logger.error('Error in unban command:', error);

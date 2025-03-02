@@ -1,11 +1,14 @@
 const config = require('../config');
 const store = require('../database/store');
 const logger = require('../utils/logger');
+const { formatPhoneNumber, addWhatsAppSuffix, formatDisplayNumber } = require('../utils/phoneNumber');
 
 // Helper function for safely fetching profile pictures
 async function safeProfilePicture(sock, jid) {
     try {
-        const pp = await sock.profilePictureUrl(jid, 'image');
+        // Add WhatsApp suffix for API call
+        const whatsappId = addWhatsAppSuffix(formatPhoneNumber(jid));
+        const pp = await sock.profilePictureUrl(whatsappId, 'image');
         logger.info('Profile picture fetched successfully');
         return pp;
     } catch (err) {
@@ -21,11 +24,11 @@ const coreUserCommands = {
             // Get target user (mentioned user or command sender)
             let targetUser;
             if (args[0]) {
-                // If a user is mentioned, use that
-                targetUser = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+                // If a user is mentioned, use their number directly
+                targetUser = formatPhoneNumber(args[0]);
             } else {
-                // For sender, try participant first (for groups) then remoteJid (for private)
-                targetUser = msg.key.participant || msg.key.remoteJid;
+                // For sender, get clean number format
+                targetUser = formatPhoneNumber(msg.key.participant || msg.key.remoteJid);
             }
 
             // Enhanced logging for debugging
@@ -38,35 +41,36 @@ const coreUserCommands = {
             });
 
             // Validate we have a user to look up
-            if (!targetUser || !targetUser.includes('@')) {
+            if (!targetUser) {
                 logger.error('Invalid user identifier:', { targetUser, args });
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '❌ Could not identify target user. Please mention a user or try in a private chat.'
                 });
             }
 
-            const userInfo = store.getUserInfo(targetUser);
+            const userData = await store.getUserData(targetUser) || {};
             const pp = await safeProfilePicture(sock, targetUser);
+            const whatsappId = addWhatsAppSuffix(targetUser);
 
-            const info = userInfo ? 
+            const info = userData ? 
                 `*User Profile*\n\n` +
-                `• Number: @${targetUser.split('@')[0]}\n` +
-                `• Name: ${userInfo.name || 'Not set'}\n` +
-                `• Age: ${userInfo.age || 'Not set'}\n` +
-                `• Level: ${userInfo.level || 1}\n` +
-                `• XP: ${userInfo.xp || 0}\n` +
-                `• Bio: ${userInfo.bio || 'No bio set'}\n` +
-                `• Registered: ${userInfo.registeredAt ? new Date(userInfo.registeredAt).toLocaleDateString() : 'No'}`
+                `• Number: ${formatDisplayNumber(targetUser)}\n` +
+                `• Name: ${userData.name || 'Not set'}\n` +
+                `• Age: ${userData.age || 'Not set'}\n` +
+                `• Level: ${userData.level || 1}\n` +
+                `• XP: ${userData.xp || 0}\n` +
+                `• Bio: ${userData.bio || 'No bio set'}\n` +
+                `• Registered: ${userData.registeredAt ? new Date(userData.registeredAt).toLocaleDateString() : 'No'}`
                 :
                 `*User Profile*\n\n` +
-                `• Number: @${targetUser.split('@')[0]}\n` +
+                `• Number: ${formatDisplayNumber(targetUser)}\n` +
                 `• Status: Not registered\n\n` +
                 `Use ${config.prefix}register <name> <age> to create a profile!`;
 
             await sock.sendMessage(msg.key.remoteJid, {
                 image: { url: pp },
                 caption: info,
-                mentions: [targetUser]
+                mentions: [whatsappId]
             });
 
         } catch (error) {
@@ -108,25 +112,26 @@ const coreUserCommands = {
     },
     me: async (sock, msg) => {
         try {
-            const user = msg.key.participant || msg.key.remoteJid;
-            const stats = store.getUserStats(user);
-            const userInfo = store.getUserInfo(user);
+            const userId = formatPhoneNumber(msg.key.participant || msg.key.remoteJid);
+            const stats = store.getUserStats(userId);
+            const userInfo = store.getUserInfo(userId);
+            const whatsappId = addWhatsAppSuffix(userId);
 
-            const pp = await safeProfilePicture(sock, user);
+            const pp = await safeProfilePicture(sock, userId);
 
             const info = `*Your Profile*\n\n` +
-                        `• Number: @${user.split('@')[0]}\n` +
+                        `• Number: ${formatDisplayNumber(userId)}\n` +
                         `• Name: ${userInfo?.name || 'Not registered'}\n` +
                         `• Age: ${userInfo?.age || 'Not registered'}\n` +
                         `• Level: ${stats.level || 1}\n` +
                         `• XP: ${stats.xp || 0}\n` +
-                        `• Rank: #${store.getUserRank(user)}\n` +
+                        `• Rank: #${store.getUserRank(userId)}\n` +
                         `• Bio: ${userInfo?.bio || 'No bio set'}`;
 
             await sock.sendMessage(msg.key.remoteJid, {
                 image: { url: pp },
                 caption: info,
-                mentions: [user]
+                mentions: [whatsappId]
             });
 
         } catch (error) {
@@ -233,18 +238,20 @@ const userCommands = {
     ...coreUserCommands
 };
 
+// Add dynamic user commands
 for (let i = 1; i <= 94; i++) {
     userCommands[`user${i}`] = async (sock, msg, args) => {
         try {
+            const cleanNumber = formatPhoneNumber(msg.key.participant || msg.key.remoteJid);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `👤 Executed user command ${i}!\n` +
                       `Args: ${args.join(' ')}\n` +
-                      `User: ${msg.pushName || 'Unknown'}`
+                      `User: ${msg.pushName || formatDisplayNumber(cleanNumber)}`
             });
 
             logger.info(`User command ${i} executed:`, {
                 command: `user${i}`,
-                user: msg.key.participant || msg.key.remoteJid,
+                user: cleanNumber,
                 args: args
             });
         } catch (error) {
