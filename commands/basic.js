@@ -35,43 +35,18 @@ const basicCommands = {
             const files = await fs.readdir(commandsDir);
             const commandFiles = files.filter(file => file.endsWith('.js'));
 
-            // Category emojis mapping
-            const categoryEmojis = {
-                'ai': '🤖',
-                'anime': '🎭',
-                'basic': '📌',
-                'downloader': '📥',
-                'economy': '💰',
-                'fun': '🎮',
-                'game': '🎲',
-                'group': '👥',
-                'media': '📸',
-                'music': '🎵',
-                'nsfw': '🔞',
-                'owner': '👑',
-                'reactions': '🎭',
-                'social': '🌐',
-                'tool': '🛠️',
-                'user': '👤',
-                'utility': '⚙️'
-            };
-
             // Process each command file
             for (const file of commandFiles) {
                 try {
-                    const categoryName = file.replace('.js', '');
-                    const emoji = categoryEmojis[categoryName] || '📌';
+                    logger.info(`Loading commands from ${file}`);
+                    delete require.cache[require.resolve(path.join(commandsDir, file))];
+                    const commands = require(`./${file}`);
 
-                    // Clear require cache
-                    const filePath = path.join(commandsDir, file);
-                    delete require.cache[require.resolve(filePath)];
-
-                    // Import commands
-                    const commands = require(filePath);
+                    const categoryName = file.replace('.js', '').toUpperCase();
                     const commandList = Object.keys(commands);
 
                     if (commandList.length > 0) {
-                        text += `┏━━━⟪ ${emoji} *${categoryName.toUpperCase()}* ⟫━━━┓\n`;
+                        text += `┏━━━⟪ *${categoryName}* ⟫━━━┓\n`;
                         for (const cmd of commandList) {
                             text += `┃ ඬ⃟ ${config.prefix}${cmd}\n`;
                         }
@@ -95,6 +70,7 @@ const basicCommands = {
                 gifPlayback: false
             });
 
+            logger.info('Menu command executed successfully');
         } catch (error) {
             logger.error('Menu command failed:', error);
             await sock.sendMessage(msg.key.remoteJid, {
