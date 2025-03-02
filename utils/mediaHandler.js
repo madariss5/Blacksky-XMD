@@ -73,24 +73,19 @@ class MediaHandler {
         }
     }
 
-    async sendGifReaction(sock, msg, gifPath, caption = '', mentions = []) {
+    async sendGifReaction(sock, msg, gifName, caption = '', mentions = []) {
         let mp4Path = null;
         try {
-            logger.info('Attempting to send GIF reaction:', { gifPath });
+            // Get full path
+            const fullGifPath = path.join(this.mediaDir, gifName);
+            logger.info('Looking for GIF at:', { path: fullGifPath });
 
-            // List available GIFs
+            // List available GIFs for debugging
             const files = await fs.readdir(this.mediaDir);
             logger.info('Available GIFs:', files);
 
-            // Add .gif extension if not present
-            if (!gifPath.endsWith('.gif')) {
-                gifPath = `${gifPath}.gif`;
-            }
-
-            // Get full path
-            const fullGifPath = path.join(this.mediaDir, gifPath);
             if (!fs.existsSync(fullGifPath)) {
-                throw new Error(`GIF not found: ${gifPath}`);
+                throw new Error(`GIF not found: ${gifName}`);
             }
 
             // Convert GIF to MP4
@@ -116,7 +111,7 @@ class MediaHandler {
             // Send fallback text message
             try {
                 await sock.sendMessage(msg.key.remoteJid, {
-                    text: `${caption} (GIF not available: ${error.message})`,
+                    text: `${caption} (GIF not available)`,
                     mentions: mentions
                 });
             } catch (fallbackError) {

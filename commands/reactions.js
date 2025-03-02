@@ -1,5 +1,5 @@
 const config = require('../config');
-const logger = require('pino')();
+const logger = require('../utils/logger');
 const { sendGifReaction } = require('../utils/mediaHandler');
 
 const reactionCommands = {
@@ -10,7 +10,7 @@ const reactionCommands = {
             const caption = `*${msg.pushName}* slapped ${target}! 👋`;
 
             logger.info('Executing slap command:', { target, mentions });
-            await sendGifReaction(sock, msg, 'anime-slap', caption, mentions);
+            await sendGifReaction(sock, msg, 'slap', caption, mentions);
         } catch (error) {
             logger.error('Error in slap command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -26,7 +26,7 @@ const reactionCommands = {
             const caption = `*${msg.pushName}* hugged ${target}! 🤗`;
 
             logger.info('Executing hug command:', { target, mentions });
-            await sendGifReaction(sock, msg, 'anime-hug', caption, mentions);
+            await sendGifReaction(sock, msg, 'hug', caption, mentions);
         } catch (error) {
             logger.error('Error in hug command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -42,7 +42,7 @@ const reactionCommands = {
             const caption = `*${msg.pushName}* patted ${target}! 🥰`;
 
             logger.info('Executing pat command:', { target, mentions });
-            await sendGifReaction(sock, msg, 'anime-pat', caption, mentions);
+            await sendGifReaction(sock, msg, 'pat', caption, mentions);
         } catch (error) {
             logger.error('Error in pat command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -58,7 +58,7 @@ const reactionCommands = {
             const caption = `*${msg.pushName}* kissed ${target}! 💋`;
 
             logger.info('Executing kiss command:', { target, mentions });
-            await sendGifReaction(sock, msg, 'anime-kiss', caption, mentions);
+            await sendGifReaction(sock, msg, 'kiss', caption, mentions);
         } catch (error) {
             logger.error('Error in kiss command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -74,7 +74,7 @@ const reactionCommands = {
             const caption = `*${msg.pushName}* punched ${target}! 👊`;
 
             logger.info('Executing punch command:', { target, mentions });
-            await sendGifReaction(sock, msg, 'anime-punch', caption, mentions);
+            await sendGifReaction(sock, msg, 'punch', caption, mentions);
         } catch (error) {
             logger.error('Error in punch command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -90,7 +90,7 @@ const reactionCommands = {
             const caption = `*${msg.pushName}* eliminated ${target}! ☠️`;
 
             logger.info('Executing kill command:', { target, mentions });
-            await sendGifReaction(sock, msg, 'anime-kill', caption, mentions);
+            await sendGifReaction(sock, msg, 'kill', caption, mentions);
         } catch (error) {
             logger.error('Error in kill command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -106,7 +106,7 @@ const reactionCommands = {
             const caption = `💀 *WASTED*\n${target} has been wasted!`;
 
             logger.info('Executing wasted command:', { target, mentions });
-            await sendGifReaction(sock, msg, 'anime-wasted', caption, mentions);
+            await sendGifReaction(sock, msg, 'wasted', caption, mentions);
         } catch (error) {
             logger.error('Error in wasted command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
