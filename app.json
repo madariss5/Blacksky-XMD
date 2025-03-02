@@ -1,9 +1,11 @@
 {
   "name": "BlackSky-MD",
-  "description": "A highly extensible WhatsApp Multi-Device bot designed for robust, scalable messaging interactions",
+  "description": "A highly extensible WhatsApp Multi-Device bot designed for robust, scalable messaging interactions with advanced AI capabilities",
   "repository": "https://github.com/blacksky-algorithms/blacksky-md",
   "logo": "https://raw.githubusercontent.com/blacksky-algorithms/blacksky-md/main/generated-icon.png",
-  "keywords": ["whatsapp-bot", "baileys", "nodejs", "bot", "whatsapp-md"],
+  "keywords": ["whatsapp-bot", "baileys", "nodejs", "bot", "whatsapp-md", "ai-bot", "multi-device"],
+  "success_url": "/",
+  "website": "https://github.com/blacksky-algorithms/blacksky-md#readme",
   "env": {
     "OWNER_NAME": {
       "description": "Your name as the bot owner",
@@ -43,20 +45,105 @@
       "description": "Enable pairing code for connection",
       "value": "true",
       "required": false
+    },
+    "QUERY_TIMEOUT": {
+      "description": "Timeout for WhatsApp queries in milliseconds",
+      "value": "60000",
+      "required": false
+    },
+    "CONNECT_TIMEOUT": {
+      "description": "Connection timeout in milliseconds",
+      "value": "60000",
+      "required": false
+    },
+    "QR_TIMEOUT": {
+      "description": "QR code timeout in milliseconds",
+      "value": "40000",
+      "required": false
+    },
+    "RETRY_DELAY": {
+      "description": "Delay between connection retry attempts in milliseconds",
+      "value": "2000",
+      "required": false
+    },
+    "ADM": {
+      "description": "Enable anti-delete message feature (yes/no)",
+      "value": "yes",
+      "required": false
+    },
+    "AUTO_READ_STATUS": {
+      "description": "Automatically read WhatsApp status updates (yes/no)",
+      "value": "yes",
+      "required": false
+    },
+    "AUTO_DOWNLOAD_STATUS": {
+      "description": "Automatically download WhatsApp status updates (yes/no)",
+      "value": "yes",
+      "required": false
+    },
+    "WARN_COUNT": {
+      "description": "Maximum number of warnings before action",
+      "value": "3",
+      "required": false
+    },
+    "PM_PERMIT": {
+      "description": "Enable private message permission control (yes/no)",
+      "value": "yes",
+      "required": false
+    },
+    "MODE": {
+      "description": "Bot operation mode (yes for public, no for private)",
+      "value": "yes",
+      "required": false
+    },
+    "OPENAI_API_KEY": {
+      "description": "OpenAI API key for AI features",
+      "required": false
+    },
+    "REPLICATE_API_TOKEN": {
+      "description": "Replicate API token for image generation",
+      "required": false
+    },
+    "NEWS_API_KEY": {
+      "description": "NewsAPI key for news commands",
+      "required": false
+    },
+    "WEATHER_API_KEY": {
+      "description": "OpenWeatherMap API key for weather commands",
+      "required": false
+    },
+    "BACKUP_INTERVAL": {
+      "description": "Interval for session backup in milliseconds",
+      "value": "86400000",
+      "required": false
+    },
+    "MAX_BACKUPS": {
+      "description": "Maximum number of backup files to keep",
+      "value": "7",
+      "required": false
     }
   },
   "buildpacks": [
     {
-      "url": "heroku/nodejs"
+      "url": "heroku/nodejs",
+      "name": "Node.js"
     },
     {
-      "url": "https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git"
+      "url": "https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git",
+      "name": "FFmpeg for media processing"
+    },
+    {
+      "url": "https://github.com/clhuang/heroku-buildpack-webp-binaries.git",
+      "name": "WebP support for stickers"
     }
   ],
   "formation": {
     "worker": {
       "quantity": 1,
-      "size": "eco"
+      "size": "eco",
+      "command": "npm start"
     }
-  }
+  },
+  "stack": "heroku-22",
+  "addons": []
 }
