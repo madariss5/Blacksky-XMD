@@ -55,3 +55,7 @@ media/*
 # Cache
 .cache/
 .npm
+
+# Session files
+sessions/
+*.session

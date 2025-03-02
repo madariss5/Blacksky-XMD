@@ -1,145 +1,99 @@
 # 𝔹𝕃𝔸ℂ𝕂𝕊 KY-𝕄𝔻
-A WhatsApp Multi-Device bot using Node.js and Baileys library.
+A highly advanced WhatsApp Multi-Device bot with AI capabilities and robust functionality.
 
-## 🚀 Features
-- 🌟 Multi-Device Support
-- 👥 Group Management
-- 🎮 Fun Commands with Stickers
-- 📊 User Leveling System
-- 🔒 Anti-link Protection
-- 🎯 Poll Creation
-- 👑 Owner Commands
-- 📝 User Registration
-- 💫 100+ Dynamic Commands
-- 🔐 Dual Authentication (QR & Pairing)
+## 🌟 Features
+- 📱 Multi-Device Support
+- 🤖 Advanced AI Integration
+- 👥 Comprehensive Group Management
+- 🎮 Interactive Games & Fun Commands
+- 🔒 Enhanced Security Features
+- 📊 User Statistics & Leveling
+- 💬 Message Anti-Spam & Filtering
+- 🎨 Media & Sticker Creation
+- 🌐 Multi-Language Support
 
-## 🛡️ Anti-Ban Protection
-The bot includes several safety measures to prevent WhatsApp bans:
-
-- Message rate limiting and delays
-- Automatic suspicious pattern detection
-- Smart reconnection handling
-- Content sanitization
-- Group message monitoring
-
-### Safety Guidelines
-To maintain account safety:
-1. Don't spam commands
-2. Avoid mass mentions
-3. Don't abuse broadcast features
-4. Keep messages within reasonable length
-5. Avoid excessive use of media commands
-
-The bot will automatically enforce these limits:
-- Max 10 messages per minute
-- Max 5 media messages per minute
-- Max 15 group messages per minute
-- Max 5 broadcast messages per hour
-
-⚠️ Note: These limits can be adjusted in the configuration but increasing them may risk account safety.
-
-
-## 📦 Installation
-
-### Prerequisites
-- Node.js 16 or higher
+## 📋 Prerequisites
+- Node.js 16+
 - A WhatsApp account
-- Git
+- [FFmpeg](https://ffmpeg.org/download.html)
 
-### Local Setup
-1. Clone the repository:
+## ⚡️ Quick Installation
 ```bash
+# Clone the repository
 git clone https://github.com/yourusername/blacksky-md.git
+
+# Enter the project directory
 cd blacksky-md
-```
 
-2. Install dependencies:
-```bash
+# Install dependencies
 npm install
-```
 
-3. Configure environment:
-- Copy `.env.example` to `.env`
-- Update the variables in `.env` file
+# Setup environment variables
+cp .env.example .env
+# Edit .env with your values
 
-4. Start the bot:
-```bash
+# Start the bot
 npm start
 ```
 
-5. Scan the QR code with WhatsApp (Linked Devices > Link a Device)
-
-## 🚀 Heroku Deployment
-
-### Method 1: Standard Deployment
-Follow these steps for a standard Node.js deployment:
-
-1. Add buildpacks in Heroku (Settings > Buildpacks):
-   - `heroku/nodejs`
-   - `https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git`
-
-2. Set up environment variables in Heroku (Settings > Config Vars).
-
-3. Deploy using Heroku CLI:
-```bash
-heroku create your-app-name
-git push heroku main
-heroku ps:scale worker=1
+## 🔐 Environment Variables
+Create a `.env` file with:
+```env
+OWNER_NUMBER=your_number
+OWNER_NAME=your_name
+PREFIX=!
+BOT_NAME=BLACKSKY-MD
 ```
 
-### Method 2: Docker Deployment (Recommended)
-This method uses Docker for better dependency management:
+## 🚀 Deployment
+### Local Deployment
+1. Complete the installation steps above
+2. Run `npm start`
+3. Scan the QR code with WhatsApp
 
-1. Enable Docker deployment:
-```bash
-heroku stack:set container
-```
+### Heroku Deployment
+[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/yourusername/blacksky-md)
 
-2. Set up environment variables in Heroku (Settings > Config Vars):
-```bash
-heroku config:set OWNER_NAME="Your Name"
-heroku config:set OWNER_NUMBER="1234567890@s.whatsapp.net"
-heroku config:set LOG_LEVEL=info
-heroku config:set NODE_ENV=production
-heroku config:set PREFIX="!"
-heroku config:set BOT_NAME="BlackSky-MD"
-heroku config:set USE_PAIRING=true
-```
+1. Click the deploy button above
+2. Set the required environment variables
+3. Deploy and scan the QR code
 
-3. Deploy:
-```bash
-git push heroku main
-```
+## 🛡️ Security
+- ✅ No API keys stored in code
+- ✅ Session file encryption
+- ✅ Anti-spam protection
+- ✅ Group invite filtering
+- ✅ Auto-ban for suspicious activity
 
-The Docker deployment will automatically:
-- Install all required system dependencies (ffmpeg, etc.)
-- Set up Node.js environment
-- Handle process management
-
-### Post-Deployment (Both Methods)
-1. Check logs:
-```bash
-heroku logs --tail
-```
-
-2. Monitor the bot's status in Heroku dashboard
-3. Test basic commands to ensure functionality
-
+## 📚 Command Categories
+- 🎯 Basic Commands
+- 👥 Group Management
+- 🎮 Games & Fun
+- 🔧 Utility Tools
+- 🤖 AI Features
+- 📥 Downloaders
+- 🎵 Music & Media
+- 👑 Owner Commands
 
 ## 🤝 Contributing
 1. Fork the repository
-2. Create your feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'Add amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## ⚠️ Note
-This is not an official WhatsApp product. This project was created for educational purposes only. Use at your own risk.
+## ⚠️ Important Notes
+- Do not share your session files
+- Keep your `.env` file private
+- Regular updates recommended
+- Follow WhatsApp's terms of service
 
-## 📜 License
+## 📄 License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🆘 Support
-For support:
-1. Open an issue in this repository
-2. Join our WhatsApp group [here](https://chat.whatsapp.com/your-group-link)
+Join our WhatsApp support group: [Click Here](https://chat.whatsapp.com/your-group-link)
+
+## 🙏 Credits
+- [WhiskeySockets/Baileys](https://github.com/WhiskeySockets/Baileys)
+- All contributors and users
