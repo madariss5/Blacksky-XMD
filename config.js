@@ -539,6 +539,210 @@ const config = {
             description: 'Rob another user',
             category: 'Economy',
             usage: '.rob @user'
+        },
+
+        // Fun Commands
+        magic8ball: {
+            description: 'Ask the Magic 8 Ball',
+            category: 'Fun',
+            usage: '.magic8ball <question>'
+        },
+        wordgame: {
+            description: 'Play word guessing game',
+            category: 'Fun',
+            usage: '.wordgame'
+        },
+        guess: {
+            description: 'Make a guess in word game',
+            category: 'Fun',
+            usage: '.guess <word>'
+        },
+        trivia: {
+            description: 'Play trivia quiz',
+            category: 'Fun',
+            usage: '.trivia'
+        },
+        answer: {
+            description: 'Answer trivia question',
+            category: 'Fun',
+            usage: '.answer <number>'
+        },
+        rps: {
+            description: 'Play Rock Paper Scissors',
+            category: 'Fun',
+            usage: '.rps <rock/paper/scissors>'
+        },
+        roll: {
+            description: 'Roll a dice',
+            category: 'Fun',
+            usage: '.roll [max number]'
+        },
+        coinflip: {
+            description: 'Flip a coin',
+            category: 'Fun',
+            usage: '.coinflip'
+        },
+        joke: {
+            description: 'Get a random joke',
+            category: 'Fun',
+            usage: '.joke'
+        },
+        quote: {
+            description: 'Get an inspirational quote',
+            category: 'Fun',
+            usage: '.quote'
+        },
+        dare: {
+            description: 'Get a dare challenge',
+            category: 'Fun',
+            usage: '.dare'
+        },
+        truth: {
+            description: 'Get a truth question',
+            category: 'Fun',
+            usage: '.truth'
+        },
+        ship: {
+            description: 'Calculate love compatibility',
+            category: 'Fun',
+            usage: '.ship @user1 @user2'
+        },
+        roast: {
+            description: 'Get a funny roast',
+            category: 'Fun',
+            usage: '.roast'
+        },
+        compliment: {
+            description: 'Get a nice compliment',
+            category: 'Fun',
+            usage: '.compliment'
+        },
+        pickup: {
+            description: 'Get a pickup line',
+            category: 'Fun',
+            usage: '.pickup'
+        },
+        riddle: {
+            description: 'Get a riddle',
+            category: 'Fun',
+            usage: '.riddle'
+        },
+        fact: {
+            description: 'Get an interesting fact',
+            category: 'Fun',
+            usage: '.fact'
+        },
+        would: {
+            description: 'Would you rather question',
+            category: 'Fun',
+            usage: '.would'
+        },
+        never: {
+            description: 'Never have I ever',
+            category: 'Fun',
+            usage: '.never'
+        },
+        darkjoke: {
+            description: 'Get a dark humor joke',
+            category: 'Fun',
+            usage: '.darkjoke'
+        },
+
+        // Anime Commands
+        manga: { 
+            description: 'Search manga information', 
+            category: 'Anime',
+            usage: '.manga <name>'
+        },
+        character: { 
+            description: 'Search anime character info', 
+            category: 'Anime',
+            usage: '.character <name>'
+        },
+        schedule: { 
+            description: 'Show anime broadcast schedule', 
+            category: 'Anime',
+            usage: '.schedule [day]'
+        },
+        airing: { 
+            description: 'Show currently airing anime', 
+            category: 'Anime',
+            usage: '.airing'
+        },
+        upcoming: { 
+            description: 'Show upcoming anime', 
+            category: 'Anime',
+            usage: '.upcoming'
+        },
+        recommended: { 
+            description: 'Get anime recommendations', 
+            category: 'Anime',
+            usage: '.recommended'
+        },
+        genre: { 
+            description: 'Browse anime by genre', 
+            category: 'Anime',
+            usage: '.genre [id]'
+        },
+        studio: { 
+            description: 'Search anime by studio', 
+            category: 'Anime',
+            usage: '.studio <name>'
+        },
+        seasonal: { 
+            description: 'View seasonal anime', 
+            category: 'Anime',
+            usage: '.seasonal [year] [season]'
+        },
+        top: { 
+            description: 'View top anime/manga', 
+            category: 'Anime',
+            usage: '.top <anime/manga>'
+        },
+        trending: { 
+            description: 'Show trending anime/manga', 
+            category: 'Anime',
+            usage: '.trending <anime/manga>'
+        },
+        anime: { 
+            description: 'Search anime information', 
+            category: 'Anime',
+            usage: '.anime <name>'
+        },
+        waifu: { 
+            description: 'Get random waifu image', 
+            category: 'Anime',
+            usage: '.waifu'
+        },
+        neko: { 
+            description: 'Get random neko image', 
+            category: 'Anime',
+            usage: '.neko'
+        },
+        hentai: { 
+            description: 'NSFW content (NSFW chats only)', 
+            category: 'Anime',
+            usage: '.hentai'
+        },
+        couplepp: { 
+            description: 'Get couple profile pictures', 
+            category: 'Anime',
+            usage: '.couplepp'
+        },
+        wallpaper: { 
+            description: 'Get anime wallpapers', 
+            category: 'Anime',
+            usage: '.wallpaper'
+        },
+        cosplay: { 
+            description: 'Get anime cosplay images', 
+            category: 'Anime',
+            usage: '.cosplay'
+        },
+        fanart: { 
+            description: 'Get anime fanart', 
+            category: 'Anime',
+            usage: '.fanart'
         }
     }
 };

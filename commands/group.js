@@ -833,7 +833,7 @@ const groupCommands = {
                 case 'locked':
                     await sock.groupSettingUpdate(msg.key.remoteJid, 'locked');
                     await sock.sendMessage(msg.key.remoteJid, {
-                        text: '🔒 Group settings updated: Group is locked'
+                                                text: '🔒 Group settings updated: Group is locked'
                     });
                     break;
                 case 'unlocked':
@@ -974,6 +974,95 @@ const groupCommands = {
             }
         } catch (error) {
             logger.error('Error handling group update:', error);
+        }
+    },
+    add: async (sock, msg, args) => {
+        try {
+            const groupMetadata = await validateGroupContext(sock, msg, true);
+            if (!groupMetadata) return;
+
+            if (!args[0]) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a number to add!\nUsage: .add number'
+                });
+            }
+
+            // Format the number
+            let number = args[0].replace(/[^0-9]/g, '');
+            if (!number.startsWith('1') && !number.startsWith('')) {
+                number = '1' + number;
+            }
+            number = number + '@s.whatsapp.net';
+
+            const response = await sock.groupParticipantsUpdate(msg.key.remoteJid, [number], "add");
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Successfully added @${number.split('@')[0]} to the group`,
+                mentions: [number]
+            });
+
+            logger.info('Added user to group:', {
+                group: msg.key.remoteJid,
+                user: number,
+                addedBy: msg.key.participant
+            });
+        } catch (error) {
+            logger.error('Error in add command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to add user: ' + error.message
+            });
+        }
+    },
+
+    group: async (sock, msg, args) => {
+        try {
+            const groupMetadata = await validateGroupContext(sock, msg, true);
+            if (!groupMetadata) return;
+
+            if (!args[0] || !['open', 'close'].includes(args[0].toLowerCase())) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please specify open/close!\nUsage: .group open/close'
+                });
+            }
+
+            const isOpen = args[0].toLowerCase() === 'open';
+            await sock.groupSettingUpdate(msg.key.remoteJid, isOpen ? 'not_announcement' : 'announcement');
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Group has been ${isOpen ? 'opened' : 'closed'}`
+            });
+
+            logger.info('Group settings updated:', {
+                group: msg.key.remoteJid,
+                status: isOpen ? 'opened' : 'closed',
+                updatedBy: msg.key.participant
+            });
+        } catch (error) {
+            logger.error('Error in group command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to update group settings: ' + error.message
+            });
+        }
+    },
+
+    linkgroup: async (sock, msg) => {
+        try {
+            const groupMetadata = await validateGroupContext(sock, msg, true);
+            if (!groupMetadata) return;
+
+            const code = await sock.groupInviteCode(msg.key.remoteJid);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🔗 Group Link: https://chat.whatsapp.com/${code}`
+            });
+
+            logger.info('Group link generated:', {
+                group: msg.key.remoteJid,
+                requestedBy: msg.key.participant
+            });
+        } catch (error) {
+            logger.error('Error in linkgroup command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to get group link: ' + error.message
+            });
         }
     }
 };
