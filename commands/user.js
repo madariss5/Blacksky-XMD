@@ -1,7 +1,8 @@
 const config = require('../config');
 const store = require('../database/store');
-const logger = require('pino')();
+const logger = require('../utils/logger');
 
+// Helper function for safely fetching profile pictures
 async function safeProfilePicture(sock, jid) {
     try {
         const pp = await sock.profilePictureUrl(jid, 'image');
@@ -15,47 +16,34 @@ async function safeProfilePicture(sock, jid) {
 
 // Core user commands
 const coreUserCommands = {
-    join: async (sock, msg, args) => {
-        try {
-            if (!args[0]) {
-                return await sock.sendMessage(msg.key.remoteJid, { 
-                    text: '❌ Please provide a group link!\nUsage: .join <group_link>' 
-                });
-            }
-
-            // Extract invite code from link
-            const linkParts = args[0].split('whatsapp.com/');
-            if (linkParts.length < 2) {
-                return await sock.sendMessage(msg.key.remoteJid, { 
-                    text: '❌ Invalid group link provided!' 
-                });
-            }
-
-            const inviteCode = linkParts[1];
-            await sock.groupAcceptInvite(inviteCode);
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: '✅ Successfully joined the group!' 
-            });
-
-            logger.info('Successfully joined group with code:', inviteCode);
-        } catch (error) {
-            logger.error('Error in join command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: '❌ Failed to join group: ' + error.message 
-            });
-        }
-    },
-
     profile: async (sock, msg, args) => {
         try {
+            // Get target user (mentioned user or command sender)
             let targetUser;
             if (args[0]) {
+                // If a user is mentioned, use that
                 targetUser = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
             } else {
+                // For sender, try participant first (for groups) then remoteJid (for private)
                 targetUser = msg.key.participant || msg.key.remoteJid;
             }
 
-            logger.info('Fetching profile for user:', targetUser);
+            // Enhanced logging for debugging
+            logger.info('Profile command execution:', {
+                args: args,
+                targetUser: targetUser,
+                participant: msg.key.participant,
+                remoteJid: msg.key.remoteJid,
+                isGroup: msg.key.remoteJid?.includes('@g.us')
+            });
+
+            // Validate we have a user to look up
+            if (!targetUser || !targetUser.includes('@')) {
+                logger.error('Invalid user identifier:', { targetUser, args });
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Could not identify target user. Please mention a user or try in a private chat.'
+                });
+            }
 
             const userInfo = store.getUserInfo(targetUser);
             const pp = await safeProfilePicture(sock, targetUser);
@@ -88,23 +76,52 @@ const coreUserCommands = {
             });
         }
     },
+    join: async (sock, msg, args) => {
+        try {
+            if (!args[0]) {
+                return await sock.sendMessage(msg.key.remoteJid, { 
+                    text: '❌ Please provide a group link!\nUsage: .join <group_link>' 
+                });
+            }
 
+            // Extract invite code from link
+            const linkParts = args[0].split('whatsapp.com/');
+            if (linkParts.length < 2) {
+                return await sock.sendMessage(msg.key.remoteJid, { 
+                    text: '❌ Invalid group link provided!' 
+                });
+            }
+
+            const inviteCode = linkParts[1];
+            await sock.groupAcceptInvite(inviteCode);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '✅ Successfully joined the group!' 
+            });
+
+            logger.info('Successfully joined group with code:', inviteCode);
+        } catch (error) {
+            logger.error('Error in join command:', error);
+            await sock.sendMessage(msg.key.remoteJid, { 
+                text: '❌ Failed to join group: ' + error.message 
+            });
+        }
+    },
     me: async (sock, msg) => {
         try {
             const user = msg.key.participant || msg.key.remoteJid;
-            const stats = store.getUserInfo(user);
+            const stats = store.getUserStats(user);
+            const userInfo = store.getUserInfo(user);
 
             const pp = await safeProfilePicture(sock, user);
 
             const info = `*Your Profile*\n\n` +
                         `• Number: @${user.split('@')[0]}\n` +
-                        `• Name: ${stats.name || 'Not registered'}\n` +
-                        `• Age: ${stats.age || 'Not registered'}\n` +
+                        `• Name: ${userInfo?.name || 'Not registered'}\n` +
+                        `• Age: ${userInfo?.age || 'Not registered'}\n` +
                         `• Level: ${stats.level || 1}\n` +
                         `• XP: ${stats.xp || 0}\n` +
-                        `• Gold: ${stats.gold || 0}\n` +
                         `• Rank: #${store.getUserRank(user)}\n` +
-                        `• Bio: ${stats.bio || 'No bio set'}`;
+                        `• Bio: ${userInfo?.bio || 'No bio set'}`;
 
             await sock.sendMessage(msg.key.remoteJid, {
                 image: { url: pp },
@@ -115,11 +132,10 @@ const coreUserCommands = {
         } catch (error) {
             logger.error('Error in me command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error fetching your profile. Please try again later.'
+                text: '❌ Error showing your profile. Please try again later.'
             });
         }
     },
-
     register: async (sock, msg, args) => {
         if (store.isUserRegistered(msg.key.participant)) {
             return await sock.sendMessage(msg.key.remoteJid, { 
@@ -157,7 +173,6 @@ const coreUserCommands = {
             });
         }
     },
-
     level: async (sock, msg) => {
         try {
             const user = msg.key.participant || msg.key.remoteJid;
@@ -180,7 +195,6 @@ const coreUserCommands = {
             });
         }
     },
-
     bio: async (sock, msg, args) => {
         try {
             const user = msg.key.participant || msg.key.remoteJid;
@@ -215,12 +229,10 @@ const coreUserCommands = {
 };
 
 // Initialize user commands object
-const userCommands = {};
+const userCommands = {
+    ...coreUserCommands
+};
 
-// Add core commands
-Object.assign(userCommands, coreUserCommands);
-
-// Generate additional user commands
 for (let i = 1; i <= 94; i++) {
     userCommands[`user${i}`] = async (sock, msg, args) => {
         try {

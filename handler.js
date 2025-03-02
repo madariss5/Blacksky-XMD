@@ -12,65 +12,20 @@ const musicCommands = require('./commands/music');
 const groupCommands = require('./commands/group');
 const nsfwCommands = require('./commands/nsfw');
 const logger = require('./utils/logger');
-const config = require('./config');
-const { formatPhoneNumber } = require('./utils/phoneNumber');
-
-// Simple owner verification based on phone number
-const isOwner = (sender) => {
-    try {
-        if (!sender) {
-            logger.error('Invalid sender: null or undefined');
-            return false;
-        }
-
-        // Format sender's number consistently
-        const senderNumber = formatPhoneNumber(sender);
-        const ownerNumber = config.ownerNumber;
-
-        // Log verification attempt
-        logger.info('Owner verification:', {
-            rawSender: sender,
-            formattedSender: senderNumber,
-            ownerNumber: ownerNumber,
-            isMatch: senderNumber === ownerNumber
-        });
-
-        return senderNumber === ownerNumber;
-    } catch (error) {
-        logger.error('Error in owner verification:', error);
-        return false;
-    }
-};
 
 // Execute command with improved error handling
 async function executeCommand(moduleName, command, hans, m, args) {
     try {
+        // Special handling for owner commands
+        if (moduleName === 'owner') {
+            return await ownerCommands.handleCommand(hans, m, command, args);
+        }
+
+        // Handle other commands
         const module = commandModules[moduleName];
         if (!module) {
             logger.warn(`Module ${moduleName} not found`);
             return null;
-        }
-
-        // Check owner status for owner commands
-        if (moduleName === 'owner') {
-            const senderId = m.key.participant || m.key.remoteJid;
-
-            // Enhanced logging for debugging owner commands
-            logger.info('Owner command attempt:', {
-                command,
-                messageKey: JSON.stringify(m.key),
-                participant: m.key.participant,
-                remoteJid: m.key.remoteJid,
-                selectedSenderId: senderId,
-                isFromGroup: m.key.remoteJid?.includes('@g.us')
-            });
-
-            if (!isOwner(senderId)) {
-                await hans.sendMessage(m.key.remoteJid, { 
-                    text: '❌ This command is only for the bot owner!' 
-                });
-                return false;
-            }
         }
 
         const cmdFunc = module[command];
@@ -78,13 +33,6 @@ async function executeCommand(moduleName, command, hans, m, args) {
             logger.warn(`Command ${command} not found in module ${moduleName}`);
             return false;
         }
-
-        // Log command execution attempt
-        logger.info(`Executing command in module ${moduleName}:`, {
-            command,
-            args,
-            module: moduleName
-        });
 
         await cmdFunc(hans, m, args);
         return true;
@@ -99,7 +47,7 @@ async function executeCommand(moduleName, command, hans, m, args) {
 
 const commandModules = {
     reactions: reactionsCommands,
-    owner: ownerCommands,
+    owner: ownerCommands.commands,
     group: groupCommands,
     nsfw: nsfwCommands,
     music: musicCommands,
@@ -151,17 +99,13 @@ module.exports = async (hans, m, chatUpdate, store) => {
             command, 
             args,
             chat: m.key.remoteJid,
-            sender: senderId,
-            isFromGroup: m.key.remoteJid?.includes('@g.us'),
-            rawParticipant: m.key.participant,
-            rawRemoteJid: m.key.remoteJid,
-            isOwner: isOwner(senderId)
+            sender: senderId
         });
 
         // Execute command
         let commandExecuted = false;
         for (const [moduleName, module] of Object.entries(commandModules)) {
-            if (module && typeof module[command] === 'function') {
+            if (module && (typeof module[command] === 'function' || moduleName === 'owner')) {
                 const success = await executeCommand(moduleName, command, hans, m, args);
                 if (success) {
                     commandExecuted = true;
