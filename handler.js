@@ -15,22 +15,31 @@ const logger = require('./utils/logger');
 const config = require('./config');
 const { formatPhoneNumber } = require('./utils/phoneNumber');
 
-// Check if the sender is an owner
+// isOwner function update
 const isOwner = (sender) => {
     try {
+        if (!sender) {
+            logger.error('Invalid sender: null or undefined');
+            return false;
+        }
+
         // Clean up sender JID - handle both direct messages and group messages
-        const senderNumber = sender.split(':')[0].split('@')[0];
+        const senderNumber = formatPhoneNumber(sender);
         const ownerNumber = config.ownerNumber;
 
-        // Log the comparison for debugging
-        logger.info('Comparing owner numbers:', {
-            rawSender: sender, // Added raw sender
-            cleanedSender: senderNumber, // Added cleaned sender
-            ownerNumber: ownerNumber, // Added owner number explicitly
-            match: senderNumber === ownerNumber
+        // Enhanced logging for debugging owner verification
+        logger.info('Owner verification details:', {
+            rawSender: sender,
+            cleanedSender: senderNumber,
+            ownerNumber: ownerNumber,
+            match: senderNumber === ownerNumber,
+            messageType: sender.includes('@g.us') ? 'group' : 'private'
         });
 
-        return senderNumber === ownerNumber;
+        // Check if sender matches owner number
+        const isOwnerNumber = senderNumber === ownerNumber;
+
+        return isOwnerNumber;
     } catch (error) {
         logger.error('Error in isOwner check:', error);
         return false;
@@ -43,19 +52,22 @@ async function executeCommand(moduleName, command, hans, m, args) {
         const module = commandModules[moduleName];
         if (!module) {
             logger.warn(`Command module ${moduleName} not found`);
-            return false;
+            return null;
         }
 
         // For owner commands, verify ownership
-        if (moduleName === 'owner' && !isOwner(m.key.participant || m.key.remoteJid)) {
-            logger.warn(`Non-owner tried to use owner command: ${command}`, {
-                sender: m.key.participant || m.key.remoteJid,
-                command: command
-            });
-            await hans.sendMessage(m.key.remoteJid, { 
-                text: '❌ This command is only for the bot owner!' 
-            });
-            return false;
+        if (moduleName === 'owner') {
+            const senderId = m.key.participant || m.key.remoteJid;
+            if (!isOwner(senderId)) {
+                logger.warn(`Non-owner tried to use owner command: ${command}`, {
+                    sender: senderId,
+                    command: command
+                });
+                await hans.sendMessage(m.key.remoteJid, { 
+                    text: '❌ This command is only for the bot owner!' 
+                });
+                return false;
+            }
         }
 
         const cmdFunc = module[command];
@@ -67,7 +79,7 @@ async function executeCommand(moduleName, command, hans, m, args) {
         logger.info(`Executing command: ${command}`, {
             module: moduleName,
             args: args,
-            chat: m.chat,
+            chat: m.key.remoteJid,
             sender: m.key.participant || m.key.remoteJid
         });
 
@@ -78,7 +90,7 @@ async function executeCommand(moduleName, command, hans, m, args) {
             module: moduleName,
             error: error.message,
             stack: error.stack,
-            chat: m.chat,
+            chat: m.key.remoteJid,
             sender: m.key.participant || m.key.remoteJid
         });
 
@@ -118,6 +130,13 @@ module.exports = async (hans, m, chatUpdate, store) => {
             return;
         }
 
+        // Log full message structure for debugging
+        logger.info('Message structure:', {
+            key: JSON.stringify(m.key),
+            type: m.type,
+            messageTimestamp: m.messageTimestamp
+        });
+
         const prefix = '.';
         if (!m.body?.startsWith(prefix)) {
             logger.debug('Message does not start with prefix', { body: m.body });
@@ -132,14 +151,12 @@ module.exports = async (hans, m, chatUpdate, store) => {
         }
 
         const command = rawCommand.toLowerCase();
-
-        // Get the correct sender ID from either participant (group) or remoteJid (private)
         const senderId = m.key.participant || m.key.remoteJid;
 
         logger.info('Processing command', { 
             command, 
             args,
-            chat: m.chat,
+            chat: m.key.remoteJid,
             sender: senderId,
             isOwner: isOwner(senderId)
         });
@@ -153,7 +170,7 @@ module.exports = async (hans, m, chatUpdate, store) => {
                     commandExecuted = true;
                     logger.info(`Command ${command} executed successfully`, {
                         module: moduleName,
-                        chat: m.chat,
+                        chat: m.key.remoteJid,
                         sender: senderId
                     });
                     break;
@@ -170,23 +187,9 @@ module.exports = async (hans, m, chatUpdate, store) => {
         }
 
     } catch (err) {
-        logger.error('Fatal error in command handler', {
-            error: err.message,
-            stack: err.stack,
-            command: m?.body,
-            chat: m?.chat,
-            sender: m?.key?.participant || m?.key?.remoteJid
-        });
-
-        try {
-            await hans.sendMessage(m?.key?.remoteJid, { 
-                text: '❌ Sorry, the command could not be processed at this time. Please try again later.' 
-            });
-        } catch (sendError) {
-            logger.error('Failed to send error message', {
-                error: sendError.message,
-                stack: sendError.stack
-            });
-        }
+        logger.error('Fatal error in command handler', err);
+        await hans.sendMessage(m?.key?.remoteJid, { 
+            text: '❌ An error occurred while processing your command.' 
+        }).catch(console.error);
     }
 };

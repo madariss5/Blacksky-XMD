@@ -1,9 +1,20 @@
 const { formatPhoneNumber } = require('./utils/phoneNumber');
 
+// Validate and format owner number during startup
+const rawOwnerNumber = process.env.OWNER_NUMBER || '4915561048015';
+console.log('Startup: Raw OWNER_NUMBER from env:', rawOwnerNumber);
+
+const formattedOwnerNumber = formatPhoneNumber(rawOwnerNumber);
+console.log('Startup: Formatted owner number:', formattedOwnerNumber);
+
+if (!formattedOwnerNumber) {
+    console.error('Invalid OWNER_NUMBER format in environment variables');
+    process.exit(1);
+}
+
 module.exports = {
     prefix: '.',  // Command prefix
-    // Store owner number in pure format (countrycode + number), e.g., '4915561048015'
-    ownerNumber: formatPhoneNumber(process.env.OWNER_NUMBER || '4915561048015'),
+    ownerNumber: formattedOwnerNumber,
     ownerName: process.env.OWNER_NAME || 'BLACKSKY',
     botName: '𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻',
     botNumber: '', // Will be set after connection
