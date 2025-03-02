@@ -10,27 +10,32 @@ const basicCommands = {
 
             // Header
             let menuText = `╔══《 ${config.botName} MENU 》══╗\n`;
-            menuText += `║ 👤 User: ${msg.pushName}\n`;
+            menuText += `║ 👤 User: ${msg.pushName || 'User'}\n`;
             menuText += `║ ⏰ Time: ${moment().format('HH:mm:ss')}\n`;
             menuText += `║ 📅 Date: ${moment().format('DD/MM/YYYY')}\n`;
             menuText += `╚════════════════════╝\n\n`;
 
+            // Get actual implemented commands
+            const { allCommands } = require('../handler');
+            const implementedCommands = Object.keys(allCommands);
+            logger.info('Implemented commands:', implementedCommands);
+
             // Organize commands by category
             const categories = {};
-
-            // Process commands from config
-            Object.entries(config.commands).forEach(([cmd, info]) => {
-                const category = info.category;
-                if (!categories[category]) {
-                    categories[category] = [];
-                }
-                categories[category].push({
-                    command: cmd,
-                    description: info.description
+            Object.entries(config.commands)
+                .filter(([cmd]) => implementedCommands.includes(cmd))
+                .forEach(([cmd, info]) => {
+                    const category = info.category;
+                    if (!categories[category]) {
+                        categories[category] = [];
+                    }
+                    categories[category].push({
+                        command: cmd,
+                        description: info.description
+                    });
                 });
-            });
 
-            logger.info('Processing categories:', Object.keys(categories));
+            logger.info('Categories found:', Object.keys(categories));
 
             // Add commands by category
             Object.entries(categories)
@@ -68,6 +73,8 @@ const basicCommands = {
             menuText += `║ Type ${config.prefix}help <command> ║\n`;
             menuText += `║    for detailed info     ║\n`;
             menuText += `╚════════════════════╝`;
+
+            logger.info('Sending menu message...');
 
             await sock.sendMessage(msg.key.remoteJid, {
                 image: { url: config.menuImage },

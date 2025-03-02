@@ -84,7 +84,5 @@ async function messageHandler(sock, msg, { messages }, store) {
 }
 
 // Export both the handler function and allCommands
-// Make the handler function the default export for backward compatibility
 module.exports = messageHandler;
-module.exports.handler = messageHandler;
 module.exports.allCommands = allCommands;
