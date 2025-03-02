@@ -1,5 +1,7 @@
 const config = require('./config');
 const logger = require('./utils/logger');
+
+// Import all command modules
 const basicCommands = require('./commands/basic');
 const utilityCommands = require('./commands/utility');
 const userCommands = require('./commands/user');

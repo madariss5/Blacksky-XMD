@@ -3,44 +3,63 @@ const logger = pino({ level: 'silent' });
 const os = require('os');
 const moment = require('moment-timezone');
 const config = require('../config');
-const fs = require('fs').promises;
-const path = require('path');
 
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            // Create menu header with fancy text
-            let menuText = `╭═══〘 ${config.botName} 〙═══⊷❍\n┃\n`;
-            menuText += `┃ 𝗨𝗦𝗘𝗥: ${msg.pushName}\n`;
-            menuText += `┃ 𝗧𝗜𝗠𝗘: ${moment().format('HH:mm:ss')}\n`;
-            menuText += `┃ 𝗗𝗔𝗧𝗘: ${moment().format('DD/MM/YYYY')}\n`;
-            menuText += `┃\n╰═══════════════════⊷❍\n\n`;
+            // Create fancy header
+            let menuText = `╭══〘 ${config.botName} 〙══⊷❍\n┃\n`;
+            menuText += `┃ 👤 User: ${msg.pushName || 'Unknown'}\n`;
+            menuText += `┃ ⏰ Time: ${moment().format('HH:mm:ss')}\n`;
+            menuText += `┃ 📅 Date: ${moment().format('DD/MM/YYYY')}\n`;
+            menuText += `┃\n╰═══════════════⊷❍\n\n`;
 
-            // Get categories from config
+            // Icons for categories
+            const categoryIcons = {
+                'Basic': '📌',
+                'User': '👤',
+                'Group': '👥',
+                'Media': '🎨',
+                'Fun': '🎮',
+                'AI': '🤖',
+                'NSFW': '🔞',
+                'Owner': '👑',
+                'Tools': '🛠️',
+                'Economy': '💰',
+                'Music': '🎵',
+                'Game': '🎲',
+                'Reactions': '🎭'
+            };
+
+            // Group commands by category
             const categories = {};
             Object.entries(config.commands).forEach(([cmd, info]) => {
                 const category = info.category;
                 if (!categories[category]) {
                     categories[category] = [];
                 }
-                categories[category].push(`│ ⭔ ${config.prefix}${cmd}`);
+                categories[category].push(`┃ ⭔ ${config.prefix}${cmd}`);
             });
 
-            // Add each category's commands to menu
-            Object.entries(categories).forEach(([category, commands]) => {
-                if (commands.length > 0) {
-                    menuText += `╭─❏ *${category}*\n`;
-                    menuText += commands.join('\n');
-                    menuText += `\n╰─────────────────❍\n\n`;
-                }
-            });
+            // Add each category to menu
+            Object.entries(categories)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .forEach(([category, commands]) => {
+                    if (commands.length > 0) {
+                        const icon = categoryIcons[category] || '📌';
+                        menuText += `╭──❏ ${icon} *${category}*\n`;
+                        menuText += commands.join('\n');
+                        menuText += `\n╰────────────❍\n\n`;
+                    }
+                });
 
             // Add footer
-            menuText += `╭═══〘 INFO 〙═══⊷❍\n`;
+            menuText += `╭══〘 INFO 〙══⊷❍\n`;
             menuText += `┃ Prefix: ${config.prefix}\n`;
             menuText += `┃ Owner: ${config.ownerName}\n`;
-            menuText += `┃ Total Commands: ${Object.keys(config.commands).length}\n`;
-            menuText += `╰═══════════════════⊷❍`;
+            menuText += `┃ Commands: ${Object.keys(config.commands).length}\n`;
+            menuText += `╰═══════════════⊷❍\n\n`;
+            menuText += `Type ${config.prefix}help <command> for details`;
 
             // Send menu with image
             await sock.sendMessage(msg.key.remoteJid, {
@@ -57,7 +76,6 @@ const basicCommands = {
             });
         }
     },
-
     help: async (sock, msg, args) => {
         try {
             if (args.length > 0) {
@@ -90,7 +108,6 @@ const basicCommands = {
             });
         }
     },
-
     ping: async (sock, msg) => {
         try {
             const start = Date.now();
@@ -166,7 +183,6 @@ const basicCommands = {
             });
         }
     },
-
     speed: async (sock, msg) => {
         try {
             logger.debug('Executing speed command');
@@ -266,7 +282,6 @@ const basicCommands = {
             });
         }
     },
-
     me: async (sock, msg) => {
         try {
             logger.info('Starting me command execution', {
@@ -349,7 +364,6 @@ const basicCommands = {
             });
         }
     },
-
     sc: async (sock, msg) => {
         try {
             const text = `*🌟 Bot Source Code*\n\n` +
@@ -367,7 +381,6 @@ const basicCommands = {
             });
         }
     },
-
     tqto: async (sock, msg) => {
         try {
             const text = `*🙏 Special Thanks To*\n\n` +
@@ -386,7 +399,6 @@ const basicCommands = {
             });
         }
     },
-
     changelog: async (sock, msg) => {
         try {
             const text = `*📝 Recent Updates*\n\n` +
@@ -407,7 +419,6 @@ const basicCommands = {
             });
         }
     },
-
     dashboard: async (sock, msg) => {
         try {
             const store = require('../database/store');
@@ -435,7 +446,6 @@ const basicCommands = {
             });
         }
     },
-
     rank: async (sock, msg) => {
         try {
             const store = require('../database/store');
@@ -464,7 +474,6 @@ const basicCommands = {
             });
         }
     },
-
     premium: async (sock, msg) => {
         try {
             const store = require('../database/store');
@@ -493,7 +502,6 @@ const basicCommands = {
             });
         }
     },
-
     about: async (sock, msg) => {
         try {
             const text = `📱 *About ${config.botName}*\n\n` +
@@ -521,7 +529,6 @@ const basicCommands = {
             });
         }
     },
-
     rules: async (sock, msg) => {
         try {
             const text = `📜 *Bot Rules*\n\n` +
