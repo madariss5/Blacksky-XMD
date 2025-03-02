@@ -99,6 +99,22 @@ const reactionCommands = {
         }
     },
 
+    roast: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const caption = `*${msg.pushName}* roasted ${target}! 🔥`;
+
+            logger.info('Executing roast command:', { target, mentions });
+            await sendGifReaction(sock, msg, 'roast.gif', caption, mentions);
+        } catch (error) {
+            logger.error('Error in roast command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute roast command!'
+            });
+        }
+    },
+
     wasted: async (sock, msg, args) => {
         try {
             const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
@@ -113,10 +129,7 @@ const reactionCommands = {
                 text: '❌ Failed to execute wasted command!'
             });
         }
-    },
-
-    // Note: Other commands like dance, highfive, etc. have been removed as their GIFs are not available
-    // They can be re-added once the corresponding GIF files are added to the media directory
+    }
 };
 
 module.exports = reactionCommands;
