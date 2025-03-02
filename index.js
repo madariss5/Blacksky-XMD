@@ -20,11 +20,19 @@ const commands = new Map();
 logger.info('Loading commands...');
 for (const file of commandFiles) {
     try {
-        const command = require(path.join(commandsPath, file));
+        const filePath = path.join(commandsPath, file);
+        delete require.cache[require.resolve(filePath)]; // Clear cache
+        const command = require(filePath);
+
         if (typeof command === 'object') {
             Object.entries(command).forEach(([cmdName, handler]) => {
-                commands.set(cmdName, handler);
-                logger.info(`Loaded command: ${cmdName} from ${file}`);
+                // Skip if command already exists (prevent duplicates)
+                if (!commands.has(cmdName)) {
+                    commands.set(cmdName, handler);
+                    logger.info(`Loaded command: ${cmdName} from ${file}`);
+                } else {
+                    logger.warn(`Skipping duplicate command: ${cmdName} in ${file}`);
+                }
             });
         }
     } catch (error) {
