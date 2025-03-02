@@ -9,74 +9,62 @@ const path = require('path');
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            // Create fancy header with timestamp
-            let menuText = `╭━━━━『 ${config.botName} 』━━━━┈⊷\n`;
-            menuText += `│ ⎆  User: ${msg.pushName || 'User'}\n`;
-            menuText += `│ ⎆  Time: ${moment().format('HH:mm:ss')}\n`;
-            menuText += `│ ⎆  Date: ${moment().format('DD/MM/YYYY')}\n`;
-            menuText += `╰━━━━━━━━━━━━━━━┈⊷\n\n`;
+            // Fancy header
+            let menuText = `╭━━━━━━━━━━━━━━━━━━━━━┈ ⊷
+┃ □  ${config.botName}
+┃ □  Created By: ${config.ownerName}
+┃ □  User: ${msg.pushName || 'User'}
+┃ □  Time: ${moment().format('HH:mm:ss')}
+┃ □  Date: ${moment().format('DD/MM/YYYY')}
+╰━━━━━━━━━━━━━━━━━━━━━┈ ⊷\n\n`;
 
-            // Define command categories with emojis
-            const categories = {
-                'ai': { emoji: '🤖', title: 'AI Commands' },
-                'anime': { emoji: '🎭', title: 'Anime Commands' },
-                'downloader': { emoji: '📥', title: 'Downloader' },
-                'economy': { emoji: '💰', title: 'Economy' },
-                'fun': { emoji: '🎮', title: 'Fun & Games' },
-                'game': { emoji: '🎲', title: 'Gaming' },
-                'group': { emoji: '👥', title: 'Group Commands' },
-                'media': { emoji: '📸', title: 'Media Commands' },
-                'music': { emoji: '🎵', title: 'Music' },
-                'nsfw': { emoji: '🔞', title: 'NSFW' },
-                'owner': { emoji: '👑', title: 'Owner Commands' },
-                'reactions': { emoji: '🎭', title: 'Reactions' },
-                'social': { emoji: '🌐', title: 'Social Media' },
-                'tool': { emoji: '🛠️', title: 'Tools' },
-                'user': { emoji: '👤', title: 'User Commands' },
-                'utility': { emoji: '⚙️', title: 'Utility' }
-            };
-
-            // Read commands directory
-            const commandsDir = path.join(__dirname, '../commands');
-            const commandFiles = await fs.readdir(commandsDir);
+            // Read all command files
+            const commandsPath = path.join(__dirname);
+            const commandFiles = await fs.readdir(commandsPath);
 
             // Process each command file
-            for (const category of Object.keys(categories)) {
-                const filename = `${category}.js`;
-                if (commandFiles.includes(filename)) {
+            for (const file of commandFiles) {
+                if (file.endsWith('.js') && file !== 'basic.js') {
                     try {
-                        const commands = require(`./${filename}`);
-                        const cmdList = Object.keys(commands);
+                        // Get the category name from file (remove .js)
+                        const category = file.replace('.js', '');
 
-                        if (cmdList.length > 0) {
-                            const { emoji, title } = categories[category];
-                            menuText += `╭─❏ ${emoji} *${title}*\n`;
-                            cmdList.forEach(cmd => {
-                                menuText += `│ ⎆ ${config.prefix}${cmd}\n`;
+                        // Import the commands
+                        const commandModule = require(`./${file}`);
+                        const commands = Object.keys(commandModule);
+
+                        if (commands.length > 0) {
+                            // Add category header with emoji
+                            const emoji = getCategoryEmoji(category);
+                            menuText += `╭━━━━━『 ${emoji} ${category.toUpperCase()} 』━━━━━┈ ⊷\n`;
+
+                            // Add each command
+                            commands.forEach(cmd => {
+                                menuText += `┃ ⭔ ${config.prefix}${cmd}\n`;
                             });
-                            menuText += `╰─────────────────◆\n\n`;
+
+                            menuText += `╰━━━━━━━━━━━━━━━━━━━━━┈ ⊷\n\n`;
                         }
                     } catch (error) {
-                        logger.error(`Error loading ${category} commands:`, error);
+                        logger.error(`Error loading commands from ${file}:`, error);
                     }
                 }
             }
 
             // Add footer
-            menuText += `╭━━━━『 Bot Info 』━━━━┈⊷\n`;
-            menuText += `│ ⎆ Prefix: ${config.prefix}\n`;
-            menuText += `│ ⎆ Owner: ${config.ownerName}\n`;
-            menuText += `╰━━━━━━━━━━━━━━━┈⊷\n\n`;
-            menuText += `Type ${config.prefix}help <command> for details`;
+            menuText += `╭━━━━『 NOTICE 』━━━━┈ ⊷\n`;
+            menuText += `┃ Type ${config.prefix}help <command>\n`;
+            menuText += `┃ for detailed info about\n`;
+            menuText += `┃ specific command usage\n`;
+            menuText += `╰━━━━━━━━━━━━━━━┈ ⊷`;
 
-            // Send menu with anime image
+            // Send menu with image
             await sock.sendMessage(msg.key.remoteJid, {
                 image: { url: config.menuImage },
                 caption: menuText,
                 gifPlayback: false
             });
 
-            logger.info('Menu command executed successfully');
         } catch (error) {
             logger.error('Menu command failed:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -594,6 +582,29 @@ async function formatPhoneNumber(jid) {
     const cleanNumber = jid.split('@')[0];
     // Format with spaces for display (e.g., +49 123 456 7890)
     return cleanNumber.replace(/(\d{2})(\d{3})(\d{3})(\d{4})/, '+$1 $2 $3 $4');
+}
+
+// Helper function to get emoji for categories
+function getCategoryEmoji(category) {
+    const emojis = {
+        'ai': '🤖',
+        'anime': '🎭',
+        'downloader': '📥',
+        'economy': '💰',
+        'fun': '🎮',
+        'game': '🎲',
+        'group': '👥',
+        'media': '📸',
+        'music': '🎵',
+        'nsfw': '🔞',
+        'owner': '👑',
+        'reactions': '🎭',
+        'social': '🌐',
+        'tool': '🛠️',
+        'user': '👤',
+        'utility': '⚙️'
+    };
+    return emojis[category.toLowerCase()] || '📌';
 }
 
 module.exports = basicCommands;
