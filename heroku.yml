@@ -1,0 +1,11 @@
+build:
+  docker:
+    worker: Dockerfile
+  config:
+    NODE_ENV: production
+
+run:
+  worker: 
+    command:
+      - node index.js
+    image: worker

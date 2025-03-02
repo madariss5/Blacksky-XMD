@@ -1,0 +1,60 @@
+{
+  "name": "BlackSky-MD",
+  "description": "A highly extensible WhatsApp Multi-Device bot designed for robust, scalable messaging interactions",
+  "repository": "https://github.com/yourusername/blacksky-md",
+  "logo": "https://raw.githubusercontent.com/yourusername/blacksky-md/main/generated-icon.png",
+  "keywords": ["whatsapp-bot", "baileys", "nodejs", "bot"],
+  "env": {
+    "OWNER_NAME": {
+      "description": "Your name as the bot owner",
+      "required": true
+    },
+    "OWNER_NUMBER": {
+      "description": "Your WhatsApp number with country code (e.g., 1234567890@s.whatsapp.net)",
+      "required": true
+    },
+    "BOT_NAME": {
+      "description": "Name of your bot",
+      "value": "BlackSky-MD",
+      "required": true
+    },
+    "PREFIX": {
+      "description": "Command prefix for the bot",
+      "value": "!",
+      "required": true
+    },
+    "LOG_LEVEL": {
+      "description": "Logging level (info/debug/error)",
+      "value": "info",
+      "required": false
+    },
+    "NODE_ENV": {
+      "description": "Node environment",
+      "value": "production",
+      "required": true
+    },
+    "USE_PAIRING": {
+      "description": "Enable pairing code for connection",
+      "value": "true",
+      "required": false
+    },
+    "SESSION_DATA": {
+      "description": "WhatsApp session data (will be auto-generated on first run)",
+      "required": false
+    }
+  },
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    },
+    {
+      "url": "https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git"
+    }
+  ],
+  "formation": {
+    "worker": {
+      "quantity": 1,
+      "size": "eco"
+    }
+  }
+}

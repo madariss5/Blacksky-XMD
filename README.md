@@ -40,63 +40,31 @@ npm start
 
 ## 🚀 Heroku Deployment
 
-### Prerequisites
-1. A Heroku account
-2. Heroku CLI installed locally
-3. WhatsApp session credentials (creds.json from your local bot)
+### Method 1: Standard Deployment
+Follow these steps for a standard Node.js deployment:
 
-### Required Buildpacks
-Add these buildpacks in your Heroku app (Settings > Buildpacks):
-1. `heroku/nodejs`
-2. `https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git`
+1. Add buildpacks in Heroku (Settings > Buildpacks):
+   - `heroku/nodejs`
+   - `https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git`
 
-### Environment Variables
-Set the following in Heroku (Settings > Config Vars):
-```env
-# Required
-OWNER_NAME=Your Name
-OWNER_NUMBER=1234567890@s.whatsapp.net
-LOG_LEVEL=info
-NODE_ENV=production
-PREFIX=!
-BOT_NAME=BlackSky-MD
-USE_PAIRING=true
+2. Set up environment variables in Heroku (Settings > Config Vars).
 
-# Optional API Keys (if using related features)
-OPENAI_API_KEY=your_openai_key
-ANIME_API_KEY=your_anime_key
-IMAGE_API_KEY=your_image_key
-```
-
-### Session Persistence
-Since Heroku has an ephemeral filesystem, you need to handle session persistence:
-
-1. After successfully running the bot locally, locate your `creds.json` file
-2. Save the file content securely
-3. In Heroku, add a new Config Var:
-   - Name: `SESSION_DATA`
-   - Value: [Paste your creds.json content]
-
-### Deployment Steps
-1. Initialize Git in your project (if not already done):
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-```
-
-2. Create a new Heroku app:
+3. Deploy using Heroku CLI:
 ```bash
 heroku create your-app-name
+git push heroku main
+heroku ps:scale worker=1
 ```
 
-3. Add buildpacks:
+### Method 2: Docker Deployment (Recommended)
+This method uses Docker for better dependency management:
+
+1. Enable Docker deployment:
 ```bash
-heroku buildpacks:add heroku/nodejs
-heroku buildpacks:add https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git
+heroku stack:set container
 ```
 
-4. Set environment variables:
+2. Set up environment variables in Heroku (Settings > Config Vars):
 ```bash
 heroku config:set OWNER_NAME="Your Name"
 heroku config:set OWNER_NUMBER="1234567890@s.whatsapp.net"
@@ -107,18 +75,18 @@ heroku config:set BOT_NAME="BlackSky-MD"
 heroku config:set USE_PAIRING=true
 ```
 
-5. Deploy your code:
+3. Deploy:
 ```bash
 git push heroku main
 ```
 
-6. Enable the worker dyno:
-```bash
-heroku ps:scale worker=1
-```
+The Docker deployment will automatically:
+- Install all required system dependencies (ffmpeg, etc.)
+- Set up Node.js environment
+- Handle process management
 
-### Post-Deployment
-1. Check logs for any issues:
+### Post-Deployment (Both Methods)
+1. Check logs:
 ```bash
 heroku logs --tail
 ```
@@ -126,20 +94,6 @@ heroku logs --tail
 2. Monitor the bot's status in Heroku dashboard
 3. Test basic commands to ensure functionality
 
-### Troubleshooting
-1. If the bot disconnects:
-   - Check Heroku logs for errors
-   - Verify environment variables
-   - Ensure SESSION_DATA is properly set
-
-2. If media commands fail:
-   - Verify ffmpeg buildpack is properly installed
-   - Check storage limits on your Heroku dyno
-
-3. For other issues:
-   - Review application logs
-   - Ensure all buildpacks are properly installed
-   - Verify your dyno is running
 
 ## 🛠️ Configuration
 Create a `.env` file with:
