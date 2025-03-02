@@ -26,6 +26,14 @@ const { Boom } = require('@hapi/boom');
 require('dotenv').config();
 const antiBan = require('./middleware/antiban');
 
+// Add this utility function at the top with other imports
+const formatPhoneNumber = (phone) => {
+    // Remove any @s.whatsapp.net suffix if present
+    const cleanNumber = phone.split('@')[0];
+    // Return clean number for storage, append suffix only when needed for WA operations
+    return cleanNumber;
+};
+
 // Global variables
 global.authState = null;
 let hans = null;
@@ -37,7 +45,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Bot configuration
-const owner = ['254710772666'];
+const owner = [formatPhoneNumber(process.env.OWNER_NUMBER || '254710772666')];
 const sessionName = "blacksky-md";
 const botName = "𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻";
 const TIME_ZONE = "Africa/Nairobi";

@@ -1,6 +1,6 @@
 module.exports = {
     prefix: '.',  // Command prefix
-    ownerNumber: process.env.OWNER_NUMBER || '4915561048015@s.whatsapp.net',
+    ownerNumber: process.env.OWNER_NUMBER ? process.env.OWNER_NUMBER.split('@')[0] : '4915561048015',
     ownerName: process.env.OWNER_NAME || 'BLACKSKY',
     botName: '𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻',
     botNumber: '', // Will be set after connection
