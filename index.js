@@ -99,25 +99,21 @@ const sessionConfig = {
     logger: pino({ level: config.session.logLevel })
 };
 
-// Enhanced auth state loading with better error handling
-const loadAuthState = async () => {
+// Enhance session validation
+async function loadAuthState() {
     try {
-        // Local auth state handling
-        const authInfo = await useMultiFileAuthState(sessionConfig.authDir);
-
-        // Validate auth state
-        if (!authInfo?.state || !authInfo?.saveCreds) {
-            logger.warn('Invalid auth state detected, creating new session');
-            await fs.ensureDir(sessionConfig.authDir);
-            return await useMultiFileAuthState(sessionConfig.authDir);
+        const { state, saveCreds } = await useMultiFileAuthState(config.session.authDir);
+        if (!state?.creds?.me?.id) {
+            logger.warn('Invalid or missing credentials, starting fresh session');
+            await fs.emptyDir(config.session.authDir);
+            return await useMultiFileAuthState(config.session.authDir);
         }
-
-        return authInfo;
+        return { state, saveCreds };
     } catch (error) {
-        logger.error('Critical error loading auth state:', error);
+        logger.error('Failed to load auth state:', error);
         throw error;
     }
-};
+}
 
 // Enhanced credentials handling
 async function saveAndSendCreds(socket) {
@@ -179,27 +175,67 @@ function addSocketMethods(sock) {
     return sock;
 }
 
+// Enhanced message handling
+async function handleIncomingMessage(sock, msg, chatUpdate) {
+    try {
+        if (!msg.message) return;
+
+        const messageType = getContentType(msg.message);
+        if (!messageType) {
+            logger.debug('Skipping message with invalid type');
+            return;
+        }
+
+        // Extract message content
+        const messageContent = msg.message[messageType]?.text || 
+                             msg.message[messageType]?.caption || 
+                             msg.message.conversation || '';
+
+        // Process commands
+        if (messageContent.startsWith(config.prefix)) {
+            const args = messageContent.slice(1).trim().split(/ +/);
+            const command = args.shift().toLowerCase();
+
+            // Load command handler
+            try {
+                const commandsPath = path.join(__dirname, 'commands');
+                const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+
+                for (const file of commandFiles) {
+                    const commandModule = require(path.join(commandsPath, file));
+                    if (commandModule[command]) {
+                        await commandModule[command](sock, msg, args);
+                        break;
+                    }
+                }
+            } catch (error) {
+                logger.error('Command execution failed:', error);
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Error executing command: ' + error.message
+                });
+            }
+        }
+    } catch (error) {
+        logger.error('Message handling failed:', error);
+    }
+}
+
 // Enhanced HANS initialization
 async function startHANS() {
     try {
         await startServer();
         logger.info('Loading WhatsApp session...');
 
-        // Load auth state with validation
         const { state, saveCreds } = await loadAuthState();
-        if (!state) {
-            throw new Error('Failed to load authentication state');
-        }
         global.authState = state;
 
-        // Version check with validation
         const { version, isLatest } = await fetchLatestBaileysVersion();
         logger.info(`Using WA v${version.join('.')}, isLatest: ${isLatest}`);
 
-        // Create socket with enhanced config
-        hans = makeWASocket({
-            ...sessionConfig,
+        const sock = makeWASocket({
             version,
+            logger: pino({ level: 'silent' }),
+            printQRInTerminal: true,
             auth: state,
             msgRetryCounterCache,
             getMessage: async (key) => {
@@ -211,20 +247,15 @@ async function startHANS() {
             }
         });
 
-        // Add utility methods
-        hans = addSocketMethods(hans);
-        store.bind(hans.ev);
+        store.bind(sock.ev);
 
-        // Connection handling with improved retry logic
-        hans.ev.on('connection.update', async (update) => {
+        // Connection handling
+        sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
 
             if (qr) {
                 logger.info('New QR Code received, please scan:');
                 qrcode.generate(qr, { small: true });
-
-                // Also send a message to indicate QR code is ready
-                console.log('\n🔍 Please scan the QR code above to connect your WhatsApp\n');
             }
 
             if (connection === 'close') {
@@ -232,151 +263,39 @@ async function startHANS() {
                 logger.warn('Connection closed due to:', { reason });
 
                 if (reason === DisconnectReason.loggedOut) {
-                    logger.warn('Device Logged Out, Please Delete Session and Scan Again.');
-                    credsSent = false;
-                    await fs.remove('./auth_info_baileys');
-                    process.exit(0);
+                    logger.warn('Device logged out, please scan QR code again.');
+                    await fs.remove(config.session.authDir);
+                    process.exit(1);
                 } else if (!isShuttingDown) {
-                    if (connectionRetryCount >= MAX_RETRIES) {
-                        logger.error('Max reconnection attempts reached. Please check your connection and restart the bot.');
-                        process.exit(1);
-                    }
-
-                    logger.info('Reconnecting...', { attempt: connectionRetryCount + 1 });
-                    connectionRetryCount++;
-
-                    // Add anti-ban reconnection handling with exponential backoff
-                    const delay = RETRY_INTERVAL * Math.pow(2, connectionRetryCount - 1);
-                    await antiBan.handleReconnection(connectionRetryCount, delay);
-
-                    setTimeout(startHANS, delay);
+                    logger.info('Reconnecting...');
+                    setTimeout(startHANS, 3000);
                 }
             }
 
             if (connection === 'open') {
-                connectionRetryCount = 0;
-                logger.info('WhatsApp connection established successfully!', {
-                    sessionId: sessionName,
-                    authDir: config.session.authDir,
-                    botNumber: hans?.user?.id
-                });
-
-                try {
-                    if (!credsSent) {
-                        await saveAndSendCreds(hans);
-                    }
-
-                    // Verify hans.user exists before sending message
-                    if (hans?.user?.id) {
-                        const cleanBotNumber = formatPhoneNumber(hans.user.id);
-                        logger.info('Bot connected successfully:', {
-                            botNumber: cleanBotNumber,
-                            sessionId: sessionName
-                        });
-
-                        // Send success message to bot's own number
-                        await hans.sendMessage(hans.user.id, {
-                            text: `🟢 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 bot successfully connected!\n\n` +
-                                  `Session ID: ${sessionName}\n` +
-                                  `Bot Number: ${cleanBotNumber}\n\n` +
-                                  `Type .help or .menu to see available commands.`
-                        }).catch(err => {
-                            logger.error('Failed to send success message:', err);
-                        });
-                    } else {
-                        logger.warn('Bot user ID not available, skipping success message');
-                    }
-                } catch (error) {
-                    logger.error('Error in connection open handler:', error);
-                }
+                logger.info('WhatsApp connection established!');
+                await sock.sendMessage(sock.user.id, {
+                    text: '🟢 Bot is now online and ready!'
+                }).catch(err => logger.error('Failed to send status message:', err));
             }
         });
 
-        // Message handling with improved error handling and rate limiting
-        hans.ev.on('messages.upsert', async chatUpdate => {
-            try {
-                if (chatUpdate.type !== 'notify') return;
+        // Message handling
+        sock.ev.on('messages.upsert', async ({ messages, type }) => {
+            if (type !== 'notify') return;
 
-                let msg = JSON.parse(JSON.stringify(chatUpdate.messages[0]));
-                if (!msg.message) return;
-
-                msg.message = (Object.keys(msg.message)[0] === 'ephemeralMessage')
-                    ? msg.message.ephemeralMessage.message
-                    : msg.message;
-
-                if (msg.key && msg.key.remoteJid === 'status@broadcast') return;
-
-                // Check message type and format
-                const messageType = getContentType(msg.message);
-                if (!messageType) {
-                    logger.debug('Invalid message type, skipping');
-                    return;
-                }
-
-                // Apply anti-ban middleware with enhanced error handling
-                try {
-                    const shouldProcess = await antiBan.processMessage(hans, msg);
-                    if (!shouldProcess) {
-                        logger.debug('Message blocked by anti-ban middleware');
-                        return;
-                    }
-                } catch (antibanError) {
-                    logger.error('Error in anti-ban middleware:', antibanError);
-                    return;
-                }
-
-                const m = smsg(hans, msg, store);
-                if (!m) {
-                    logger.debug('Failed to parse message, skipping');
-                    return;
-                }
-
-                // Load handler dynamically to prevent caching issues
-                try {
-                    const handler = require('./handler');
-                    await handler(hans, m, chatUpdate, store);
-                } catch (handlerError) {
-                    logger.error('Error in message handler:', {
-                        error: handlerError.message,
-                        messageType,
-                        chat: m.chat,
-                        sender: m.sender
-                    });
-                }
-            } catch (err) {
-                logger.error('Error processing message:', err);
+            for (const message of messages) {
+                await handleIncomingMessage(sock, message, type);
             }
         });
 
-        // Add rate limiting for credential updates
-        const credUpdateCache = new NodeCache({ stdTTL: 5 }); // 5 seconds TTL
+        // Credentials update
+        sock.ev.on('creds.update', saveCreds);
 
-        hans.ev.on('creds.update', async () => {
-            try {
-                const now = Date.now();
-                const lastUpdate = credUpdateCache.get('lastUpdate');
-
-                if (lastUpdate && (now - lastUpdate) < 5000) {
-                    logger.debug('Skipping rapid credential update');
-                    return;
-                }
-
-                credUpdateCache.set('lastUpdate', now);
-                await saveCreds();
-
-                // Backup credentials
-                await compressCredsFile(sessionConfig.authDir);
-                logger.info('Credentials updated and backed up successfully');
-            } catch (error) {
-                logger.error('Error updating credentials:', error);
-            }
-        });
-
-        return hans;
-    } catch (err) {
-        logger.error('Fatal error in startHANS:', err);
+        return sock;
+    } catch (error) {
+        logger.error('Fatal error in startHANS:', error);
         if (!isShuttingDown) {
-            logger.info('Attempting restart in 10 seconds...');
             setTimeout(startHANS, 10000);
         }
     }
