@@ -9,15 +9,49 @@ const groupCommands = require('./commands/group');
 const ownerCommands = require('./commands/owner');
 const utilityCommands = require('./commands/utility');
 
-// Combine all command modules
-const allCommands = {
-    ...basicCommands,
-    ...aiCommands,
-    ...mediaCommands,
-    ...groupCommands,
-    ...ownerCommands,
-    ...utilityCommands
+// Debug logging for module imports
+logger.info('Starting command registration...');
+
+// Combine all command modules with error checking
+const allCommands = {};
+
+function registerCommands(commands, moduleName) {
+    if (!commands || typeof commands !== 'object') {
+        logger.error(`Invalid module: ${moduleName}`);
+        return;
+    }
+
+    Object.entries(commands).forEach(([cmdName, cmdFunction]) => {
+        if (typeof cmdFunction === 'function') {
+            allCommands[cmdName] = cmdFunction;
+            logger.info(`Registered command: ${cmdName} from ${moduleName}`);
+        } else {
+            logger.warn(`Invalid command: ${cmdName} in ${moduleName}`);
+        }
+    });
+}
+
+// Register commands from all modules
+const modules = {
+    'Basic': basicCommands,
+    'AI': aiCommands,
+    'Media': mediaCommands,
+    'Group': groupCommands,
+    'Owner': ownerCommands,
+    'Utility': utilityCommands
 };
+
+Object.entries(modules).forEach(([name, commands]) => {
+    try {
+        registerCommands(commands, name);
+    } catch (error) {
+        logger.error(`Error registering ${name} commands:`, error);
+    }
+});
+
+// Log total registered commands
+logger.info('Total registered commands:', Object.keys(allCommands).length);
+logger.info('Available commands:', Object.keys(allCommands));
 
 async function messageHandler(sock, msg, { messages }, store) {
     try {
@@ -59,12 +93,13 @@ async function messageHandler(sock, msg, { messages }, store) {
         }
 
         // Command not found
+        logger.info(`Command not found: ${command}`);
         await sock.sendMessage(msg.key.remoteJid, {
             text: `❌ Command *${command}* not found.\nType ${prefix}menu to see available commands.`
         });
 
     } catch (error) {
-        logger.error('Error in command handler:', error);
+        logger.error('Error in message handler:', error);
         await sock.sendMessage(msg.key.remoteJid, {
             text: '❌ Error processing command. Please try again.'
         }).catch(err => logger.error('Error sending error message:', err));

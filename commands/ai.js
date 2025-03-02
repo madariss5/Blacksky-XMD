@@ -1,12 +1,16 @@
 const config = require('../config');
 const logger = require('pino')();
 const { OpenAI } = require('openai');
-const axios = require('axios');
 
-// Initialize OpenAI
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
-});
+// Initialize OpenAI with error handling
+let openai;
+try {
+    openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY
+    });
+} catch (error) {
+    logger.error('Failed to initialize OpenAI:', error);
+}
 
 // Rate limiting setup
 const userCooldowns = new Map();
@@ -22,8 +26,14 @@ const setCooldown = (userId) => {
 };
 
 const aiCommands = {
-    gpt: async (sock, msg, args) => {
+    ai: async (sock, msg, args) => {
         try {
+            if (!openai) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ AI service not available.'
+                });
+            }
+
             const userId = msg.key.participant || msg.key.remoteJid;
 
             if (isOnCooldown(userId)) {
@@ -52,6 +62,49 @@ const aiCommands = {
 
             setCooldown(userId);
         } catch (error) {
+            logger.error('Error in ai command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error processing your request.'
+            });
+        }
+    },
+
+    gpt: async (sock, msg, args) => {
+        try {
+            if (!openai) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ AI service not available.'
+                });
+            }
+
+            const userId = msg.key.participant || msg.key.remoteJid;
+
+            if (isOnCooldown(userId)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '⏳ Please wait before sending another message.'
+                });
+            }
+
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a message to chat about!'
+                });
+            }
+
+            const response = await openai.chat.completions.create({
+                model: "gpt-4",
+                messages: [
+                    { role: "system", content: "You are a helpful assistant." },
+                    { role: "user", content: args.join(' ') }
+                ]
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: response.choices[0].message.content
+            });
+
+            setCooldown(userId);
+        } catch (error) {
             logger.error('Error in gpt command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error processing your request.'
@@ -61,6 +114,12 @@ const aiCommands = {
 
     dalle: async (sock, msg, args) => {
         try {
+            if (!openai) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ AI service not available.'
+                });
+            }
+
             const userId = msg.key.participant || msg.key.remoteJid;
 
             if (isOnCooldown(userId)) {
