@@ -16,42 +16,52 @@ const userCommands = require('./user');
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            let menuText = `╔═══『 ${config.botName} MENU 』═══⊷\n`;
-            menuText += `┃ ⎆ User: ${msg.pushName}\n`;
-            menuText += `┃ ⎆ Time: ${moment().format('HH:mm:ss')}\n`;
-            menuText += `┃ ⎆ Date: ${moment().format('DD/MM/YYYY')}\n`;
-            menuText += `╚═════════════════════⊷\n\n`;
+            // Create fancy header
+            let menuText = `╔═══════ஜ۩۞۩ஜ═══════╗\n`;
+            menuText += `║    ${config.botName} MENU    ║\n`;
+            menuText += `╚═══════ஜ۩۞۩ஜ═══════╝\n\n`;
 
-            // Create command groups
-            const commandGroups = {
-                'AI': aiCommands,
-                'UTILITY': utilityCommands,
-                'GROUP': groupCommands,
-                'MEDIA': mediaCommands,
-                'FUN': funCommands,
-                'OWNER': ownerCommands,
-                'USER': userCommands,
-                'BASIC': basicCommands
+            // Bot Info Section
+            menuText += `┏━━━⟪ *BOT INFO* ⟫━━━┓\n`;
+            menuText += `┃ ⚡ *Bot Name:* ${config.botName}\n`;
+            menuText += `┃ 👤 *User:* ${msg.pushName}\n`;
+            menuText += `┃ ⏰ *Time:* ${moment().format('HH:mm:ss')}\n`;
+            menuText += `┃ 📅 *Date:* ${moment().format('DD/MM/YYYY')}\n`;
+            menuText += `┗━━━━━━━━━━━━━━━┛\n\n`;
+
+            // All available commands from each module
+            const commandModules = {
+                '🤖 AI': aiCommands,
+                '⚙️ UTILITY': utilityCommands,
+                '👥 GROUP': groupCommands,
+                '📸 MEDIA': mediaCommands,
+                '🎮 FUN': funCommands,
+                '👑 OWNER': ownerCommands,
+                '👤 USER': userCommands,
+                '📌 BASIC': basicCommands
             };
 
-            // Add each category and its commands
-            for (const [category, commands] of Object.entries(commandGroups)) {
-                const commandList = Object.keys(commands);
-                if (commandList.length > 0) {
-                    menuText += `╔═══『 ${category} 』═══⊷\n`;
-                    for (const cmd of commandList) {
-                        menuText += `┃ ⎆ ${config.prefix}${cmd}\n`;
+            // Add commands from each module
+            for (const [category, commands] of Object.entries(commandModules)) {
+                if (commands && Object.keys(commands).length > 0) {
+                    menuText += `┏━━━⟪ ${category} ⟫━━━┓\n`;
+                    for (const cmd of Object.keys(commands)) {
+                        menuText += `┃ ඬ⃟ ${config.prefix}${cmd}\n`;
                         // Add description if available
                         if (config.commands[cmd]?.description) {
                             menuText += `┃ └ ${config.commands[cmd].description}\n`;
                         }
                     }
-                    menuText += `╚═════════════════════⊷\n\n`;
+                    menuText += `┗━━━━━━━━━━━━━━━┛\n\n`;
                 }
             }
 
-            menuText += `Type ${config.prefix}help <command> for details`;
+            // Footer
+            menuText += `╔═══════ஜ۩۞۩ஜ═══════╗\n`;
+            menuText += `║  Type ${config.prefix}help <command>  ║\n`;
+            menuText += `╚═══════ஜ۩۞۩ஜ═══════╝`;
 
+            // Send the menu with image
             await sock.sendMessage(msg.key.remoteJid, {
                 image: { url: config.menuImage },
                 caption: menuText,
@@ -96,7 +106,7 @@ const basicCommands = {
         } catch (error) {
             logger.error('Help command failed:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error showing help menu: ' + error.message
+                text: '❌ Error showing help: ' + error.message
             });
         }
     },
