@@ -29,20 +29,21 @@ const commandModules = {
     social: socialCommands
 };
 
+// Safely execute command with error handling
 async function executeCommand(moduleName, command, hans, m, args) {
-    const module = commandModules[moduleName];
-    if (!module) {
-        logger.warn(`Command module ${moduleName} not found`);
-        return false;
-    }
-
-    const cmdFunc = module[command];
-    if (typeof cmdFunc !== 'function') {
-        logger.warn(`Command ${command} not found in module ${moduleName}`);
-        return false;
-    }
-
     try {
+        const module = commandModules[moduleName];
+        if (!module) {
+            logger.warn(`Command module ${moduleName} not found`);
+            return false;
+        }
+
+        const cmdFunc = module[command];
+        if (typeof cmdFunc !== 'function') {
+            logger.warn(`Command ${command} not found in module ${moduleName}`);
+            return false;
+        }
+
         logger.info(`Executing command: ${command}`, {
             module: moduleName,
             args: args,
@@ -61,15 +62,23 @@ async function executeCommand(moduleName, command, hans, m, args) {
             sender: m.sender
         });
 
-        const errorMessage = `❌ Error executing ${command}: ${error.message}`;
-        await hans.sendMessage(m.key.remoteJid, { text: errorMessage });
+        // Send a user-friendly error message
+        try {
+            await hans.sendMessage(m.key.remoteJid, { 
+                text: `❌ Sorry, there was an error executing the command. Please try again later.` 
+            });
+        } catch (sendError) {
+            logger.error('Failed to send error message', {
+                error: sendError.message
+            });
+        }
         return false;
     }
 }
 
 module.exports = async (hans, m, chatUpdate, store) => {
     try {
-        // Basic validation
+        // Basic validation and message type checking
         if (!m || !m.body) {
             logger.debug('Invalid message received', { messageObject: m });
             return;
@@ -81,7 +90,7 @@ module.exports = async (hans, m, chatUpdate, store) => {
             return;
         }
 
-        // Parse command and arguments
+        // Extract and validate command
         const [rawCommand, ...args] = m.body.slice(prefix.length).trim().split(/\s+/);
         if (!rawCommand) {
             logger.debug('No command provided');
@@ -96,28 +105,33 @@ module.exports = async (hans, m, chatUpdate, store) => {
             sender: m.sender
         });
 
-        // Try executing command in each module
+        // Try to execute command in each module
+        let commandExecuted = false;
         for (const [moduleName, module] of Object.entries(commandModules)) {
-            if (module && command in module) {
+            if (module && typeof module[command] === 'function') {
                 const success = await executeCommand(moduleName, command, hans, m, args);
                 if (success) {
+                    commandExecuted = true;
                     logger.info(`Command ${command} executed successfully`, {
                         module: moduleName,
                         chat: m.chat,
                         sender: m.sender
                     });
-                    return;
+                    break;
                 }
             }
         }
 
         // Command not found
-        logger.warn('Command not found', { command });
-        await hans.sendMessage(m.key.remoteJid, {
-            text: `Command *${command}* not found. Type ${prefix}menu to see available commands.`
-        });
+        if (!commandExecuted) {
+            logger.warn('Command not found', { command });
+            await hans.sendMessage(m.key.remoteJid, {
+                text: `Command *${command}* not found. Type ${prefix}menu to see available commands.`
+            });
+        }
 
     } catch (err) {
+        // Handle system-level errors gracefully
         logger.error('Fatal error in command handler', {
             error: err.message,
             stack: err.stack,
@@ -128,7 +142,7 @@ module.exports = async (hans, m, chatUpdate, store) => {
 
         try {
             await hans.sendMessage(m?.key?.remoteJid, { 
-                text: '❌ An unexpected error occurred while processing your command.' 
+                text: '❌ Sorry, the command could not be processed at this time. Please try again later.' 
             });
         } catch (sendError) {
             logger.error('Failed to send error message', {
