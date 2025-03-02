@@ -129,6 +129,86 @@ const reactionCommands = {
                 text: '❌ Failed to execute wasted command!'
             });
         }
+    },
+
+    poke: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const caption = `*${msg.pushName}* poked ${target}! 👉`;
+
+            logger.info('Executing poke command:', { target, mentions });
+            await sendGifReaction(sock, msg, 'poke.gif', caption, mentions);
+        } catch (error) {
+            logger.error('Error in poke command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute poke command! (GIF not available)'
+            });
+        }
+    },
+
+    cuddle: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const caption = `*${msg.pushName}* cuddled with ${target}! 🥰`;
+
+            logger.info('Executing cuddle command:', { target, mentions });
+            await sendGifReaction(sock, msg, 'cuddle.gif', caption, mentions);
+        } catch (error) {
+            logger.error('Error in cuddle command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute cuddle command! (GIF not available)'
+            });
+        }
+    },
+
+    boop: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const caption = `*${msg.pushName}* booped ${target}! 👆`;
+
+            logger.info('Executing boop command:', { target, mentions });
+            await sendGifReaction(sock, msg, 'boop.gif', caption, mentions);
+        } catch (error) {
+            logger.error('Error in boop command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute boop command! (GIF not available)'
+            });
+        }
+    },
+
+    bonk: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const caption = `*${msg.pushName}* bonked ${target}! 🔨`;
+
+            logger.info('Executing bonk command:', { target, mentions });
+            await sendGifReaction(sock, msg, 'bonk.gif', caption, mentions);
+        } catch (error) {
+            logger.error('Error in bonk command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute bonk command! (GIF not available)'
+            });
+        }
+    },
+
+    rip: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : msg.pushName;
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const caption = `💐 *RIP*\n${target} will be remembered...`;
+
+            logger.info('Executing rip command:', { target, mentions });
+            await sendGifReaction(sock, msg, 'rip.gif', caption, mentions);
+        } catch (error) {
+            logger.error('Error in rip command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to execute rip command! (GIF not available)'
+            });
+        }
     }
 };
 
