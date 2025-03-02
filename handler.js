@@ -10,6 +10,8 @@ const groupCommands = require('./commands/group');
 const mediaCommands = require('./commands/media');
 const funCommands = require('./commands/fun');
 const aiCommands = require('./commands/ai');
+const searchCommands = require('./commands/search');
+const educationCommands = require('./commands/education');
 
 // Combine all command modules
 const allCommands = {
@@ -20,7 +22,9 @@ const allCommands = {
     ...groupCommands,
     ...mediaCommands,
     ...funCommands,
-    ...aiCommands
+    ...aiCommands,
+    ...searchCommands,
+    ...educationCommands
 };
 
 module.exports = async (sock, msg, { messages }, store) => {
