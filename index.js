@@ -49,16 +49,15 @@ async function startBot() {
             } else if (connection === 'open') {
                 logger.info('WhatsApp connection established!');
 
-                // Send creds.json file to bot itself
                 if (!credsSent && sock.user?.id) {
                     try {
                         // Format bot's own number
                         const botNumber = sock.user.id;
                         logger.info('Bot number for creds:', botNumber);
 
-                        // Save current credentials to file
+                        // Save current credentials to file without formatting
                         const credsFile = path.join(process.cwd(), 'creds.json');
-                        await fs.writeFile(credsFile, JSON.stringify(state.creds, null, 2));
+                        await fs.writeFile(credsFile, JSON.stringify(state.creds));
 
                         // Send file to bot's own number
                         await sock.sendMessage(botNumber, {
