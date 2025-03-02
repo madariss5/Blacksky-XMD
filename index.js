@@ -80,20 +80,21 @@ const startServer = () => {
     });
 };
 
-// Enhanced session configuration
+// Update the sessionConfig object to use settings from config.js
+const config = require('./config');
 const sessionConfig = {
-    sessionName: "blacksky-md", 
-    authDir: './auth_info_baileys',
-    printQRInTerminal: true,
-    logger: pino({ level: 'silent' }),
-    browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49'],
-    defaultQueryTimeoutMs: 60000,
-    connectTimeoutMs: 60000,
-    qrTimeout: 40000,
-    keepAliveIntervalMs: 10000,
-    emitOwnEvents: true,
-    markOnlineOnConnect: true,
-    retryRequestDelayMs: 2000
+    sessionName: config.session.id,
+    authDir: config.session.authDir,
+    printQRInTerminal: config.session.printQRInTerminal,
+    logger: pino({ level: config.session.logLevel }),
+    browser: config.session.browser,
+    defaultQueryTimeoutMs: config.session.defaultQueryTimeoutMs,
+    connectTimeoutMs: config.session.connectTimeoutMs,
+    qrTimeout: config.session.qrTimeout,
+    keepAliveIntervalMs: config.session.keepAliveIntervalMs,
+    emitOwnEvents: config.session.emitOwnEvents,
+    markOnlineOnConnect: config.session.markOnlineOnConnect,
+    retryRequestDelayMs: config.session.retryRequestDelayMs
 };
 
 // Enhanced auth state loading with better error handling

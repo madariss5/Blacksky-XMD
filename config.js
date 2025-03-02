@@ -5,6 +5,39 @@ module.exports = {
     botName: '𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻',
     botNumber: '', // Will be set after connection
     menuImage: 'https://raw.githubusercontent.com/your-repo/assets/main/f9.jpg',
+
+    // Session Configuration
+    session: {
+        // Session identification
+        id: "blacksky-md",
+
+        // Authentication settings
+        authDir: './auth_info_baileys',
+        printQRInTerminal: true,
+
+        // Browser identification
+        browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49'],
+
+        // Connection timeouts
+        defaultQueryTimeoutMs: 60000,
+        connectTimeoutMs: 60000,
+        qrTimeout: 40000,
+        keepAliveIntervalMs: 10000,
+
+        // Connection behavior
+        emitOwnEvents: true,
+        markOnlineOnConnect: true,
+        retryRequestDelayMs: 2000,
+
+        // Logging
+        logLevel: 'silent',
+
+        // Backup settings
+        backupInterval: 24 * 60 * 60 * 1000, // 24 hours
+        maxBackupFiles: 7,
+        backupDir: './session_backups'
+    },
+
     commands: {
         // AI Commands (Updated)
         ai: { description: 'Chat with AI assistant (GPT-3.5)', category: 'AI' },
