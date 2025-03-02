@@ -8,7 +8,6 @@ const {
 } = require("@whiskeysockets/baileys");
 const pino = require('pino');
 const logger = require('./utils/logger');
-const { smsg } = require('./lib/simple');
 const config = require('./config');
 const express = require('express');
 const fs = require('fs-extra');
@@ -23,26 +22,58 @@ async function startBot() {
     try {
         logger.info('Starting WhatsApp bot...');
 
-        // Initialize auth state
         const { state, saveCreds } = await useMultiFileAuthState('auth_info');
 
-        // Create WA Socket
         const sock = makeWASocket({
-            logger: pino({ level: 'info' }), // Set to info to see QR code
-            printQRInTerminal: true,         // Enable QR code in terminal
+            logger: pino({ level: 'debug' }), // Changed to debug for more verbose logging
+            printQRInTerminal: true,
             auth: state,
             browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49']
         });
 
         store.bind(sock.ev);
 
-        // Handle connection updates
-        sock.ev.on('connection.update', async (update) => {
-            const { connection, lastDisconnect, qr } = update;
+        // Handle messages with improved parsing
+        sock.ev.on('messages.upsert', async ({ messages, type }) => {
+            try {
+                if (type !== 'notify') return;
 
-            if (qr) {
-                logger.info('New QR Code received:', qr);
+                const msg = messages[0];
+                if (!msg) return;
+
+                // Enhanced message logging
+                logger.info('Received message:', {
+                    messageType: msg.messageType,
+                    body: msg.message?.conversation || 
+                          msg.message?.extendedTextMessage?.text ||
+                          msg.message?.imageMessage?.caption ||
+                          msg.message?.videoMessage?.caption,
+                    from: msg.key.remoteJid,
+                    sender: msg.key.participant || msg.key.remoteJid
+                });
+
+                // Direct message handling without smsg wrapper
+                const msgData = {
+                    ...msg,
+                    body: msg.message?.conversation || 
+                          msg.message?.extendedTextMessage?.text ||
+                          msg.message?.imageMessage?.caption ||
+                          msg.message?.videoMessage?.caption || '',
+                    type: Object.keys(msg.message || {})[0],
+                    key: msg.key
+                };
+
+                // Process command
+                await require('./handler')(sock, msgData, { messages, type }, store);
+
+            } catch (err) {
+                logger.error('Error processing message:', err);
             }
+        });
+
+        // Connection handling
+        sock.ev.on('connection.update', async (update) => {
+            const { connection, lastDisconnect } = update;
 
             if (connection === 'close') {
                 const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
@@ -58,20 +89,6 @@ async function startBot() {
             }
         });
 
-        // Handle messages
-        sock.ev.on('messages.upsert', async (m) => {
-            try {
-                if (m.type !== 'notify') return;
-                let msg = m.messages[0];
-                if (!msg.message) return;
-                msg = smsg(sock, msg, store);
-                require('./handler')(sock, msg, m, store);
-            } catch (err) {
-                logger.error('Error processing message:', err);
-            }
-        });
-
-        // Save credentials
         sock.ev.on('creds.update', saveCreds);
 
     } catch (err) {
@@ -80,7 +97,7 @@ async function startBot() {
     }
 }
 
-// Start Express server for health checks
+// Express server setup
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -92,10 +109,8 @@ app.get('/', (req, res) => {
     });
 });
 
-// Start server and bot
 async function startApplication() {
     try {
-        // Start Express server
         await new Promise((resolve, reject) => {
             app.listen(PORT, '0.0.0.0')
                 .once('error', reject)
@@ -103,8 +118,6 @@ async function startApplication() {
         });
 
         logger.info(`Server started on port ${PORT}`);
-
-        // Start WhatsApp bot
         await startBot();
 
     } catch (error) {
@@ -113,7 +126,6 @@ async function startApplication() {
     }
 }
 
-// Start the application
 startApplication().catch(err => {
     logger.error('Startup failed:', err);
     process.exit(1);
