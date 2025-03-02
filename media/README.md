@@ -1,8 +1,15 @@
 # Media Directory
 
-This directory contains animation files used by the bot for various reactions:
+This directory contains animation files used by the bot for various reactions.
+Only upload properly sized and optimized GIF files directly to this directory.
 
-## Status of Reaction GIFs
+## Status of Reaction GIFs:
+
+### Required GIF Properties:
+- File size: Under 2MB
+- Resolution: 320px width (height auto)
+- Duration: Under 8 seconds
+- Format: Animated GIF
 
 ### Currently Available GIFs:
 - anime-slap.gif - Slap reaction animation ✅
@@ -26,19 +33,14 @@ This directory contains animation files used by the bot for various reactions:
 - anime-dance.gif - Dance reaction animation ⚠️
 - anime-highfive.gif - High-five reaction animation ⚠️
 
-### Optional GIFs (Can be Added Later):
-- anime-facepalm.gif - Facepalm reaction animation
-- anime-blush.gif - Blushing reaction animation
-- anime-happy.gif - Happy reaction animation
-- anime-smug.gif - Smug reaction animation
-- anime-handhold.gif - Hand holding reaction
-- anime-love.gif - Love reaction animation
-- anime-neko.gif - Cute neko animation
-- anime-awoo.gif - Awoo reaction animation
+### Installation Instructions:
+1. Obtain appropriate anime reaction GIFs from a reliable source
+2. Optimize the GIF using a tool like GIFSICLE:
+   ```bash
+   gifsicle --optimize=3 --resize-width 320 input.gif > output.gif
+   ```
+3. Upload the optimized GIF directly to this directory
+4. Test the reaction command to verify proper playback
 
-## Effect GIFs
-- anime-jail.gif - Jail effect animation
-- anime-triggered.gif - Triggered effect animation
-
-These files are used by the fun commands to create animated reactions.
-Note: Files marked with ⚠️ are currently missing and need to be added to enable full functionality.
+Note: Files marked with ⚠️ need to be manually added to enable full functionality.
+All GIFs should be appropriate and follow the platform's content guidelines.
