@@ -3,6 +3,8 @@ const logger = pino({ level: 'silent' });
 const os = require('os');
 const moment = require('moment-timezone');
 const config = require('../config');
+const fs = require('fs').promises;
+const path = require('path');
 
 const basicCommands = {
     menu: async (sock, msg) => {
@@ -16,7 +18,7 @@ const basicCommands = {
 
             // Create fancy header
             let text = `╔═══════ஜ۩۞۩ஜ═══════╗\n`;
-            text += `║    ⚡ Flash-MD Menu ⚡    ║\n`;
+            text += `║    ⚡ ${config.botName} ⚡    ║\n`;
             text += `╚═══════ஜ۩۞۩ஜ═══════╝\n\n`;
 
             // Bot Info Section
@@ -28,54 +30,57 @@ const basicCommands = {
             text += `┃ ⌛ *Uptime:* ${hours}h ${minutes}m ${seconds}s\n`;
             text += `┗━━━━━━━━━━━━━━━┛\n\n`;
 
-            // AI Commands
-            text += `┏━━━⟪ 🤖 *AI* ⟫━━━┓\n`;
-            text += `┃ ඬ⃟ ${config.prefix}ai\n`;
-            text += `┃ ඬ⃟ ${config.prefix}gpt\n`;
-            text += `┃ ඬ⃟ ${config.prefix}dalle\n`;
-            text += `┃ ඬ⃟ ${config.prefix}imagine\n`;
-            text += `┗━━━━━━━━━━━━━━━┛\n\n`;
+            // Get commands directory path
+            const commandsDir = path.join(__dirname);
+            const files = await fs.readdir(commandsDir);
+            const commandFiles = files.filter(file => file.endsWith('.js'));
 
-            // Group Commands
-            text += `┏━━━⟪ 👥 *GROUP* ⟫━━━┓\n`;
-            text += `┃ ඬ⃟ ${config.prefix}kick\n`;
-            text += `┃ ඬ⃟ ${config.prefix}add\n`;
-            text += `┃ ඬ⃟ ${config.prefix}promote\n`;
-            text += `┃ ඬ⃟ ${config.prefix}demote\n`;
-            text += `┗━━━━━━━━━━━━━━━┛\n\n`;
+            // Category emojis mapping
+            const categoryEmojis = {
+                'ai': '🤖',
+                'anime': '🎭',
+                'basic': '📌',
+                'downloader': '📥',
+                'economy': '💰',
+                'fun': '🎮',
+                'game': '🎲',
+                'group': '👥',
+                'media': '📸',
+                'music': '🎵',
+                'nsfw': '🔞',
+                'owner': '👑',
+                'reactions': '🎭',
+                'social': '🌐',
+                'tool': '🛠️',
+                'user': '👤',
+                'utility': '⚙️'
+            };
 
-            // Media Commands
-            text += `┏━━━⟪ 📸 *MEDIA* ⟫━━━┓\n`;
-            text += `┃ ඬ⃟ ${config.prefix}sticker\n`;
-            text += `┃ ඬ⃟ ${config.prefix}toimg\n`;
-            text += `┃ ඬ⃟ ${config.prefix}tomp3\n`;
-            text += `┃ ඬ⃟ ${config.prefix}play\n`;
-            text += `┗━━━━━━━━━━━━━━━┛\n\n`;
+            // Process each command file
+            for (const file of commandFiles) {
+                try {
+                    const categoryName = file.replace('.js', '');
+                    const emoji = categoryEmojis[categoryName] || '📌';
 
-            // Downloader Commands
-            text += `┏━━━⟪ 📥 *DOWNLOADER* ⟫━━━┓\n`;
-            text += `┃ ඬ⃟ ${config.prefix}instagram\n`;
-            text += `┃ ඬ⃟ ${config.prefix}facebook\n`;
-            text += `┃ ඬ⃟ ${config.prefix}tiktok\n`;
-            text += `┃ ඬ⃟ ${config.prefix}spotify\n`;
-            text += `┗━━━━━━━━━━━━━━━┛\n\n`;
+                    // Clear require cache
+                    const filePath = path.join(commandsDir, file);
+                    delete require.cache[require.resolve(filePath)];
 
-            // Fun Commands
-            text += `┏━━━⟪ 🎮 *FUN* ⟫━━━┓\n`;
-            text += `┃ ඬ⃟ ${config.prefix}quote\n`;
-            text += `┃ ඬ⃟ ${config.prefix}joke\n`;
-            text += `┃ ඬ⃟ ${config.prefix}meme\n`;
-            text += `┃ ඬ⃟ ${config.prefix}truth\n`;
-            text += `┃ ඬ⃟ ${config.prefix}dare\n`;
-            text += `┗━━━━━━━━━━━━━━━┛\n\n`;
+                    // Import commands
+                    const commands = require(filePath);
+                    const commandList = Object.keys(commands);
 
-            // Owner Commands
-            text += `┏━━━⟪ 👑 *OWNER* ⟫━━━┓\n`;
-            text += `┃ ඬ⃟ ${config.prefix}broadcast\n`;
-            text += `┃ ඬ⃟ ${config.prefix}block\n`;
-            text += `┃ ඬ⃟ ${config.prefix}unblock\n`;
-            text += `┃ ඬ⃟ ${config.prefix}setbotpp\n`;
-            text += `┗━━━━━━━━━━━━━━━┛\n\n`;
+                    if (commandList.length > 0) {
+                        text += `┏━━━⟪ ${emoji} *${categoryName.toUpperCase()}* ⟫━━━┓\n`;
+                        for (const cmd of commandList) {
+                            text += `┃ ඬ⃟ ${config.prefix}${cmd}\n`;
+                        }
+                        text += `┗━━━━━━━━━━━━━━━┛\n\n`;
+                    }
+                } catch (error) {
+                    logger.error(`Error loading commands from ${file}:`, error);
+                }
+            }
 
             // Footer
             text += `╔═══════ஜ۩۞۩ஜ═══════╗\n`;
