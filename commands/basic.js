@@ -2,59 +2,56 @@ const pino = require('pino');
 const logger = pino({ level: 'silent' });
 const os = require('os');
 const moment = require('moment-timezone');
+const path = require('path');
 
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
             const config = require('../config');
 
-            // Load all command modules
-            const basicCommands = require('./basic');
-            const userCommands = require('./user');
-            const groupCommands = require('./group');
-            const mediaCommands = require('./media');
-            const funCommands = require('./fun');
-            const aiCommands = require('./ai');
-            const ownerCommands = require('./owner');
-            const toolCommands = require('./tool');
-            const economyCommands = require('./economy');
-            const musicCommands = require('./music');
-
-            // Combine all commands
-            const allCommands = {
-                ...basicCommands,
-                ...userCommands,
-                ...groupCommands,
-                ...mediaCommands,
-                ...funCommands,
-                ...aiCommands,
-                ...ownerCommands,
-                ...toolCommands,
-                ...economyCommands,
-                ...musicCommands
+            // Load all command modules using correct paths
+            const commandModules = {
+                basic: require('./basic'),
+                user: require('./user'),
+                group: require('./group'),
+                media: require('./media'),
+                fun: require('./fun'),
+                ai: require('./ai'),
+                owner: require('./owner'),
+                tool: require('./tool'),
+                economy: require('./economy'),
+                music: require('./music'),
+                utility: require('./utility'),
+                nsfw: require('./nsfw'),
+                reactions: require('./reactions')
             };
 
-            // Build header with image
-            await sock.sendMessage(msg.key.remoteJid, { 
-                image: { url: config.menuImage },
-                caption: `╭━━━━━━━━━━━━━━━╮
-┃   *${config.botName}*   
-┃  Command List
-╰━━━━━━━━━━━━━━━╯
+            // Combine all commands safely
+            const allCommands = {};
+            for (const [module, commands] of Object.entries(commandModules)) {
+                try {
+                    Object.assign(allCommands, commands);
+                } catch (error) {
+                    logger.warn(`Failed to load ${module} commands:`, error);
+                }
+            }
 
-📜 *Available Commands*
+            // Create menu message with image
+            await sock.sendMessage(msg.key.remoteJid, { 
+                image: { url: 'https://raw.githubusercontent.com/your-repo/assets/main/f9.jpg' },
+                caption: `┏━━⊱『 ${config.botName} 』⊰━━┓
+
+📜 *COMMAND LIST*
 
 ${Object.entries(allCommands)
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([cmd]) => `◦ ${config.prefix}${cmd}`)
+    .map(([cmd]) => `⭔ ${config.prefix}${cmd}`)
     .join('\n')}
 
-╭━━━━━━━━━━━━━━━╮
-┃ Total Commands: ${Object.keys(allCommands).length}
-┃ Prefix: ${config.prefix}
-╰━━━━━━━━━━━━━━━╯
+┗━━⊱ Total: ${Object.keys(allCommands).length} Commands ⊰━━┛
 
-Type ${config.prefix}help <command> for detailed info!`
+*Note:* Type ${config.prefix}help <command> for details
+*Prefix:* ${config.prefix}`
             });
 
             logger.info('Menu command executed successfully');
