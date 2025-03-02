@@ -9,71 +9,59 @@ const path = require('path');
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            // Create fancy header
-            let menuText = `╭━━━━『 ${config.botName} 』━━━━⊷\n`;
-            menuText += `┃ ⎆ User: ${msg.pushName}\n`;
-            menuText += `┃ ⎆ Time: ${moment().format('HH:mm:ss')}\n`;
-            menuText += `┃ ⎆ Date: ${moment().format('DD/MM/YYYY')}\n`;
-            menuText += `╰━━━━━━━━━━━━━━━━━━⊷\n\n`;
+            // Create header
+            let menuText = `╭━━━━━━━━『 ${config.botName} 』━━━━━━━━⊷\n`;
+            menuText += `│ □ User: ${msg.pushName}\n`;
+            menuText += `│ □ Time: ${moment().format('HH:mm:ss')}\n`;
+            menuText += `│ □ Date: ${moment().format('DD/MM/YYYY')}\n`;
+            menuText += `╰━━━━━━━━━━━━━━━━━━━━━━━━━⊷\n\n`;
 
-            // Category emojis
-            const categoryEmojis = {
-                'AI': '🤖',
-                'Anime': '🎭',
-                'Downloader': '📥',
-                'Economy': '💰',
-                'Fun': '🎮',
-                'Game': '🎲',
-                'Group': '👥',
-                'Media': '📸',
-                'Music': '🎵',
-                'NSFW': '🔞',
-                'Owner': '👑',
-                'Reactions': '🎭',
-                'Social': '🌐',
-                'Tool': '🛠️',
-                'User': '👤',
-                'Utility': '⚙️'
-            };
-
-            // Read all command files
+            // Get absolute path to commands directory
             const commandsDir = path.join(__dirname);
-            const files = await fs.readdir(commandsDir);
 
-            // Process each command file
-            for (const file of files) {
-                if (file.endsWith('.js')) {
-                    try {
-                        // Clear require cache to ensure fresh load
-                        delete require.cache[require.resolve(path.join(commandsDir, file))];
+            try {
+                // Read all files in the commands directory
+                const files = await fs.readdir(commandsDir);
+                logger.info('Found command files:', files);
 
-                        // Get category name from file name
-                        const category = file.replace('.js', '');
-                        const categoryName = category.charAt(0).toUpperCase() + category.slice(1);
-                        const emoji = categoryEmojis[categoryName] || '📌';
+                // Process each .js file
+                for (const file of files) {
+                    if (file.endsWith('.js')) {
+                        try {
+                            // Clear require cache
+                            const filePath = path.join(commandsDir, file);
+                            delete require.cache[require.resolve(filePath)];
 
-                        // Import commands from file
-                        const commands = require(path.join(commandsDir, file));
-                        const commandList = Object.keys(commands);
+                            // Load commands from file
+                            const commands = require(filePath);
+                            const category = file.replace('.js', '').toUpperCase();
+                            const commandList = Object.keys(commands);
 
-                        if (commandList.length > 0) {
-                            menuText += `╭━━━━『 ${emoji} ${categoryName.toUpperCase()} 』━━━━⊷\n`;
-                            commandList.forEach(cmd => {
-                                menuText += `┃ ⎆ ${config.prefix}${cmd}\n`;
-                            });
-                            menuText += `╰━━━━━━━━━━━━━━━━━━⊷\n\n`;
+                            if (commandList.length > 0) {
+                                menuText += `╭━━━━━━━━『 ${category} 』━━━━━━━━⊷\n`;
+                                for (const cmd of commandList) {
+                                    menuText += `│ ▢ ${config.prefix}${cmd}\n`;
+                                }
+                                menuText += `╰━━━━━━━━━━━━━━━━━━━━━━━━━⊷\n\n`;
+                            }
+                        } catch (err) {
+                            logger.error(`Error loading commands from ${file}:`, err);
+                            menuText += `╭━━━━━━━━『 ERROR ${file} 』━━━━━━━━⊷\n`;
+                            menuText += `│ ▢ Failed to load commands\n`;
+                            menuText += `╰━━━━━━━━━━━━━━━━━━━━━━━━━⊷\n\n`;
                         }
-                    } catch (error) {
-                        logger.error(`Error loading commands from ${file}:`, error);
                     }
                 }
+            } catch (err) {
+                logger.error('Error reading commands directory:', err);
+                throw new Error('Failed to read commands directory');
             }
 
             // Add footer
-            menuText += `╭━━━━『 INFO 』━━━━⊷\n`;
-            menuText += `┃ ⎆ Prefix: ${config.prefix}\n`;
-            menuText += `┃ ⎆ Owner: ${config.ownerName}\n`;
-            menuText += `╰━━━━━━━━━━━━━━━━━━⊷\n\n`;
+            menuText += `╭━━━━━━━━『 INFO 』━━━━━━━━⊷\n`;
+            menuText += `│ ▢ Prefix: ${config.prefix}\n`;
+            menuText += `│ ▢ Owner: ${config.ownerName}\n`;
+            menuText += `╰━━━━━━━━━━━━━━━━━━━━━━━━━⊷\n\n`;
             menuText += `Type ${config.prefix}help <command> for details`;
 
             // Send menu with image
@@ -83,7 +71,6 @@ const basicCommands = {
                 gifPlayback: false
             });
 
-            logger.info('Menu command executed successfully');
         } catch (error) {
             logger.error('Menu command failed:', error);
             await sock.sendMessage(msg.key.remoteJid, {
