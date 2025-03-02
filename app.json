@@ -3,13 +3,13 @@
   "description": "Best whatsapp bot developed by BlackSky",
   "repository": "https://github.com/blacksky-algorithms/blacksky-md",
   "logo": "https://raw.githubusercontent.com/blacksky-algorithms/blacksky-md/main/generated-icon.png",
-  "keywords": ["bot", "node", "baileys", "whatsapp", "whatsapp-bot", "multi-device", "ai-bot"],
+  "keywords": ["bot", "node", "baileys", "whatsapp"],
   "success_url": "/",
   "stack": "container",
   "env": {
     "PREFIX": {
       "description": "choose your prefix of bot",
-      "value": ".",
+      "value": "*",
       "required": true
     },
     "AUTO_READ_STATUS": {
@@ -43,16 +43,6 @@
     "SESSION_ID": {
       "description": "put your session ID , the code you receive after scanning Qr code",
       "required": true
-    },
-    "NODE_ENV": {
-      "description": "Runtime environment",
-      "value": "production",
-      "required": true
-    },
-    "LOG_LEVEL": {
-      "description": "Logging level (debug/info/warn/error)",
-      "value": "info",
-      "required": false
     }
   },
   "buildpacks": [
@@ -69,7 +59,7 @@
   "formation": {
     "worker": {
       "quantity": 1,
-      "size": "basic"
+      "size": "standard-2x"
     }
   },
   "addons": [
