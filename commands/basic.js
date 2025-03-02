@@ -5,72 +5,59 @@ const config = require('../config');
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            // Header
-            let menuText = `╔══《 ${config.botName} MENU 》══╗\n`;
-            menuText += `║ 👤 User: ${msg.pushName || 'User'}\n`;
-            menuText += `║ ⏰ Time: ${moment().format('HH:mm:ss')}\n`;
-            menuText += `║ 📅 Date: ${moment().format('DD/MM/YYYY')}\n`;
-            menuText += `╚════════════════════╝\n\n`;
+            logger.info('Starting menu generation...');
 
-            // Simple category emojis
-            const categoryEmojis = {
-                'Basic': '📌',
-                'AI': '🤖',
-                'Media': '📸',
-                'Group': '👥',
-                'Owner': '👑',
-                'Utility': '⚙️'
-            };
+            // Basic header
+            let menuText = `*${config.botName} MENU*\n\n`;
+            menuText += `User: ${msg.pushName || 'User'}\n`;
+            menuText += `Time: ${moment().format('HH:mm:ss')}\n`;
+            menuText += `Date: ${moment().format('DD/MM/YYYY')}\n\n`;
+
+            // Simplified category display
+            const categories = {};
 
             // Group commands by category
-            const categories = {};
-            Object.entries(config.commands).forEach(([cmd, info]) => {
+            for (const [cmd, info] of Object.entries(config.commands)) {
                 if (!categories[info.category]) {
                     categories[info.category] = [];
                 }
                 categories[info.category].push({
                     command: cmd,
-                    description: info.description
+                    description: info.description || 'No description available'
                 });
-            });
+            }
 
-            // Display commands by category
-            Object.entries(categories).forEach(([category, commands]) => {
-                const emoji = categoryEmojis[category] || '📌';
-                menuText += `┏━━━《 ${emoji} ${category} 》━━━┓\n`;
-                commands.forEach(({command, description}) => {
-                    menuText += `┃ ⌬ ${config.prefix}${command}\n`;
-                    menuText += `┃ └─ ${description}\n`;
-                });
-                menuText += `┗━━━━━━━━━━━━━━━┛\n\n`;
-            });
+            // Add each category and its commands
+            for (const [category, commands] of Object.entries(categories)) {
+                menuText += `*${category}*\n`;
+                for (const cmd of commands) {
+                    menuText += `• ${config.prefix}${cmd.command} - ${cmd.description}\n`;
+                }
+                menuText += '\n';
+            }
 
-            // Footer
-            menuText += `╔════════════════════╗\n`;
-            menuText += `║ Type ${config.prefix}help <command> ║\n`;
-            menuText += `║    for detailed info     ║\n`;
-            menuText += `╚════════════════════╝`;
+            menuText += `\nType ${config.prefix}help for more information.`;
 
+            logger.info('Menu text generated successfully');
+
+            // Send the menu
             await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: config.menuImage },
-                caption: menuText
+                text: menuText
             });
 
         } catch (error) {
             logger.error('Error in menu command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error generating menu.'
+                text: '❌ Error generating menu. Please try again.'
             });
         }
     },
 
     help: async (sock, msg) => {
         try {
-            const text = `*${config.botName} Help*\n\n` +
-                        `To see all commands, type: ${config.prefix}menu\n\n` +
-                        `Basic Commands:\n` +
-                        `• ${config.prefix}help - Show this help message\n` +
-                        `• ${config.prefix}menu - Show command menu`;
+            const text = `*Basic Commands*\n\n` +
+                        `• ${config.prefix}menu - Show all commands\n` +
+                        `• ${config.prefix}help - Show this help message`;
 
             await sock.sendMessage(msg.key.remoteJid, { text });
         } catch (error) {
