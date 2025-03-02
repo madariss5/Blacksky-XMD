@@ -469,18 +469,78 @@ const toolCommands = {
             const user = response.data;
 
             const githubInfo = `👨‍💻 *GitHub Profile*\n\n` +
-                             `Username: ${user.login}\n` +
-                             `Name: ${user.name || 'N/A'}\n` +
-                             `Bio: ${user.bio || 'N/A'}\n` +
-                             `Repositories: ${user.public_repos}\n` +
-                             `Followers: ${user.followers}\n` +
-                             `Following: ${user.following}`;
+                              `Username: ${user.login}\n` +
+                              `Name: ${user.name || 'N/A'}\n` +
+                              `Bio: ${user.bio || 'N/A'}\n` +
+                              `Repositories: ${user.public_repos}\n` +
+                              `Followers: ${user.followers}\n` +
+                              `Following: ${user.following}`;
 
             await sock.sendMessage(msg.key.remoteJid, { text: githubInfo });
         } catch (error) {
             logger.error('Error in github command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Failed to get GitHub profile'
+            });
+        }
+    },
+
+    update: async (sock, msg) => {
+        try {
+            // Check if the user is the owner
+            const userId = msg.key.participant || msg.key.remoteJid;
+            if (!config.owner.includes(userId.split('@')[0])) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Only the bot owner can update the bot!'
+                });
+            }
+
+            // Send initial status message
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🔄 Checking for updates...'
+            });
+
+            // Execute git pull command
+            const { exec } = require('child_process');
+            exec('git pull origin main', async (error, stdout, stderr) => {
+                if (error) {
+                    logger.error('Error updating bot:', error);
+                    return await sock.sendMessage(msg.key.remoteJid, {
+                        text: `❌ Update failed!\n\nError: ${error.message}`
+                    });
+                }
+
+                if (stderr) {
+                    logger.warn('Git stderr:', stderr);
+                }
+
+                // Check if there were any updates
+                if (stdout.includes('Already up to date.')) {
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        text: '✅ Bot is already up to date!'
+                    });
+                } else {
+                    // Install any new dependencies
+                    exec('npm install', async (error, stdout, stderr) => {
+                        if (error) {
+                            logger.error('Error installing dependencies:', error);
+                            return await sock.sendMessage(msg.key.remoteJid, {
+                                text: `❌ Failed to install new dependencies!\n\nError: ${error.message}`
+                            });
+                        }
+
+                        await sock.sendMessage(msg.key.remoteJid, {
+                            text: '✅ Bot updated successfully!\n\n' +
+                                  'Changes:\n' + stdout + '\n\n' +
+                                  'Please restart the bot to apply updates.'
+                        });
+                    });
+                }
+            });
+        } catch (error) {
+            logger.error('Error in update command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to update bot!'
             });
         }
     },
