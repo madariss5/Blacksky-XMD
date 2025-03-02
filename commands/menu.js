@@ -7,7 +7,6 @@ const menuCommands = {
     menu: async (sock, msg) => {
         try {
             const pushName = msg.pushName || 'User';
-            const userId = msg.key.participant || msg.key.remoteJid;
 
             let menuText = `╭━━━『 ${config.botName} 』━━━⊷\n`;
             menuText += `┃ ⛥┏━━━━━━━━━━━━\n`;
