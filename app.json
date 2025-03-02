@@ -1,6 +1,6 @@
 {
   "name": "BlackSky-MD",
-  "description": "A highly extensible WhatsApp Multi-Device bot designed for advanced messaging and AI-powered interactions",
+  "description": "A highly extensible WhatsApp Multi-Device bot designed for advanced messaging and AI-powered interactions with robust deployment capabilities",
   "repository": "https://github.com/blacksky-algorithms/blacksky-md",
   "logo": "https://raw.githubusercontent.com/blacksky-algorithms/blacksky-md/main/generated-icon.png",
   "keywords": ["whatsapp-bot", "baileys", "nodejs", "bot", "whatsapp-md", "ai-bot", "multi-device"],
@@ -13,17 +13,17 @@
       "required": true
     },
     "AUTO_READ_STATUS": {
-      "description": "Automatically read contact status",
+      "description": "Automatically read contact status (yes/no)",
       "value": "yes",
       "required": false
     },
     "AUTO_DOWNLOAD_STATUS": {
-      "description": "Automatically download contact status",
+      "description": "Automatically download contact status (yes/no)",
       "value": "no",
       "required": false
     },
     "PM_PERMIT": {
-      "description": "Private message permissions",
+      "description": "Control bot usage in private messages (yes/no)",
       "value": "no",
       "required": false
     },
@@ -50,7 +50,7 @@
       "required": true
     },
     "LOG_LEVEL": {
-      "description": "Logging level",
+      "description": "Logging level (debug/info/warn/error)",
       "value": "info",
       "required": false
     }
