@@ -6,33 +6,48 @@
   "keywords": ["whatsapp-bot", "baileys", "nodejs", "bot", "whatsapp-md", "ai-bot", "multi-device"],
   "success_url": "/",
   "website": "https://github.com/blacksky-algorithms/blacksky-md#readme",
+  "stack": "container",
   "env": {
-    "NODE_ENV": {
-      "description": "Runtime environment",
-      "value": "production",
-      "required": true
-    },
-    "OWNER_NAME": {
-      "description": "Your name as the bot owner",
-      "required": true
-    },
-    "OWNER_NUMBER": {
-      "description": "Your WhatsApp number (e.g., 491234567890)",
-      "required": true
-    },
-    "BOT_NAME": {
-      "description": "Name of your bot",
-      "value": "BlackSky-MD",
-      "required": true
-    },
     "PREFIX": {
-      "description": "Command prefix for the bot",
+      "description": "choose your prefix of bot",
       "value": ".",
       "required": true
     },
+    "AUTO_READ_STATUS": {
+      "description": "Your contact status will be read automatically(type yes to active or no to deactive  ; don't write in capital letter)",
+      "value": "yes",
+      "required": false
+    },
+    "AUTO_DOWNLOAD_STATUS": {
+      "description": "Your contact status will be download automatically and send to you(type yes to active or no to deactive ; don't write in capital letter)",
+      "value": "no",
+      "required": false
+    },
+    "PM_PERMIT": {
+      "description": "Other user can't use your bot in pm (type yes to active or no to deactive ; don't write in capital letter)",
+      "value": "no",
+      "required": false
+    },
+    "BOT_NAME": {
+      "description": "put A name for your bot",
+      "value": "𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻",
+      "required": false
+    },
+    "OWNER_NAME": {
+      "description": "Your Name",
+      "required": true
+    },
+    "OWNER_NUMBER": {
+      "description": "Your number, dont put '+' and put your area code",
+      "required": true
+    },
     "SESSION_ID": {
-      "description": "Unique identifier for your bot session",
-      "value": "blacksky-md",
+      "description": "put your session ID, the code you receive after scanning Qr code",
+      "required": true
+    },
+    "NODE_ENV": {
+      "description": "Runtime environment",
+      "value": "production",
       "required": true
     },
     "LOG_LEVEL": {
@@ -50,19 +65,17 @@
     },
     {
       "url": "https://github.com/clhuang/heroku-buildpack-webp-binaries.git"
-    },
-    {
-      "url": "https://github.com/pathwaysmedical/heroku-buildpack-tesseract.git"
     }
   ],
   "formation": {
-    "web": {
+    "worker": {
       "quantity": 1,
       "size": "basic"
     }
   },
-  "stack": "heroku-22",
-  "scripts": {
-    "postdeploy": "npm install"
-  }
+  "addons": [
+    {
+      "plan": "heroku-postgresql:essential-0"
+    }
+  ]
 }

@@ -8,18 +8,17 @@ RUN apt-get update && \
   apt-get upgrade -y && \
   npm i pm2 -g && \
   rm -rf /var/lib/apt/lists/*
+  
+RUN git clone https://github.com/SIMON32883/MR-ANYWAY-MD  /root/ToshTech
+WORKDIR /root/toshtech/
 
-WORKDIR /usr/src/app
 
-COPY package*.json ./
+COPY package.json .
+RUN npm install pm2 -g
 RUN npm install --legacy-peer-deps
 
 COPY . .
 
-ENV NODE_ENV=production
-ENV PREFIX=.
-ENV LOG_LEVEL=info
-
 EXPOSE 5000
 
-CMD ["node", "index.js"]
+CMD ["npm", "run" , "ibrahim.js"]

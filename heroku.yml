@@ -1,11 +1,9 @@
 build:
   docker:
-    web: Dockerfile
+    worker: Dockerfile
   config:
     NODE_ENV: production
     LOG_LEVEL: info
 
 run:
-  web: 
-    command: node index.js
-    image: web
+   worker: npm run start
