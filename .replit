@@ -1,7 +1,4 @@
-modules = ["nodejs-20", "python-3.11", "python3"]
-
-[nix]
-channel = "stable-24_05"
+modules = ["nodejs-20"]
 
 [workflows]
 runButton = "Project"
@@ -13,25 +10,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Animation Preview"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
 args = "WhatsApp Bot"
-
-[[workflows.workflow]]
-name = "Animation Preview"
-author = "agent"
-
-[workflows.workflow.metadata]
-agentRequireRestartOnSave = false
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python3 scripts/generate_ponk_gif.py"
 
 [[workflows.workflow]]
 name = "WhatsApp Bot"
@@ -48,24 +27,4 @@ task = "shell.exec"
 args = "node index.js"
 
 [deployment]
-run = ["sh", "-c", "node test_whatsapp.js"]
-
-[[ports]]
-localPort = 3000
-externalPort = 3000
-
-[[ports]]
-localPort = 4000
-externalPort = 3001
-
-[[ports]]
-localPort = 5000
-externalPort = 80
-
-[[ports]]
-localPort = 5001
-externalPort = 3002
-
-[[ports]]
-localPort = 8080
-externalPort = 8080
+run = ["sh", "-c", "node index.js"]
