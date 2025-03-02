@@ -3,71 +3,90 @@ const logger = pino({ level: 'silent' });
 const os = require('os');
 const moment = require('moment-timezone');
 const config = require('../config');
-const fs = require('fs').promises;
-const path = require('path');
 
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            // Create header
-            let menuText = `╭━━━━━━━━『 ${config.botName} 』━━━━━━━━⊷\n`;
-            menuText += `│ □ User: ${msg.pushName}\n`;
-            menuText += `│ □ Time: ${moment().format('HH:mm:ss')}\n`;
-            menuText += `│ □ Date: ${moment().format('DD/MM/YYYY')}\n`;
-            menuText += `╰━━━━━━━━━━━━━━━━━━━━━━━━━⊷\n\n`;
+            const time = moment().format('HH:mm:ss');
+            const date = moment().format('DD/MM/YYYY');
+            const uptime = process.uptime();
+            const hours = Math.floor(uptime / 3600);
+            const minutes = Math.floor((uptime % 3600) / 60);
+            const seconds = Math.floor(uptime % 60);
 
-            // Get absolute path to commands directory
-            const commandsDir = path.join(__dirname);
+            // Create fancy header
+            let text = `╔═══════ஜ۩۞۩ஜ═══════╗\n`;
+            text += `║    ⚡ Flash-MD Menu ⚡    ║\n`;
+            text += `╚═══════ஜ۩۞۩ஜ═══════╝\n\n`;
 
-            try {
-                // Read all files in the commands directory
-                const files = await fs.readdir(commandsDir);
-                logger.info('Found command files:', files);
+            // Bot Info Section
+            text += `┏━━━⟪ *BOT INFO* ⟫━━━┓\n`;
+            text += `┃ ⚡ *Bot Name:* ${config.botName}\n`;
+            text += `┃ 👤 *User:* ${msg.pushName}\n`;
+            text += `┃ ⏰ *Time:* ${time}\n`;
+            text += `┃ 📅 *Date:* ${date}\n`;
+            text += `┃ ⌛ *Uptime:* ${hours}h ${minutes}m ${seconds}s\n`;
+            text += `┗━━━━━━━━━━━━━━━┛\n\n`;
 
-                // Process each .js file
-                for (const file of files) {
-                    if (file.endsWith('.js')) {
-                        try {
-                            // Clear require cache
-                            const filePath = path.join(commandsDir, file);
-                            delete require.cache[require.resolve(filePath)];
+            // AI Commands
+            text += `┏━━━⟪ 🤖 *AI* ⟫━━━┓\n`;
+            text += `┃ ඬ⃟ ${config.prefix}ai\n`;
+            text += `┃ ඬ⃟ ${config.prefix}gpt\n`;
+            text += `┃ ඬ⃟ ${config.prefix}dalle\n`;
+            text += `┃ ඬ⃟ ${config.prefix}imagine\n`;
+            text += `┗━━━━━━━━━━━━━━━┛\n\n`;
 
-                            // Load commands from file
-                            const commands = require(filePath);
-                            const category = file.replace('.js', '').toUpperCase();
-                            const commandList = Object.keys(commands);
+            // Group Commands
+            text += `┏━━━⟪ 👥 *GROUP* ⟫━━━┓\n`;
+            text += `┃ ඬ⃟ ${config.prefix}kick\n`;
+            text += `┃ ඬ⃟ ${config.prefix}add\n`;
+            text += `┃ ඬ⃟ ${config.prefix}promote\n`;
+            text += `┃ ඬ⃟ ${config.prefix}demote\n`;
+            text += `┗━━━━━━━━━━━━━━━┛\n\n`;
 
-                            if (commandList.length > 0) {
-                                menuText += `╭━━━━━━━━『 ${category} 』━━━━━━━━⊷\n`;
-                                for (const cmd of commandList) {
-                                    menuText += `│ ▢ ${config.prefix}${cmd}\n`;
-                                }
-                                menuText += `╰━━━━━━━━━━━━━━━━━━━━━━━━━⊷\n\n`;
-                            }
-                        } catch (err) {
-                            logger.error(`Error loading commands from ${file}:`, err);
-                            menuText += `╭━━━━━━━━『 ERROR ${file} 』━━━━━━━━⊷\n`;
-                            menuText += `│ ▢ Failed to load commands\n`;
-                            menuText += `╰━━━━━━━━━━━━━━━━━━━━━━━━━⊷\n\n`;
-                        }
-                    }
-                }
-            } catch (err) {
-                logger.error('Error reading commands directory:', err);
-                throw new Error('Failed to read commands directory');
-            }
+            // Media Commands
+            text += `┏━━━⟪ 📸 *MEDIA* ⟫━━━┓\n`;
+            text += `┃ ඬ⃟ ${config.prefix}sticker\n`;
+            text += `┃ ඬ⃟ ${config.prefix}toimg\n`;
+            text += `┃ ඬ⃟ ${config.prefix}tomp3\n`;
+            text += `┃ ඬ⃟ ${config.prefix}play\n`;
+            text += `┗━━━━━━━━━━━━━━━┛\n\n`;
 
-            // Add footer
-            menuText += `╭━━━━━━━━『 INFO 』━━━━━━━━⊷\n`;
-            menuText += `│ ▢ Prefix: ${config.prefix}\n`;
-            menuText += `│ ▢ Owner: ${config.ownerName}\n`;
-            menuText += `╰━━━━━━━━━━━━━━━━━━━━━━━━━⊷\n\n`;
-            menuText += `Type ${config.prefix}help <command> for details`;
+            // Downloader Commands
+            text += `┏━━━⟪ 📥 *DOWNLOADER* ⟫━━━┓\n`;
+            text += `┃ ඬ⃟ ${config.prefix}instagram\n`;
+            text += `┃ ඬ⃟ ${config.prefix}facebook\n`;
+            text += `┃ ඬ⃟ ${config.prefix}tiktok\n`;
+            text += `┃ ඬ⃟ ${config.prefix}spotify\n`;
+            text += `┗━━━━━━━━━━━━━━━┛\n\n`;
 
-            // Send menu with image
+            // Fun Commands
+            text += `┏━━━⟪ 🎮 *FUN* ⟫━━━┓\n`;
+            text += `┃ ඬ⃟ ${config.prefix}quote\n`;
+            text += `┃ ඬ⃟ ${config.prefix}joke\n`;
+            text += `┃ ඬ⃟ ${config.prefix}meme\n`;
+            text += `┃ ඬ⃟ ${config.prefix}truth\n`;
+            text += `┃ ඬ⃟ ${config.prefix}dare\n`;
+            text += `┗━━━━━━━━━━━━━━━┛\n\n`;
+
+            // Owner Commands
+            text += `┏━━━⟪ 👑 *OWNER* ⟫━━━┓\n`;
+            text += `┃ ඬ⃟ ${config.prefix}broadcast\n`;
+            text += `┃ ඬ⃟ ${config.prefix}block\n`;
+            text += `┃ ඬ⃟ ${config.prefix}unblock\n`;
+            text += `┃ ඬ⃟ ${config.prefix}setbotpp\n`;
+            text += `┗━━━━━━━━━━━━━━━┛\n\n`;
+
+            // Footer
+            text += `╔═══════ஜ۩۞۩ஜ═══════╗\n`;
+            text += `║  Type ${config.prefix}help <command>  ║\n`;
+            text += `║     for detailed usage info    ║\n`;
+            text += `╚═══════ஜ۩۞۩ஜ═══════╝`;
+
+            // Send the menu with image
             await sock.sendMessage(msg.key.remoteJid, {
                 image: { url: config.menuImage },
-                caption: menuText,
+                caption: text,
                 gifPlayback: false
             });
 
