@@ -23,11 +23,8 @@ for (const file of commandFiles) {
         const command = require(path.join(commandsPath, file));
         if (typeof command === 'object') {
             Object.entries(command).forEach(([cmdName, handler]) => {
-                // Skip menu command explicitly
-                if (cmdName !== 'menu' && cmdName !== 'help') {
-                    commands.set(cmdName, handler);
-                    logger.info(`Loaded command: ${cmdName} from ${file}`);
-                }
+                commands.set(cmdName, handler);
+                logger.info(`Loaded command: ${cmdName} from ${file}`);
             });
         }
     } catch (error) {
