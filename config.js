@@ -1,4 +1,8 @@
 const { formatPhoneNumber } = require('./utils/phoneNumber');
+const logger = require('pino')();
+
+// Add diagnostic logging for command configuration
+logger.info('Starting config initialization...');
 
 // Validate and format owner number during startup
 const rawOwnerNumber = process.env.OWNER_NUMBER || '4915561048015';
@@ -18,41 +22,29 @@ if (!formattedOwnerNumber) {
 const sessionConfig = {
     // Session identification
     id: process.env.SESSION_ID || 'blacksky-md',
-
-    // Auth directory
     authDir: process.env.AUTH_DIR || './auth_info',
-
-    // Connection settings
     printQRInTerminal: true,
     browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49'],
-
-    // Timeouts and intervals
     defaultQueryTimeoutMs: parseInt(process.env.QUERY_TIMEOUT) || 60000,
     connectTimeoutMs: parseInt(process.env.CONNECT_TIMEOUT) || 60000,
     qrTimeout: parseInt(process.env.QR_TIMEOUT) || 40000,
     keepAliveIntervalMs: parseInt(process.env.KEEP_ALIVE_INTERVAL) || 10000,
-
-    // Behavior configuration
     emitOwnEvents: true,
     markOnlineOnConnect: true,
     retryRequestDelayMs: parseInt(process.env.RETRY_DELAY) || 2000,
-
-    // Logging configuration
     logLevel: process.env.LOG_LEVEL || 'silent',
-
-    // Backup settings
-    backupInterval: parseInt(process.env.BACKUP_INTERVAL) || 24 * 60 * 60 * 1000, // 24 hours
+    backupInterval: parseInt(process.env.BACKUP_INTERVAL) || 24 * 60 * 60 * 1000,
     maxBackupFiles: parseInt(process.env.MAX_BACKUPS) || 7,
     backupDir: process.env.BACKUP_DIR || './session_backups'
 };
 
-module.exports = {
+const config = {
     // Basic configuration
     prefix: process.env.PREFIX || '.',
     ownerNumber: formattedOwnerNumber,
     ownerName: process.env.OWNER_NAME || 'BLACKSKY',
     botName: process.env.BOT_NAME || '𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻',
-    botNumber: '', // Will be set after connection
+    botNumber: '',
     menuImage: process.env.MENU_IMAGE || 'https://raw.githubusercontent.com/your-repo/assets/main/f9.jpg',
 
     // Session configuration
@@ -98,3 +90,12 @@ module.exports = {
         ytmp4: { description: 'Download YouTube video', category: 'Utility' }
     }
 };
+
+// Add diagnostic logging for commands configuration
+logger.info('Commands configuration loaded:', {
+    totalCommands: Object.keys(config.commands).length,
+    categories: [...new Set(Object.values(config.commands).map(cmd => cmd.category))],
+    commandList: Object.keys(config.commands)
+});
+
+module.exports = config;

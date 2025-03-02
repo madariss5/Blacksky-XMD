@@ -1,19 +1,45 @@
 const config = require('./config');
 const logger = require('./utils/logger');
 
-// Import all command modules
-const basicCommands = require('./commands/basic');
-const aiCommands = require('./commands/ai');
-const mediaCommands = require('./commands/media');
-const groupCommands = require('./commands/group');
-const ownerCommands = require('./commands/owner');
-const utilityCommands = require('./commands/utility');
-const educationCommands = require('./commands/education');
-const economyCommands = require('./commands/economy');
-const gameCommands = require('./commands/game');
+// Clear require cache for config to ensure fresh load
+delete require.cache[require.resolve('./config')];
+const freshConfig = require('./config');
+
+// Import all command modules with logging
+logger.info('Starting command registration...');
+
+// Track successful imports
+const loadedModules = new Map();
+
+function loadCommandModule(name, path) {
+    try {
+        logger.info(`Loading command module: ${name} from ${path}`);
+        // Clear require cache for the module
+        delete require.cache[require.resolve(path)];
+        const module = require(path);
+        const commands = Object.keys(module);
+        logger.info(`Successfully loaded ${name} module with commands:`, commands);
+        loadedModules.set(name, true);
+        return module;
+    } catch (error) {
+        logger.error(`Failed to load ${name} module:`, error);
+        loadedModules.set(name, false);
+        return {};
+    }
+}
+
+const basicCommands = loadCommandModule('Basic', './commands/basic');
+const aiCommands = loadCommandModule('AI', './commands/ai');
+const mediaCommands = loadCommandModule('Media', './commands/media');
+const groupCommands = loadCommandModule('Group', './commands/group');
+const ownerCommands = loadCommandModule('Owner', './commands/owner');
+const utilityCommands = loadCommandModule('Utility', './commands/utility');
+const educationCommands = loadCommandModule('Education', './commands/education');
+const economyCommands = loadCommandModule('Economy', './commands/economy');
+const gameCommands = loadCommandModule('Game', './commands/game');
 
 // Debug logging for module imports
-logger.info('Starting command registration...');
+logger.info('Module load status:', Object.fromEntries(loadedModules));
 
 // Combine all command modules with error checking
 const allCommands = {};
@@ -26,6 +52,9 @@ function registerCommands(commands, moduleName) {
 
     Object.entries(commands).forEach(([cmdName, cmdFunction]) => {
         if (typeof cmdFunction === 'function') {
+            if (allCommands[cmdName]) {
+                logger.warn(`Duplicate command found: ${cmdName} in ${moduleName}`);
+            }
             allCommands[cmdName] = cmdFunction;
             logger.info(`Registered command: ${cmdName} from ${moduleName}`);
         } else {
@@ -53,7 +82,8 @@ const categoryStats = {};
 Object.entries(modules).forEach(([name, commands]) => {
     try {
         registerCommands(commands, name);
-        categoryStats[name] = Object.keys(commands).length;
+        categoryStats[name] = Object.keys(commands || {}).length;
+        logger.info(`Registered ${categoryStats[name]} commands from ${name} module`);
     } catch (error) {
         logger.error(`Error registering ${name} commands:`, error);
         categoryStats[name] = 0;
@@ -89,13 +119,21 @@ async function messageHandler(sock, msg, { messages }, store) {
                 return; // Unsupported message type
         }
 
-        // Parse command
+        // Parse command with detailed logging
         const prefix = config.prefix || '.';
         if (!messageContent.startsWith(prefix)) {
             return;
         }
+
         const args = messageContent.slice(prefix.length).trim().split(/\s+/);
         const command = args.shift()?.toLowerCase();
+
+        logger.info('Processing command:', {
+            command,
+            args,
+            availableCommands: Object.keys(allCommands),
+            registeredCategories: Object.keys(categoryStats)
+        });
 
         // Execute command if it exists
         if (allCommands[command]) {

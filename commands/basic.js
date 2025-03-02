@@ -5,7 +5,12 @@ const config = require('../config');
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            logger.info('Starting menu generation...');
+            // Add diagnostic logging
+            logger.info('Starting menu generation with config:', {
+                totalCommands: Object.keys(config.commands).length,
+                availableCategories: [...new Set(Object.values(config.commands).map(cmd => cmd.category))],
+                commandList: Object.keys(config.commands)
+            });
 
             // Basic header with bot info and user details
             let menuText = `*${config.botName} Command Menu*\n\n`;
@@ -13,9 +18,14 @@ const basicCommands = {
             menuText += `⏰ Time: ${moment().format('HH:mm:ss')}\n`;
             menuText += `📅 Date: ${moment().format('DD/MM/YYYY')}\n\n`;
 
-            // Group commands by category
+            // Group commands by category with logging
             const categories = {};
             for (const [cmd, info] of Object.entries(config.commands)) {
+                logger.info(`Processing command: ${cmd}`, {
+                    category: info.category,
+                    description: info.description
+                });
+
                 if (!categories[info.category]) {
                     categories[info.category] = [];
                 }
@@ -24,6 +34,9 @@ const basicCommands = {
                     description: info.description
                 });
             }
+
+            // Log categories found
+            logger.info('Categories after grouping:', Object.keys(categories));
 
             // Sort categories alphabetically
             const sortedCategories = Object.keys(categories).sort();
@@ -51,7 +64,7 @@ const basicCommands = {
                 text: menuText
             });
 
-            logger.info('Menu generated and sent successfully');
+            logger.info('Menu generated and sent successfully with categories:', sortedCategories);
 
         } catch (error) {
             logger.error('Error in menu command:', error);
