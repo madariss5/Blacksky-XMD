@@ -2,6 +2,8 @@ const { formatPhoneNumber } = require('./utils/phoneNumber');
 
 // Validate and format owner number during startup
 const rawOwnerNumber = process.env.OWNER_NUMBER || '4915561048015';
+const ownerToken = process.env.OWNER_TOKEN;
+
 console.log('Startup: Raw OWNER_NUMBER from env:', rawOwnerNumber);
 
 const formattedOwnerNumber = formatPhoneNumber(rawOwnerNumber);
@@ -19,7 +21,6 @@ module.exports = {
     botName: '𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻',
     botNumber: '', // Will be set after connection
     menuImage: 'https://raw.githubusercontent.com/your-repo/assets/main/f9.jpg',
-
     // Session Configuration
     session: {
         // Session identification
