@@ -30,7 +30,6 @@ module.exports = async (sock, msg, { messages }, store) => {
         // Parse command
         const prefix = config.prefix || '.';
         if (!messageContent.startsWith(prefix)) {
-            logger.debug('Message does not start with prefix:', messageContent);
             return;
         }
         const args = messageContent.slice(prefix.length).trim().split(/\s+/);

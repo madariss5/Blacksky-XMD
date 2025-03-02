@@ -24,8 +24,6 @@ async function startBot() {
         sock.ev.on('messages.upsert', async ({ messages }) => {
             try {
                 const msg = messages[0];
-
-                // Early returns for invalid messages
                 if (!msg || !msg.message) return;
 
                 // Get the actual message content
