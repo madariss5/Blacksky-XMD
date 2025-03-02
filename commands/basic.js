@@ -1,29 +1,54 @@
 const logger = require('pino')();
-const config = require('../config');
 const handler = require('../handler');
+const config = require('../config');
 
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
             if (!sock || !msg?.key?.remoteJid) {
-                throw new Error('Invalid parameters');
+                logger.error('Invalid menu command parameters');
+                return;
             }
 
-            // Create simple menu text
-            let menuText = '*Available Commands*\n\n';
+            logger.info('Building menu with available commands');
 
-            // Get all registered commands
-            const commands = handler.getRegisteredCommands();
+            // Create menu text with categories
+            let menuText = `*${config.botName} Commands*\n\n`;
 
-            // Add each command to the menu
-            commands.forEach(cmd => {
-                menuText += `• ${config.prefix}${cmd}\n`;
+            // Group commands by category
+            const categories = {};
+            Object.entries(config.commands).forEach(([cmd, info]) => {
+                if (!categories[info.category]) {
+                    categories[info.category] = [];
+                }
+                categories[info.category].push({
+                    command: cmd,
+                    description: info.description
+                });
             });
 
-            // Send menu
+            logger.info('Command categories built:', {
+                totalCategories: Object.keys(categories).length,
+                categoriesList: Object.keys(categories)
+            });
+
+            // Add commands by category
+            Object.keys(categories).sort().forEach(category => {
+                menuText += `*${category}*\n`;
+                categories[category].forEach(cmd => {
+                    menuText += `• ${config.prefix}${cmd.command} - ${cmd.description}\n`;
+                });
+                menuText += '\n';
+            });
+
+            menuText += `\nType ${config.prefix}help <command> for more details`;
+
+            logger.info('Sending menu message');
             await sock.sendMessage(msg.key.remoteJid, {
                 text: menuText
             });
+
+            logger.info('Menu sent successfully');
 
         } catch (error) {
             logger.error('Menu command error:', error);
@@ -37,34 +62,55 @@ const basicCommands = {
 
     help: async (sock, msg, args) => {
         try {
-            if (!sock || !msg?.key?.remoteJid) {
-                throw new Error('Invalid message or socket parameters');
-            }
+            if (!sock || !msg?.key?.remoteJid) return;
 
             if (!args.length) {
-                await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Type ${config.prefix}menu to see all commands`
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `Use ${config.prefix}menu to see all commands\nOr ${config.prefix}help <command> for specific help`
                 });
-                return;
             }
 
             const command = args[0].toLowerCase();
             const cmdInfo = config.commands[command];
 
             if (!cmdInfo) {
-                await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Command "${command}" not found`
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `❌ Command "${command}" not found\nUse ${config.prefix}menu to see available commands`
                 });
-                return;
             }
 
+            const helpText = `*Command: ${command}*\n` +
+                           `Category: ${cmdInfo.category}\n` +
+                           `Description: ${cmdInfo.description}`;
+
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `*${command}*\n${cmdInfo.description}`
+                text: helpText
             });
+
         } catch (error) {
             logger.error('Help command error:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error showing help'
+            });
+        }
+    },
+
+    ping: async (sock, msg) => {
+        try {
+            if (!sock || !msg?.key?.remoteJid) return;
+
+            const start = Date.now();
+            await sock.sendMessage(msg.key.remoteJid, { text: 'Measuring ping...' });
+            const ping = Date.now() - start;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🏓 Pong!\nResponse time: ${ping}ms`
+            });
+
+        } catch (error) {
+            logger.error('Ping command error:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error measuring ping'
             });
         }
     }

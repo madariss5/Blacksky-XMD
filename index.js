@@ -5,9 +5,11 @@ const {
 } = require("@whiskeysockets/baileys");
 const pino = require('pino');
 const logger = require('./utils/logger');
-const config = require('./config');
 const express = require('express');
-const messageHandler = require('./handler'); // Import the default export
+const messageHandler = require('./handler');
+const basicCommands = require('./commands/basic');
+const aiCommands = require('./commands/ai');
+const mediaCommands = require('./commands/media');
 
 async function startBot() {
     try {
@@ -21,21 +23,41 @@ async function startBot() {
             browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49']
         });
 
-        // Direct message handling
+        // Register all commands with logging
+        const commandModules = {
+            ...basicCommands,
+            ...aiCommands,
+            ...mediaCommands
+        };
+
+        logger.info('Loading command modules:', {
+            moduleNames: ['basic', 'ai', 'media'],
+            totalCommands: Object.keys(commandModules).length
+        });
+
+        Object.entries(commandModules).forEach(([name, handler]) => {
+            messageHandler.register(name, handler);
+            logger.info(`Registered command: ${name}`);
+        });
+
+        // Log total registered commands
+        logger.info('Command registration complete:', {
+            totalCommands: messageHandler.getCommands().length,
+            availableCommands: messageHandler.getCommands()
+        });
+
+        // Handle messages
         sock.ev.on('messages.upsert', async ({ messages }) => {
             try {
                 const msg = messages[0];
                 if (!msg || !msg.message) return;
-
-                // Process command
-                await messageHandler(sock, msg, { messages }, {});
-
+                await messageHandler(sock, msg);
             } catch (error) {
                 logger.error('Error in message handler:', error);
             }
         });
 
-        // Connection handling
+        // Handle connection events
         sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
             if (connection === 'close') {
                 const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
@@ -56,12 +78,18 @@ async function startBot() {
     }
 }
 
-// Express server setup
+// Express server setup with debug endpoints
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.get('/', (req, res) => {
-    res.json({ status: 'WhatsApp Bot Server Running' });
+// Debug endpoint to check registered commands
+app.get('/debug/commands', (req, res) => {
+    const commands = messageHandler.getCommands();
+    res.json({
+        totalCommands: commands.length,
+        registeredCommands: commands,
+        status: 'WhatsApp Bot Server Running'
+    });
 });
 
 app.listen(PORT, '0.0.0.0', () => {

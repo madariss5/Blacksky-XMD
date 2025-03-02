@@ -1,72 +1,15 @@
 const logger = require('pino')();
-const config = require('../config');
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 const fs = require('fs-extra');
 const path = require('path');
-const ffmpeg = require('fluent-ffmpeg');
-const axios = require('axios');
 const sharp = require('sharp');
+const axios = require('axios');
 
+// Ensure temp directory exists
 const tempDir = path.join(__dirname, '../temp');
 fs.ensureDirSync(tempDir);
 
-const convertToWebp = async (inputPath, outputPath) => {
-    return new Promise((resolve, reject) => {
-        const pythonScript = path.join(__dirname, '../scripts/convert_sticker.py');
-        exec(`python3 "${pythonScript}" "${inputPath}" "${outputPath}"`, (error, stdout, stderr) => {
-            if (error) {
-                logger.error('Python conversion error:', error);
-                logger.error('stderr:', stderr);
-                reject(error);
-            } else {
-                resolve();
-            }
-        });
-    });
-};
-
-const downloadMediaMessageWithLogging = async (messageInfo, type, options = {}, downloadOptions = {}) => {
-    logger.info('Starting media download:', {
-        type: type,
-        messageType: Object.keys(messageInfo.message)[0],
-        messageTimestamp: messageInfo.messageTimestamp
-    });
-
-    try {
-        const buffer = await downloadMediaMessage(messageInfo, type, options, downloadOptions);
-        logger.info('Media download completed successfully', {
-            bufferSize: buffer.length
-        });
-        return buffer;
-    } catch (error) {
-        logger.error('Media download failed:', error);
-        throw error;
-    }
-};
-
-const executeImageMagick = async (command, inputPath, outputPath) => {
-    logger.info('Executing ImageMagick command:', {
-        command,
-        input: inputPath,
-        output: outputPath
-    });
-
-    return new Promise((resolve, reject) => {
-        exec(command, (error, stdout, stderr) => {
-            if (error) {
-                logger.error('ImageMagick execution failed:', {
-                    error,
-                    stdout,
-                    stderr
-                });
-                reject(error);
-            } else {
-                resolve();
-            }
-        });
-    });
-};
-
+// Helper function to clean up temp files
 async function cleanupTempFiles(...filePaths) {
     for (const filePath of filePaths) {
         try {
@@ -80,119 +23,14 @@ async function cleanupTempFiles(...filePaths) {
     }
 }
 
-// Enhance sticker creation options
-const stickerOptions = {
-    processSticker: async (inputPath, outputPath, options = {}) => {
-        const {
-            text,
-            fontSize = 40,
-            quality = 80,
-            size = 512,
-            animated = false
-        } = options;
-
-        if (animated) {
-            return new Promise((resolve, reject) => {
-                ffmpeg(inputPath)
-                    .fps(10)
-                    .size(`${size}x${size}`)
-                    .videoFilter('crop=w=ih:h=ih')
-                    .save(outputPath)
-                    .on('end', resolve)
-                    .on('error', reject);
-            });
-        }
-
-        let image = sharp(inputPath)
-            .resize(size, size, {
-                fit: 'contain',
-                background: { r: 0, g: 0, b: 0, alpha: 0 }
-            })
-            .webp({ quality });
-
-        if (text) {
-            const textBuffer = await sharp({
-                text: {
-                    text: text,
-                    fontSize,
-                    rgba: true
-                }
-            }).toBuffer();
-
-            image = image.composite([{
-                input: textBuffer,
-                gravity: 'center'
-            }]);
-        }
-
-        return image.toFile(outputPath);
-    }
-};
-
 const mediaCommands = {
-    meme: async (sock, msg) => {
-        try {
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '🎭 Fetching a random meme...'
-            });
-
-            const subreddits = ['memes', 'dankmemes', 'wholesomememes', 'me_irl'];
-            const randomSubreddit = subreddits[Math.floor(Math.random() * subreddits.length)];
-
-            const response = await axios.get(`https://www.reddit.com/r/${randomSubreddit}/random.json`);
-
-            if (!response.data || !response.data[0]?.data?.children?.length) {
-                throw new Error('Failed to fetch meme from Reddit');
-            }
-
-            const post = response.data[0].data.children[0].data;
-
-            if (post.over_18 || !post.url) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Failed to get appropriate meme, please try again.'
-                });
-            }
-
-            const mediaUrl = post.url;
-            const isGif = mediaUrl.endsWith('.gif') || post.is_video;
-            const title = post.title || 'Random Meme';
-
-            if (isGif) {
-                const timestamp = Date.now();
-                const outputPath = path.join(tempDir, `meme_${timestamp}.mp4`);
-
-                const mediaResponse = await axios.get(mediaUrl, { responseType: 'arraybuffer' });
-                await fs.writeFile(outputPath, mediaResponse.data);
-
-                await sock.sendMessage(msg.key.remoteJid, {
-                    video: fs.readFileSync(outputPath),
-                    caption: `🎭 ${title}`,
-                    gifPlayback: true
-                });
-
-                await fs.remove(outputPath);
-            } else {
-                await sock.sendMessage(msg.key.remoteJid, {
-                    image: { url: mediaUrl },
-                    caption: `🎭 ${title}`
-                });
-            }
-
-        } catch (error) {
-            logger.error('Error in meme command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to fetch meme: ' + error.message
-            });
-        }
-    },
-
     sticker: async (sock, msg, args) => {
         const tempFiles = [];
         try {
             const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
             if (!quotedMsg || (!quotedMsg.imageMessage && !quotedMsg.videoMessage)) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Please reply to an image or video with !sticker [text] [size] [quality]'
+                    text: '❌ Please reply to an image with !sticker'
                 });
             }
 
@@ -200,11 +38,10 @@ const mediaCommands = {
                 text: '⏳ Creating sticker...'
             });
 
-            const buffer = await downloadMediaMessageWithLogging(
+            const buffer = await downloadMediaMessage(
                 {
-                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
-                    message: quotedMsg,
-                    messageTimestamp: msg.messageTimestamp
+                    key: msg.key,
+                    message: quotedMsg
                 },
                 'buffer'
             );
@@ -215,28 +52,24 @@ const mediaCommands = {
 
             await fs.writeFile(inputPath, buffer);
 
-            // Parse sticker options
-            const text = args.length ? args.join(' ') : '';
-            const size = Math.min(Math.max(parseInt(args[1]) || 512, 128), 512);
-            const quality = Math.min(Math.max(parseInt(args[2]) || 80, 1), 100);
+            // Convert to WebP using sharp
+            await sharp(inputPath)
+                .resize(512, 512, {
+                    fit: 'contain',
+                    background: { r: 0, g: 0, b: 0, alpha: 0 }
+                })
+                .webp()
+                .toFile(outputPath);
 
-            await stickerOptions.processSticker(inputPath, outputPath, {
-                text,
-                size,
-                quality,
-                animated: !!quotedMsg.videoMessage
-            });
-
-            const webpBuffer = await fs.readFile(outputPath);
+            const stickerBuffer = await fs.readFile(outputPath);
             await sock.sendMessage(msg.key.remoteJid, {
-                sticker: webpBuffer,
-                mimetype: 'image/webp'
+                sticker: stickerBuffer
             });
 
         } catch (error) {
-            logger.error('Error in sticker command:', error);
+            logger.error('Sticker command error:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to create sticker: ' + error.message
+                text: '❌ Failed to create sticker'
             });
         } finally {
             await cleanupTempFiles(...tempFiles);
@@ -257,11 +90,10 @@ const mediaCommands = {
                 text: '⏳ Converting sticker to image...'
             });
 
-            const buffer = await downloadMediaMessageWithLogging(
+            const buffer = await downloadMediaMessage(
                 {
-                    key: msg.message.extendedTextMessage.contextInfo.stanzaId,
-                    message: quotedMsg,
-                    messageTimestamp: msg.messageTimestamp
+                    key: msg.key,
+                    message: quotedMsg
                 },
                 'buffer'
             );
@@ -272,28 +104,58 @@ const mediaCommands = {
 
             await fs.writeFile(inputPath, buffer);
 
-            await executeImageMagick(
-                `convert "${inputPath}" "${outputPath}"`,
-                inputPath,
-                outputPath
-            );
+            // Convert WebP to PNG using sharp
+            await sharp(inputPath)
+                .png()
+                .toFile(outputPath);
 
-            const pngBuffer = await fs.readFile(outputPath);
+            const imageBuffer = await fs.readFile(outputPath);
             await sock.sendMessage(msg.key.remoteJid, {
-                image: pngBuffer,
+                image: imageBuffer,
                 caption: '✅ Here\'s your image!'
             });
 
         } catch (error) {
-            logger.error('Error in toimg command:', error);
+            logger.error('Toimg command error:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to convert sticker: ' + error.message
+                text: '❌ Failed to convert sticker'
             });
         } finally {
             await cleanupTempFiles(...tempFiles);
         }
     },
 
+    meme: async (sock, msg) => {
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🎭 Fetching a random meme...'
+            });
+
+            const subreddits = ['memes', 'dankmemes', 'wholesomememes'];
+            const randomSubreddit = subreddits[Math.floor(Math.random() * subreddits.length)];
+
+            const response = await axios.get(`https://www.reddit.com/r/${randomSubreddit}/random.json`);
+            if (!response.data || !response.data[0]?.data?.children?.length) {
+                throw new Error('Failed to fetch meme');
+            }
+
+            const post = response.data[0].data.children[0].data;
+            if (post.over_18 || !post.url || !post.url.match(/\.(jpg|jpeg|png|gif)$/i)) {
+                throw new Error('Invalid or inappropriate meme');
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: post.url },
+                caption: `🎭 ${post.title || 'Random Meme'}`
+            });
+
+        } catch (error) {
+            logger.error('Meme command error:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to fetch meme'
+            });
+        }
+    },
     tomp3: async (sock, msg) => {
         const tempFiles = [];
         try {
