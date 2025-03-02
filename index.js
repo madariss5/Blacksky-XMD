@@ -14,6 +14,7 @@ const groupCommands = require('./commands/group');
 const gameCommands = require('./commands/game');
 const educationCommands = require('./commands/education');
 const economyCommands = require('./commands/economy');
+const utilityCommands = require('./commands/utility');
 
 async function startBot() {
     try {
@@ -35,11 +36,12 @@ async function startBot() {
             ...groupCommands,
             ...gameCommands,
             ...educationCommands,
-            ...economyCommands
+            ...economyCommands,
+            ...utilityCommands
         };
 
         logger.info('Loading command modules:', {
-            moduleNames: ['basic', 'ai', 'media', 'group', 'game', 'education', 'economy'],
+            moduleNames: ['basic', 'ai', 'media', 'group', 'game', 'education', 'economy', 'utility'],
             totalCommands: Object.keys(commandModules).length
         });
 

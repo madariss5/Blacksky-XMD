@@ -1,6 +1,9 @@
 const logger = require('pino')();
+const ytdl = require('@distube/ytdl-core');
+const ffmpeg = require('fluent-ffmpeg');
+const fs = require('fs-extra');
+const path = require('path');
 const axios = require('axios');
-const os = require('os');
 
 const utilityCommands = {
     menu: async (sock, msg) => {
@@ -9,7 +12,9 @@ const utilityCommands = {
                            `*Media Conversion:*\n` +
                            `!sticker - Create sticker from image/video\n` +
                            `!tts <text> - Convert text to speech\n` +
-                           `!translate <lang> <text> - Translate text\n\n` +
+                           `!translate <lang> <text> - Translate text\n` +
+                           `!ytmp3 <url> - Download YouTube audio as MP3\n` +
+                           `!ytmp4 <url> - Download YouTube video as MP4\n\n` +
                            `*Information:*\n` +
                            `!weather <city> - Get weather info\n` +
                            `!calc <expression> - Calculate expression\n` +
@@ -250,6 +255,116 @@ const utilityCommands = {
     help: async (sock, msg) => {
         // Alias for menu command
         await utilityCommands.menu(sock, msg);
+    },
+    ytmp3: async (sock, msg, args) => {
+        try {
+            if (!args[0]) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a YouTube URL!\nUsage: !ytmp3 <url>'
+                });
+            }
+
+            const url = args[0];
+            if (!ytdl.validateURL(url)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Invalid YouTube URL!'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Converting video to audio...'
+            });
+
+            const info = await ytdl.getInfo(url);
+            const title = info.videoDetails.title.replace(/[^\w\s]/gi, '');
+            const tempDir = path.join(__dirname, '../temp');
+            await fs.ensureDir(tempDir);
+
+            const audioPath = path.join(tempDir, `${title}.mp3`);
+            const videoReadableStream = ytdl(url, {
+                quality: 'highestaudio',
+                filter: 'audioonly'
+            });
+
+            await new Promise((resolve, reject) => {
+                ffmpeg(videoReadableStream)
+                    .audioBitrate(128)
+                    .toFormat('mp3')
+                    .on('end', resolve)
+                    .on('error', reject)
+                    .save(audioPath);
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                audio: { url: audioPath },
+                mimetype: 'audio/mp3',
+                fileName: `${title}.mp3`
+            });
+
+            // Clean up
+            await fs.unlink(audioPath);
+            logger.info('Successfully converted and sent audio:', { title });
+
+        } catch (error) {
+            logger.error('Error in ytmp3 command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to convert video: ' + error.message
+            });
+        }
+    },
+
+    ytmp4: async (sock, msg, args) => {
+        try {
+            if (!args[0]) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a YouTube URL!\nUsage: !ytmp4 <url>'
+                });
+            }
+
+            const url = args[0];
+            if (!ytdl.validateURL(url)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Invalid YouTube URL!'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⏳ Downloading video...'
+            });
+
+            const info = await ytdl.getInfo(url);
+            const title = info.videoDetails.title.replace(/[^\w\s]/gi, '');
+            const tempDir = path.join(__dirname, '../temp');
+            await fs.ensureDir(tempDir);
+
+            const videoPath = path.join(tempDir, `${title}.mp4`);
+            const videoReadableStream = ytdl(url, {
+                quality: 'highest',
+                filter: 'videoandaudio'
+            });
+
+            await new Promise((resolve, reject) => {
+                videoReadableStream
+                    .pipe(fs.createWriteStream(videoPath))
+                    .on('finish', resolve)
+                    .on('error', reject);
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                video: { url: videoPath },
+                caption: `📹 ${title}`
+            });
+
+            // Clean up
+            await fs.unlink(videoPath);
+            logger.info('Successfully downloaded and sent video:', { title });
+
+        } catch (error) {
+            logger.error('Error in ytmp4 command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to download video: ' + error.message
+            });
+        }
     }
 };
 
