@@ -831,8 +831,8 @@ const groupCommands = {
                     });
                     break;
                 case 'locked':
-                    await sock.groupSettingUpdate(msg.key.remoteJid, `locked');
-                    await sock.sendMessage(msg.key.remoteJid, {
+                    await sock.groupSettingUpdate(msg.key.remoteJid, 'locked');
+                                        await sock.sendMessage(msg.key.remoteJid, {
                         text: '🔒 Group settings updated: Group is locked'
                     });
                     break;
@@ -842,13 +842,9 @@ const groupCommands = {
                         text: '🔓 Group settings updated: Group is unlocked'
                     });
                     break;
+                default:
+                    throw new Error('Invalid setting option');
             }
-
-            logger.info('Group settings updated:', {
-                group: msg.key.remoteJid,
-                setting: setting,
-                updatedBy: msg.key.participant
-            });
         } catch (error) {
             logger.error('Error in groupsettings command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
