@@ -7,6 +7,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def download_gif(url, filename):
+    """Download test GIFs for the bot."""
     try:
         media_dir = os.path.join(os.getcwd(), 'media')
         os.makedirs(media_dir, exist_ok=True)
@@ -15,7 +16,7 @@ def download_gif(url, filename):
         logger.info(f"Downloading GIF from {url} to {output_path}")
 
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
 
         req = urllib.request.Request(url, headers=headers)
@@ -23,7 +24,6 @@ def download_gif(url, filename):
             with open(output_path, 'wb') as f:
                 f.write(response.read())
 
-        # Verify file exists and has content
         if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
             logger.info(f"Successfully downloaded GIF to {output_path}")
             return True
@@ -34,8 +34,7 @@ def download_gif(url, filename):
         logger.error(f"Error downloading GIF: {str(e)}")
         return False
 
-# Using a more reliable CDN URL for anime throw GIF
-yeet_url = "https://c.tenor.com/X5nBN_p_j5IAAAAC/throw-yeet.gif"
-
-success = download_gif(yeet_url, "yeet.gif")
+# Using a reliable Giphy CDN URL for anime throw GIF
+yeet_url = "https://media2.giphy.com/media/dw0NAQhs0yqdW/giphy.gif"
+success = download_gif(yeet_url, "throw.gif")
 sys.exit(0 if success else 1)
