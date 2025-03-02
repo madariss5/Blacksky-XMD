@@ -9,40 +9,37 @@ const path = require('path');
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            // Create menu header
+            // Create menu header with fancy text
             let menuText = `╭═══〘 ${config.botName} 〙═══⊷❍\n┃\n`;
             menuText += `┃ 𝗨𝗦𝗘𝗥: ${msg.pushName}\n`;
             menuText += `┃ 𝗧𝗜𝗠𝗘: ${moment().format('HH:mm:ss')}\n`;
             menuText += `┃ 𝗗𝗔𝗧𝗘: ${moment().format('DD/MM/YYYY')}\n`;
             menuText += `┃\n╰═══════════════════⊷❍\n\n`;
 
-            // Add command sections
-            const commandSections = {
-                'Basic Commands': require('./basic'),
-                'User Commands': require('./user'),
-                'Group Commands': require('./group'),
-                'Media Commands': require('./media'),
-                'Fun Commands': require('./fun'),
-                'AI Commands': require('./ai'),
-                'Owner Commands': require('./owner'),
-                'Utility Commands': require('./utility')
-            };
-
-            // Add each section's commands to menu
-            for (const [section, commands] of Object.entries(commandSections)) {
-                if (Object.keys(commands).length > 0) {
-                    menuText += `╭─❏ *${section}*\n`;
-                    for (const cmd of Object.keys(commands)) {
-                        menuText += `│ ⭔ ${config.prefix}${cmd}\n`;
-                    }
-                    menuText += `╰─────────────────❍\n\n`;
+            // Get categories from config
+            const categories = {};
+            Object.entries(config.commands).forEach(([cmd, info]) => {
+                const category = info.category;
+                if (!categories[category]) {
+                    categories[category] = [];
                 }
-            }
+                categories[category].push(`│ ⭔ ${config.prefix}${cmd}`);
+            });
+
+            // Add each category's commands to menu
+            Object.entries(categories).forEach(([category, commands]) => {
+                if (commands.length > 0) {
+                    menuText += `╭─❏ *${category}*\n`;
+                    menuText += commands.join('\n');
+                    menuText += `\n╰─────────────────❍\n\n`;
+                }
+            });
 
             // Add footer
             menuText += `╭═══〘 INFO 〙═══⊷❍\n`;
             menuText += `┃ Prefix: ${config.prefix}\n`;
             menuText += `┃ Owner: ${config.ownerName}\n`;
+            menuText += `┃ Total Commands: ${Object.keys(config.commands).length}\n`;
             menuText += `╰═══════════════════⊷❍`;
 
             // Send menu with image
