@@ -4,8 +4,7 @@ const reactionsCommands = require('./commands/reactions');
 const ownerCommands = require('./commands/owner');
 const funCommands = require('./commands/fun');
 const logger = require('./utils/logger');
-
-const prefix = '.';
+const config = require('./config');
 
 const commandModules = {
     basic: basicCommands,
@@ -17,31 +16,37 @@ const commandModules = {
 
 module.exports = async (sock, msg, { messages, type }, store) => {
     try {
-        if (!msg.body) return;
-
-        // Check for prefix
-        if (!msg.body.startsWith(prefix)) return;
-
-        // Parse command
-        const args = msg.body.slice(1).trim().split(/\s+/);
-        const command = args.shift()?.toLowerCase();
-
-        if (!command) return;
-
-        // Enhanced message structure logging
-        logger.info('Message received:', {
-            messageKey: JSON.stringify(msg.key),
-            messageType: msg.type,
-            fromGroup: msg.key.remoteJid?.includes('@g.us'),
-            fromPrivate: msg.key.remoteJid?.includes('@s.whatsapp.net'),
-            participant: msg.key.participant,
-            remoteJid: msg.key.remoteJid,
-            fromMe: msg.key.fromMe,
-            timestamp: msg.messageTimestamp
+        // Enhanced logging for message debugging
+        logger.info('Received message:', {
+            body: msg.body,
+            type: msg.type,
+            from: msg.key.remoteJid,
+            participant: msg.key.participant
         });
 
+        if (!msg.body) {
+            logger.debug('Message body is empty, skipping processing');
+            return;
+        }
+
+        // Check for prefix
+        const prefix = config.prefix || '.';
+        if (!msg.body.startsWith(prefix)) {
+            logger.debug('Message does not start with prefix, skipping');
+            return;
+        }
+
+        // Parse command with improved error handling
+        const args = msg.body.slice(prefix.length).trim().split(/\s+/);
+        const command = args.shift()?.toLowerCase();
+
+        if (!command) {
+            logger.debug('No command found in message');
+            return;
+        }
+
         // Log command processing
-        logger.info('Processing command', {
+        logger.info('Processing command:', {
             command,
             args,
             chat: msg.key.remoteJid,
@@ -49,22 +54,32 @@ module.exports = async (sock, msg, { messages, type }, store) => {
         });
 
         // Execute command if found
+        let commandFound = false;
         for (const [module, commands] of Object.entries(commandModules)) {
             if (commands[command]) {
+                logger.info(`Executing command from ${module} module:`, command);
                 await commands[command](sock, msg, args);
-                return;
+                commandFound = true;
+                break;
             }
         }
 
-        // Command not found
-        await sock.sendMessage(msg.chat, {
-            text: `Command *${command}* not found. Use ${prefix}menu to see available commands.`
-        });
+        // Command not found response
+        if (!commandFound) {
+            logger.info('Command not found:', command);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `Command *${command}* not found. Use ${prefix}menu to see available commands.`
+            });
+        }
 
     } catch (err) {
         logger.error('Error in command handler:', err);
-        await sock.sendMessage(msg.chat, {
-            text: '❌ Error executing command'
-        });
+        try {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error executing command. Please try again.'
+            });
+        } catch (sendError) {
+            logger.error('Error sending error message:', sendError);
+        }
     }
 };
