@@ -33,31 +33,22 @@ async function initializeSession() {
 
         const socketConfig = {
             version,
-            logger: pino({ level: config.session.logLevel || 'silent' }),
-            printQRInTerminal: true,
-            auth: {
-                creds: state.creds,
-                keys: makeInMemoryStore(state.keys, logger)
-            },
-            browser: config.session.browser || ['BlackSky-MD', 'Chrome', '112.0.5615.49'],
-            connectTimeoutMs: config.session.connectTimeoutMs,
-            defaultQueryTimeoutMs: config.session.defaultQueryTimeoutMs,
+            logger: pino({ level: 'info' }), // Changed to info for QR visibility
+            printQRInTerminal: true,         // Ensure QR prints to terminal
+            auth: state,
+            browser: ['BlackSky-MD', 'Chrome', '112.0.5615.49'],
+            connectTimeoutMs: 60000,         // Increased timeout
+            qrTimeout: 60000,                // Added QR timeout
             emitOwnEvents: true,
-            markOnlineOnConnect: config.session.markOnlineOnConnect,
-            getMessage: async (key) => {
-                try {
-                    if (store) {
-                        const msg = await store.loadMessage(key.remoteJid, key.id);
-                        return msg?.message || undefined;
-                    }
-                } catch (error) {
-                    logger.error('Error fetching message:', error);
-                }
-                return { conversation: 'Message not found' };
-            }
+            markOnlineOnConnect: true
         };
 
-        return makeWASocket(socketConfig);
+        const sock = makeWASocket(socketConfig);
+
+        // Save credentials after successful connection
+        sock.ev.on('creds.update', saveCreds);
+
+        return sock;
     } catch (error) {
         logger.error('Error initializing session:', error);
         throw error;
@@ -153,8 +144,8 @@ async function connectToWhatsApp() {
 
         const messageType = getContentType(msg.message);
         const messageContent = msg.message[messageType]?.text || 
-                             msg.message[messageType]?.caption || 
-                             msg.message?.conversation || '';
+                                 msg.message[messageType]?.caption || 
+                                 msg.message?.conversation || '';
 
         await handleIncomingMessage(sock, msg, messageType, messageContent, msg.key.remoteJid);
     });

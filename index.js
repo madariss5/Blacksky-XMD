@@ -4,116 +4,32 @@ const {
     DisconnectReason,
     fetchLatestBaileysVersion,
     makeInMemoryStore,
-    jidDecode,
-    proto,
-    getContentType
+    jidDecode
 } = require("@whiskeysockets/baileys");
 const pino = require('pino');
 const logger = require('./utils/logger');
-logger.info('Starting application...');
-logger.info(`Environment: ${process.env.NODE_ENV}`);
-logger.info(`Port: ${process.env.PORT || 5000}`);
-const fs = require('fs-extra');
-const path = require('path');
-const { smsg, decodeJid } = require('./lib/simple');
+const { smsg } = require('./lib/simple');
 const config = require('./config');
 const express = require('express');
+const fs = require('fs-extra');
+const path = require('path');
 
-// Initialize store with proper pino instance
+// Initialize store
 const store = makeInMemoryStore({
-    logger: logger.child({ component: 'store' })
-});
-
-let credsSent = false;
-let isShuttingDown = false;
-
-// Express server setup for health checks
-const app = express();
-const PORT = process.env.PORT || 5000;
-
-// Basic middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Health check endpoint
-app.get('/', (req, res) => {
-    res.json({
-        status: 'WhatsApp Bot Server Running',
-        uptime: process.uptime(),
-        memory: process.memoryUsage(),
-        timestamp: new Date().toISOString()
-    });
-});
-
-// Start server and bot
-const startApplication = async () => {
-    try {
-        logger.info('Starting Express server...');
-        // Start Express server for health checks
-        await new Promise((resolve, reject) => {
-            const server = app.listen(PORT, '0.0.0.0')
-                .once('error', (err) => {
-                    logger.error('Failed to start server:', err);
-                    reject(err);
-                })
-                .once('listening', () => {
-                    logger.info(`Server started and listening on port ${PORT}`);
-                    resolve();
-                });
-        });
-
-        logger.info('Starting WhatsApp bot...');
-        await startBot();
-
-    } catch (error) {
-        logger.error('Application startup failed:', error);
-        process.exit(1);
-    }
-};
-
-
-// Handle graceful shutdown
-const shutdown = async (signal) => {
-    try {
-        isShuttingDown = true;
-        logger.info(`Received ${signal}, shutting down gracefully...`);
-        process.exit(0);
-    } catch (error) {
-        logger.error('Error during shutdown:', error);
-        process.exit(1);
-    }
-};
-
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
-
-// Handle uncaught errors
-process.on('uncaughtException', (err) => {
-    logger.error('Uncaught Exception:', err);
-    if (!isShuttingDown && err.code !== 'EADDRINUSE') {
-        logger.info('Attempting restart after uncaught exception...');
-        setTimeout(startBot, 3000);
-    }
-});
-
-process.on('unhandledRejection', (err) => {
-    logger.error('Unhandled Promise Rejection:', err);
-    if (!isShuttingDown && err.code !== 'EADDRINUSE') {
-        logger.info('Attempting restart after unhandled rejection...');
-        setTimeout(startBot, 3000);
-    }
+    logger: pino({ level: 'silent' })
 });
 
 async function startBot() {
     try {
-        logger.info('Initializing WhatsApp bot...');
-        // Load auth state
-        const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
+        logger.info('Starting WhatsApp bot...');
 
-        // Create WA socket connection
+        // Initialize auth state
+        const { state, saveCreds } = await useMultiFileAuthState('auth_info');
+
+        // Create WA Socket
         const sock = makeWASocket({
-            logger: pino({ level: 'silent' }),
-            printQRInTerminal: true,
+            logger: pino({ level: 'info' }), // Set to info to see QR code
+            printQRInTerminal: true,         // Enable QR code in terminal
             auth: state,
             browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49']
         });
@@ -122,44 +38,20 @@ async function startBot() {
 
         // Handle connection updates
         sock.ev.on('connection.update', async (update) => {
-            const { connection, lastDisconnect } = update;
+            const { connection, lastDisconnect, qr } = update;
+
+            if (qr) {
+                logger.info('New QR Code received:', qr);
+            }
 
             if (connection === 'close') {
                 const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-                logger.info('Connection closed. Should reconnect:', shouldReconnect);
+                logger.info('Connection closed. Reconnecting:', shouldReconnect);
                 if (shouldReconnect) {
                     startBot();
                 }
             } else if (connection === 'open') {
                 logger.info('WhatsApp connection established!');
-
-                if (!credsSent && sock.user?.id) {
-                    try {
-                        // Format bot's own number
-                        const botNumber = sock.user.id;
-                        logger.info('Bot number for creds:', botNumber);
-
-                        // Save current credentials to file without formatting
-                        const credsFile = path.join(process.cwd(), 'creds.json');
-                        await fs.writeFile(credsFile, JSON.stringify(state.creds));
-
-                        // Send file to bot's own number
-                        await sock.sendMessage(botNumber, {
-                            document: fs.readFileSync(credsFile),
-                            mimetype: 'application/json',
-                            fileName: 'creds.json',
-                            caption: '🔐 Bot Credentials Backup\nStore this file safely!'
-                        });
-
-                        // Cleanup and mark as sent
-                        await fs.remove(credsFile);
-                        credsSent = true;
-                        logger.info('Credentials file sent successfully to bot');
-                    } catch (error) {
-                        logger.error('Failed to send credentials:', error);
-                    }
-                }
-
                 await sock.sendMessage(sock.user.id, {
                     text: '🟢 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 Bot is now online!'
                 }).catch(err => logger.error('Failed to send status message:', err));
@@ -170,28 +62,58 @@ async function startBot() {
         sock.ev.on('messages.upsert', async (m) => {
             try {
                 if (m.type !== 'notify') return;
-
                 let msg = m.messages[0];
                 if (!msg.message) return;
-
                 msg = smsg(sock, msg, store);
-
                 require('./handler')(sock, msg, m, store);
             } catch (err) {
                 logger.error('Error processing message:', err);
             }
         });
 
-        // Handle creds
+        // Save credentials
         sock.ev.on('creds.update', saveCreds);
 
     } catch (err) {
         logger.error('Error starting bot:', err);
-        startBot();
+        process.exit(1);
     }
 }
 
-// Initialize the application
+// Start Express server for health checks
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+app.get('/', (req, res) => {
+    res.json({
+        status: 'WhatsApp Bot Server Running',
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Start server and bot
+async function startApplication() {
+    try {
+        // Start Express server
+        await new Promise((resolve, reject) => {
+            app.listen(PORT, '0.0.0.0')
+                .once('error', reject)
+                .once('listening', resolve);
+        });
+
+        logger.info(`Server started on port ${PORT}`);
+
+        // Start WhatsApp bot
+        await startBot();
+
+    } catch (error) {
+        logger.error('Application startup failed:', error);
+        process.exit(1);
+    }
+}
+
+// Start the application
 startApplication().catch(err => {
     logger.error('Startup failed:', err);
     process.exit(1);
