@@ -1,5 +1,6 @@
 const axios = require('axios');
 const logger = require('pino')();
+const config = require('../config');
 const math = require('mathjs');
 const wiki = require('wikipedia');
 const translate = require('@vitalets/google-translate-api');

@@ -1,20 +1,15 @@
+const logger = require('pino')();
 const config = require('../config');
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
-const logger = require('pino')();
 const fs = require('fs-extra');
 const path = require('path');
-const { exec } = require('child_process');
 const ffmpeg = require('fluent-ffmpeg');
 const axios = require('axios');
-const ytdl = require('@distube/ytdl-core');
-const yts = require('yt-search');
 const sharp = require('sharp');
 
-// Ensure temp directory exists
 const tempDir = path.join(__dirname, '../temp');
 fs.ensureDirSync(tempDir);
 
-// Helper functions
 const convertToWebp = async (inputPath, outputPath) => {
     return new Promise((resolve, reject) => {
         const pythonScript = path.join(__dirname, '../scripts/convert_sticker.py');
@@ -134,7 +129,6 @@ const stickerOptions = {
     }
 };
 
-// Update sticker command to use new options
 const mediaCommands = {
     meme: async (sock, msg) => {
         try {
@@ -990,7 +984,7 @@ const mediaCommands = {
 
             await new Promise((resolve, reject) => {
                 ffmpeg(inputPath)
-                    .audioFilters('asetrate=44100*1.25,aresample=44100,atempo=1/1.25')
+                                        .audioFilters('asetrate=44100*1.25,aresample=44100,atempo=1/1.25')
                     .toFormat('mp3')
                     .on('end', resolve)
                     .on('error', reject)

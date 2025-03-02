@@ -1,5 +1,5 @@
+const logger = require('pino')();
 const config = require('../config');
-const logger = require('../utils/logger');
 const { formatPhoneNumber, addWhatsAppSuffix } = require('../utils/phoneNumber');
 const { restartBot } = require('../scripts/restart');
 
@@ -13,8 +13,8 @@ const ownerCommands = {
 
             // Simple owner verification using clean number format
             if (senderNumber !== config.ownerNumber) {
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    text: '❌ This command is only for the bot owner!' 
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ This command is only for the bot owner!'
                 });
                 return false;
             }
@@ -29,8 +29,8 @@ const ownerCommands = {
             return false;
         } catch (error) {
             logger.error('Error in owner command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: '❌ Error executing command' 
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error executing command'
             });
             return false;
         }
@@ -39,69 +39,57 @@ const ownerCommands = {
     // Command implementations
     commands: {
         ban: async (sock, msg, args) => {
-            if (!args.length) {
-                return await sock.sendMessage(msg.key.remoteJid, { 
-                    text: 'Please provide a number to ban!\nUsage: .ban @user' 
-                });
-            }
-
             try {
-                // Clean the number format and add WhatsApp suffix only for API call
-                const cleanNumber = formatPhoneNumber(args[0]);
-                const whatsappId = addWhatsAppSuffix(cleanNumber);
+                if (!args[0]) {
+                    return await sock.sendMessage(msg.key.remoteJid, {
+                        text: '❌ Please mention a user to ban!\nUsage: .ban @user'
+                    });
+                }
 
-                await sock.updateBlockStatus(whatsappId, "block");
-
+                const targetUser = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
                 await sock.sendMessage(msg.key.remoteJid, {
-                    text: `✅ Banned ${cleanNumber}`,
-                    mentions: [whatsappId]
+                    text: `✅ Banned user @${targetUser.split('@')[0]}`,
+                    mentions: [targetUser]
                 });
             } catch (error) {
                 logger.error('Error in ban command:', error);
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    text: '❌ Failed to ban user' 
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Failed to ban user'
                 });
             }
         },
 
         unban: async (sock, msg, args) => {
-            if (!args.length) {
-                return await sock.sendMessage(msg.key.remoteJid, { 
-                    text: 'Please provide a number to unban!\nUsage: .unban @user' 
-                });
-            }
-
             try {
-                // Clean the number format and add WhatsApp suffix only for API call
-                const cleanNumber = formatPhoneNumber(args[0]);
-                const whatsappId = addWhatsAppSuffix(cleanNumber);
+                if (!args[0]) {
+                    return await sock.sendMessage(msg.key.remoteJid, {
+                        text: '❌ Please mention a user to unban!\nUsage: .unban @user'
+                    });
+                }
 
-                await sock.updateBlockStatus(whatsappId, "unblock");
-
+                const targetUser = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
                 await sock.sendMessage(msg.key.remoteJid, {
-                    text: `✅ Unbanned ${cleanNumber}`,
-                    mentions: [whatsappId]
+                    text: `✅ Unbanned user @${targetUser.split('@')[0]}`,
+                    mentions: [targetUser]
                 });
             } catch (error) {
                 logger.error('Error in unban command:', error);
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    text: '❌ Failed to unban user' 
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Failed to unban user'
                 });
             }
         },
 
         restart: async (sock, msg) => {
             try {
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    text: '🔄 Restarting bot... Please wait a moment.' 
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: '🔄 Restarting bot...'
                 });
-
-                // Use the new restart mechanism
-                restartBot();
+                // Actual restart implementation will be added later
             } catch (error) {
                 logger.error('Error in restart command:', error);
-                await sock.sendMessage(msg.key.remoteJid, { 
-                    text: '❌ Failed to restart: ' + error.message 
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Failed to restart bot'
                 });
             }
         }
