@@ -2,6 +2,7 @@ const { formatPhoneNumber } = require('./utils/phoneNumber');
 
 module.exports = {
     prefix: '.',  // Command prefix
+    // Store owner number in pure format (countrycode + number), e.g., '4915561048015'
     ownerNumber: formatPhoneNumber(process.env.OWNER_NUMBER || '4915561048015'),
     ownerName: process.env.OWNER_NAME || 'BLACKSKY',
     botName: '𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻',

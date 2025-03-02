@@ -6,7 +6,8 @@ const formatPhoneNumber = (phone) => {
     const cleanNumber = phone.split('@')[0];
 
     // Remove any non-numeric characters except '+'
-    return cleanNumber.replace(/[^\d+]/g, '');
+    const baseNumber = cleanNumber.split(':')[0];  // Handle device IDs in JIDs
+    return baseNumber.replace(/[^\d+]/g, '');
 };
 
 const addWhatsAppSuffix = (phone) => {

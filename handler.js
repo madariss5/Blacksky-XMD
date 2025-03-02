@@ -17,10 +17,24 @@ const { formatPhoneNumber } = require('./utils/phoneNumber');
 
 // Check if the sender is an owner
 const isOwner = (sender) => {
-    // Format both the sender's number and owner number for comparison
-    const formattedSender = formatPhoneNumber(sender);
-    const formattedOwner = formatPhoneNumber(config.ownerNumber);
-    return formattedSender === formattedOwner;
+    try {
+        // Clean up sender JID - handle both direct messages and group messages
+        const senderNumber = sender.split(':')[0].split('@')[0];
+        const ownerNumber = config.ownerNumber;
+
+        // Log the comparison for debugging
+        logger.info('Comparing owner numbers:', {
+            rawSender: sender, // Added raw sender
+            cleanedSender: senderNumber, // Added cleaned sender
+            ownerNumber: ownerNumber, // Added owner number explicitly
+            match: senderNumber === ownerNumber
+        });
+
+        return senderNumber === ownerNumber;
+    } catch (error) {
+        logger.error('Error in isOwner check:', error);
+        return false;
+    }
 };
 
 const commandModules = {
