@@ -27,11 +27,10 @@ const basicCommands = {
             // Organize commands by category
             const categories = {};
             Object.entries(config.commands).forEach(([cmd, info]) => {
-                const category = info.category;
-                if (!categories[category]) {
-                    categories[category] = [];
+                if (!categories[info.category]) {
+                    categories[info.category] = [];
                 }
-                categories[category].push({
+                categories[info.category].push({
                     command: cmd,
                     description: info.description
                 });
@@ -45,9 +44,7 @@ const basicCommands = {
                     menuText += `┏━━━《 ${emoji} ${category} 》━━━┓\n`;
                     commands.forEach(({command, description}) => {
                         menuText += `┃ ⌬ ${config.prefix}${command}\n`;
-                        if (description) {
-                            menuText += `┃ └─ ${description}\n`;
-                        }
+                        menuText += `┃ └─ ${description}\n`;
                     });
                     menuText += `┗━━━━━━━━━━━━━━━┛\n\n`;
                 });
@@ -92,36 +89,13 @@ const basicCommands = {
                         `Basic Commands:\n` +
                         `• ${config.prefix}help - Show this help message\n` +
                         `• ${config.prefix}ping - Check bot response time\n` +
-                        `• ${config.prefix}info - Show bot information\n\n` +
-                        `For detailed command help:\n` +
-                        `${config.prefix}help <command>`;
+                        `• ${config.prefix}info - Show bot information`;
 
             await sock.sendMessage(msg.key.remoteJid, { text });
         } catch (error) {
             logger.error('Help command failed:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error showing help: ' + error.message
-            });
-        }
-    },
-
-    ping: async (sock, msg) => {
-        try {
-            const start = Date.now();
-            await sock.sendMessage(msg.key.remoteJid, { text: '🏓 Pinging...' });
-            const latency = Date.now() - start;
-
-            const text = `🏓 Pong!\n\n` +
-                        `📊 *Status Info*\n` +
-                        `• Latency: ${latency}ms\n` +
-                        `• Uptime: ${formatUptime(process.uptime())}\n` +
-                        `• Memory: ${formatMemory(process.memoryUsage().heapUsed)}`;
-
-            await sock.sendMessage(msg.key.remoteJid, { text });
-        } catch (error) {
-            logger.error('Ping command failed:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error checking ping: ' + error.message
             });
         }
     },
