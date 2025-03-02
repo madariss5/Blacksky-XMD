@@ -7,8 +7,6 @@ const pino = require('pino');
 const logger = require('./utils/logger');
 const config = require('./config');
 const express = require('express');
-const fs = require('fs-extra');
-const path = require('path');
 
 async function startBot() {
     try {
@@ -16,93 +14,93 @@ async function startBot() {
         const { state, saveCreds } = await useMultiFileAuthState('auth_info');
 
         const sock = makeWASocket({
-            logger: pino({ level: 'debug' }),
+            logger: pino({ level: 'silent' }), // Reduce noise in logs
             printQRInTerminal: true,
             auth: state,
             browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49']
         });
 
-        // Handle messages with direct command processing
-        sock.ev.on('messages.upsert', async ({ messages, type }) => {
+        // Direct message handling
+        sock.ev.on('messages.upsert', async ({ messages }) => {
             try {
-                if (type !== 'notify') return;
-
                 const msg = messages[0];
-                if (!msg?.message) {
-                    logger.debug('No message content found');
-                    return;
+
+                // Early returns for invalid messages
+                if (!msg || !msg.message) return;
+
+                // Get the actual message content
+                const messageType = Object.keys(msg.message)[0];
+                let messageContent = '';
+
+                // Extract message based on type
+                switch (messageType) {
+                    case 'conversation':
+                        messageContent = msg.message.conversation;
+                        break;
+                    case 'extendedTextMessage':
+                        messageContent = msg.message.extendedTextMessage.text;
+                        break;
+                    case 'imageMessage':
+                        messageContent = msg.message.imageMessage.caption;
+                        break;
+                    case 'videoMessage':
+                        messageContent = msg.message.videoMessage.caption;
+                        break;
+                    default:
+                        return; // Unsupported message type
                 }
 
-                // Log raw message for debugging
-                logger.debug('Raw message structure:', {
-                    msg: JSON.stringify(msg, null, 2)
-                });
-
-                // Extract message content
-                const messageContent = (
-                    msg.message.conversation ||
-                    msg.message.extendedTextMessage?.text ||
-                    msg.message.imageMessage?.caption ||
-                    msg.message.videoMessage?.caption ||
-                    ''
-                ).trim();
-
-                logger.info('Processed message:', {
+                // Debug log
+                logger.info('Message received:', {
+                    type: messageType,
                     content: messageContent,
-                    from: msg.key.remoteJid,
-                    participant: msg.key.participant
+                    from: msg.key.remoteJid
                 });
 
-                // Check for prefix
+                // Check for command prefix
                 const prefix = config.prefix || '.';
-                if (messageContent.startsWith(prefix)) {
-                    // Process command directly here before passing to handler
-                    const args = messageContent.slice(prefix.length).trim().split(/\s+/);
-                    const command = args.shift()?.toLowerCase();
+                if (!messageContent.startsWith(prefix)) return;
 
-                    if (command) {
-                        logger.info('Command detected:', {
-                            command,
-                            args,
-                            from: msg.key.remoteJid
-                        });
+                // Parse command
+                const args = messageContent.slice(prefix.length).trim().split(/\s+/);
+                const command = args.shift()?.toLowerCase();
 
-                        // Send immediate response for testing
-                        await sock.sendMessage(msg.key.remoteJid, {
-                            text: `Processing command: ${command}`
-                        });
+                if (!command) return;
 
-                        // Process command through handler
-                        await require('./handler')(sock, msg, { messages, type }, {});
-                    }
-                }
-            } catch (err) {
-                logger.error('Error in message processing:', err);
+                // Log command processing
+                logger.info('Processing command:', { command, args });
+
+                // Send acknowledgment
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `📝 Processing command: ${command}`
+                });
+
+                // Process command
+                const handler = require('./handler');
+                await handler(sock, msg, { messages }, {});
+
+            } catch (error) {
+                logger.error('Error in message handler:', error);
             }
         });
 
         // Connection handling
-        sock.ev.on('connection.update', async (update) => {
-            const { connection, lastDisconnect } = update;
-
+        sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
             if (connection === 'close') {
                 const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-                logger.info('Connection closed. Reconnecting:', shouldReconnect);
                 if (shouldReconnect) {
+                    logger.info('Reconnecting...');
                     startBot();
                 }
             } else if (connection === 'open') {
-                logger.info('WhatsApp connection established!');
-                await sock.sendMessage(sock.user.id, {
-                    text: '🟢 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 Bot is now online!'
-                }).catch(err => logger.error('Failed to send status message:', err));
+                logger.info('Bot connected successfully!');
             }
         });
 
         sock.ev.on('creds.update', saveCreds);
 
-    } catch (err) {
-        logger.error('Error starting bot:', err);
+    } catch (error) {
+        logger.error('Error in bot startup:', error);
         process.exit(1);
     }
 }
@@ -112,31 +110,10 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.get('/', (req, res) => {
-    res.json({
-        status: 'WhatsApp Bot Server Running',
-        uptime: process.uptime(),
-        timestamp: new Date().toISOString()
-    });
+    res.json({ status: 'WhatsApp Bot Server Running' });
 });
 
-async function startApplication() {
-    try {
-        await new Promise((resolve, reject) => {
-            app.listen(PORT, '0.0.0.0')
-                .once('error', reject)
-                .once('listening', resolve);
-        });
-
-        logger.info(`Server started on port ${PORT}`);
-        await startBot();
-
-    } catch (error) {
-        logger.error('Application startup failed:', error);
-        process.exit(1);
-    }
-}
-
-startApplication().catch(err => {
-    logger.error('Startup failed:', err);
-    process.exit(1);
+app.listen(PORT, '0.0.0.0', () => {
+    logger.info(`Server running on port ${PORT}`);
+    startBot();
 });

@@ -3,71 +3,66 @@ const logger = require('./utils/logger');
 const basicCommands = require('./commands/basic');
 const userCommands = require('./commands/user');
 
-module.exports = async (sock, msg, { messages, type }, store) => {
+module.exports = async (sock, msg, { messages }, store) => {
     try {
-        // Log the incoming message structure
-        logger.debug('Handler received message:', {
-            msg: JSON.stringify(msg, null, 2)
-        });
+        // Get message content
+        const messageType = Object.keys(msg.message)[0];
+        let messageContent = '';
 
-        // Extract message content with fallbacks
-        const messageContent = (
-            msg.message?.conversation ||
-            msg.message?.extendedTextMessage?.text ||
-            msg.message?.imageMessage?.caption ||
-            msg.message?.videoMessage?.caption ||
-            ''
-        ).trim();
+        // Extract message based on type
+        switch (messageType) {
+            case 'conversation':
+                messageContent = msg.message.conversation;
+                break;
+            case 'extendedTextMessage':
+                messageContent = msg.message.extendedTextMessage.text;
+                break;
+            case 'imageMessage':
+                messageContent = msg.message.imageMessage.caption;
+                break;
+            case 'videoMessage':
+                messageContent = msg.message.videoMessage.caption;
+                break;
+            default:
+                return; // Unsupported message type
+        }
 
-        // Check for prefix and command
+        // Parse command
         const prefix = config.prefix || '.';
         if (!messageContent.startsWith(prefix)) {
             logger.debug('Message does not start with prefix:', messageContent);
             return;
         }
-
-        // Parse command and arguments
         const args = messageContent.slice(prefix.length).trim().split(/\s+/);
         const command = args.shift()?.toLowerCase();
 
-        if (!command) {
-            logger.debug('No command found in message');
-            return;
-        }
-
-        logger.info('Processing command:', {
+        // Debug log
+        logger.info('Command details:', {
             command,
             args,
             from: msg.key.remoteJid
         });
 
-        // Try to execute the command
+        // Execute command
         if (basicCommands[command]) {
-            logger.info('Executing basic command:', command);
             await basicCommands[command](sock, msg, args);
             return;
         }
 
         if (userCommands[command]) {
-            logger.info('Executing user command:', command);
             await userCommands[command](sock, msg, args);
             return;
         }
 
         // Command not found
-        logger.info('Command not found:', command);
         await sock.sendMessage(msg.key.remoteJid, {
-            text: `❌ Command *${command}* not found. Use ${prefix}help to see available commands.`
+            text: `❌ Command *${command}* not found.\nType ${prefix}help to see available commands.`
         });
 
-    } catch (err) {
-        logger.error('Error in command handler:', err);
-        try {
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error executing command. Please try again.'
-            });
-        } catch (sendError) {
-            logger.error('Error sending error message:', sendError);
-        }
+    } catch (error) {
+        logger.error('Error in command handler:', error);
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: '❌ Error processing command. Please try again.'
+        }).catch(err => logger.error('Error sending error message:', err));
     }
 };
