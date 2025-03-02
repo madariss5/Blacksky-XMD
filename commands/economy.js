@@ -22,10 +22,12 @@ const economyCommands = {
     daily: async (sock, msg) => {
         try {
             const userId = msg.key.participant || msg.key.remoteJid;
+            logger.info('Processing daily claim for user:', userId);
 
             // Check if user can claim
             const canClaim = await store.canClaimDaily(userId);
             if (!canClaim) {
+                logger.debug('Daily claim not available for user:', userId);
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '⏰ You can claim your daily reward once every 24 hours!'
                 });
@@ -33,13 +35,15 @@ const economyCommands = {
 
             // Claim daily reward
             const result = await store.claimDaily(userId);
+            logger.info('Daily claim successful:', result);
+
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `✨ *Daily Reward*\n\nYou received ${result.reward} coins!\nNew balance: ${result.newBalance} coins`
             });
         } catch (error) {
             logger.error('Error in daily command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error claiming daily reward'
+                text: '❌ Error claiming daily reward: ' + error.message
             });
         }
     },
