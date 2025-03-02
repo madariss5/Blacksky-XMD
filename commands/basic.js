@@ -1,5 +1,4 @@
 const logger = require('pino')();
-const config = require('../config');
 const { getUptime } = require('../utils');
 
 const basicCommands = {
@@ -9,12 +8,12 @@ const basicCommands = {
             await sock.sendMessage(msg.key.remoteJid, { text: 'Testing ping...' });
             const end = Date.now();
 
-            const response = `🏓 *Ping Statistics*\n\n` +
+            const pingText = `🏓 *Ping Statistics*\n\n` +
                            `• Response Time: ${end - start}ms\n` +
                            `• Bot Status: Active\n` +
                            `• Uptime: ${getUptime()}`;
 
-            await sock.sendMessage(msg.key.remoteJid, { text: response });
+            await sock.sendMessage(msg.key.remoteJid, { text: pingText });
             logger.info('Ping command executed successfully');
 
         } catch (error) {
