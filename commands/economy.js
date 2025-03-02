@@ -146,9 +146,26 @@ const economyCommands = {
     },
     bank: async (sock, msg) => {
         try {
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `This feature is not available yet.` 
-            });
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const userData = await store.getUserData(userId);
+
+            if (!userData) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ You need to register first! Use .register'
+                });
+            }
+
+            const bankBalance = userData.bank || 0;
+            const walletBalance = userData.gold || 0;
+
+            let text = `🏦 *BANK STATEMENT*\n` +
+                      `─`.repeat(20) + `\n\n` +
+                      `💰 Bank Balance: $${bankBalance}\n` +
+                      `👛 Wallet Balance: $${walletBalance}\n` +
+                      `💵 Total Assets: $${bankBalance + walletBalance}\n\n` +
+                      `Use ${config.prefix}deposit or ${config.prefix}withdraw to manage your money!`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text });
         } catch (error) {
             logger.error('Error in bank command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -252,20 +269,45 @@ const economyCommands = {
                     text: `Please specify choice and amount!\nUsage: ${config.prefix}flip heads/tails <amount>`
                 });
             }
+
             const choice = args[0].toLowerCase();
             if (choice !== 'heads' && choice !== 'tails') {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '❌ Please choose either heads or tails!'
                 });
             }
+
             const amount = parseInt(args[1]);
             if (isNaN(amount) || amount <= 0) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '❌ Please enter a valid amount greater than 0!'
                 });
             }
+
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const balance = await store.getUserBalance(userId);
+
+            if (balance < amount) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Insufficient balance!'
+                });
+            }
+
+            // Flip the coin
+            const result = Math.random() < 0.5 ? 'heads' : 'tails';
+            const win = choice === result;
+            const finalAmount = win ? amount : -amount;
+
+            // Update balance
+            await store.updateBalance(userId, finalAmount);
+            const newBalance = await store.getUserBalance(userId);
+
+            const flipText = win ?
+                `🎯 *You won!*\nCoin landed on ${result}\nYou won $${amount}!` :
+                `💔 *You lost!*\nCoin landed on ${result}\nYou lost $${amount}`;
+
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `This feature is not available yet.` 
+                text: `${flipText}\n\nNew balance: $${newBalance}`
             });
         } catch (error) {
             logger.error('Error in flip command:', error);
@@ -281,14 +323,39 @@ const economyCommands = {
                     text: `Please specify an amount!\nUsage: ${config.prefix}withdraw <amount>`
                 });
             }
+
             const amount = parseInt(args[0]);
             if (isNaN(amount) || amount <= 0) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '❌ Please enter a valid amount greater than 0!'
                 });
             }
+
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const userData = await store.getUserData(userId);
+
+            if (!userData) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ You need to register first! Use .register'
+                });
+            }
+
+            if (!userData.bank || userData.bank < amount) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Insufficient funds in your bank account!'
+                });
+            }
+
+            // Update bank balance
+            userData.bank -= amount;
+            await store.set(`users.${userId}.bank`, userData.bank);
+
+            // Update wallet (gold) balance
+            const currentGold = userData.gold || 0;
+            await store.updateUserGold(userId, currentGold + amount);
+
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `This feature is not available yet.` 
+                text: `💳 Successfully withdrew $${amount} from your bank account!`
             });
         } catch (error) {
             logger.error('Error in withdraw command:', error);
