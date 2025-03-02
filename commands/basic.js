@@ -134,13 +134,28 @@ const basicCommands = {
                     `• ${config.prefix}antiporn - Toggle anti-porn filter`,
                     `• ${config.prefix}antilink - Toggle anti-link protection`,
                     `• ${config.prefix}getlogs - View bot logs`
+                ],
+                'Economy': [
+                    `• ${config.prefix}balance - Check your coin balance`,
+                    `• ${config.prefix}daily - Claim daily reward`,
+                    `• ${config.prefix}work - Earn coins by working`,
+                    `• ${config.prefix}mine - Mine for coins`,
+                    `• ${config.prefix}hunt - Hunt for rewards`,
+                    `• ${config.prefix}fish - Go fishing for coins`,
+                    `• ${config.prefix}transfer - Transfer coins to others`,
+                    `• ${config.prefix}rob - Try to steal coins (risky)`,
+                    `• ${config.prefix}gamble - Gamble your coins`,
+                    `• ${config.prefix}shop - View item shop`,
+                    `• ${config.prefix}buy - Buy items from shop`,
+                    `• ${config.prefix}sell - Sell your items`,
+                    `• ${config.prefix}inventory - Check your inventory`
                 ]
             };
 
             // Add other command categories from config
             Object.entries(config.commands).forEach(([cmd, info]) => {
                 const category = info.category || 'Uncategorized';
-                if (category !== 'Basic' && category !== 'User' && category !== 'Group' && category !== 'NSFW' && category !== 'Owner') {
+                if (category !== 'Basic' && category !== 'User' && category !== 'Group' && category !== 'NSFW' && category !== 'Owner' && category !== 'Economy') {
                     if (!categories[category]) {
                         categories[category] = [];
                     }
