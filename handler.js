@@ -1,10 +1,22 @@
 const config = require('./config');
 const logger = require('./utils/logger');
-const basicCommands = require('./commands/basic');
 
-// Just load basic commands first to ensure menu works
+// Import all command modules
+const basicCommands = require('./commands/basic');
+const aiCommands = require('./commands/ai');
+const mediaCommands = require('./commands/media');
+const groupCommands = require('./commands/group');
+const ownerCommands = require('./commands/owner');
+const utilityCommands = require('./commands/utility');
+
+// Combine all command modules
 const allCommands = {
-    ...basicCommands
+    ...basicCommands,
+    ...aiCommands,
+    ...mediaCommands,
+    ...groupCommands,
+    ...ownerCommands,
+    ...utilityCommands
 };
 
 async function messageHandler(sock, msg, { messages }, store) {
@@ -41,6 +53,7 @@ async function messageHandler(sock, msg, { messages }, store) {
 
         // Execute command if it exists
         if (allCommands[command]) {
+            logger.info(`Executing command: ${command}`);
             await allCommands[command](sock, msg, args);
             return;
         }
