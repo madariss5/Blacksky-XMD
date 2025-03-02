@@ -35,7 +35,8 @@ class SessionManager {
             logger.info('Session and auth directories initialized:', {
                 sessionDir: this.sessionDir,
                 authDir: this.authDir,
-                mode: this.isHeroku ? 'Heroku' : 'Local'
+                mode: this.isHeroku ? 'Heroku' : 'Local',
+                timestamp: new Date().toISOString()
             });
             return true;
         } catch (error) {
@@ -102,6 +103,36 @@ class SessionManager {
     // Helper method to check if running on Heroku
     isHerokuEnvironment() {
         return this.isHeroku;
+    }
+
+    async restoreToTimestamp(targetTimestamp) {
+        try {
+            const currentTime = new Date();
+            if (currentTime < targetTimestamp) {
+                throw new Error('Cannot restore to a future timestamp');
+            }
+
+            logger.info('Attempting to restore session to timestamp:', {
+                target: targetTimestamp.toISOString(),
+                current: currentTime.toISOString()
+            });
+
+            // Clean up sessions created after target timestamp
+            const files = await fs.readdir(this.sessionDir);
+            for (const file of files) {
+                const filePath = path.join(this.sessionDir, file);
+                const stats = await fs.stat(filePath);
+                if (stats.mtime > targetTimestamp) {
+                    await fs.unlink(filePath);
+                    logger.info('Removed newer session file:', file);
+                }
+            }
+
+            return true;
+        } catch (error) {
+            logger.error('Failed to restore to timestamp:', error);
+            return false;
+        }
     }
 }
 
