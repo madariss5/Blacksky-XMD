@@ -2,11 +2,11 @@ const logger = require('pino')();
 const os = require('os');
 const moment = require('moment-timezone');
 const config = require('../config');
+const { allCommands } = require('../handler');
 
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            // Create fancy header
             let menuText = `╔═══════ஜ۩۞۩ஜ═══════╗\n`;
             menuText += `║    ${config.botName} MENU    ║\n`;
             menuText += `╚═══════ஜ۩۞۩ஜ═══════╝\n\n`;
@@ -21,18 +21,17 @@ const basicCommands = {
 
             // Organize commands by category
             const categories = {};
-
-            // Go through each command in config.commands
-            Object.entries(config.commands).forEach(([cmd, info]) => {
-                const category = info.category;
+            for (const [cmdName, cmdFunction] of Object.entries(allCommands)) {
+                // Get category from config or default to 'Misc'
+                const category = config.commands[cmdName]?.category || 'Misc';
                 if (!categories[category]) {
                     categories[category] = [];
                 }
                 categories[category].push({
-                    command: cmd,
-                    description: info.description
+                    command: cmdName,
+                    description: config.commands[cmdName]?.description || ''
                 });
-            });
+            }
 
             // Category emoji mapping
             const categoryEmojis = {
@@ -53,7 +52,8 @@ const basicCommands = {
                 'Tool': '🛠️',
                 'User': '👤',
                 'Utility': '⚙️',
-                'Education': '📚'
+                'Education': '📚',
+                'Misc': '📦'
             };
 
             // Add commands by category
