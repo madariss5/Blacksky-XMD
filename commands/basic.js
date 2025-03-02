@@ -9,48 +9,49 @@ const path = require('path');
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            // Header
-            let text = `╔═════[ *${config.botName}* ]═════⊱\n`;
-            text += `┃ ╭═══〘 ꧁ INFO ꧂ 〙═══⊱\n`;
-            text += `┃ │ \n`;
-            text += `┃ │ Prefix: ${config.prefix}\n`;
-            text += `┃ │ User: ${msg.pushName}\n`;
-            text += `┃ │ Time: ${moment().format('HH:mm:ss')}\n`;
-            text += `┃ │ Date: ${moment().format('DD/MM/YYYY')}\n`;
-            text += `┃ │\n`;
-            text += `┃ ╰═══════════════⊱\n\n`;
+            let menuText = `╔═══『 ${config.botName} MENU 』═══⊷\n`;
+            menuText += `┃ ⎆ User: ${msg.pushName}\n`;
+            menuText += `┃ ⎆ Time: ${moment().format('HH:mm:ss')}\n`;
+            menuText += `┃ ⎆ Date: ${moment().format('DD/MM/YYYY')}\n`;
+            menuText += `╚═════════════════════⊷\n\n`;
 
-            // Get all command categories from config.commands
-            const categories = {};
-            Object.entries(config.commands).forEach(([cmd, info]) => {
-                if (!categories[info.category]) {
-                    categories[info.category] = [];
+            // Read command files
+            const commandFiles = await fs.readdir(__dirname);
+
+            // Process each command file
+            for (const file of commandFiles) {
+                if (file.endsWith('.js')) {
+                    try {
+                        // Clear require cache to ensure fresh load
+                        delete require.cache[require.resolve(path.join(__dirname, file))];
+
+                        // Load commands from file
+                        const commands = require(path.join(__dirname, file));
+                        const category = file.replace('.js', '').toUpperCase();
+
+                        // Add category header
+                        menuText += `╔═══『 ${category} 』═══⊷\n`;
+
+                        // Add each command from the file
+                        Object.keys(commands).forEach(cmd => {
+                            menuText += `┃ ⎆ ${config.prefix}${cmd}\n`;
+                        });
+
+                        menuText += `╚═════════════════════⊷\n\n`;
+                    } catch (error) {
+                        logger.error(`Error loading commands from ${file}:`, error);
+                    }
                 }
-                categories[info.category].push(cmd);
-            });
+            }
 
-            // Add each category and its commands
-            Object.entries(categories).sort().forEach(([category, commands]) => {
-                text += `┃ ╭═══〘 ꧁ ${category} COMMANDS ꧂ 〙\n`;
-                text += `┃ │ \n`;
-                commands.forEach(cmd => {
-                    text += `┃ │ ➦ ${config.prefix}${cmd}\n`;
-                });
-                text += `┃ │\n`;
-                text += `┃ ╰═══════════════⊱\n\n`;
-            });
-
-            // Footer
-            text += `╚════════════════⊱\n\n`;
-            text += `Type ${config.prefix}help <command> for detailed info`;
+            menuText += `Type ${config.prefix}help <command> for details`;
 
             await sock.sendMessage(msg.key.remoteJid, {
                 image: { url: config.menuImage },
-                caption: text,
+                caption: menuText,
                 gifPlayback: false
             });
 
-            logger.info('Menu command executed successfully');
         } catch (error) {
             logger.error('Menu command failed:', error);
             await sock.sendMessage(msg.key.remoteJid, {
@@ -75,15 +76,17 @@ const basicCommands = {
                 }
             }
 
-            // Show basic help menu if no specific command
-            const text = `*🤖 ${config.botName} Help*\n\n` +
+            const text = `*${config.botName} Help*\n\n` +
+                        `To see all commands, type: ${config.prefix}menu\n\n` +
                         `Basic Commands:\n` +
                         `• ${config.prefix}help - Show this help message\n` +
                         `• ${config.prefix}ping - Check bot response time\n` +
                         `• ${config.prefix}info - Show bot information\n\n` +
-                        `Type ${config.prefix}menu to see full command list!`;
+                        `For detailed command help:\n` +
+                        `${config.prefix}help <command>`;
 
             await sock.sendMessage(msg.key.remoteJid, { text });
+
         } catch (error) {
             logger.error('Help command failed:', error);
             await sock.sendMessage(msg.key.remoteJid, {
