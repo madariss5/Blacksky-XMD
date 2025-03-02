@@ -1,10 +1,7 @@
 const {
     default: makeWASocket,
     useMultiFileAuthState,
-    DisconnectReason,
-    fetchLatestBaileysVersion,
-    makeInMemoryStore,
-    jidDecode
+    DisconnectReason
 } = require("@whiskeysockets/baileys");
 const pino = require('pino');
 const logger = require('./utils/logger');
@@ -13,10 +10,8 @@ const express = require('express');
 const fs = require('fs-extra');
 const path = require('path');
 
-// Initialize store
-const store = makeInMemoryStore({
-    logger: pino({ level: 'silent' })
-});
+// Initialize store with debug logging
+const store = {};
 
 async function startBot() {
     try {
@@ -25,15 +20,13 @@ async function startBot() {
         const { state, saveCreds } = await useMultiFileAuthState('auth_info');
 
         const sock = makeWASocket({
-            logger: pino({ level: 'debug' }), // Changed to debug for more verbose logging
+            logger: pino({ level: 'debug' }), // Enable debug logging
             printQRInTerminal: true,
             auth: state,
             browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49']
         });
 
-        store.bind(sock.ev);
-
-        // Handle messages with improved parsing
+        // Handle messages
         sock.ev.on('messages.upsert', async ({ messages, type }) => {
             try {
                 if (type !== 'notify') return;
@@ -41,37 +34,22 @@ async function startBot() {
                 const msg = messages[0];
                 if (!msg) return;
 
-                // Enhanced message logging
-                logger.info('Received message:', {
-                    messageType: msg.messageType,
-                    body: msg.message?.conversation || 
-                          msg.message?.extendedTextMessage?.text ||
-                          msg.message?.imageMessage?.caption ||
-                          msg.message?.videoMessage?.caption,
+                logger.debug('Received message:', {
+                    messageTypes: Object.keys(msg.message || {}),
+                    key: msg.key,
                     from: msg.key.remoteJid,
-                    sender: msg.key.participant || msg.key.remoteJid
+                    participant: msg.key.participant
                 });
 
-                // Direct message handling without smsg wrapper
-                const msgData = {
-                    ...msg,
-                    body: msg.message?.conversation || 
-                          msg.message?.extendedTextMessage?.text ||
-                          msg.message?.imageMessage?.caption ||
-                          msg.message?.videoMessage?.caption || '',
-                    type: Object.keys(msg.message || {})[0],
-                    key: msg.key
-                };
-
-                // Process command
-                await require('./handler')(sock, msgData, { messages, type }, store);
+                // Process message with handler
+                await require('./handler')(sock, msg, { messages, type }, store);
 
             } catch (err) {
                 logger.error('Error processing message:', err);
             }
         });
 
-        // Connection handling
+        // Handle connection updates
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect } = update;
 
@@ -83,12 +61,14 @@ async function startBot() {
                 }
             } else if (connection === 'open') {
                 logger.info('WhatsApp connection established!');
+                // Send online status message
                 await sock.sendMessage(sock.user.id, {
                     text: '🟢 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻 Bot is now online!'
                 }).catch(err => logger.error('Failed to send status message:', err));
             }
         });
 
+        // Save credentials
         sock.ev.on('creds.update', saveCreds);
 
     } catch (err) {
