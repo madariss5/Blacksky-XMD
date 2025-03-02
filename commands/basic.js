@@ -58,8 +58,6 @@ const basicCommands = {
             menuText += `║    for detailed info     ║\n`;
             menuText += `╚════════════════════╝`;
 
-            logger.info('Sending menu message...');
-
             await sock.sendMessage(msg.key.remoteJid, {
                 image: { url: config.menuImage },
                 caption: menuText,
