@@ -36,8 +36,8 @@ def download_gif(url, filename):
 
 # Using verified anime reaction GIFs from GIPHY's CDN
 gifs = {
-    'thumbsup': 'https://media1.giphy.com/media/9Y5BbDSkSTiY8/giphy.gif',
-    'thumbsdown': 'https://media3.giphy.com/media/3o7TKr3nzbh5WgCFxe/giphy.gif'
+    'thumbsup': 'https://media1.giphy.com/media/4xpB3eE00FfBm/giphy.gif',
+    'thumbsdown': 'https://media1.giphy.com/media/108M7gCS1JSoO4/giphy.gif'
 }
 
 success = True
