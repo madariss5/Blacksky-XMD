@@ -2,56 +2,26 @@ const pino = require('pino');
 const logger = pino({ level: 'silent' });
 const os = require('os');
 const moment = require('moment-timezone');
-const path = require('path');
+const config = require('../config');
 
 const basicCommands = {
     menu: async (sock, msg) => {
         try {
-            const config = require('../config');
-
-            // Load all command modules using correct paths
-            const commandModules = {
-                basic: require('./basic'),
-                user: require('./user'),
-                group: require('./group'),
-                media: require('./media'),
-                fun: require('./fun'),
-                ai: require('./ai'),
-                owner: require('./owner'),
-                tool: require('./tool'),
-                economy: require('./economy'),
-                music: require('./music'),
-                utility: require('./utility'),
-                nsfw: require('./nsfw'),
-                reactions: require('./reactions')
-            };
-
-            // Combine all commands safely
-            const allCommands = {};
-            for (const [module, commands] of Object.entries(commandModules)) {
-                try {
-                    Object.assign(allCommands, commands);
-                } catch (error) {
-                    logger.warn(`Failed to load ${module} commands:`, error);
-                }
-            }
+            // Get all commands from config
+            const commands = config.commands;
 
             // Create menu message with image
             await sock.sendMessage(msg.key.remoteJid, { 
-                image: { url: 'https://raw.githubusercontent.com/your-repo/assets/main/f9.jpg' },
-                caption: `┏━━⊱『 ${config.botName} 』⊰━━┓
-
-📜 *COMMAND LIST*
-
-${Object.entries(allCommands)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([cmd]) => `⭔ ${config.prefix}${cmd}`)
-    .join('\n')}
-
-┗━━⊱ Total: ${Object.keys(allCommands).length} Commands ⊰━━┛
-
-*Note:* Type ${config.prefix}help <command> for details
-*Prefix:* ${config.prefix}`
+                image: { url: config.menuImage },
+                caption: `┏━━⊱『 ${config.botName} 』⊰━━┓\n\n` +
+                        `📜 *COMMAND LIST*\n\n` +
+                        `${Object.entries(commands)
+                            .sort(([a], [b]) => a.localeCompare(b))
+                            .map(([cmd, info]) => `⭔ ${config.prefix}${cmd} - ${info.description}`)
+                            .join('\n')}\n\n` +
+                        `┗━━⊱ Total: ${Object.keys(commands).length} Commands ⊰━━┛\n\n` +
+                        `*Note:* Type ${config.prefix}help <command> for details\n` +
+                        `*Prefix:* ${config.prefix}`
             });
 
             logger.info('Menu command executed successfully');
@@ -63,15 +33,29 @@ ${Object.entries(allCommands)
         }
     },
 
-    help: async (sock, msg) => {
+    help: async (sock, msg, args) => {
         try {
-            const text = `*🤖 HANS MD Bot Help*\n\n` +
+            if (args.length > 0) {
+                const command = args[0].toLowerCase();
+                const cmdInfo = config.commands[command];
+
+                if (cmdInfo) {
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        text: `*Command: ${config.prefix}${command}*\n\n` +
+                              `📝 Description: ${cmdInfo.description}\n` +
+                              `📁 Category: ${cmdInfo.category}`
+                    });
+                    return;
+                }
+            }
+
+            const text = `*🤖 ${config.botName} Help*\n\n` +
                         `Basic Commands:\n` +
-                        `• .help - Show this help message\n` +
-                        `• .ping - Check bot response time\n` +
-                        `• .info - Show bot information\n` +
-                        `• .menu - Show all available commands\n\n` +
-                        `Type .menu to see full command list!`;
+                        `• ${config.prefix}help - Show this help message\n` +
+                        `• ${config.prefix}ping - Check bot response time\n` +
+                        `• ${config.prefix}info - Show bot information\n` +
+                        `• ${config.prefix}menu - Show all available commands\n\n` +
+                        `Type ${config.prefix}menu to see full command list!`;
 
             await sock.sendMessage(msg.key.remoteJid, { text });
         } catch (error) {
@@ -107,7 +91,6 @@ ${Object.entries(allCommands)
             });
         }
     },
-
     info: async (sock, msg) => {
         try {
             const uptime = process.uptime();
