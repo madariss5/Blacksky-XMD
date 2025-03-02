@@ -74,6 +74,6 @@
   },
   "stack": "heroku-22",
   "scripts": {
-    "postdeploy": "npm install"
+    "postdeploy": "npm install && node index.js"
   }
 }
