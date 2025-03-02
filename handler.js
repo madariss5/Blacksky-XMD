@@ -22,6 +22,34 @@ const toolCommands = require('./commands/tool');
 const userCommands = require('./commands/user');
 const utilityCommands = require('./commands/utility');
 
+// Debug logging for module imports
+logger.info('Importing command modules...');
+
+// Debug each module's commands
+Object.entries({
+    AI: aiCommands,
+    Anime: animeCommands,
+    Basic: basicCommands,
+    Downloader: downloaderCommands,
+    Economy: economyCommands,
+    Education: educationCommands,
+    Fun: funCommands,
+    Game: gameCommands,
+    Group: groupCommands,
+    Media: mediaCommands,
+    Music: musicCommands,
+    NSFW: nsfwCommands,
+    Owner: ownerCommands,
+    Reactions: reactionsCommands,
+    Search: searchCommands,
+    Social: socialCommands,
+    Tool: toolCommands,
+    User: userCommands,
+    Utility: utilityCommands
+}).forEach(([category, commands]) => {
+    logger.info(`${category} commands:`, Object.keys(commands || {}));
+});
+
 // Combine all command modules
 const allCommands = {
     ...aiCommands,
@@ -46,6 +74,7 @@ const allCommands = {
 };
 
 // Debug logging for available commands
+logger.info('Total available commands:', Object.keys(allCommands).length);
 logger.info('Available commands:', Object.keys(allCommands));
 
 async function messageHandler(sock, msg, { messages }, store) {
