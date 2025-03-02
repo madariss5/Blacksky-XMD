@@ -209,6 +209,90 @@ const reactionCommands = {
                 text: '❌ Failed to execute rip command! (GIF not available)'
             });
         }
+    },
+
+    wave: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'everyone';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const caption = `*${msg.pushName}* waves at ${target}! 👋`;
+
+            logger.info('Executing wave command:', { target, mentions });
+            await sendGifReaction(sock, msg, 'wave.gif', caption, mentions);
+        } catch (error) {
+            logger.error('Error in wave command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute wave command! (GIF not available)'
+            });
+        }
+    },
+
+    yeet: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const caption = `*${msg.pushName}* yeeted ${target}! 🚀`;
+
+            logger.info('Executing yeet command:', { target, mentions });
+            await sendGifReaction(sock, msg, 'yeet.gif', caption, mentions);
+        } catch (error) {
+            logger.error('Error in yeet command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute yeet command! (GIF not available)'
+            });
+        }
+    },
+
+    smile: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : null;
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const caption = target ? 
+                `*${msg.pushName}* smiles at ${target}! 😊` :
+                `*${msg.pushName}* smiles brightly! 😊`;
+
+            logger.info('Executing smile command:', { target, mentions });
+            await sendGifReaction(sock, msg, 'smile.gif', caption, mentions);
+        } catch (error) {
+            logger.error('Error in smile command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute smile command! (GIF not available)'
+            });
+        }
+    },
+
+    dance: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : null;
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const caption = target ? 
+                `*${msg.pushName}* dances with ${target}! 💃` :
+                `*${msg.pushName}* starts dancing! 💃`;
+
+            logger.info('Executing dance command:', { target, mentions });
+            await sendGifReaction(sock, msg, 'dance.gif', caption, mentions);
+        } catch (error) {
+            logger.error('Error in dance command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute dance command! (GIF not available)'
+            });
+        }
+    },
+
+    highfive: async (sock, msg, args) => {
+        try {
+            const target = args[0] ? `@${args[0].replace('@', '')}` : 'themselves';
+            const mentions = args[0] ? [args[0] + '@s.whatsapp.net'] : [];
+            const caption = `*${msg.pushName}* high-fived ${target}! ✋`;
+
+            logger.info('Executing highfive command:', { target, mentions });
+            await sendGifReaction(sock, msg, 'highfive.gif', caption, mentions);
+        } catch (error) {
+            logger.error('Error in highfive command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '😅 Failed to execute highfive command! (GIF not available)'
+            });
+        }
     }
 };
 
