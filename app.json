@@ -34,6 +34,9 @@
       "url": "https://github.com/DuckyTeam/heroku-buildpack-imagemagick.git"
     }
   ],
+  "scripts": {
+    "postdeploy": "npm install"
+  },
   "formation": {
     "web": {
       "quantity": 1,
