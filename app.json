@@ -50,12 +50,12 @@
   "formation": {
     "worker": {
       "quantity": 1,
-      "size": "hobby"
+      "size": "eco"
     }
   },
   "addons": [
     {
-      "plan": "heroku-postgresql:hobby-dev"
+      "plan": "heroku-postgresql:free"
     }
   ]
 }
