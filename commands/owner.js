@@ -544,18 +544,53 @@ const ownerCommands = {
             if (!await ownerCommands.handleOwnerCommand(sock, msg)) return;
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '🔄 Checking for updates...'
+                text: '🔄 Starting bot update process...'
             });
 
-            // Update logic would go here
-            // For demonstration, we'll just show a message
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '✅ Bot is already up to date!'
-            });
+            const { execSync } = require('child_process');
+
+            // Status message function
+            const sendStatus = async (text) => {
+                await sock.sendMessage(msg.key.remoteJid, { text });
+            };
+
+            try {
+                // Fetch latest changes
+                await sendStatus('📥 Fetching latest changes...');
+                execSync('git fetch origin main');
+
+                // Check for changes
+                const status = execSync('git status -uno').toString();
+                if (status.includes('Your branch is up to date')) {
+                    return await sendStatus('✅ Bot is already up to date!');
+                }
+
+                // Pull changes
+                await sendStatus('📥 Pulling updates...');
+                execSync('git pull origin main');
+
+                // Install any new dependencies
+                await sendStatus('📦 Installing dependencies...');
+                execSync('npm install');
+
+                // Success message
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: '✅ Bot updated successfully!\n\n' +
+                          'Changes will take effect after restart.\n' +
+                          'Use .restart to apply updates.'
+                });
+
+                logger.info('Bot update completed successfully');
+            } catch (error) {
+                logger.error('Error in git operations:', error);
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Update failed: ' + error.message
+                });
+            }
         } catch (error) {
             logger.error('Error in update command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to check for updates'
+                text: '❌ Update process failed'
             });
         }
     },

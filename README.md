@@ -3,7 +3,7 @@ A highly advanced WhatsApp Multi-Device bot with AI capabilities and robust func
 
 ## 🌟 Features
 - 📱 Multi-Device Support
-- 🤖 Advanced AI Integration
+- 🤖 Advanced AI Integration with GPT and DALL-E
 - 👥 Comprehensive Group Management
 - 🎮 Interactive Games & Fun Commands
 - 🔒 Enhanced Security Features
@@ -11,6 +11,9 @@ A highly advanced WhatsApp Multi-Device bot with AI capabilities and robust func
 - 💬 Message Anti-Spam & Filtering
 - 🎨 Media & Sticker Creation
 - 🌐 Multi-Language Support
+- 💰 Economy System with Shop
+- 🎯 Quests and Achievements
+- 🎁 Inventory Management
 
 ## 📋 Prerequisites
 Before running the bot, ensure you have the following installed:
@@ -19,7 +22,32 @@ Before running the bot, ensure you have the following installed:
 - FFmpeg ([FFmpeg Installation Guide](https://ffmpeg.org/download.html))
 - Git (for cloning the repository)
 
-## ⚡️ Local Installation
+## ⚡️ Quick Deploy
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/blacksky-algorithms/blacksky-md)
+
+## 🔐 Environment Configuration
+Create a `.env` file with the following variables:
+```env
+# Required Configuration
+OWNER_NUMBER=your_whatsapp_number  # e.g., 491234567890 for +49 123 456 7890
+OWNER_NAME=your_name
+PREFIX=.
+BOT_NAME=BLACKSKY-MD
+SESSION_ID=blacksky-md
+
+# Optional AI Features
+OPENAI_API_KEY=your_openai_api_key
+
+# Optional Configuration
+LOG_LEVEL=info
+KEEP_ALIVE_INTERVAL=10000
+QUERY_TIMEOUT=60000
+CONNECT_TIMEOUT=60000
+QR_TIMEOUT=40000
+RETRY_DELAY=2000
+```
+
+## 🚀 Local Installation
 ```bash
 # Clone the repository
 git clone https://github.com/blacksky-algorithms/blacksky-md.git
@@ -33,35 +61,18 @@ npm install
 # Create environment configuration
 cp .env.example .env
 # Edit .env with your configuration
-```
 
-## 🔐 Environment Configuration
-Create a `.env` file with the following variables:
-```env
-# Required Configuration
-OWNER_NUMBER=your_whatsapp_number  # e.g., 491234567890 for +49 123 456 7890
-OWNER_NAME=your_name
-PREFIX=.
-BOT_NAME=BLACKSKY-MD
-SESSION_ID=blacksky-md
-
-# Optional AI Features (if you want to use AI commands)
-OPENAI_API_KEY=your_openai_api_key
-REPLICATE_API_TOKEN=your_replicate_token
-
-# Optional API Keys for Additional Features
-NEWS_API_KEY=your_newsapi_key
-WEATHER_API_KEY=your_openweather_key
-```
-
-## 🚀 Running the Bot
-```bash
 # Start the bot
 npm start
-
-# The bot will generate a QR code
-# Scan the QR code with WhatsApp to log in
 ```
+
+## 📱 First Time Setup
+1. Run the bot using `npm start`
+2. Scan the QR code with WhatsApp (Link a device)
+3. The bot will automatically:
+   - Send the credentials file to your number
+   - Send a deployment status message
+   - Start accepting commands
 
 ## 🔄 Keeping the Bot Online
 For 24/7 operation, you can use process managers like PM2:
@@ -80,8 +91,6 @@ pm2 logs blacksky-bot
 ```
 
 ## 🌐 Heroku Deployment
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/blacksky-algorithms/blacksky-md)
-
 1. Click the Deploy to Heroku button above
 2. Fill in the required environment variables:
    - `OWNER_NUMBER`: Your WhatsApp number (e.g., 491234567890)
@@ -90,8 +99,26 @@ pm2 logs blacksky-bot
    - `BOT_NAME`: Your bot's name
    - Other optional variables as needed
 3. Wait for the deployment to complete
-4. View the logs in Heroku dashboard to scan QR code
-5. The bot will save credentials and send them to your number
+4. The bot will automatically send credentials to your number
+
+## 🔄 Updating the Bot
+To update the bot to the latest version:
+
+```bash
+# Pull the latest changes
+git pull origin main
+
+# Install any new dependencies
+npm install
+
+# Restart the bot
+npm start
+```
+
+Or use the built-in command:
+```
+.update
+```
 
 ## 📚 Command Categories
 - 🎯 Basic Commands - General bot interactions
@@ -102,6 +129,9 @@ pm2 logs blacksky-bot
 - 📥 Downloaders - Media download capabilities
 - 🎵 Music & Media - Audio and media features
 - 👑 Owner Commands - Bot administration
+- 💰 Economy System - Virtual currency and shop
+- 🎨 Media Creation - Stickers and media editing
+- 🎯 Achievement System - Rewards and progression
 
 ## ⚠️ Important Notes
 1. Keep your `.env` file private and never share it
@@ -112,10 +142,12 @@ pm2 logs blacksky-bot
 
 ## 🆘 Troubleshooting
 Common issues and solutions:
+
 1. **Connection Issues**
    - Ensure stable internet connection
    - Check if WhatsApp Web is accessible
    - Clear the `auth_info` directory and rescan QR
+   - Verify your session is valid
 
 2. **Dependencies Issues**
    ```bash
@@ -130,6 +162,7 @@ Common issues and solutions:
 3. **FFmpeg Issues**
    - Verify FFmpeg installation: `ffmpeg -version`
    - Add FFmpeg to system PATH
+   - For Heroku, buildpacks are automatically configured
 
 ## 🤝 Contributing
 1. Fork the repository
