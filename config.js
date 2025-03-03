@@ -580,7 +580,6 @@ const config = {
             usage: '.unban @user'
         },
 
-
         // Economy Commands
         balance: {
             description: 'Check your balance',
@@ -830,6 +829,145 @@ const config = {
             description: 'Get anime fanart', 
             category: 'Anime',
             usage: '.fanart'
+        },
+
+        // Reaction Commands
+        slap: {
+            description: 'Slap another user',
+            category: 'Reactions',
+            usage: '.slap @user'
+        },
+        hug: {
+            description: 'Hug another user',
+            category: 'Reactions',
+            usage: '.hug @user'
+        },
+        pat: {
+            description: 'Pat another user',
+            category: 'Reactions',
+            usage: '.pat @user'
+        },
+        kiss: {
+            description: 'Kiss another user',
+            category: 'Reactions',
+            usage: '.kiss @user'
+        },
+        punch: {
+            description: 'Punch another user',
+            category: 'Reactions',
+            usage: '.punch @user'
+        },
+        kill: {
+            description: 'Eliminate another user',
+            category: 'Reactions',
+            usage: '.kill @user'
+        },
+        wasted: {
+            description: 'Mark someone as wasted',
+            category: 'Reactions',
+            usage: '.wasted @user'
+        },
+        poke: {
+            description: 'Poke another user',
+            category: 'Reactions',
+            usage: '.poke @user'
+        },
+        cuddle: {
+            description: 'Cuddle with another user',
+            category: 'Reactions',
+            usage: '.cuddle @user'
+        },
+        boop: {
+            description: 'Boop another user',
+            category: 'Reactions',
+            usage: '.boop @user'
+        },
+        bonk: {
+            description: 'Bonk another user',
+            category: 'Reactions',
+            usage: '.bonk @user'
+        },
+        rip: {
+            description: 'Pay respects',
+            category: 'Reactions',
+            usage: '.rip @user'
+        },
+        wave: {
+            description: 'Wave at someone',
+            category: 'Reactions',
+            usage: '.wave @user'
+        },
+        yeet: {
+            description: 'Yeet someone',
+            category: 'Reactions',
+            usage: '.yeet @user'
+        },
+        smile: {
+            description: 'Show a smile',
+            category: 'Reactions',
+            usage: '.smile'
+        },
+        dance: {
+            description: 'Dance',
+            category: 'Reactions',
+            usage: '.dance'
+        },
+        highfive: {
+            description: 'High five another user',
+            category: 'Reactions',
+            usage: '.highfive @user'
+        },
+        thumbsup: {
+            description: 'Give a thumbs up',
+            category: 'Reactions',
+            usage: '.thumbsup'
+        },
+        thumbsdown: {
+            description: 'Give a thumbs down',
+            category: 'Reactions',
+            usage: '.thumbsdown'
+        },
+
+        // NSFW Commands
+        trap: {
+            description: 'Get trap NSFW content',
+            category: 'NSFW',
+            usage: '.trap'
+        },
+        blowjob: {
+            description: 'Get blowjob NSFW content',
+            category: 'NSFW',
+            usage: '.blowjob'
+        },
+        ass: {
+            description: 'Get ass NSFW content',
+            category: 'NSFW',
+            usage: '.ass'
+        },
+        milf: {
+            description: 'Get milf NSFW content',
+            category: 'NSFW',
+            usage: '.milf'
+        },
+        oral: {
+            description: 'Get oral NSFW content',
+            category: 'NSFW',
+            usage: '.oral'
+        },
+        paizuri: {
+            description: 'Get paizuri NSFW content',
+            category: 'NSFW',
+            usage: '.paizuri'
+        },
+        ecchi: {
+            description: 'Get ecchi content',
+            category: 'NSFW',
+            usage: '.ecchi'
+        },
+        ero: {
+            description: 'Get ero content',
+            category: 'NSFW',
+            usage: '.ero'
         }
     }
 };

@@ -65,7 +65,11 @@ const handleNSFWCommand = async (sock, msg, endpoint) => {
             'oral': 'https://api.waifu.im/search/?included_tags=oral&is_nsfw=true',
             'hentai': 'https://api.waifu.im/search/?included_tags=hentai&is_nsfw=true',
             'ecchi': 'https://api.waifu.im/search/?included_tags=ecchi&is_nsfw=true',
-            'ero': 'https://api.waifu.im/search/?included_tags=ero&is_nsfw=true'
+            'ero': 'https://api.waifu.im/search/?included_tags=ero&is_nsfw=true',
+            'trap': 'https://api.waifu.im/search/?included_tags=trap&is_nsfw=true',
+            'blowjob': 'https://api.waifu.im/search/?included_tags=blowjob&is_nsfw=true',
+            'ass': 'https://api.waifu.im/search/?included_tags=ass&is_nsfw=true',
+            'paizuri': 'https://api.waifu.im/search/?included_tags=paizuri&is_nsfw=true'
         };
 
         const apiUrl = apiEndpoints[endpoint] || apiEndpoints['waifu'];
@@ -310,7 +314,6 @@ const nsfwCommands = {
         logger.info('Executing neko command');
         await handleNSFWCommand(sock, msg, 'neko');
     },
-
     trap: async (sock, msg) => {
         logger.info('Executing trap command');
         await handleNSFWCommand(sock, msg, 'trap');
@@ -321,7 +324,6 @@ const nsfwCommands = {
         await handleNSFWCommand(sock, msg, 'blowjob');
     },
 
-    // Additional NSFW commands with improved error handling and rate limiting
     ass: async (sock, msg) => {
         logger.info('Executing ass command');
         await handleNSFWCommand(sock, msg, 'ass');
