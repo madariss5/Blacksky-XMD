@@ -23,7 +23,7 @@ Before running the bot, ensure you have the following installed:
 - Git (for cloning the repository)
 
 ## ⚡️ Quick Deploy
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/blacksky-algorithms/blacksky-md)
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/madariss5/Blacksky-XMD)
 
 ## 🔐 Environment Configuration
 Create a `.env` file with the following variables:

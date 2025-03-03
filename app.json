@@ -1,7 +1,9 @@
 {
   "name": "blacksky-md",
   "description": "Advanced WhatsApp Multi-Device bot with AI capabilities",
-  "repository": "https://github.com/blacksky-algorithms/blacksky-md",
+  "repository": "https://github.com/madariss5/Blacksky-XMD",
+  "logo": "https://raw.githubusercontent.com/madariss5/Blacksky-XMD/main/assets/logo.png",
+  "keywords": ["whatsapp-bot", "baileys", "node-js", "bot", "ai", "multi-device", "whatsapp"],
   "success_url": "/",
   "stack": "container",
   "env": {
