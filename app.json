@@ -5,32 +5,31 @@
   "logo": "https://raw.githubusercontent.com/madariss5/Blacksky-XMD/main/assets/logo.png",
   "keywords": ["whatsapp-bot", "baileys", "node-js", "bot", "ai", "multi-device", "whatsapp"],
   "success_url": "/",
-  "stack": "container",
   "env": {
     "PREFIX": {
-      "description": "Bot command prefix",
+      "description": "Bot command prefix (e.g., '.')",
       "value": ".",
       "required": true
     },
     "OWNER_NUMBER": {
-      "description": "Your WhatsApp number (international format without +)",
+      "description": "Your WhatsApp number without '+' (e.g., 491234567890)",
       "required": true
     },
     "OWNER_NAME": {
-      "description": "Your name",
+      "description": "Your name as the bot owner",
       "required": true
     },
     "BOT_NAME": {
-      "description": "Name for your bot",
+      "description": "Name for your bot instance",
       "value": "BlackSky-MD",
       "required": true
     },
     "SESSION_ID": {
-      "description": "WhatsApp session ID (will be generated after first run)",
+      "description": "A unique identifier for your WhatsApp session (will be generated on first run)",
       "required": true
     },
     "NODE_ENV": {
-      "description": "Node environment",
+      "description": "Runtime environment",
       "value": "production",
       "required": true
     }
@@ -40,7 +39,7 @@
       "url": "heroku/nodejs"
     },
     {
-      "url": "https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git"
+      "url": "https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest"
     },
     {
       "url": "https://github.com/clhuang/heroku-buildpack-webp-binaries.git"

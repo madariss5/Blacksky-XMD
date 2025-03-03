@@ -42,6 +42,25 @@ if [ "$NODE_ENV" = "production" ]; then
         exit 1
     fi
 
+    # Verify database connection
+    if [ -n "$DATABASE_URL" ]; then
+        log "Verifying database connection..."
+        # Wait for PostgreSQL to be ready
+        max_tries=30
+        count=0
+        until node -e "const { Client } = require('pg'); const client = new Client({ connectionString: process.env.DATABASE_URL }); client.connect().then(() => { console.log('Database connected'); process.exit(0); }).catch((err) => { console.error('Database connection failed:', err); process.exit(1); });" 2>/dev/null
+        do
+            count=$((count+1))
+            if [ $count -gt $max_tries ]; then
+                log "Error: Failed to connect to database after $max_tries attempts"
+                exit 1
+            fi
+            log "Waiting for database to be ready... ($count/$max_tries)"
+            sleep 2
+        done
+        log "Database connection verified"
+    fi
+
     # Set production Node.js flags
     export NODE_OPTIONS="--max-old-space-size=2560"
     log "Production Node.js flags set"
