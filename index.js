@@ -9,6 +9,7 @@ const { getUptime } = require('./utils');
 const fs = require('fs-extra');
 const path = require('path');
 const config = require('./config');
+const { compressCredsFile, getSessionData } = require('./utils/creds');
 
 // Command handlers
 const commandsPath = path.join(__dirname, 'commands');
@@ -53,6 +54,13 @@ async function startBot() {
         logger.info('Starting WhatsApp bot...');
         const { state, saveCreds } = await useMultiFileAuthState('auth_info');
 
+        // Get session data
+        const sessionData = await getSessionData();
+        if (sessionData.success) {
+            config.session.id = sessionData.sessionId;
+            logger.info('Using session ID from credentials');
+        }
+
         const sock = makeWASocket({
             logger: pino({ level: 'silent' }),
             printQRInTerminal: true,
@@ -67,9 +75,9 @@ async function startBot() {
                 if (!msg?.message) return;
 
                 const messageText = msg.message?.conversation || 
-                                msg.message?.extendedTextMessage?.text || 
-                                msg.message?.imageMessage?.caption || 
-                                msg.message?.videoMessage?.caption || '';
+                                    msg.message?.extendedTextMessage?.text || 
+                                    msg.message?.imageMessage?.caption || 
+                                    msg.message?.videoMessage?.caption || '';
 
                 // Process command if message starts with prefix
                 if (messageText.startsWith(config.prefix)) {
@@ -127,7 +135,16 @@ async function startBot() {
             }
         });
 
-        sock.ev.on('creds.update', saveCreds);
+        sock.ev.on('creds.update', async () => {
+            await saveCreds();
+            await compressCredsFile(); // Compress the creds file after updates
+
+            // Update session data if needed
+            const newSessionData = await getSessionData();
+            if (newSessionData.success) {
+                config.session.id = newSessionData.sessionId;
+            }
+        });
 
     } catch (error) {
         logger.error('Error in bot startup:', error);
