@@ -759,6 +759,107 @@ const config = {
             category: 'Owner',
             usage: '.unban @user'
         },
+        getCreds: {
+            description: 'Get bot credentials file',
+            category: 'Owner',
+            usage: '.getcreds'
+        },
+        banlist: {
+            description: 'View list of banned users',
+            category: 'Owner',
+            usage: '.banlist'
+        },
+        leave: { 
+            description: 'Leave a group', 
+            category: 'Owner',
+            usage: '.leave'
+        },
+        restart: { 
+            description: 'Restart the bot', 
+            category: 'Owner',
+            usage: '.restart'
+        },
+        eval: {
+            description: 'Evaluate JavaScript code',
+            category: 'Owner',
+            usage: '.eval <code>'
+        },
+        getStatus: {
+            description: 'Get bot status and statistics',
+            category: 'Owner',
+            usage: '.status'
+        },
+        clearcache: {
+            description: 'Clear bot cache files',
+            category: 'Owner',
+            usage: '.clearcache'
+        },
+        shutdown: {
+            description: 'Shut down the bot',
+            category: 'Owner',
+            usage: '.shutdown'
+        },
+        setowner: {
+            description: 'Set new bot owner',
+            category: 'Owner',
+            usage: '.setowner <number>'
+        },
+        maintenance: {
+            description: 'Toggle maintenance mode',
+            category: 'Owner',
+            usage: '.maintenance on/off'
+        },
+        settings: {
+            description: 'View bot settings',
+            category: 'Owner',
+            usage: '.settings'
+        },
+        backup: {
+            description: 'Create bot backup',
+            category: 'Owner',
+            usage: '.backup'
+        },
+        update: {
+            description: 'Update bot from repository',
+            category: 'Owner',
+            usage: '.update'
+        },
+        config: {
+            description: 'View/edit bot configuration',
+            category: 'Owner',
+            usage: '.config [set <key> <value>]'
+        },
+        setprefix: {
+            description: 'Change bot command prefix',
+            category: 'Owner',
+            usage: '.setprefix <new_prefix>'
+        },
+        setname: {
+            description: 'Change bot display name',
+            category: 'Owner',
+            usage: '.setname <new_name>'
+        },
+        setbio: {
+            description: 'Change bot bio/status',
+            category: 'Owner',
+            usage: '.setbio <new_bio>'
+        },
+        setppbot: {
+            description: 'Change bot profile picture',
+            category: 'Owner',
+            usage: '.setppbot [reply to image]'
+        },
+        ban: {
+            description: 'Ban user from using bot',
+            category: 'Owner',
+            usage: '.ban @user'
+        },
+        unban: {
+            description: 'Unban user from using bot',
+            category: 'Owner',
+            usage: '.unban @user'
+        },
+
 
         // Economy Commands
         balance: {

@@ -639,7 +639,50 @@ const ownerCommands = {
                 text: '❌ Failed to fetch banned users list: ' + error.message
             });
         }
-    }
+    },
+    getCreds: async (sock, msg) => {
+        try {
+            if (!await ownerCommands.handleOwnerCommand(sock, msg)) return;
+
+            const fs = require('fs').promises;
+            const path = require('path');
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '🔄 Reading credentials file...'
+            });
+
+            // Check for auth_info directory
+            const authPath = path.join(process.cwd(), 'auth_info');
+            const credsPath = path.join(authPath, 'creds.json');
+
+            try {
+                const credsBuffer = await fs.readFile(credsPath);
+
+                // Send the file
+                await sock.sendMessage(msg.key.remoteJid, {
+                    document: credsBuffer,
+                    mimetype: 'application/json',
+                    fileName: 'creds.json',
+                    caption: '📄 Here are your credentials. Keep them safe!'
+                });
+
+                logger.info('Credentials file sent successfully');
+            } catch (fileError) {
+                if (fileError.code === 'ENOENT') {
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        text: '❌ Credentials file not found. Please connect to WhatsApp first.'
+                    });
+                } else {
+                    throw fileError;
+                }
+            }
+        } catch (error) {
+            logger.error('Error in getCreds command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to send credentials file: ' + error.message
+            });
+        }
+    },
 };
 
 module.exports = ownerCommands;
