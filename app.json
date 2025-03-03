@@ -55,5 +55,8 @@
     {
       "plan": "heroku-postgresql:mini"
     }
-  ]
+  ],
+  "engines": {
+    "node": "16.x"
+  }
 }
