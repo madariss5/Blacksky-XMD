@@ -1075,7 +1075,41 @@ const groupCommands = {
                 text: '❌ Failed to get group link: ' + error.message
             });
         }
-    }
+    },
+    grouplb: async (sock, msg) => {
+        try {
+            const groupMetadata = await validateGroupContext(sock, msg, false);
+            if (!groupMetadata) return;
+
+            const result = await dbStore.getGroupLeaderboard(msg.key.remoteJid, 10);
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to get group leaderboard');
+            }
+
+            let lbText = `🏆 *Group Leaderboard*\n\n`;
+            result.members.forEach((member, index) => {
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '•';
+                lbText += `${medal} ${index + 1}. @${member.jid.split('@')[0]}\n`;
+                lbText += `   Level ${member.level} • ${member.xp} XP\n\n`;
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: lbText,
+                mentions: result.members.map(m => m.jid)
+            });
+
+            logger.info('Group leaderboard displayed:', {
+                group: msg.key.remoteJid,
+                memberCount: result.members.length
+            });
+        } catch (error) {
+            logger.error('Error in grouplb command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to get group leaderboard: ' + error.message
+            });
+        }
+    },
+
 };
 
 module.exports = groupCommands;

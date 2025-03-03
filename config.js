@@ -228,6 +228,11 @@ const config = {
             category: 'Group',
             usage: '.groupsettings <option>'
         },
+        grouplb: {
+            description: 'View group XP leaderboard',
+            category: 'Group',
+            usage: '.grouplb'
+        },
 
         // User Commands
         profile: {
@@ -259,6 +264,21 @@ const config = {
             description: 'Join group via link', 
             category: 'User',
             usage: '.join <link>'
+        },
+        level: {
+            description: 'Check your current level and XP',
+            category: 'User',
+            usage: '.level'
+        },
+        leaderboard: {
+            description: 'View global XP leaderboard',
+            category: 'User',
+            usage: '.leaderboard'
+        },
+        rewards: {
+            description: 'View level rewards and perks',
+            category: 'User',
+            usage: '.rewards'
         },
 
         // Owner Commands

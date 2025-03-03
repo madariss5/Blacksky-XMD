@@ -65,8 +65,8 @@ const userCommands = {
 
     profile: async (sock, msg, args) => {
         try {
-            const targetUser = args[0] ? 
-                formatPhoneNumber(args[0]) : 
+            const targetUser = args[0] ?
+                formatPhoneNumber(args[0]) :
                 formatPhoneNumber(msg.key.participant || msg.key.remoteJid);
 
             logger.info('Fetching profile for user:', targetUser);
@@ -83,7 +83,7 @@ const userCommands = {
 
             const whatsappId = addWhatsAppSuffix(targetUser);
 
-            const info = userData && userData.registered ? 
+            const info = userData && userData.registered ?
                 `*User Profile*\n\n` +
                 `• Number: ${formatDisplayNumber(targetUser)}\n` +
                 `• Name: ${userData.name || 'Not set'}\n` +
@@ -115,13 +115,13 @@ const userCommands = {
             const userId = msg.key.participant || msg.key.remoteJid;
 
             if (await dbStore.isUserRegistered(userId)) {
-                return await sock.sendMessage(msg.key.remoteJid, { 
-                    text: '❌ You are already registered!' 
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ You are already registered!'
                 });
             }
 
             if (args.length < 2) {
-                return await sock.sendMessage(msg.key.remoteJid, { 
+                return await sock.sendMessage(msg.key.remoteJid, {
                     text: `❓ Please provide your name and age!\nFormat: ${config.prefix}register <name> <age>`
                 });
             }
@@ -130,8 +130,8 @@ const userCommands = {
             const name = args.slice(0, -1).join(' ');
 
             if (isNaN(age) || age < 13 || age > 100) {
-                return await sock.sendMessage(msg.key.remoteJid, { 
-                    text: '❌ Please provide a valid age between 13 and 100!' 
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a valid age between 13 and 100!'
                 });
             }
 
@@ -165,7 +165,7 @@ const userCommands = {
             if (!args.length) {
                 const userData = await dbStore.getUserData(userId);
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: userData.bio ? 
+                    text: userData.bio ?
                         `📝 *Your Bio*\n\n${userData.bio}` :
                         `You haven't set a bio yet! Use ${config.prefix}bio <text> to set one.`
                 });
@@ -192,54 +192,115 @@ const userCommands = {
     join: async (sock, msg, args) => {
         try {
             if (!args[0]) {
-                return await sock.sendMessage(msg.key.remoteJid, { 
-                    text: '❌ Please provide a group link!\nUsage: .join <group_link>' 
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a group link!\nUsage: .join <group_link>'
                 });
             }
 
             // Extract invite code from link
             const linkParts = args[0].split('whatsapp.com/');
             if (linkParts.length < 2) {
-                return await sock.sendMessage(msg.key.remoteJid, { 
-                    text: '❌ Invalid group link provided!' 
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Invalid group link provided!'
                 });
             }
 
             const inviteCode = linkParts[1];
             await sock.groupAcceptInvite(inviteCode);
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: '✅ Successfully joined the group!' 
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '✅ Successfully joined the group!'
             });
 
             logger.info('Successfully joined group with code:', inviteCode);
         } catch (error) {
             logger.error('Error in join command:', error);
-            await sock.sendMessage(msg.key.remoteJid, { 
+            await sock.sendMessage(msg.key.remoteJid, {
                 text: error.message === 'Link invalid'
                     ? '❌ Invalid or expired group link!'
-                    : '❌ Failed to join group: ' + error.message 
+                    : '❌ Failed to join group: ' + error.message
             });
         }
     },
     level: async (sock, msg) => {
         try {
             const user = msg.key.participant || msg.key.remoteJid;
-            const stats = await dbStore.getUserStats(user);
-            const nextLevel = Math.pow((stats.level + 1) / 0.1, 2);
+            const xpData = await dbStore.getUserXP(user);
+
+            if (!xpData.success) {
+                throw new Error(xpData.error || 'Failed to get XP data');
+            }
+
+            // Create progress bar
+            const progressBarLength = 20;
+            const filledBars = Math.floor((xpData.progress / 100) * progressBarLength);
+            const progressBar = '█'.repeat(filledBars) + '░'.repeat(progressBarLength - filledBars);
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `*Level Stats*\n\n` +
-                      `• Current Level: ${stats.level}\n` +
-                      `• Total XP: ${stats.xp}\n` +
-                      `• Next Level: ${stats.level + 1}\n` +
-                      `• XP Needed: ${nextLevel - stats.xp}\n` +
-                      `• Progress: ${Math.floor((stats.xp / nextLevel) * 100)}%`,
+                text: `*🎮 Level Progress*\n\n` +
+                      `• Level: ${xpData.level}\n` +
+                      `• XP: ${xpData.xp}/${xpData.nextLevelXP}\n` +
+                      `• Progress: ${Math.floor(xpData.progress)}%\n` +
+                      `\n${progressBar}\n\n` +
+                      `Keep chatting to earn more XP!`,
                 mentions: [user]
             });
         } catch (error) {
             logger.error('Error in level command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error fetching level stats. Please try again later.'
+            });
+        }
+    },
+
+    leaderboard: async (sock, msg) => {
+        try {
+            const result = await dbStore.getLeaderboard(10);
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to get leaderboard');
+            }
+
+            let lbText = '🏆 *Global Leaderboard*\n\n';
+            result.users.forEach((user, index) => {
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '•';
+                lbText += `${medal} ${index + 1}. @${user.jid.split('@')[0]}\n`;
+                lbText += `   Level ${user.level} • ${user.xp} XP\n\n`;
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: lbText,
+                mentions: result.users.map(u => u.jid)
+            });
+        } catch (error) {
+            logger.error('Error in leaderboard command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error fetching leaderboard. Please try again later.'
+            });
+        }
+    },
+
+    rewards: async (sock, msg) => {
+        try {
+            const user = msg.key.participant || msg.key.remoteJid;
+            const xpData = await dbStore.getUserXP(user);
+
+            const rewardsText = `🎁 *Level Rewards*\n\n` +
+                              `Your current level: ${xpData.level}\n\n` +
+                              `Available Perks:\n` +
+                              `• Level 5: Custom bio\n` +
+                              `• Level 10: Special title\n` +
+                              `• Level 15: Custom commands\n` +
+                              `• Level 20: Premium features\n` +
+                              `• Level 25: VIP status\n\n` +
+                              `Keep leveling up to unlock more rewards!`;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: rewardsText,
+                mentions: [user]
+            });
+        } catch (error) {
+            logger.error('Error in rewards command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error fetching rewards. Please try again later.'
             });
         }
     }
