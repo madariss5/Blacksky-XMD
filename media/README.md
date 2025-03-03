@@ -20,18 +20,18 @@ Only upload properly sized and optimized GIF files directly to this directory.
 - anime-punch.gif - Punch reaction animation ✅
 - anime-roast.gif - Roast reaction animation ✅
 - anime-wasted.gif - Wasted effect animation ✅
-
-### Missing GIFs (Need to be Added):
-- anime-poke.gif - Poke reaction animation ⚠️
-- anime-cuddle.gif - Cuddle reaction animation ⚠️
-- anime-boop.gif - Boop reaction animation ⚠️
-- anime-bonk.gif - Bonk reaction animation ⚠️
-- anime-rip.gif - RIP effect animation ⚠️
-- anime-wave.gif - Wave reaction animation ⚠️
-- anime-yeet.gif - Yeet reaction animation ⚠️
-- anime-smile.gif - Smiling reaction animation ⚠️
-- anime-dance.gif - Dance reaction animation ⚠️
-- anime-highfive.gif - High-five reaction animation ⚠️
+- anime-poke.gif - Poke reaction animation ✅
+- anime-cuddle.gif - Cuddle reaction animation ✅
+- anime-boop.gif - Boop reaction animation ✅
+- anime-bonk.gif - Bonk reaction animation ✅
+- anime-rip.gif - RIP effect animation ✅
+- anime-wave.gif - Wave reaction animation ✅
+- anime-yeet.gif - Yeet reaction animation ✅
+- anime-smile.gif - Smiling reaction animation ✅
+- anime-dance.gif - Dance reaction animation ✅
+- anime-highfive.gif - High-five reaction animation ✅
+- anime-thumbsup.gif - Thumbs up reaction animation ✅
+- anime-thumbsdown.gif - Thumbs down reaction animation ✅
 
 ### Installation Instructions:
 1. Obtain appropriate anime reaction GIFs from a reliable source
@@ -42,5 +42,4 @@ Only upload properly sized and optimized GIF files directly to this directory.
 3. Upload the optimized GIF directly to this directory
 4. Test the reaction command to verify proper playback
 
-Note: Files marked with ⚠️ need to be manually added to enable full functionality.
-All GIFs should be appropriate and follow the platform's content guidelines.
+Note: All GIFs should be appropriate and follow the platform's content guidelines.

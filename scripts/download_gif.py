@@ -36,6 +36,16 @@ def download_gif(url, filename):
 
 # Using verified anime reaction GIFs from GIPHY's CDN
 gifs = {
+    'poke': 'https://media1.giphy.com/media/vFnxro4sFV1R5b95NQ/giphy.gif',
+    'cuddle': 'https://media2.giphy.com/media/143v0Z4767T15e/giphy.gif',
+    'boop': 'https://media3.giphy.com/media/4HP0ddZnNVvKU/giphy.gif',
+    'bonk': 'https://media4.giphy.com/media/30lxTuJueXE7C/giphy.gif',
+    'rip': 'https://media2.giphy.com/media/xT5LMQ8rHYTDGFG07e/giphy.gif',
+    'wave': 'https://media1.giphy.com/media/PhTSmzCIxh0Zq/giphy.gif',
+    'yeet': 'https://media3.giphy.com/media/5PhDdJQd2yG1MvHzJ6/giphy.gif',
+    'smile': 'https://media4.giphy.com/media/ree8xCap5nHi/giphy.gif',
+    'dance': 'https://media2.giphy.com/media/5rFbG39c8tLgY/giphy.gif',
+    'highfive': 'https://media1.giphy.com/media/3oEjHV0z8S7WM4MwnK/giphy.gif',
     'thumbsup': 'https://media1.giphy.com/media/4xpB3eE00FfBm/giphy.gif',
     'thumbsdown': 'https://media1.giphy.com/media/108M7gCS1JSoO4/giphy.gif'
 }
