@@ -23,16 +23,19 @@ class MediaHandler {
                     '-pix_fmt yuv420p',
                     '-c:v libx264',
                     '-profile:v baseline',
-                    '-preset ultrafast', // Fastest encoding
-                    '-tune zerolatency', // Minimize latency
+                    '-preset ultrafast',
+                    '-tune zerolatency',
                     '-vf scale=w=320:h=-2',
-                    '-r 24', // Reduce framerate
+                    '-r 24',
                     '-t 8',
                     '-an',
                     '-f mp4'
                 ])
                 .on('end', () => resolve(outputPath))
-                .on('error', reject)
+                .on('error', (err) => {
+                    logger.error('Error converting GIF:', err);
+                    reject(err);
+                })
                 .save(outputPath);
         });
     }
@@ -40,7 +43,12 @@ class MediaHandler {
     async sendGifReaction(sock, msg, gifName, caption = '', mentions = []) {
         let tempFile = null;
         try {
-            const gifPath = path.join(this.mediaDir, gifName.endsWith('.gif') ? gifName : `${gifName}.gif`);
+            // Remove 'anime-' prefix if present and ensure .gif extension
+            const cleanGifName = gifName.replace('anime-', '').replace(/\.gif$/, '') + '.gif';
+            const gifPath = path.join(this.mediaDir, cleanGifName);
+
+            // Log the path being checked
+            logger.info(`Checking for GIF at path: ${gifPath}`);
 
             // Check if GIF exists and has content
             if (!await fs.pathExists(gifPath)) {
@@ -49,16 +57,22 @@ class MediaHandler {
                     text: caption,
                     mentions
                 });
-                return true;
+                return false;
             }
 
             // Quick file check
             const buffer = await fs.readFile(gifPath);
-            if (!buffer.length) throw new Error('Invalid GIF file');
+            if (!buffer.length) {
+                logger.error('Invalid GIF file - zero length');
+                throw new Error('Invalid GIF file');
+            }
 
-            // Create temp file
+            // Create temp file with timestamp to avoid conflicts
             tempFile = path.join(this.tempDir, `${Date.now()}.mp4`);
             await this.convertGifToVideo(gifPath, tempFile);
+
+            // Log success of conversion
+            logger.info(`Successfully converted GIF to video: ${tempFile}`);
 
             // Send message
             await sock.sendMessage(msg.key.remoteJid, {
@@ -71,6 +85,7 @@ class MediaHandler {
 
             return true;
         } catch (error) {
+            logger.error('Error in sendGifReaction:', error);
             // Improved error handling - always send the caption
             if (tempFile) await fs.remove(tempFile).catch(() => {});
             await sock.sendMessage(msg.key.remoteJid, {
