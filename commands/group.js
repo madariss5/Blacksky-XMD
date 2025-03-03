@@ -1,6 +1,7 @@
 const logger = require('pino')();
 const config = require('../config');
-const store = require('../database/store');
+const store = require('../database/store'); // Assuming this is the correct import path
+const dbStore = require('../database/dbStore'); // Assuming this is the name of the updated database module
 
 // Helper function to validate group context and permissions
 async function validateGroupContext(sock, msg, requiresAdmin = true) {
@@ -449,29 +450,26 @@ const groupCommands = {
             const targetUser = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
             const reason = args.slice(1).join(' ') || 'No reason provided';
 
-            const result = await store.addWarning(
-                msg.key.remoteJid,
-                targetUser,
-                reason,
-                msg.key.participant
-            );
+            logger.info('Adding warning:', { targetUser, reason });
+            const result = await dbStore.addWarning(targetUser, reason);
 
             if (!result.success) {
-                throw new Error(result.error);
+                throw new Error(result.error || 'Failed to add warning');
             }
 
-            const warningCount = result.warningCount;
-            let response = `⚠️ *WARNING #${warningCount}*\n\n`;
+            let response = `⚠️ *WARNING #${result.warningCount}*\n\n`;
             response += `@${targetUser.split('@')[0]} has been warned.\n`;
             response += `Reason: ${reason}\n`;
 
-            if (warningCount >= 3) {
+            if (result.warningCount >= 3) {
                 response += '\n⛔ Maximum warnings reached. User will be removed.';
-                const success = await safeGroupParticipantUpdate(sock, msg.key.remoteJid, [targetUser], "remove");
-                if (!success) {
-                    throw new Error('Failed to remove user after max warnings');
+                try {
+                    await sock.groupParticipantsUpdate(msg.key.remoteJid, [targetUser], "remove");
+                    await dbStore.removeWarning(targetUser, 0); // Clear warnings after kick
+                } catch (kickError) {
+                    logger.error('Failed to kick user after max warnings:', kickError);
+                    response += '\n❌ Failed to remove user automatically.';
                 }
-                await store.clearWarnings(msg.key.remoteJid, targetUser);
             }
 
             await sock.sendMessage(msg.key.remoteJid, {
@@ -499,13 +497,15 @@ const groupCommands = {
             const targetUser = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
             const warningIndex = parseInt(args[1]) - 1;
 
-            const result = await store.removeWarning(msg.key.remoteJid, targetUser, warningIndex);
+            logger.info('Removing warning:', { targetUser, warningIndex });
+            const result = await dbStore.removeWarning(targetUser, warningIndex);
+
             if (!result.success) {
-                throw new Error(result.error);
+                throw new Error(result.error || 'Failed to remove warning');
             }
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `✅ Warning #${warningIndex + 1} has been removed from @${targetUser.split('@')[0]}.\nRemaining warnings: ${result.remainingWarnings}`,
+                text: `✅ Warning #${warningIndex + 1} has been removed from @${targetUser.split('@')[0]}.\nRemaining warnings: ${result.warningCount}`,
                 mentions: [targetUser]
             });
         } catch (error) {
@@ -527,9 +527,16 @@ const groupCommands = {
             }
 
             const targetUser = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
-            const warnings = await store.getWarnings(msg.key.remoteJid, targetUser);
+            logger.info('Getting warnings for user:', targetUser);
 
-            if (!warnings.length) {
+            const result = await dbStore.getWarnings(targetUser);
+            logger.debug('Warning check result:', result);
+
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to get warnings');
+            }
+
+            if (!result.warnings.length) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: `✅ @${targetUser.split('@')[0]} has no warnings.`,
                     mentions: [targetUser]
@@ -537,15 +544,14 @@ const groupCommands = {
             }
 
             let warnText = `⚠️ *Warnings for @${targetUser.split('@')[0]}*\n\n`;
-            warnings.forEach((warn, index) => {
+            result.warnings.forEach((warn, index) => {
                 warnText += `*${index + 1}.* ${warn.reason}\n`;
-                warnText += `⏰ ${new Date(warn.timestamp).toLocaleString()}\n`;
-                warnText += `👮‍♂️ By: @${warn.warnedBy.split('@')[0]}\n\n`;
+                warnText += `⏰ ${new Date(warn.timestamp).toLocaleString()}\n\n`;
             });
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: warnText,
-                mentions: [targetUser, ...warnings.map(w => w.warnedBy)]
+                mentions: [targetUser]
             });
         } catch (error) {
             logger.error('Error in warnlist command:', error);
