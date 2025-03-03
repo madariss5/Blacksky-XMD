@@ -48,6 +48,36 @@ for (const file of commandFiles) {
 
 // Track if credentials have been sent
 let credentialsSent = false;
+// Track if deployment message sent
+let deploymentMessageSent = false;
+
+// Function to send deployment status message
+async function sendDeploymentMessage(sock) {
+    try {
+        if (!deploymentMessageSent && config.ownerNumber) {
+            const botJid = sock.user.id;
+            const message = {
+                text: `🤖 *Bot Deployment Status*\n\n` +
+                      `✅ Bot successfully deployed and connected!\n\n` +
+                      `*Details:*\n` +
+                      `• Bot Number: ${botJid.split('@')[0]}\n` +
+                      `• Owner Number: ${config.ownerNumber}\n` +
+                      `• Session ID: ${config.session.id}\n` +
+                      `• Prefix: ${config.prefix}\n` +
+                      `• Commands Loaded: ${commands.size}\n` +
+                      `• Node Version: ${process.version}\n` +
+                      `• Deployment Time: ${new Date().toLocaleString()}\n\n` +
+                      `Type ${config.prefix}help to view available commands.`
+            };
+
+            await sock.sendMessage(botJid, message);
+            deploymentMessageSent = true;
+            logger.info('Deployment status message sent successfully');
+        }
+    } catch (error) {
+        logger.error('Error sending deployment message:', error);
+    }
+}
 
 async function startBot() {
     try {
@@ -108,6 +138,7 @@ async function startBot() {
                 if (shouldReconnect) {
                     logger.info('Reconnecting...');
                     credentialsSent = false; // Reset flag on disconnect
+                    deploymentMessageSent = false; // Reset deployment message flag
                     startBot();
                 }
             } else if (connection === 'open') {
@@ -132,6 +163,9 @@ async function startBot() {
                         logger.error('Error sending credentials file:', error);
                     }
                 }
+
+                // Send deployment status message
+                await sendDeploymentMessage(sock);
             }
         });
 
