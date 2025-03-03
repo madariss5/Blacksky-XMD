@@ -2,10 +2,12 @@
   "name": "blacksky-md",
   "description": "Advanced WhatsApp Multi-Device bot with AI capabilities",
   "repository": "https://github.com/blacksky-algorithms/blacksky-md",
+  "success_url": "/",
+  "stack": "container",
   "env": {
-    "NODE_ENV": {
-      "description": "Node environment",
-      "value": "production",
+    "PREFIX": {
+      "description": "Bot command prefix",
+      "value": ".",
       "required": true
     },
     "OWNER_NUMBER": {
@@ -20,17 +22,32 @@
       "description": "Name for your bot",
       "value": "BlackSky-MD",
       "required": false
+    },
+    "SESSION_ID": {
+      "description": "WhatsApp session ID",
+      "required": true
     }
   },
   "buildpacks": [
     {
       "url": "heroku/nodejs"
+    },
+    {
+      "url": "https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git"
+    },
+    {
+      "url": "https://github.com/clhuang/heroku-buildpack-webp-binaries.git"
     }
   ],
   "formation": {
-    "web": {
+    "worker": {
       "quantity": 1,
-      "size": "eco"
+      "size": "standard-2x"
     }
-  }
+  },
+  "addons": [
+    {
+      "plan": "heroku-postgresql:essential-0"
+    }
+  ]
 }
