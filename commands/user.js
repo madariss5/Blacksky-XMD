@@ -23,8 +23,17 @@ const userCommands = {
                 formatPhoneNumber(args[0]) : 
                 formatPhoneNumber(msg.key.participant || msg.key.remoteJid);
 
+            logger.info('Fetching profile for user:', targetUser);
             const userData = await dbStore.getUserData(targetUser);
-            const pp = await safeProfilePicture(sock, targetUser);
+            let pp;
+
+            try {
+                pp = await safeProfilePicture(sock, targetUser);
+            } catch (err) {
+                logger.error('Error fetching profile picture:', err);
+                pp = 'https://i.imgur.com/wuxBN7M.png';
+            }
+
             const whatsappId = addWhatsAppSuffix(targetUser);
 
             const info = userData ? 
@@ -59,16 +68,24 @@ const userCommands = {
     me: async (sock, msg) => {
         try {
             const userId = formatPhoneNumber(msg.key.participant || msg.key.remoteJid);
-            const userData = await dbStore.getUserData(userId);
-            const whatsappId = addWhatsAppSuffix(userId);
+            logger.info('Fetching self profile for user:', userId);
 
+            const userData = await dbStore.getUserData(userId);
             if (!userData) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: `You haven't registered yet!\nUse ${config.prefix}register <name> <age> to create your profile.`
                 });
             }
 
-            const pp = await safeProfilePicture(sock, userId);
+            let pp;
+            try {
+                pp = await safeProfilePicture(sock, userId);
+            } catch (err) {
+                logger.error('Error fetching profile picture:', err);
+                pp = 'https://i.imgur.com/wuxBN7M.png';
+            }
+
+            const whatsappId = addWhatsAppSuffix(userId);
             const userStats = await dbStore.getUserStats(userId);
             const userRank = await dbStore.getUserRank(userId);
 
