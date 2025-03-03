@@ -1,7 +1,6 @@
 const logger = require('pino')();
 const config = require('../config');
-const store = require('../database/store'); // Assuming this is the correct import path
-const dbStore = require('../database/dbStore'); // Assuming this is the name of the updated database module
+const dbStore = require('../database/store'); // Fix store import
 
 // Helper function to validate group context and permissions
 async function validateGroupContext(sock, msg, requiresAdmin = true) {
@@ -244,7 +243,7 @@ const groupCommands = {
                 });
             }
 
-            await store.setGroupSetting(msg.key.remoteJid, 'welcomeMessage', welcomeMsg);
+            await dbStore.setGroupSetting(msg.key.remoteJid, 'welcomeMessage', welcomeMsg);
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: 'Welcome message has been set!' 
             });
@@ -273,7 +272,7 @@ const groupCommands = {
                 });
             }
 
-            await store.setGroupSetting(msg.key.remoteJid, 'goodbyeMessage', goodbyeMsg);
+            await dbStore.setGroupSetting(msg.key.remoteJid, 'goodbyeMessage', goodbyeMsg);
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: '✅ Goodbye message has been set!' 
             });
@@ -302,7 +301,7 @@ const groupCommands = {
             }
 
             const status = args[0].toLowerCase() === 'on';
-            await store.setGroupSetting(msg.key.remoteJid, 'antilink', status);
+            await dbStore.setGroupSetting(msg.key.remoteJid, 'antilink', status);
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: `✅ Antilink has been ${status ? 'enabled' : 'disabled'}`
             });
@@ -325,7 +324,7 @@ const groupCommands = {
             }
 
             const status = args[0].toLowerCase() === 'on';
-            await store.setGroupSetting(msg.key.remoteJid, 'antispam', status);
+            await dbStore.setGroupSetting(msg.key.remoteJid, 'antispam', status);
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: `✅ Anti-spam has been ${status ? 'enabled' : 'disabled'}`
             });
@@ -348,7 +347,7 @@ const groupCommands = {
             }
 
             const status = args[0].toLowerCase() === 'on';
-            await store.setGroupSetting(msg.key.remoteJid, 'antitoxic', status);
+            await dbStore.setGroupSetting(msg.key.remoteJid, 'antitoxic', status);
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: `✅ Anti-toxic has been ${status ? 'enabled' : 'disabled'}`
             });
@@ -411,7 +410,7 @@ const groupCommands = {
             const groupMetadata = await validateGroupContext(sock, msg, false);
             if (!groupMetadata) return;
 
-            const settings = await store.getGroupSettings(msg.key.remoteJid);
+            const settings = await dbStore.getGroupSettings(msg.key.remoteJid);
             const admins = groupMetadata.participants.filter(p => p.admin).map(p => p.id);
 
             let info = `*Group Information*\n\n`;
@@ -465,7 +464,7 @@ const groupCommands = {
                 response += '\n⛔ Maximum warnings reached. User will be removed.';
                 try {
                     await sock.groupParticipantsUpdate(msg.key.remoteJid, [targetUser], "remove");
-                    await dbStore.removeWarning(targetUser, 0); // Clear warnings after kick
+                    await dbStore.clearWarning(targetUser); // Clear all warnings after kick
                 } catch (kickError) {
                     logger.error('Failed to kick user after max warnings:', kickError);
                     response += '\n❌ Failed to remove user automatically.';
@@ -483,6 +482,57 @@ const groupCommands = {
             });
         }
     },
+
+    warnlist: async (sock, msg, args) => {
+        try {
+            const groupMetadata = await validateGroupContext(sock, msg, true);
+            if (!groupMetadata) return;
+
+            if (!args[0]) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `❌ Please mention a user!\nUsage: .warnlist @user`
+                });
+            }
+
+            const targetUser = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+            logger.info('Getting warnings for user:', targetUser);
+
+            const result = await dbStore.getWarnings(targetUser);
+            logger.debug('Warning check result:', result);
+
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to get warnings');
+            }
+
+            if (!result.warnings || result.warnings.length === 0) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `✅ @${targetUser.split('@')[0]} has no warnings.`,
+                    mentions: [targetUser]
+                });
+            }
+
+            let warnText = `⚠️ *Warnings for @${targetUser.split('@')[0]}*\n`;
+            warnText += `Total warnings: ${result.warningCount}\n\n`;
+
+            result.warnings.forEach((warn, index) => {
+                if (warn.active !== false) {
+                    warnText += `*${index + 1}.* ${warn.reason}\n`;
+                    warnText += `⏰ ${new Date(warn.timestamp).toLocaleString()}\n\n`;
+                }
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: warnText,
+                mentions: [targetUser]
+            });
+        } catch (error) {
+            logger.error('Error in warnlist command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to get warnings: ' + error.message
+            });
+        }
+    },
+
     delwarn: async (sock, msg, args) => {
         try {
             const groupMetadata = await validateGroupContext(sock, msg, true);
@@ -512,51 +562,6 @@ const groupCommands = {
             logger.error('Error in delwarn command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Failed to delete warning: ' + error.message
-            });
-        }
-    },
-    warnlist: async (sock, msg, args) => {
-        try {
-            const groupMetadata = await validateGroupContext(sock, msg, true);
-            if (!groupMetadata) return;
-
-            if (!args[0]) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `❌ Please mention a user!\nUsage: .warnlist @user`
-                });
-            }
-
-            const targetUser = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
-            logger.info('Getting warnings for user:', targetUser);
-
-            const result = await dbStore.getWarnings(targetUser);
-            logger.debug('Warning check result:', result);
-
-            if (!result.success) {
-                throw new Error(result.error || 'Failed to get warnings');
-            }
-
-            if (!result.warnings.length) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `✅ @${targetUser.split('@')[0]} has no warnings.`,
-                    mentions: [targetUser]
-                });
-            }
-
-            let warnText = `⚠️ *Warnings for @${targetUser.split('@')[0]}*\n\n`;
-            result.warnings.forEach((warn, index) => {
-                warnText += `*${index + 1}.* ${warn.reason}\n`;
-                warnText += `⏰ ${new Date(warn.timestamp).toLocaleString()}\n\n`;
-            });
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: warnText,
-                mentions: [targetUser]
-            });
-        } catch (error) {
-            logger.error('Error in warnlist command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to get warnings: ' + error.message
             });
         }
     },
@@ -630,7 +635,7 @@ const groupCommands = {
 
             const rules = args.join(' ');
             try {
-                await store.setGroupRules(msg.key.remoteJid, rules);
+                await dbStore.setGroupRules(msg.key.remoteJid, rules);
                 await sock.sendMessage(msg.key.remoteJid, { 
                     text: '✅ Group rules have been updated successfully!' 
                 });
@@ -655,7 +660,7 @@ const groupCommands = {
             const groupMetadata = await validateGroupContext(sock, msg, false);
             if (!groupMetadata) return;
 
-            const rules = await store.getGroupRules(msg.key.remoteJid);
+            const rules = await dbStore.getGroupRules(msg.key.remoteJid);
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: rules ? `*Group Rules*\n\n${rules}` : 'No rules set for this group.'
             });
@@ -871,7 +876,7 @@ const groupCommands = {
             }
 
             const status = args[0].toLowerCase() === 'on';
-            await store.setGroupSetting(msg.key.remoteJid, 'welcome', status);
+            await dbStore.setGroupSetting(msg.key.remoteJid, 'welcome', status);
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: `✅ Welcome messages have been turned ${status ? 'on' : 'off'}`
             });
@@ -901,7 +906,7 @@ const groupCommands = {
             }
 
             const status = args[0].toLowerCase() === 'on';
-            await store.setGroupSetting(msg.key.remoteJid, 'goodbye', status);
+            await dbStore.setGroupSetting(msg.key.remoteJid, 'goodbye', status);
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: `✅ Goodbye messages have been turned ${status ? 'on' : 'off'}`
             });
@@ -947,7 +952,7 @@ const groupCommands = {
         try {
             const { id, participants, action } = update;
             const groupMetadata = await sock.groupMetadata(id);
-            const settings = await store.getGroupSettings(id);
+            const settings = await dbStore.getGroupSettings(id);
 
             if (!settings) return;
 
