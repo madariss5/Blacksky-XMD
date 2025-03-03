@@ -53,7 +53,7 @@
   },
   "addons": [
     {
-      "plan": "heroku-postgresql:mini"
+      "plan": "heroku-postgresql:basic-0"
     }
   ],
   "engines": {
