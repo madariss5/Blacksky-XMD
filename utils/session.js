@@ -1,6 +1,6 @@
 const fs = require('fs').promises;
 const path = require('path');
-const logger = require('pino')();
+const logger = require('pino')({ level: 'silent' });
 
 class SessionManager {
     constructor(sessionDir) {
@@ -15,32 +15,30 @@ class SessionManager {
             if (this.isHeroku && process.env.SESSION_DATA) {
                 try {
                     const sessionData = JSON.parse(process.env.SESSION_DATA);
-                    logger.info('Session data loaded from environment variable');
                     return true;
                 } catch (error) {
-                    logger.error('Failed to parse SESSION_DATA:', error);
+                    return false;
                 }
             }
 
-            // Clean up all existing sessions first
-            await this.cleanupAllSessions();
-
             // Create fresh session directory
             await fs.mkdir(this.sessionDir, { recursive: true });
-
-            // Also clean up auth directory
-            await fs.rm(this.authDir, { recursive: true, force: true });
             await fs.mkdir(this.authDir, { recursive: true });
 
-            logger.info('Session and auth directories initialized:', {
-                sessionDir: this.sessionDir,
-                authDir: this.authDir,
-                mode: this.isHeroku ? 'Heroku' : 'Local',
-                timestamp: new Date().toISOString()
-            });
+            // Create additional required directories
+            const dirs = [
+                path.join(this.sessionDir, 'sessions'),
+                path.join(this.sessionDir, 'creds'),
+                'temp',
+                'database'
+            ];
+
+            for (const dir of dirs) {
+                await fs.mkdir(dir, { recursive: true });
+            }
+
             return true;
         } catch (error) {
-            logger.error('Failed to initialize session directory:', error);
             return false;
         }
     }
@@ -48,15 +46,14 @@ class SessionManager {
     async cleanupAllSessions() {
         try {
             if (!this.isHeroku) {
-                // Only clean local files if not on Heroku
                 await fs.rm(this.sessionDir, { recursive: true, force: true });
-                logger.info('All session files cleaned up successfully');
             }
         } catch (error) {
-            if (error.code !== 'ENOENT') { // Ignore if directory doesn't exist
-                logger.error('Error cleaning up sessions:', error);
+            if (error.code !== 'ENOENT') {
+                return false;
             }
         }
+        return true;
     }
 
     async saveSessionInfo(sessionId, sessionData) {
@@ -68,19 +65,16 @@ class SessionManager {
             };
 
             if (this.isHeroku) {
-                // On Heroku, log the session data that should be set in env var
-                logger.info('Session data for Heroku ENV:', JSON.stringify(info));
-                return;
+                return true;
             }
 
-            // Save session info to a single file for local development
             await fs.writeFile(
                 path.join(this.sessionDir, 'session_info.json'),
                 JSON.stringify(info, null, 2)
             );
-            logger.info(`Session info saved for ID: ${sessionId}`);
+            return true;
         } catch (error) {
-            logger.error('Failed to save session info:', error);
+            return false;
         }
     }
 
@@ -100,11 +94,9 @@ class SessionManager {
         }
     }
 
-    // Helper method to check if running on Heroku
     isHerokuEnvironment() {
         return this.isHeroku;
     }
-
     async restoreToTimestamp(targetTimestamp) {
         try {
             const currentTime = new Date();

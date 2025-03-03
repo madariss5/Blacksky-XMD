@@ -4,19 +4,37 @@ A highly advanced WhatsApp Multi-Device bot with AI capabilities and robust func
 ## ⚡️ Quick Deploy
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/madariss5/Blacksky-XMD)
 
-### Deployment Steps:
+### First Time Setup:
 1. Click the "Deploy to Heroku" button above
-2. Fill in the required environment variables:
+2. Fill in these required environment variables:
    ```
    OWNER_NUMBER=your_whatsapp_number (e.g., 491234567890)
    OWNER_NAME=your_name
    BOT_NAME=BlackSky-MD
-   SESSION_ID=your_session_id
    PREFIX=.
    ```
-3. Click "Deploy" and wait for the build to complete
-4. Once deployed, check the logs to ensure everything is running properly
-5. The bot will automatically initialize and send credentials to your WhatsApp number
+3. Start the bot and scan the QR code with WhatsApp
+4. The bot will send you a session ID in your WhatsApp chat
+5. Copy this session ID and update your Heroku config vars with:
+   ```
+   SESSION_ID=your_received_session_id
+   ```
+
+### Optional Settings:
+```
+AUTO_READ_STATUS=yes
+AUTO_DOWNLOAD_STATUS=no
+PM_PERMIT=no
+PUBLIC_MODE=yes
+```
+
+### Automatic Setup:
+- PostgreSQL database (essential-0 plan)
+- Standard-2x dyno
+- FFmpeg and WebP buildpacks
+
+## 🔐 Important Note:
+Never share your session ID with anyone. It contains your WhatsApp authentication credentials and could be used to access your account.
 
 ## 🌟 Features
 - 📱 Multi-Device Support

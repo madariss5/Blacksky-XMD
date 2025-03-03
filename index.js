@@ -3,17 +3,37 @@ const {
     useMultiFileAuthState,
     DisconnectReason
 } = require("@whiskeysockets/baileys");
-const pino = require('pino');
+const pino = require('pino')({ 
+    level: 'silent',
+    transport: {
+        target: 'pino-pretty',
+        options: {
+            translateTime: false,
+            ignore: 'pid,hostname,time',
+            messageFormat: '{msg}'
+        }
+    }
+}); 
 const logger = require('./utils/logger');
 const { getUptime } = require('./utils');
 const fs = require('fs-extra');
 const path = require('path');
 const config = require('./config');
 const { compressCredsFile, getSessionData } = require('./utils/creds');
-const { loadEnvironment } = require('./utils/env'); // Added line
+const { loadEnvironment } = require('./utils/env');
 
-// Load and validate environment variables
-loadEnvironment(); // Added line
+loadEnvironment();
+
+// Ensure required directories exist
+const dirs = ['auth_info', 'auth_info_baileys', 'auth_info/sessions', 'auth_info/creds', 'temp', 'database'];
+for (const dir of dirs) {
+    try {
+        fs.ensureDirSync(dir);
+    } catch (error) {
+        logger.error(`Failed to create directory ${dir}: ${error.message}`);
+        process.exit(1);
+    }
+}
 
 // Command handlers
 const commandsPath = path.join(__dirname, 'commands');
@@ -22,40 +42,30 @@ const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('
 // Initialize command map
 const commands = new Map();
 
-// Load commands
-logger.info('Loading commands...');
+// Load commands silently without logging
 for (const file of commandFiles) {
     try {
         const filePath = path.join(commandsPath, file);
-        delete require.cache[require.resolve(filePath)]; // Clear cache
+        delete require.cache[require.resolve(filePath)];
         const command = require(filePath);
 
         if (typeof command === 'object') {
             Object.entries(command).forEach(([cmdName, handler]) => {
-                // Skip if command already exists (prevent duplicates)
                 if (!commands.has(cmdName)) {
-                    if (config.commands[cmdName]) { // Only load commands defined in config
+                    if (config.commands[cmdName]) {
                         commands.set(cmdName, handler);
-                        logger.info(`Loaded command: ${cmdName} from ${file}`);
-                    } else {
-                        logger.warn(`Command ${cmdName} not found in config, skipping...`);
                     }
-                } else {
-                    logger.warn(`Skipping duplicate command: ${cmdName} in ${file}`);
                 }
             });
         }
     } catch (error) {
-        logger.error(`Error loading commands from ${file}:`, error);
+        // Silently handle errors
     }
 }
 
-// Track if credentials have been sent
 let credentialsSent = false;
-// Track if deployment message sent
 let deploymentMessageSent = false;
 
-// Function to send deployment status message
 async function sendDeploymentMessage(sock) {
     try {
         if (!deploymentMessageSent && config.ownerNumber) {
@@ -74,46 +84,40 @@ async function sendDeploymentMessage(sock) {
                       `Type ${config.prefix}help to view available commands.`
             };
 
-            await sock.sendMessage(botJid, message);
+            await sock.sendMessage(config.ownerNumber + '@s.whatsapp.net', message);
             deploymentMessageSent = true;
-            logger.info('Deployment status message sent successfully');
         }
     } catch (error) {
-        logger.error('Error sending deployment message:', error);
+        logger.error(`Failed to send deployment message: ${error.message}`);
     }
 }
 
 async function startBot() {
     try {
-        logger.info('Starting WhatsApp bot...');
         const { state, saveCreds } = await useMultiFileAuthState('auth_info');
 
-        // Get session data
         const sessionData = await getSessionData();
         if (sessionData.success) {
             config.session.id = sessionData.sessionId;
-            logger.info('Using session ID from credentials');
         }
 
         const sock = makeWASocket({
-            logger: pino({ level: 'silent' }),
+            logger: pino,
             printQRInTerminal: true,
             auth: state,
             browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49']
         });
 
-        // Handle messages
         sock.ev.on('messages.upsert', async ({ messages }) => {
             try {
                 const msg = messages[0];
                 if (!msg?.message) return;
 
                 const messageText = msg.message?.conversation || 
-                                    msg.message?.extendedTextMessage?.text || 
-                                    msg.message?.imageMessage?.caption || 
-                                    msg.message?.videoMessage?.caption || '';
+                                  msg.message?.extendedTextMessage?.text || 
+                                  msg.message?.imageMessage?.caption || 
+                                  msg.message?.videoMessage?.caption || '';
 
-                // Process command if message starts with prefix
                 if (messageText.startsWith(config.prefix)) {
                     const args = messageText.slice(config.prefix.length).trim().split(/\s+/);
                     const command = args.shift().toLowerCase();
@@ -121,9 +125,8 @@ async function startBot() {
                     if (commands.has(command)) {
                         try {
                             await commands.get(command)(sock, msg, args);
-                            logger.info(`Executed command: ${command}`);
                         } catch (error) {
-                            logger.error(`Error executing command ${command}:`, error);
+                            logger.error(`Command execution failed: ${error.message}`);
                             await sock.sendMessage(msg.key.remoteJid, {
                                 text: '❌ Error executing command'
                             });
@@ -131,24 +134,19 @@ async function startBot() {
                     }
                 }
             } catch (error) {
-                logger.error('Error in message handler:', error);
+                logger.error(`Message handling failed: ${error.message}`);
             }
         });
 
-        // Handle connection events
         sock.ev.on('connection.update', async ({ connection, lastDisconnect }) => {
             if (connection === 'close') {
                 const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
                 if (shouldReconnect) {
-                    logger.info('Reconnecting...');
-                    credentialsSent = false; // Reset flag on disconnect
-                    deploymentMessageSent = false; // Reset deployment message flag
+                    credentialsSent = false;
+                    deploymentMessageSent = false;
                     startBot();
                 }
             } else if (connection === 'open') {
-                logger.info('Bot connected successfully!');
-
-                // Send credentials file to owner
                 if (!credentialsSent && config.ownerNumber) {
                     try {
                         const credsPath = path.join(process.cwd(), 'auth_info', 'creds.json');
@@ -162,22 +160,18 @@ async function startBot() {
                         });
 
                         credentialsSent = true;
-                        logger.info('Credentials file sent to owner successfully');
                     } catch (error) {
-                        logger.error('Error sending credentials file:', error);
+                        logger.error(`Failed to send credentials: ${error.message}`);
                     }
                 }
-
-                // Send deployment status message
                 await sendDeploymentMessage(sock);
             }
         });
 
         sock.ev.on('creds.update', async () => {
             await saveCreds();
-            await compressCredsFile(); // Compress the creds file after updates
+            await compressCredsFile();
 
-            // Update session data if needed
             const newSessionData = await getSessionData();
             if (newSessionData.success) {
                 config.session.id = newSessionData.sessionId;
@@ -185,7 +179,7 @@ async function startBot() {
         });
 
     } catch (error) {
-        logger.error('Error in bot startup:', error);
+        logger.error(`Bot startup failed: ${error.message}`);
         process.exit(1);
     }
 }
@@ -206,6 +200,5 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-    logger.info(`Server running on port ${PORT}`);
     startBot();
 });

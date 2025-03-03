@@ -17,7 +17,7 @@ echo "NPM version: $(npm -v)"
 
 # Create required directories with proper permissions
 log "Setting up directories..."
-for dir in auth_info_baileys auth_info temp database; do
+for dir in auth_info auth_info_baileys auth_info/sessions auth_info/creds temp database; do
     mkdir -p "$dir"
     chmod 755 "$dir"
     log "Created directory: $dir"
@@ -25,7 +25,7 @@ done
 
 # Check environment variables
 log "Checking environment variables..."
-required_vars=("OWNER_NUMBER" "OWNER_NAME" "BOT_NAME" "SESSION_ID" "PREFIX")
+required_vars=("OWNER_NUMBER" "OWNER_NAME" "BOT_NAME" "PREFIX")
 missing_vars=()
 
 for var in "${required_vars[@]}"; do

@@ -21,9 +21,10 @@ const sessionTimeout = platformConfig.isHeroku ? 300000 : 600000; // 5 minutes f
 const maxRetries = platformConfig.isHeroku ? 3 : 5; // Less retries on Heroku to avoid unnecessary dynos usage
 
 const sessionConfig = {
-    id: process.env.SESSION_ID,
-    authDir: process.env.AUTH_DIR || (platformConfig.isHeroku ? '/app/auth_info' : './auth_info'),
-    printQRInTerminal: !platformConfig.isHeroku,
+    id: process.env.SESSION_ID || '', // Empty default to ensure users provide their own
+    authDir: platformConfig.isHeroku ? '/app/auth_info' : './auth_info',
+    authBaileysDir: platformConfig.isHeroku ? '/app/auth_info_baileys' : './auth_info_baileys',
+    printQRInTerminal: true, // Always show QR code
     browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49'],
     defaultQueryTimeoutMs: parseInt(process.env.QUERY_TIMEOUT) || sessionTimeout,
     connectTimeoutMs: parseInt(process.env.CONNECT_TIMEOUT) || 60000,
@@ -33,8 +34,8 @@ const sessionConfig = {
     markOnlineOnConnect: true,
     retryRequestDelayMs: parseInt(process.env.RETRY_DELAY) || 2000,
     maxRetries: maxRetries,
-    logLevel: process.env.LOG_LEVEL || (platformConfig.isHeroku ? 'warn' : 'silent'),
-    generateHighQualityLinkPreview: !platformConfig.isHeroku // Disable on Heroku to save resources
+    logLevel: 'silent', // Suppress all logs except QR code
+    generateHighQualityLinkPreview: !platformConfig.isHeroku
 };
 
 const rawOwnerNumber = process.env.OWNER_NUMBER;
@@ -1107,8 +1108,7 @@ const config = {
         // NSFW Commands
         nsfwcheck: {
             description: 'Check NSFW access status',
-            category: 'NSFW',
-            usage: '.nsfwcheck'
+            category: 'NSFW',            usage: '.nsfwcheck'
         },
         setnsfw: {
             description: 'Enable/disable NSFW in group (admin only)',
