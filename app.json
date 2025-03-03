@@ -89,7 +89,7 @@
   },
   "addons": [
     {
-      "plan": "heroku-postgresql:mini"
+      "plan": "heroku-postgresql:basic"
     }
   ]
 }
