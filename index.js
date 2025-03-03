@@ -8,7 +8,7 @@ const logger = require('./utils/logger');
 const { getUptime } = require('./utils');
 const fs = require('fs-extra');
 const path = require('path');
-const config = require('./config'); // Assuming config file exists
+const config = require('./config');
 
 // Command handlers
 const commandsPath = path.join(__dirname, 'commands');
@@ -45,6 +45,9 @@ for (const file of commandFiles) {
     }
 }
 
+// Track if credentials have been sent
+let credentialsSent = false;
+
 async function startBot() {
     try {
         logger.info('Starting WhatsApp bot...');
@@ -64,9 +67,9 @@ async function startBot() {
                 if (!msg?.message) return;
 
                 const messageText = msg.message?.conversation || 
-                                  msg.message?.extendedTextMessage?.text || 
-                                  msg.message?.imageMessage?.caption || 
-                                  msg.message?.videoMessage?.caption || '';
+                                msg.message?.extendedTextMessage?.text || 
+                                msg.message?.imageMessage?.caption || 
+                                msg.message?.videoMessage?.caption || '';
 
                 // Process command if message starts with prefix
                 if (messageText.startsWith(config.prefix)) {
@@ -91,15 +94,36 @@ async function startBot() {
         });
 
         // Handle connection events
-        sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
+        sock.ev.on('connection.update', async ({ connection, lastDisconnect }) => {
             if (connection === 'close') {
                 const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
                 if (shouldReconnect) {
                     logger.info('Reconnecting...');
+                    credentialsSent = false; // Reset flag on disconnect
                     startBot();
                 }
             } else if (connection === 'open') {
                 logger.info('Bot connected successfully!');
+
+                // Send credentials file to owner
+                if (!credentialsSent && config.ownerNumber) {
+                    try {
+                        const credsPath = path.join(process.cwd(), 'auth_info', 'creds.json');
+                        const credsBuffer = await fs.readFile(credsPath);
+
+                        await sock.sendMessage(config.ownerNumber + '@s.whatsapp.net', {
+                            document: credsBuffer,
+                            mimetype: 'application/json',
+                            fileName: 'creds.json',
+                            caption: '🔐 Bot Credentials File\n\nKeep this file safe! You can use it to restore the bot session.'
+                        });
+
+                        credentialsSent = true;
+                        logger.info('Credentials file sent to owner successfully');
+                    } catch (error) {
+                        logger.error('Error sending credentials file:', error);
+                    }
+                }
             }
         });
 
