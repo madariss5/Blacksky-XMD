@@ -1,7 +1,6 @@
 {
   "name": "blacksky-md",
   "description": "Advanced WhatsApp Multi-Device bot with AI capabilities",
-  "keywords": ["bot", "node", "whatsapp"],
   "repository": "https://github.com/blacksky-algorithms/blacksky-md",
   "env": {
     "NODE_ENV": {
@@ -26,21 +25,12 @@
   "buildpacks": [
     {
       "url": "heroku/nodejs"
-    },
-    {
-      "url": "https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git"
-    },
-    {
-      "url": "https://github.com/DuckyTeam/heroku-buildpack-imagemagick.git"
     }
   ],
-  "scripts": {
-    "postdeploy": "npm install"
-  },
   "formation": {
     "web": {
       "quantity": 1,
-      "size": "basic"
+      "size": "eco"
     }
   }
 }
