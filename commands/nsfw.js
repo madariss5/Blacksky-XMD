@@ -45,9 +45,9 @@ const handleNSFWCommand = async (sock, msg, endpoint) => {
             return;
         }
         if (!await checkGroupNSFW(sock, msg)) {
-            logger.info('Group NSFW check failed', { 
+            logger.info('Group NSFW check failed', {
                 groupId: msg.key.remoteJid,
-                userId 
+                userId
             });
             return;
         }
@@ -89,7 +89,7 @@ const handleNSFWCommand = async (sock, msg, endpoint) => {
 
         const imageUrl = response.data.images[0].url;
 
-        logger.debug('Received API response', { 
+        logger.debug('Received API response', {
             url: imageUrl,
             status: response.status
         });
@@ -130,34 +130,48 @@ const handleNSFWCommand = async (sock, msg, endpoint) => {
 const verifyAge = async (sock, msg) => {
     try {
         const userId = msg.key.participant || msg.key.remoteJid;
-        logger.debug('Verifying age for user', { userId });
+        logger.info('Starting age verification for user', { userId });
 
+        // Using getUser instead of getUserInfo to get full user data
         const user = await store.getUser(userId);
+        logger.info('User data retrieved:', {
+            userId,
+            userFound: !!user,
+            userAge: user?.age || 'not set',
+            fullData: user
+        });
 
-        if (!user) {
-            logger.debug('User not found in database', { userId });
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: '⚠️ Please register first with !register <name> <age>. Must be 18+.' 
+        if (!user || !user.registered) {
+            logger.debug('User not found or not registered', { userId });
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⚠️ Please register first with .register <name> <age>. Must be 18+.'
             });
             return false;
         }
 
-        if (!user.age || user.age < 18) {
-            logger.debug('User age verification failed', { 
+        // Ensure age is treated as a number
+        const userAge = parseInt(user.age);
+        if (isNaN(userAge) || userAge < 18) {
+            logger.debug('User age verification failed', {
                 userId,
-                age: user.age || 'not set'
+                age: userAge,
+                rawAge: user.age
             });
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: '⚠️ You must be 18+ to use NSFW commands.' 
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⚠️ You must be 18+ to use NSFW commands.'
             });
             return false;
         }
 
+        logger.info('Age verification passed', {
+            userId,
+            age: userAge
+        });
         return true;
     } catch (error) {
         logger.error('Error in age verification:', error);
-        await sock.sendMessage(msg.key.remoteJid, { 
-            text: '❌ Error verifying age. Please try again later.' 
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: '❌ Error verifying age. Please try again later.'
         });
         return false;
     }
@@ -179,16 +193,16 @@ const checkGroupNSFW = async (sock, msg) => {
         });
 
         if (!isNSFW) {
-            await sock.sendMessage(msg.key.remoteJid, { 
-                text: '⚠️ NSFW commands are disabled in this group. Admins can enable them with !setnsfw on' 
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '⚠️ NSFW commands are disabled in this group. Admins can enable them with .setnsfw on'
             });
             return false;
         }
         return true;
     } catch (error) {
         logger.error('Error checking group NSFW status:', error);
-        await sock.sendMessage(msg.key.remoteJid, { 
-            text: '❌ Error checking group settings' 
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: '❌ Error checking group settings'
         });
         return false;
     }
@@ -196,17 +210,58 @@ const checkGroupNSFW = async (sock, msg) => {
 
 // NSFW commands
 const nsfwCommands = {
-    // Registration and settings
+    nsfwcheck: async (sock, msg) => {
+        try {
+            const isGroupChat = msg.key.remoteJid.endsWith('@g.us');
+            const userId = msg.key.participant || msg.key.remoteJid;
+
+            logger.info('Running NSFW check for user', { userId });
+            const user = await store.getUser(userId);
+            const isNSFW = isGroupChat ? await store.isNSFWEnabled(msg.key.remoteJid) : true;
+
+            let status = `*NSFW Status Check*\n\n`;
+            status += `• Registration: ${user?.registered ? '✅' : '❌'}\n`;
+            status += `• Name: ${user?.name || 'Not registered'}\n`;
+            status += `• Age: ${user?.age || 'Not set'}\n`;
+            status += `• Age Verified: ${(user?.age >= 18) ? '✅' : '❌'}\n`;
+
+            if (isGroupChat) {
+                status += `• Group NSFW: ${isNSFW ? '✅' : '❌'}\n`;
+            }
+
+            status += `\nTo register: .register <name> <age>`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text: status });
+            logger.info('NSFW check completed', {
+                userId,
+                registration: user?.registered,
+                age: user?.age,
+                ageVerified: user?.age >= 18
+            });
+
+        } catch (error) {
+            logger.error('Error in nsfwcheck command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error checking NSFW status'
+            });
+        }
+    },
     register: async (sock, msg, args) => {
         try {
             if (args.length < 2) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Please provide your name and age!\nUsage: !register <name> <age>'
+                    text: '❌ Please provide your name and age!\nUsage: .register <name> <age>'
                 });
             }
 
             const name = args.slice(0, -1).join(' ');
             const age = parseInt(args[args.length - 1]);
+
+            logger.info('Processing registration request', {
+                name,
+                age,
+                rawAge: args[args.length - 1]
+            });
 
             if (isNaN(age) || age < 1 || age > 100) {
                 return await sock.sendMessage(msg.key.remoteJid, {
@@ -221,20 +276,17 @@ const nsfwCommands = {
             }
 
             const userId = msg.key.participant || msg.key.remoteJid;
-            await store.registerUser(userId, {
-                name,
-                age,
-                registrationTime: Date.now()
-            });
+            logger.info('Registering user', { userId, name, age });
 
-            logger.info('User registered successfully', {
-                userId,
-                name,
-                age
+            const registeredUser = await store.registerUser(userId, name, age);
+
+            logger.info('Registration completed', {
+                success: !!registeredUser,
+                userData: registeredUser
             });
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `✅ Registration successful!\n\nName: ${name}\nAge: ${age}\n\nYou can now use NSFW commands.`
+                text: `✅ Registration successful!\n\nName: ${name}\nAge: ${age}\n\nYou can now use NSFW commands.\nUse .nsfwcheck to verify your status.`
             });
         } catch (error) {
             logger.error('Error in register command:', error);
@@ -280,31 +332,6 @@ const nsfwCommands = {
         }
     },
 
-    nsfwcheck: async (sock, msg) => {
-        try {
-            const isGroupChat = msg.key.remoteJid.endsWith('@g.us');
-            const userId = msg.key.participant || msg.key.remoteJid;
-            const user = await store.getUserInfo(userId);
-            const isNSFW = isGroupChat ? await store.isNSFWEnabled(msg.key.remoteJid) : true;
-
-            let status = `*NSFW Status Check*\n\n`;
-            status += `• User Age: ${user?.age || 'Not registered'}\n`;
-            status += `• Age Verified: ${user?.age >= 18 ? '✅' : '❌'}\n`;
-
-            if (isGroupChat) {
-                status += `• Group NSFW: ${isNSFW ? '✅' : '❌'}\n`;
-            }
-
-            await sock.sendMessage(msg.key.remoteJid, { text: status });
-        } catch (error) {
-            logger.error('Error in nsfwcheck command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to check NSFW status'
-            });
-        }
-    },
-
-    // NSFW content commands
     waifu: async (sock, msg) => {
         logger.info('Executing waifu command');
         await handleNSFWCommand(sock, msg, 'waifu');

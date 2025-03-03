@@ -929,6 +929,21 @@ const config = {
         },
 
         // NSFW Commands
+        nsfwcheck: {
+            description: 'Check NSFW access status',
+            category: 'NSFW',
+            usage: '.nsfwcheck'
+        },
+        register: {
+            description: 'Register your age for NSFW content',
+            category: 'NSFW',
+            usage: '.register <name> <age>'
+        },
+        setnsfw: {
+            description: 'Enable/disable NSFW in group (admin only)',
+            category: 'NSFW',
+            usage: '.setnsfw on/off'
+        },
         trap: {
             description: 'Get trap NSFW content',
             category: 'NSFW',
