@@ -285,7 +285,7 @@ const config = {
             usage: '.ai <your message>'
         },
         gpt: { 
-            description: 'Advanced chat with GPT-4', 
+            description: 'Advanced chat with GPT-4 (with conversation history)', 
             category: 'AI',
             usage: '.gpt <your message>'
         },
@@ -293,6 +293,16 @@ const config = {
             description: 'Generate images with DALL-E', 
             category: 'AI',
             usage: '.dalle <image description>'
+        },
+        dalleEdit: {
+            description: 'Edit an AI-generated image',
+            category: 'AI',
+            usage: 'Reply to an image with .dalle-edit <instructions>'
+        },
+        clearChat: {
+            description: 'Clear AI conversation history',
+            category: 'AI',
+            usage: '.clearchat'
         },
 
         // Group Commands
