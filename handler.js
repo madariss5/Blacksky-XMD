@@ -1,5 +1,8 @@
 const logger = require('pino')();
 const mediaCommands = require('./commands/media');
+const aiCommands = require('./commands/ai');
+const basicCommands = require('./commands/basic');
+const userCommands = require('./commands/user');
 const dbStore = require('./database/store');
 
 // Simple command registry
@@ -11,6 +14,10 @@ const commands = new Map();
  * @param {function} handler - Command handler function
  */
 function registerCommand(name, handler) {
+    if (commands.has(name)) {
+        logger.warn(`Duplicate command registration: ${name}`);
+        return;
+    }
     if (typeof handler === 'function') {
         commands.set(name, handler);
         logger.info(`Registered command: ${name}`);
@@ -114,8 +121,8 @@ async function messageHandler(sock, msg) {
             return;
         }
 
-        const messageContent = messageType === 'conversation' 
-            ? msg.message.conversation 
+        const messageContent = messageType === 'conversation'
+            ? msg.message.conversation
             : msg.message.extendedTextMessage.text;
 
         // Handle AFK mentions
@@ -164,10 +171,17 @@ async function messageHandler(sock, msg) {
     }
 }
 
-// Register media commands
-Object.entries(mediaCommands).forEach(([name, handler]) => {
-    registerCommand(name, handler);
-    logger.info(`Registered media command: ${name}`);
+// Register all command modules
+[
+    { module: mediaCommands, type: 'Media' },
+    { module: aiCommands, type: 'AI' },
+    { module: basicCommands, type: 'Basic' },
+    { module: userCommands, type: 'User' }
+].forEach(({ module, type }) => {
+    Object.entries(module).forEach(([name, handler]) => {
+        registerCommand(name, handler);
+        logger.info(`Registered ${type} command: ${name}`);
+    });
 });
 
 // Expose command registration
