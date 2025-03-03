@@ -1,6 +1,6 @@
 const config = require('../config');
 const logger = require('../utils/logger');
-const { dbStore } = require('../database/store');
+const dbStore = require('../database/store');  // Update import
 
 // Define cooldown periods
 const COOLDOWNS = {

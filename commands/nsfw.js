@@ -1,5 +1,5 @@
 const config = require('../config');
-const { dbStore } = require('../database/store');
+const dbStore = require('../database/store');
 const logger = require('pino')();
 const axios = require('axios');
 const fs = require('fs-extra');

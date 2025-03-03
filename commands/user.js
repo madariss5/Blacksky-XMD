@@ -1,5 +1,5 @@
 const config = require('../config');
-const dbStore = require('../database/store');
+const dbStore = require('../database/store');  // Update import
 const logger = require('../utils/logger');
 const { formatPhoneNumber, addWhatsAppSuffix, formatDisplayNumber } = require('../utils/phoneNumber');
 
