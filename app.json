@@ -2,9 +2,7 @@
   "name": "blacksky-md",
   "description": "Advanced WhatsApp Multi-Device bot with AI capabilities",
   "keywords": ["bot", "node", "whatsapp"],
-  "website": "https://github.com/blacksky-algorithms/blacksky-md",
   "repository": "https://github.com/blacksky-algorithms/blacksky-md",
-  "stack": "heroku-22",
   "env": {
     "NODE_ENV": {
       "description": "Node environment",
