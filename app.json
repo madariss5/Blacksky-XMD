@@ -3,7 +3,7 @@
   "description": "Advanced WhatsApp Multi-Device bot with AI capabilities",
   "repository": "https://github.com/blacksky-algorithms/blacksky-md",
   "logo": "https://raw.githubusercontent.com/blacksky-algorithms/blacksky-md/main/generated-icon.png",
-  "keywords": ["nodejs", "whatsapp", "bot", "ai", "openai"],
+  "keywords": ["bot", "whatsapp", "multi-device", "baileys", "ai"],
   "stack": "container",
   "env": {
     "PREFIX": {
@@ -41,10 +41,6 @@
       "description": "Node environment",
       "value": "production",
       "required": false
-    },
-    "DATABASE_URL": {
-      "description": "PostgreSQL Database URL (automatically set by Heroku)",
-      "required": false
     }
   },
   "buildpacks": [
@@ -59,6 +55,9 @@
     },
     {
       "url": "https://github.com/DuckyTeam/heroku-buildpack-imagemagick.git"
+    },
+    {
+      "url": "https://github.com/heroku/heroku-buildpack-apt.git"
     }
   ],
   "addons": [
@@ -71,5 +70,7 @@
       "quantity": 1,
       "size": "basic"
     }
-  }
+  },
+  "success_url": "/",
+  "stack": "container"
 }
