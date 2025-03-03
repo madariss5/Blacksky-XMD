@@ -49,14 +49,14 @@
       "description": "Your name as the bot owner",
       "required": true
     },
-    "SESSION_ID": {
-      "description": "A unique identifier for your WhatsApp session (will be generated on first run)",
-      "required": true
-    },
     "NODE_ENV": {
       "description": "Runtime environment",
       "value": "production",
       "required": true
+    },
+    "OPENAI_API_KEY": {
+      "description": "Your OpenAI API key for AI features (optional)",
+      "required": false
     }
   },
   "buildpacks": [

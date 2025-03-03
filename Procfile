@@ -1,1 +1,1 @@
-worker: node index.js
+worker: PORT=5000 node index.js
