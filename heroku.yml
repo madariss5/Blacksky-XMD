@@ -6,11 +6,7 @@ build:
   docker:
     worker: Dockerfile
 run:
-  worker: 
+  worker:
     command:
-      - /app/start.sh
-    image: worker
-  web:
-    command:
-      - node index.js
+      - bash start.sh
     image: worker
