@@ -73,12 +73,12 @@
   "formation": {
     "worker": {
       "quantity": 1,
-      "size": "eco"
+      "size": "standard-2x"
     }
   },
   "addons": [
     {
-      "plan": "heroku-postgresql:basic-0"
+      "plan": "heroku-postgresql:essential-0"
     }
   ],
   "stack": "heroku-22",
