@@ -26,6 +26,11 @@
     "SESSION_ID": {
       "description": "WhatsApp session ID",
       "required": true
+    },
+    "NODE_ENV": {
+      "description": "Node environment",
+      "value": "production",
+      "required": true
     }
   },
   "buildpacks": [

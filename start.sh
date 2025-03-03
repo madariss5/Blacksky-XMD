@@ -14,9 +14,6 @@ log "Starting BlackSky-MD bot..."
 log "System Information:"
 echo "Node version: $(node -v)"
 echo "NPM version: $(npm -v)"
-if command -v neofetch &> /dev/null; then
-    neofetch --stdout
-fi
 
 # Create required directories with proper permissions
 log "Setting up directories..."
@@ -26,24 +23,12 @@ for dir in auth_info_baileys auth_info temp database; do
     log "Created directory: $dir"
 done
 
-# Cleanup any existing session
-log "Cleaning up existing sessions..."
-if [ -d "auth_info_baileys" ]; then
-    rm -rf auth_info_baileys/*
-    log "Cleared auth_info_baileys/"
-fi
-
-if [ -d "auth_info" ]; then
-    rm -rf auth_info/*
-    log "Cleared auth_info/"
-fi
-
 # Production-specific checks and configurations
 if [ "$NODE_ENV" = "production" ]; then
     log "Running in production mode (Heroku)"
 
     # Verify critical environment variables
-    required_vars=("OWNER_NUMBER" "OWNER_NAME" "BOT_NAME" "SESSION_ID" "DATABASE_URL")
+    required_vars=("OWNER_NUMBER" "OWNER_NAME" "BOT_NAME" "SESSION_ID")
     missing_vars=()
 
     for var in "${required_vars[@]}"; do
@@ -58,17 +43,13 @@ if [ "$NODE_ENV" = "production" ]; then
     fi
 
     # Set production-specific Node.js flags
-    export NODE_OPTIONS="--max-old-space-size=2560 --optimize_for_size --gc_interval=100"
+    export NODE_OPTIONS="--max-old-space-size=2560"
     log "Node.js production flags set"
 
-    # Verify database connection
-    if ! pg_isready -h "${DATABASE_URL%%@*}" > /dev/null 2>&1; then
-        log "Warning: Database connection not ready, will retry in application"
-    fi
 
     # Start the bot with production optimizations
     log "Starting bot in production mode..."
-    exec node --optimize_for_size --max_old-space-size=2560 index.js
+    exec node index.js
 else
     log "Running in development mode"
     # Set development defaults
