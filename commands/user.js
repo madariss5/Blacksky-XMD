@@ -1,7 +1,8 @@
 const config = require('../config');
-const dbStore = require('../database/store');  // Update import
+const dbStore = require('../database/store');
 const logger = require('../utils/logger');
 const { formatPhoneNumber, addWhatsAppSuffix, formatDisplayNumber } = require('../utils/phoneNumber');
+const moment = require('moment-timezone');
 
 // Helper function to safely get profile picture
 async function safeProfilePicture(sock, jid) {
@@ -12,6 +13,15 @@ async function safeProfilePicture(sock, jid) {
         logger.warn('Could not fetch profile picture:', error);
         return 'https://i.imgur.com/wuxBN7M.png'; // Default profile picture
     }
+}
+
+// Helper function to format duration
+function formatDuration(ms) {
+    const duration = moment.duration(ms);
+    const days = Math.floor(duration.asDays());
+    const hours = duration.hours();
+    const minutes = duration.minutes();
+    return `${days}d ${hours}h ${minutes}m`;
 }
 
 const userCommands = {
@@ -301,6 +311,117 @@ const userCommands = {
             logger.error('Error in rewards command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error fetching rewards. Please try again later.'
+            });
+        }
+    },
+    afk: async (sock, msg, args) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const reason = args.join(' ') || null;
+
+            // Check if user is already AFK
+            const currentAFK = await dbStore.isUserAFK(userId);
+            if (currentAFK && !reason) {
+                // Remove AFK status
+                const afkDuration = await dbStore.removeUserAFK(userId);
+                if (afkDuration) {
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        text: `Welcome back @${userId.split('@')[0]}!\nYou were AFK for ${formatDuration(afkDuration)}`,
+                        mentions: [userId]
+                    });
+                }
+                return;
+            }
+
+            // Set user as AFK
+            await dbStore.setUserAFK(userId, reason);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `@${userId.split('@')[0]} is now AFK${reason ? `\nReason: ${reason}` : ''}`,
+                mentions: [userId]
+            });
+
+            logger.info('User set AFK:', { userId, reason });
+        } catch (error) {
+            logger.error('Error in afk command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to update AFK status'
+            });
+        }
+    },
+
+    stats: async (sock, msg) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const result = await dbStore.getUserStats(userId);
+
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to get user stats');
+            }
+
+            const stats = result.stats;
+            const lastActive = moment(stats.lastActive).fromNow();
+
+            const statsText = `📊 *User Statistics*\n\n` +
+                          `• Messages Sent: ${stats.messageCount}\n` +
+                          `• Commands Used: ${stats.commandsUsed}\n` +
+                          `• Media Shared: ${stats.mediaCount}\n` +
+                          `• Level: ${stats.level}\n` +
+                          `• XP: ${stats.xp}\n` +
+                          `• Last Active: ${lastActive}`;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: statsText,
+                mentions: [userId]
+            });
+        } catch (error) {
+            logger.error('Error in stats command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to fetch user statistics'
+            });
+        }
+    },
+
+    about: async (sock, msg) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const userData = await dbStore.getUserData(userId);
+            const stats = await dbStore.getUserStats(userId);
+
+            if (!userData) {
+                throw new Error('User data not found');
+            }
+
+            let pp;
+            try {
+                pp = await safeProfilePicture(sock, userId);
+            } catch (err) {
+                logger.error('Error fetching profile picture:', err);
+                pp = 'https://i.imgur.com/wuxBN7M.png';
+            }
+
+            const registrationDate = userData.registrationTime 
+                ? moment(userData.registrationTime).format('MMMM Do YYYY')
+                : 'Not registered';
+
+            const aboutText = `*👤 About @${userId.split('@')[0]}*\n\n` +
+                          `• Name: ${userData.name || 'Not set'}\n` +
+                          `• Bio: ${userData.bio || 'No bio set'}\n` +
+                          `• Registered: ${registrationDate}\n` +
+                          `• Level: ${stats.stats.level}\n` +
+                          `• XP: ${stats.stats.xp}\n` +
+                          `• Messages: ${stats.stats.messageCount}\n` +
+                          `• Commands Used: ${stats.stats.commandsUsed}\n` +
+                          `• Last Active: ${moment(stats.stats.lastActive).fromNow()}`;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: pp },
+                caption: aboutText,
+                mentions: [userId]
+            });
+        } catch (error) {
+            logger.error('Error in about command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to fetch user information'
             });
         }
     }

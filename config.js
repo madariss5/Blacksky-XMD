@@ -71,6 +71,16 @@ const config = {
             category: 'Basic',
             usage: '.help <command>'
         },
+        runtime: {
+            description: 'Check bot uptime',
+            category: 'Basic',
+            usage: '.runtime'
+        },
+        creator: {
+            description: 'Show bot creator info',
+            category: 'Basic',
+            usage: '.creator'
+        },
 
         // Group Commands
         kick: { 
@@ -240,25 +250,20 @@ const config = {
             category: 'User',
             usage: '.profile [@user]'
         },
-        me: {
-            description: 'View your profile',
+        afk: {
+            description: 'Set your AFK status',
             category: 'User',
-            usage: '.me'
+            usage: '.afk [reason]'
         },
-        register: {
-            description: 'Register your profile',
+        stats: {
+            description: 'View your usage statistics',
             category: 'User',
-            usage: '.register <name> <age>'
+            usage: '.stats'
         },
-        bio: {
-            description: 'Set or view bio',
+        about: {
+            description: 'View detailed information about yourself',
             category: 'User',
-            usage: '.bio [text]'
-        },
-        level: {
-            description: 'Check your level',
-            category: 'User',
-            usage: '.level'
+            usage: '.about'
         },
         join: { 
             description: 'Join group via link', 

@@ -53,17 +53,63 @@ async function awardActivityXP(jid, activity = 'message') {
 }
 
 /**
+ * Check and handle AFK mentions
+ * @param {object} sock - Socket connection
+ * @param {object} msg - Message object
+ * @param {string} content - Message content
+ * @param {string} sender - Sender JID
+ */
+async function handleAFKMentions(sock, msg, content, sender) {
+    try {
+        // Check message mentions
+        const mentions = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
+        for (const mentionedJid of mentions) {
+            const afkInfo = await dbStore.isUserAFK(mentionedJid);
+            if (afkInfo?.status) {
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `@${mentionedJid.split('@')[0]} is currently AFK${afkInfo.reason ? `\nReason: ${afkInfo.reason}` : ''}`,
+                    mentions: [mentionedJid]
+                });
+            }
+        }
+
+        // Check if sender is AFK
+        const senderAFK = await dbStore.isUserAFK(sender);
+        if (senderAFK?.status) {
+            const afkDuration = await dbStore.removeUserAFK(sender);
+            if (afkDuration) {
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `Welcome back @${sender.split('@')[0]}!\nYou were AFK for ${formatDuration(afkDuration)}`,
+                    mentions: [sender]
+                });
+            }
+        }
+    } catch (error) {
+        logger.error('Error handling AFK mentions:', error);
+    }
+}
+
+/**
  * Handle incoming messages
  */
 async function messageHandler(sock, msg) {
     try {
         if (!sock || !msg?.message) return;
 
-        // Get message content
+        // Get message content and sender
         const messageType = Object.keys(msg.message)[0];
+        const sender = msg.key.participant || msg.key.remoteJid;
+
+        // Update user stats
+        const statsUpdate = {
+            messageCount: 1,
+            lastActive: Date.now()
+        };
+
         if (!['conversation', 'extendedTextMessage'].includes(messageType)) {
-            // Award XP for media messages
-            const sender = msg.key.participant || msg.key.remoteJid;
+            // Media message
+            statsUpdate.mediaCount = 1;
+            await dbStore.updateUserStats(sender, statsUpdate);
             await awardActivityXP(sender, 'media');
             return;
         }
@@ -72,8 +118,13 @@ async function messageHandler(sock, msg) {
             ? msg.message.conversation 
             : msg.message.extendedTextMessage.text;
 
+        // Handle AFK mentions
+        await handleAFKMentions(sock, msg, messageContent, sender);
+
+        // Update basic message stats
+        await dbStore.updateUserStats(sender, statsUpdate);
+
         // Award base XP for text messages
-        const sender = msg.key.participant || msg.key.remoteJid;
         const activityResult = await awardActivityXP(sender, 'message');
 
         // Check for command prefix
@@ -96,6 +147,13 @@ async function messageHandler(sock, msg) {
         // Execute command if it exists
         if (commands.has(command)) {
             logger.info(`Executing command: ${command}`, { args });
+
+            // Update command usage stats
+            await dbStore.updateUserStats(sender, {
+                commandsUsed: 1,
+                lastActive: Date.now()
+            });
+
             // Award XP for command usage
             await awardActivityXP(sender, 'command');
             await commands.get(command)(sock, msg, args);
@@ -106,10 +164,10 @@ async function messageHandler(sock, msg) {
     }
 }
 
-// Register media commands (which now include music commands)
+// Register media commands
 Object.entries(mediaCommands).forEach(([name, handler]) => {
     registerCommand(name, handler);
-    logger.info(`Registered media/music command: ${name}`);
+    logger.info(`Registered media command: ${name}`);
 });
 
 // Expose command registration
