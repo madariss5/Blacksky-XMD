@@ -694,6 +694,219 @@ const userCommands = {
                 text: '❌ Failed to fetch quests'
             });
         }
+    },
+    inventory: async (sock, msg) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const inventory = await dbStore.getUserInventory(userId);
+
+            if (!inventory) {
+                throw new Error('Failed to fetch inventory');
+            }
+
+            let invText = '*🎒 Your Inventory*\n\n';
+
+            if (Object.keys(inventory.items).length === 0) {
+                invText += 'Your inventory is empty!\nUse .shop to view available items.';
+            } else {
+                Object.entries(inventory.items).forEach(([itemId, quantity]) => {
+                    invText += `• ${itemId}: ${quantity}x\n`;
+                });
+
+                if (Object.keys(inventory.equipped).length > 0) {
+                    invText += '\n*Equipped Items:*\n';
+                    Object.entries(inventory.equipped).forEach(([slot, itemId]) => {
+                        invText += `• ${slot}: ${itemId}\n`;
+                    });
+                }
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: invText,
+                mentions: [userId]
+            });
+        } catch (error) {
+            logger.error('Error in inventory command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to fetch inventory'
+            });
+        }
+    },
+
+    shop: async (sock, msg) => {
+        try {
+            const shop = await dbStore.getShopItems();
+            if (!shop) {
+                throw new Error('Failed to fetch shop items');
+            }
+
+            let shopText = '*🛍️ Available Items*\n\n';
+            shop.items.forEach(item => {
+                shopText += `*${item.name}*\n`;
+                shopText += `• ID: ${item.id}\n`;
+                shopText += `• Description: ${item.description}\n`;
+                shopText += `• Price: ${item.price} coins\n`;
+                shopText += `• Type: ${item.type}\n\n`;
+            });
+            shopText += 'To buy an item: .buy <item_id>';
+
+            await sock.sendMessage(msg.key.remoteJid, { text: shopText });
+        } catch (error) {
+            logger.error('Error in shop command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to fetch shop items'
+            });
+        }
+    },
+
+    daily: async (sock, msg) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const result = await dbStore.claimDailyReward(userId);
+
+            if (!result.success) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: result.error === 'already_claimed' ?
+                        '❌ You have already claimed your daily reward today.' :
+                        '❌ Failed to claim daily reward.'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*🎁 Daily Reward Claimed!*\n\n` +
+                      `• Coins: +${result.coins}\n` +
+                      `• XP: +${result.xp}\n\n` +
+                      `Current streak: ${result.streak} days\n` +
+                      `Come back tomorrow for more rewards!`,
+                mentions: [userId]
+            });
+        } catch (error) {
+            logger.error('Error in daily command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to process daily reward'
+            });
+        }
+    },
+
+    claim: async (sock, msg, args) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please specify a quest ID to claim.\nUse .quests to view available quests.'
+                });
+            }
+
+            const questId = args[0];
+            const result = await dbStore.claimQuestReward(userId, questId);
+
+            if (!result.success) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: result.error === 'not_completed' ?
+                        '❌ You haven\'t completed this quest yet!' :
+                        result.error === 'already_claimed' ?
+                        '❌ You have already claimed this quest\'s reward!' :
+                        '❌ Failed to claim quest reward.'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*🎉 Quest Reward Claimed!*\n\n` +
+                      `• Quest: ${result.questName}\n` +
+                      `• Reward: ${result.reward} coins\n\n` +
+                      `Keep completing quests to earn more rewards!`,
+                mentions: [userId]
+            });
+        } catch (error) {
+            logger.error('Error in claim command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to claim quest reward'
+            });
+        }
+    },
+
+    transfer: async (sock, msg, args) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+
+            if (args.length < 2) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Usage: .transfer @user <amount>'
+                });
+            }
+
+            const targetUser = formatPhoneNumber(args[0]);
+            const amount = parseInt(args[1]);
+
+            if (isNaN(amount) || amount <= 0) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a valid amount to transfer.'
+                });
+            }
+
+            const result = await dbStore.transferCoins(userId, targetUser, amount);
+
+            if (!result.success) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: result.error === 'insufficient_funds' ?
+                        '❌ You don\'t have enough coins!' :
+                        '❌ Failed to transfer coins.'
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*💰 Coins Transferred!*\n\n` +
+                      `• Amount: ${amount} coins\n` +
+                      `• To: @${targetUser.split('@')[0]}\n` +
+                      `• Your balance: ${result.newBalance} coins`,
+                mentions: [userId, targetUser]
+            });
+        } catch (error) {
+            logger.error('Error in transfer command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to transfer coins'
+            });
+        }
+    },
+
+    feedback: async (sock, msg, args) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide your feedback message!'
+                });
+            }
+
+            const feedback = args.join(' ');
+            const result = await dbStore.saveFeedback(userId, feedback);
+
+            if (!result.success) {
+                throw new Error('Failed to save feedback');
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '✅ Thank you for your feedback! We appreciate your input.',
+                mentions: [userId]
+            });
+
+            // Notify owner if configured
+            if (config.ownerNumber) {
+                await sock.sendMessage(config.ownerNumber, {
+                    text: `*📝 New Feedback*\n\n` +
+                          `From: @${userId.split('@')[0]}\n` +
+                          `Message: ${feedback}`,
+                    mentions: [userId]
+                });
+            }
+        } catch (error) {
+            logger.error('Error in feedback command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to send feedback'
+            });
+        }
     }
 };
 

@@ -370,6 +370,215 @@ const basicCommands = {
                 text: '❌ Failed to generate password!'
             });
         }
+    },
+
+    serverinfo: async (sock, msg) => {
+        try {
+            const os = require('os');
+            const formatBytes = (bytes) => {
+                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+                if (bytes === 0) return '0 Byte';
+                const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+                return Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i];
+            };
+
+            const info = `*🖥️ Server Information*\n\n` +
+                      `• Platform: ${os.platform()}\n` +
+                      `• Architecture: ${os.arch()}\n` +
+                      `• CPU Cores: ${os.cpus().length}\n` +
+                      `• Total Memory: ${formatBytes(os.totalmem())}\n` +
+                      `• Free Memory: ${formatBytes(os.freemem())}\n` +
+                      `• Uptime: ${formatDuration(os.uptime() * 1000)}\n` +
+                      `• Node Version: ${process.version}\n` +
+                      `• Process Uptime: ${formatDuration(process.uptime() * 1000)}`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text: info });
+        } catch (error) {
+            logger.error('Error in serverinfo command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to get server information'
+            });
+        }
+    },
+
+    speed: async (sock, msg) => {
+        try {
+            const start = Date.now();
+            await sock.sendMessage(msg.key.remoteJid, { text: '🚀 Testing speed...' });
+            const end = Date.now();
+
+            const memoryUsage = process.memoryUsage();
+            const speedInfo = `*🚀 Speed Test Results*\n\n` +
+                          `• Response Time: ${end - start}ms\n` +
+                          `• Memory Usage: ${(memoryUsage.heapUsed / 1024 / 1024).toFixed(2)} MB\n` +
+                          `• Message Processing: ${end - msg.messageTimestamp * 1000}ms`;
+
+            await sock.sendMessage(msg.key.remoteJid, { text: speedInfo });
+        } catch (error) {
+            logger.error('Error in speed command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to complete speed test'
+            });
+        }
+    },
+
+    unit: async (sock, msg, args) => {
+        try {
+            if (args.length !== 3) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Usage: .unit <value> <from> <to>\nExample: .unit 1 km mi'
+                });
+            }
+
+            const [value, from, to] = args;
+            const result = mathjs.evaluate(`${value} ${from} to ${to}`);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*📏 Unit Conversion*\n\n` +
+                      `${value} ${from} = ${result} ${to}`
+            });
+        } catch (error) {
+            logger.error('Error in unit command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Invalid unit conversion'
+            });
+        }
+    },
+
+    worldclock: async (sock, msg) => {
+        try {
+            const cities = [
+                { name: 'London', tz: 'Europe/London' },
+                { name: 'New York', tz: 'America/New_York' },
+                { name: 'Tokyo', tz: 'Asia/Tokyo' },
+                { name: 'Sydney', tz: 'Australia/Sydney' },
+                { name: 'Dubai', tz: 'Asia/Dubai' }
+            ];
+
+            let clockText = '*🌍 World Clock*\n\n';
+            cities.forEach(city => {
+                const time = moment().tz(city.tz).format('LLLL');
+                clockText += `• ${city.name}: ${time}\n`;
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, { text: clockText });
+        } catch (error) {
+            logger.error('Error in worldclock command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to get world time'
+            });
+        }
+    },
+
+    calendar: async (sock, msg, args) => {
+        try {
+            const now = moment();
+            const month = args[0] ? parseInt(args[0]) - 1 : now.month();
+            const year = args[1] ? parseInt(args[1]) : now.year();
+
+            if (isNaN(month) || month < 0 || month > 11) {
+                throw new Error('Invalid month');
+            }
+
+            const date = moment([year, month]);
+            const calendar = [];
+            const daysInMonth = date.daysInMonth();
+            const firstDay = date.startOf('month').day();
+
+            // Add month header
+            calendar.push(`*📅 Calendar - ${date.format('MMMM YYYY')}*\n`);
+            calendar.push('Su Mo Tu We Th Fr Sa');
+
+            // Add empty spaces for first week
+            let week = '   '.repeat(firstDay);
+
+            // Add days
+            for (let day = 1; day <= daysInMonth; day++) {
+                week += day.toString().padStart(2) + ' ';
+                if ((firstDay + day) % 7 === 0 || day === daysInMonth) {
+                    calendar.push(week);
+                    week = '';
+                }
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: calendar.join('\n')
+            });
+        } catch (error) {
+            logger.error('Error in calendar command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Invalid calendar format. Use: .calendar [month] [year]'
+            });
+        }
+    },
+
+    shorturl: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a URL to shorten'
+                });
+            }
+
+            const url = args[0];
+            const response = await axios.post('https://tinyurl.com/api-create.php', null, {
+                params: { url }
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*🔗 URL Shortener*\n\n` +
+                      `• Original: ${url}\n` +
+                      `• Shortened: ${response.data}`
+            });
+        } catch (error) {
+            logger.error('Error in shorturl command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to shorten URL'
+            });
+        }
+    },
+
+    uuid: async (sock, msg) => {
+        try {
+            const uuid = crypto.randomUUID();
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*🆔 UUID Generator*\n\n${uuid}`
+            });
+        } catch (error) {
+            logger.error('Error in uuid command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to generate UUID'
+            });
+        }
+    },
+
+    random: async (sock, msg, args) => {
+        try {
+            if (args.length !== 2) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Usage: .random <min> <max>'
+                });
+            }
+
+            const min = parseInt(args[0]);
+            const max = parseInt(args[1]);
+
+            if (isNaN(min) || isNaN(max) || min >= max) {
+                throw new Error('Invalid range');
+            }
+
+            const random = Math.floor(Math.random() * (max - min + 1)) + min;
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `*🎲 Random Number*\n\n` +
+                      `Range: ${min} - ${max}\n` +
+                      `Result: ${random}`
+            });
+        } catch (error) {
+            logger.error('Error in random command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Invalid number range'
+            });
+        }
     }
 };
 
