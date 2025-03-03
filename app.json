@@ -7,9 +7,39 @@
   "success_url": "/",
   "env": {
     "PREFIX": {
-      "description": "Bot command prefix (e.g., '.')",
+      "description": "choose your prefix for bot commands",
       "value": ".",
       "required": true
+    },
+    "AUTO_READ_STATUS": {
+      "description": "Your contact status will be read automatically (type yes to active or no to deactive)",
+      "value": "yes",
+      "required": false
+    },
+    "AUTO_DOWNLOAD_STATUS": {
+      "description": "Your contact status will be downloaded automatically (type yes to active or no to deactive)",
+      "value": "no",
+      "required": false
+    },
+    "PM_PERMIT": {
+      "description": "Other users can't use your bot in pm (type yes to active or no to deactive)",
+      "value": "no",
+      "required": false
+    },
+    "BOT_NAME": {
+      "description": "Name for your bot instance",
+      "value": "BlackSky-MD",
+      "required": true
+    },
+    "BOT_MENU_LINKS": {
+      "description": "Add one or many links for your bot menu (e.g., url1,url2,url3)",
+      "value": "https://raw.githubusercontent.com/madariss5/Blacksky-XMD/main/assets/logo.png",
+      "required": false
+    },
+    "PUBLIC_MODE": {
+      "description": "Type yes for public mode, no for private mode",
+      "value": "yes",
+      "required": false
     },
     "OWNER_NUMBER": {
       "description": "Your WhatsApp number without '+' (e.g., 491234567890)",
@@ -17,11 +47,6 @@
     },
     "OWNER_NAME": {
       "description": "Your name as the bot owner",
-      "required": true
-    },
-    "BOT_NAME": {
-      "description": "Name for your bot instance",
-      "value": "BlackSky-MD",
       "required": true
     },
     "SESSION_ID": {
@@ -48,7 +73,7 @@
   "formation": {
     "worker": {
       "quantity": 1,
-      "size": "basic"
+      "size": "eco"
     }
   },
   "addons": [
@@ -56,6 +81,7 @@
       "plan": "heroku-postgresql:basic-0"
     }
   ],
+  "stack": "heroku-22",
   "engines": {
     "node": "16.x"
   }

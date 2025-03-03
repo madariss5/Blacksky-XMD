@@ -27,11 +27,11 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "bash start.sh"
+args = "npm run start"
 waitForPort = 5000
 
 [deployment]
-run = ["sh", "-c", "bash start.sh"]
+run = ["sh", "-c", "npm run start"]
 
 [[ports]]
 localPort = 5000
