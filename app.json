@@ -31,6 +31,10 @@
       "description": "Node environment",
       "value": "production",
       "required": true
+    },
+    "DATABASE_URL": {
+      "description": "PostgreSQL database URL (will be automatically set by Heroku)",
+      "required": true
     }
   },
   "buildpacks": [
