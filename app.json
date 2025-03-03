@@ -23,19 +23,15 @@
     "BOT_NAME": {
       "description": "Name for your bot",
       "value": "BlackSky-MD",
-      "required": false
+      "required": true
     },
     "SESSION_ID": {
-      "description": "WhatsApp session ID",
+      "description": "WhatsApp session ID (will be generated after first run)",
       "required": true
     },
     "NODE_ENV": {
       "description": "Node environment",
       "value": "production",
-      "required": true
-    },
-    "DATABASE_URL": {
-      "description": "PostgreSQL database URL (will be automatically set by Heroku)",
       "required": true
     }
   },

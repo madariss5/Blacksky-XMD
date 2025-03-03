@@ -1,6 +1,23 @@
 # 𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻
 A highly advanced WhatsApp Multi-Device bot with AI capabilities and robust functionality.
 
+## ⚡️ Quick Deploy
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/madariss5/Blacksky-XMD)
+
+### Deployment Steps:
+1. Click the "Deploy to Heroku" button above
+2. Fill in the required environment variables:
+   ```
+   OWNER_NUMBER=your_whatsapp_number (e.g., 491234567890)
+   OWNER_NAME=your_name
+   BOT_NAME=BlackSky-MD
+   SESSION_ID=your_session_id
+   PREFIX=.
+   ```
+3. Click "Deploy" and wait for the build to complete
+4. Once deployed, check the logs to ensure everything is running properly
+5. The bot will automatically initialize and send credentials to your WhatsApp number
+
 ## 🌟 Features
 - 📱 Multi-Device Support
 - 🤖 Advanced AI Integration with GPT and DALL-E
@@ -21,9 +38,6 @@ Before running the bot, ensure you have the following installed:
 - A WhatsApp account
 - FFmpeg ([FFmpeg Installation Guide](https://ffmpeg.org/download.html))
 - Git (for cloning the repository)
-
-## ⚡️ Quick Deploy
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/madariss5/Blacksky-XMD)
 
 ## 🔐 Environment Configuration
 Create a `.env` file with the following variables:

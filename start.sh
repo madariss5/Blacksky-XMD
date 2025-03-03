@@ -23,8 +23,30 @@ for dir in auth_info_baileys auth_info temp database; do
     log "Created directory: $dir"
 done
 
-# Set default environment variables if not in production
-if [ "$NODE_ENV" != "production" ]; then
+# Production environment checks
+if [ "$NODE_ENV" = "production" ]; then
+    log "Running in production mode..."
+
+    # Verify essential environment variables
+    required_vars=("OWNER_NUMBER" "OWNER_NAME" "BOT_NAME" "SESSION_ID" "DATABASE_URL")
+    missing_vars=()
+
+    for var in "${required_vars[@]}"; do
+        if [ -z "${!var}" ]; then
+            missing_vars+=("$var")
+        fi
+    done
+
+    if [ ${#missing_vars[@]} -ne 0 ]; then
+        log "Error: Missing required environment variables: ${missing_vars[*]}"
+        exit 1
+    fi
+
+    # Set production Node.js flags
+    export NODE_OPTIONS="--max-old-space-size=2560"
+    log "Production Node.js flags set"
+else
+    # Development environment setup
     log "Setting up development environment..."
     export OWNER_NUMBER=${OWNER_NUMBER:-"1234567890"}
     export OWNER_NAME=${OWNER_NAME:-"Dev User"}
@@ -33,25 +55,6 @@ if [ "$NODE_ENV" != "production" ]; then
     export PREFIX=${PREFIX:-"."}
     export NODE_ENV="development"
 fi
-
-# Verify critical environment variables
-required_vars=("OWNER_NUMBER" "OWNER_NAME" "BOT_NAME" "SESSION_ID" "PREFIX")
-missing_vars=()
-
-for var in "${required_vars[@]}"; do
-    if [ -z "${!var}" ]; then
-        missing_vars+=("$var")
-    fi
-done
-
-if [ ${#missing_vars[@]} -ne 0 ]; then
-    log "Error: Missing required environment variables: ${missing_vars[*]}"
-    exit 1
-fi
-
-# Set Node.js flags for better performance
-export NODE_OPTIONS="--max-old-space-size=2560"
-log "Node.js flags set"
 
 # Ensure the application uses port 5000
 export PORT=5000
