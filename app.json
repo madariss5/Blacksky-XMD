@@ -1,8 +1,8 @@
 {
-  "name": "𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻",
+  "name": "blacksky-md",
   "description": "Advanced WhatsApp Multi-Device bot with AI capabilities",
   "keywords": ["bot", "node", "baileys", "whatsapp", "ai"],
-  "logo": "https://raw.githubusercontent.com/blacksky-algorithms/blacksky-md/main/generated-icon.png",
+  "website": "https://github.com/blacksky-algorithms/blacksky-md",
   "repository": "https://github.com/blacksky-algorithms/blacksky-md",
   "success_url": "/",
   "stack": "container",
@@ -22,7 +22,7 @@
     },
     "BOT_NAME": {
       "description": "Name for your bot",
-      "value": "𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻",
+      "value": "BlackSky-MD",
       "required": false
     },
     "SESSION_ID": {
@@ -37,11 +37,6 @@
       "description": "Node environment",
       "value": "production",
       "required": true
-    },
-    "LOG_LEVEL": {
-      "description": "Logging level (silent, info, debug)",
-      "value": "info",
-      "required": false
     }
   },
   "buildpacks": [
@@ -53,15 +48,12 @@
     },
     {
       "url": "https://github.com/clhuang/heroku-buildpack-webp-binaries.git"
-    },
-    {
-      "url": "https://github.com/DuckyTeam/heroku-buildpack-imagemagick.git"
     }
   ],
   "formation": {
     "worker": {
       "quantity": 1,
-      "size": "basic"
+      "size": "standard-1x"
     }
   },
   "addons": [
