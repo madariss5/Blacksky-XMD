@@ -4,7 +4,7 @@
   "repository": "https://github.com/blacksky-algorithms/blacksky-md",
   "logo": "https://raw.githubusercontent.com/blacksky-algorithms/blacksky-md/main/generated-icon.png",
   "keywords": ["nodejs", "whatsapp", "bot", "ai", "openai"],
-  "stack": "heroku-22",
+  "stack": "container",
   "env": {
     "PREFIX": {
       "description": "Bot command prefix",
@@ -82,7 +82,7 @@
   },
   "addons": [
     {
-      "plan": "heroku-postgresql:essential-0"
+      "plan": "heroku-postgresql:mini"
     }
   ]
 }
