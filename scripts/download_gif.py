@@ -34,15 +34,22 @@ def download_gif(url, filename):
         logger.error(f"Error downloading GIF: {str(e)}")
         return False
 
-# Using verified anime reaction GIFs from GIPHY's CDN
+# Using anime reaction GIFs from GIPHY's CDN
 gifs = {
-    'poke': 'https://media1.giphy.com/media/vFnxro4sFV1R5b95NQ/giphy.gif',
-    'cuddle': 'https://media2.giphy.com/media/143v0Z4767T15e/giphy.gif',
-    'boop': 'https://media3.giphy.com/media/4HP0ddZnNVvKU/giphy.gif',
-    'bonk': 'https://media4.giphy.com/media/30lxTuJueXE7C/giphy.gif',
-    'rip': 'https://media2.giphy.com/media/xT5LMQ8rHYTDGFG07e/giphy.gif',
-    'wave': 'https://media1.giphy.com/media/PhTSmzCIxh0Zq/giphy.gif',
-    'yeet': 'https://media3.giphy.com/media/5PhDdJQd2yG1MvHzJ6/giphy.gif',
+    'slap': 'https://media1.giphy.com/media/Zau0yrl17uzdK/giphy.gif',
+    'hug': 'https://media4.giphy.com/media/PHZ7v9tfQu0o0/giphy.gif',
+    'pat': 'https://media1.giphy.com/media/5tmRHwTlHAA9WkVxTU/giphy.gif',
+    'kiss': 'https://media2.giphy.com/media/bGm9FuBCGg4SY/giphy.gif',
+    'punch': 'https://media3.giphy.com/media/arbHBoiUWUgmc/giphy.gif',
+    'kill': 'https://media2.giphy.com/media/cH5BtPJqrBZxC/giphy.gif',
+    'wasted': 'https://media1.giphy.com/media/TbONGqAdpTWQW3Hz5V/giphy.gif',
+    'poke': 'https://media1.giphy.com/media/BiCIPU3XE9ePbqK3b0/giphy.gif',
+    'cuddle': 'https://media2.giphy.com/media/l2QDM9Jnim1YVILXa/giphy.gif',
+    'boop': 'https://media3.giphy.com/media/ZtB2l3jHiJsFa/giphy.gif',
+    'bonk': 'https://media4.giphy.com/media/pVsn5LJEgMKlW/giphy.gif',
+    'rip': 'https://media2.giphy.com/media/3oEjHCWdU7F4hkcudy/giphy.gif',
+    'wave': 'https://media1.giphy.com/media/HoIrPgqTBiB2XBaJju/giphy.gif',
+    'yeet': 'https://media3.giphy.com/media/WtDaSUB8GDiRW/giphy.gif',
     'smile': 'https://media4.giphy.com/media/ree8xCap5nHi/giphy.gif',
     'dance': 'https://media2.giphy.com/media/5rFbG39c8tLgY/giphy.gif',
     'highfive': 'https://media1.giphy.com/media/3oEjHV0z8S7WM4MwnK/giphy.gif',
