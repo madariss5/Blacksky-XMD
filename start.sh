@@ -28,7 +28,7 @@ if [ "$NODE_ENV" = "production" ]; then
     log "Running in production mode (Heroku)"
 
     # Verify critical environment variables
-    required_vars=("OWNER_NUMBER" "OWNER_NAME" "BOT_NAME" "SESSION_ID")
+    required_vars=("OWNER_NUMBER" "OWNER_NAME" "BOT_NAME" "SESSION_ID" "DATABASE_URL")
     missing_vars=()
 
     for var in "${required_vars[@]}"; do
@@ -45,7 +45,6 @@ if [ "$NODE_ENV" = "production" ]; then
     # Set production-specific Node.js flags
     export NODE_OPTIONS="--max-old-space-size=2560"
     log "Node.js production flags set"
-
 
     # Start the bot with production optimizations
     log "Starting bot in production mode..."
