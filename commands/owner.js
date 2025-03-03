@@ -60,21 +60,28 @@ const ownerCommands = {
 
             if (!args[0]) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Please mention a user to ban!\nUsage: .ban @user'
+                    text: '❌ Please mention a user to ban!\nUsage: .ban @user [reason]'
                 });
             }
 
             const targetUser = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
-            // Implement ban logic here (e.g., update banned users database)
+            const reason = args.slice(1).join(' ') || 'No reason provided';
+
+            const result = await dbStore.banUser(targetUser, reason);
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to ban user');
+            }
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `✅ Banned user @${targetUser.split('@')[0]}`,
+                text: `✅ Banned user @${targetUser.split('@')[0]}\nReason: ${reason}`,
                 mentions: [targetUser]
             });
+
+            logger.info('User banned successfully:', { targetUser, reason });
         } catch (error) {
             logger.error('Error in ban command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to ban user'
+                text: '❌ Failed to ban user: ' + error.message
             });
         }
     },
@@ -90,16 +97,22 @@ const ownerCommands = {
             }
 
             const targetUser = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
-            // Implement unban logic here
+            const result = await dbStore.unbanUser(targetUser);
+
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to unban user');
+            }
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `✅ Unbanned user @${targetUser.split('@')[0]}`,
                 mentions: [targetUser]
             });
+
+            logger.info('User unbanned successfully:', { targetUser });
         } catch (error) {
             logger.error('Error in unban command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to unban user'
+                text: '❌ Failed to unban user: ' + error.message
             });
         }
     },
@@ -622,8 +635,13 @@ const ownerCommands = {
             if (!await ownerCommands.handleOwnerCommand(sock, msg)) return;
 
             // Get banned users from the database
-            const bannedUsers = await store.getBannedUsers();
+            const result = await dbStore.getBannedUsers();
 
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to fetch banned users list');
+            }
+
+            const bannedUsers = result.bannedUsers;
             if (!bannedUsers || bannedUsers.length === 0) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '📋 No banned users found'
@@ -632,22 +650,23 @@ const ownerCommands = {
 
             let banlistText = '📋 *Banned Users List*\n\n';
             bannedUsers.forEach((user, index) => {
-                banlistText += `${index + 1}. @${user.id.split('@')[0]}\n`;
-                if (user.reason) banlistText += `   Reason: ${user.reason}\n`;
-                if (user.bannedAt) banlistText += `   Date: ${new Date(user.bannedAt).toLocaleString()}\n`;
+                banlistText += `${index + 1}. @${user.jid.split('@')[0]}\n`;
+                const contact = store.contacts[user.jid] || {};
+                if (contact.banReason) banlistText += `   Reason: ${contact.banReason}\n`;
+                if (contact.banTime) banlistText += `   Date: ${new Date(contact.banTime).toLocaleString()}\n`;
                 banlistText += '\n';
             });
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: banlistText,
-                mentions: bannedUsers.map(user => user.id)
+                mentions: bannedUsers.map(user => user.jid)
             });
 
-            logger.info('Banlist command executed');
+            logger.info('Banlist command executed successfully');
         } catch (error) {
             logger.error('Error in banlist command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to fetch banned users list'
+                text: '❌ Failed to fetch banned users list: ' + error.message
             });
         }
     }
