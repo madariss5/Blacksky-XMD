@@ -199,7 +199,9 @@ app.get('/', (req, res) => {
     res.json({
         status: 'Bot Running',
         uptime: getUptime(),
-        commands: Array.from(commands.keys())
+        commands: Array.from(commands.keys()),
+        environment: process.env.NODE_ENV || 'development',
+        platform: process.env.NODE_ENV === 'production' && process.env.DYNO ? 'Heroku' : 'Local'
     });
 });
 

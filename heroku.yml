@@ -10,3 +10,7 @@ run:
     command:
       - /app/start.sh
     image: worker
+  web:
+    command:
+      - node index.js
+    image: worker
