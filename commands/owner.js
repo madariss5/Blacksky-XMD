@@ -6,7 +6,6 @@ const { restartBot } = require('../scripts/restart');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 
-
 // Core owner validation
 const isOwner = (senderId) => {
     const senderNumber = formatPhoneNumber(senderId);
@@ -163,37 +162,6 @@ const ownerCommands = {
     },
 
     // Group Management
-    join: async (sock, msg, args) => {
-        try {
-            if (!await ownerCommands.handleOwnerCommand(sock, msg)) return;
-
-            if (!args[0]) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Please provide a group link!\nUsage: .join <link>'
-                });
-            }
-
-            let url = args[0];
-            if (!url.includes('chat.whatsapp.com/')) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Invalid group link!'
-                });
-            }
-
-            const code = url.split('chat.whatsapp.com/')[1];
-            await sock.groupAcceptInvite(code);
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '✅ Successfully joined the group!'
-            });
-        } catch (error) {
-            logger.error('Error in join command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to join group'
-            });
-        }
-    },
-
     leave: async (sock, msg) => {
         try {
             if (!await ownerCommands.handleOwnerCommand(sock, msg)) return;
@@ -631,6 +599,7 @@ const ownerCommands = {
             });
         }
     },
+
     banlist: async (sock, msg) => {
         try {
             if (!await ownerCommands.handleOwnerCommand(sock, msg)) return;

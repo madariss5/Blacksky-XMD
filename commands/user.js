@@ -215,7 +215,9 @@ const userCommands = {
         } catch (error) {
             logger.error('Error in join command:', error);
             await sock.sendMessage(msg.key.remoteJid, { 
-                text: '❌ Failed to join group: ' + error.message 
+                text: error.message === 'Link invalid'
+                    ? '❌ Invalid or expired group link!'
+                    : '❌ Failed to join group: ' + error.message 
             });
         }
     },
