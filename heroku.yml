@@ -5,4 +5,3 @@ run:
   worker:
     command:
       - bash start.sh
-    image: worker

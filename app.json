@@ -1,15 +1,14 @@
 {
   "name": "blacksky-md",
   "description": "Advanced WhatsApp Multi-Device bot with AI capabilities",
-  "keywords": ["bot", "node", "baileys", "whatsapp", "ai"],
+  "keywords": ["bot", "node", "whatsapp"],
   "website": "https://github.com/blacksky-algorithms/blacksky-md",
   "repository": "https://github.com/blacksky-algorithms/blacksky-md",
-  "success_url": "/",
-  "stack": "container",
+  "stack": "heroku-22",
   "env": {
-    "PREFIX": {
-      "description": "Bot command prefix",
-      "value": ".",
+    "NODE_ENV": {
+      "description": "Node environment",
+      "value": "production",
       "required": true
     },
     "OWNER_NUMBER": {
@@ -24,27 +23,11 @@
       "description": "Name for your bot",
       "value": "BlackSky-MD",
       "required": false
-    },
-    "SESSION_ID": {
-      "description": "WhatsApp session ID",
-      "required": true
-    },
-    "OPENAI_API_KEY": {
-      "description": "Your OpenAI API key for AI features",
-      "required": true
-    },
-    "NODE_ENV": {
-      "description": "Node environment",
-      "value": "production",
-      "required": true
     }
   },
   "buildpacks": [
     {
       "url": "heroku/nodejs"
-    },
-    {
-      "url": "https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git"
     }
   ],
   "formation": {
