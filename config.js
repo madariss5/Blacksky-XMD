@@ -372,6 +372,41 @@ const config = {
             category: 'Media',
             usage: '.ytmp4 <url>'
         },
+        play: { 
+            description: 'Play music or audio from YouTube', 
+            category: 'Media',
+            usage: '.play <song name/URL>'
+        },
+        stop: { 
+            description: 'Stop current music playback', 
+            category: 'Media',
+            usage: '.stop'
+        },
+        skip: { 
+            description: 'Skip current song', 
+            category: 'Media',
+            usage: '.skip'
+        },
+        queue: { 
+            description: 'View music queue', 
+            category: 'Media',
+            usage: '.queue'
+        },
+        pause: { 
+            description: 'Pause music playback', 
+            category: 'Media',
+            usage: '.pause'
+        },
+        resume: { 
+            description: 'Resume music playback', 
+            category: 'Media',
+            usage: '.resume'
+        },
+        lyrics: { 
+            description: 'Show lyrics of current song', 
+            category: 'Media',
+            usage: '.lyrics'
+        },
 
         // Game Commands
         numguess: {

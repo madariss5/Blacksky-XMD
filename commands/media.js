@@ -1,29 +1,25 @@
 const logger = require('pino')();
+const musicCommands = require('./music');
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 const fs = require('fs-extra');
 const path = require('path');
 const sharp = require('sharp');
 const axios = require('axios');
 
-// Ensure temp directory exists
-const tempDir = path.join(__dirname, '../temp');
-fs.ensureDirSync(tempDir);
+// Re-export music commands for media playback
+const { play, stop, skip, queue, pause, resume, lyrics } = musicCommands;
 
-// Helper function to clean up temp files
-async function cleanupTempFiles(...filePaths) {
-    for (const filePath of filePaths) {
-        try {
-            if (await fs.pathExists(filePath)) {
-                await fs.remove(filePath);
-                logger.info(`Cleaned up temp file: ${filePath}`);
-            }
-        } catch (error) {
-            logger.error(`Failed to cleanup file ${filePath}:`, error);
-        }
-    }
-}
-
+// Merge with existing media commands
 const mediaCommands = {
+    // Music playback commands
+    play,
+    stop,
+    skip,
+    queue,
+    pause,
+    resume,
+    lyrics,
+
     sticker: async (sock, msg, args) => {
         const tempFiles = [];
         try {
@@ -978,7 +974,7 @@ const mediaCommands = {
     },
 
     reverse: async (sock, msg) => {
-                const tempFiles = [];
+        const tempFiles= [];
         try {
             const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
             if (!quotedMsg?.audioMessage) {

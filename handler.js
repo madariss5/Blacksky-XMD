@@ -1,4 +1,5 @@
 const logger = require('pino')();
+const mediaCommands = require('./commands/media');
 
 // Simple command registry
 const commands = new Map();
@@ -42,6 +43,7 @@ async function messageHandler(sock, msg) {
 
         // Execute command if it exists
         if (commands.has(command)) {
+            logger.info(`Executing command: ${command}`, { args });
             await commands.get(command)(sock, msg, args);
         }
 
@@ -49,6 +51,12 @@ async function messageHandler(sock, msg) {
         logger.error('Message handler error:', error);
     }
 }
+
+// Register media commands (which now include music commands)
+Object.entries(mediaCommands).forEach(([name, handler]) => {
+    registerCommand(name, handler);
+    logger.info(`Registered media/music command: ${name}`);
+});
 
 // Expose command registration
 messageHandler.register = registerCommand;
