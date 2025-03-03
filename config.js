@@ -836,27 +836,11 @@ const config = {
             category: 'Economy',
             usage: '.inventory'
         },
-        gamble: {
-            description: 'Gamble your coins',
-            category: 'Economy',
-            usage: '.gamble <amount>'
-        },
-        flip: {
-            description: 'Flip a coin to win/lose',
-            category: 'Economy',
-            usage: '.flip heads/tails <amount>'
-        },
         transfer: {
             description: 'Transfer coins to others',
             category: 'Economy',
             usage: '.transfer @user <amount>'
         },
-        rob: {
-            description: 'Rob another user',
-            category: 'Economy',
-            usage: '.rob @user'
-        },
-
         // Fun Commands
         magic8ball: {
             description: 'Ask the Magic 8 Ball',
@@ -1152,7 +1136,7 @@ const config = {
         paizuri: {
             description: 'Get paizuri NSFW content',
             category: 'NSFW',
-            usage: '.paizuri'
+            usage: '.paizzuri'
         },
         ecchi: {
             description: 'Get ecchi content',

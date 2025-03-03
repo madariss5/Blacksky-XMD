@@ -1,30 +1,22 @@
 const config = require('../config');
 const logger = require('../utils/logger');
-const dbStore = require('../database/store');  // Update import
-
-// Define cooldown periods
-const COOLDOWNS = {
-    work: 5 * 60 * 1000,      // 5 minutes
-    mine: 10 * 60 * 1000,     // 10 minutes
-    fish: 7 * 60 * 1000,      // 7 minutes
-    hunt: 15 * 60 * 1000,     // 15 minutes
-    rob: 30 * 60 * 1000       // 30 minutes
-};
+const dbStore = require('../database/store');
 
 const economyCommands = {
     balance: async (sock, msg) => {
         try {
             const userId = msg.key.participant || msg.key.remoteJid;
-            const userData = await dbStore.getUserData(userId);
+            const balanceResult = await dbStore.getUserBalance(userId);
 
-            if (!userData) {
+            if (!balanceResult.success) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `❌ You need to register first!\nUse ${config.prefix}register <name> <age>`
+                    text: '❌ Error checking balance: ' + balanceResult.error
                 });
             }
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `💰 *Your Balance*\n\nCurrent balance: ${userData.balance || 0} coins`
+                text: `💰 *Your Balance*\n\n` +
+                      `Wallet: ${balanceResult.balance} coins`
             });
         } catch (error) {
             logger.error('Error in balance command:', error);
@@ -520,12 +512,12 @@ const economyCommands = {
         try {
             if (args.length < 2) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Please specify recipient and amount!\nUsage: ${config.prefix}transfer @user <amount>`
+                    text: `❌ Usage: ${config.prefix}transfer @user <amount>`
                 });
             }
 
-            const senderId = msg.key.participant || msg.key.remoteJid;
-            const recipientId = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const targetId = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
             const amount = parseInt(args[1]);
 
             if (isNaN(amount) || amount <= 0) {
@@ -534,26 +526,168 @@ const economyCommands = {
                 });
             }
 
-            // Check sender's balance
-            const senderBalance = await dbStore.getUserBalance(senderId);
-            if (senderBalance < amount) {
+            const result = await dbStore.transferCoins(userId, targetId, amount);
+            if (!result.success) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Insufficient balance!'
+                    text: result.error === 'insufficient_funds' ?
+                        '❌ You don\'t have enough coins!' :
+                        '❌ Error transferring coins: ' + result.error
                 });
             }
 
-            // Transfer coins
-            await dbStore.updateBalance(senderId, -amount);
-            await dbStore.updateBalance(recipientId, amount);
-
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `💸 Successfully transferred ${amount} coins to ${args[0]}!`,
-                mentions: [recipientId]
+                text: `✅ Successfully transferred ${amount} coins to @${targetId.split('@')[0]}!\n` +
+                      `Your new balance: ${result.senderNewBalance} coins`,
+                mentions: [targetId]
             });
         } catch (error) {
             logger.error('Error in transfer command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error transferring coins'
+            });
+        }
+    },
+    shop: async (sock, msg) => {
+        try {
+            const shopResult = await dbStore.getShopItems();
+
+            if (!shopResult.success) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Error accessing shop: ' + shopResult.error
+                });
+            }
+
+            let shopText = '🛍️ *ITEM SHOP*\n' + '─'.repeat(40) + '\n\n';
+            shopResult.items.forEach(item => {
+                shopText += `📦 *${item.name}*\n`;
+                shopText += `💰 Price: ${item.price} coins\n`;
+                shopText += `📝 ${item.description}\n`;
+                shopText += `🔑 ID: ${item.id}\n\n`;
+            });
+
+            shopText += `\nTo buy an item: ${config.prefix}buy <item_id>`;
+            await sock.sendMessage(msg.key.remoteJid, { text: shopText });
+        } catch (error) {
+            logger.error('Error in shop command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error accessing shop'
+            });
+        }
+    },
+    buy: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `❌ Usage: ${config.prefix}buy <item_id> [quantity]`
+                });
+            }
+
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const itemId = args[0].toLowerCase();
+            const quantity = parseInt(args[1]) || 1;
+
+            if (quantity <= 0) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please enter a valid quantity!'
+                });
+            }
+
+            const result = await dbStore.buyItem(userId, itemId, quantity);
+            if (!result.success) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: result.error === 'insufficient_funds' ?
+                        '❌ You don\'t have enough coins!' :
+                        result.error === 'item_not_found' ?
+                        '❌ Item not found in shop!' :
+                        '❌ Error buying item: ' + result.error
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Successfully bought ${quantity}x ${result.item.name}!\n` +
+                      `💰 Cost: ${result.totalCost} coins\n` +
+                      `New balance: ${result.newBalance} coins`
+            });
+        } catch (error) {
+            logger.error('Error in buy command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error buying item'
+            });
+        }
+    },
+    sell: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `❌ Usage: ${config.prefix}sell <item_id> [quantity]`
+                });
+            }
+
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const itemId = args[0].toLowerCase();
+            const quantity = parseInt(args[1]) || 1;
+
+            if (quantity <= 0) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please enter a valid quantity!'
+                });
+            }
+
+            const result = await dbStore.sellItem(userId, itemId, quantity);
+            if (!result.success) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: result.error === 'insufficient_items' ?
+                        '❌ You don\'t have enough items!' :
+                        result.error === 'item_not_found' ?
+                        '❌ Item not found!' :
+                        '❌ Error selling item: ' + result.error
+                });
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Successfully sold ${quantity}x ${result.item.name}!\n` +
+                      `💰 Earned: ${result.totalAmount} coins\n` +
+                      `New balance: ${result.newBalance} coins`
+            });
+        } catch (error) {
+            logger.error('Error in sell command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error selling item'
+            });
+        }
+    },
+    inventory: async (sock, msg) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const invResult = await dbStore.getUserInventory(userId);
+
+            if (!invResult.success) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Error accessing inventory: ' + invResult.error
+                });
+            }
+
+            const shopItems = await dbStore.getShopItems();
+            let invText = '📦 *YOUR INVENTORY*\n' + '─'.repeat(40) + '\n\n';
+
+            if (Object.keys(invResult.inventory.items).length === 0) {
+                invText += 'Your inventory is empty!\nUse .shop to view available items.';
+            } else {
+                for (const [itemId, quantity] of Object.entries(invResult.inventory.items)) {
+                    const item = shopItems.items.find(i => i.id === itemId);
+                    if (item && quantity > 0) {
+                        invText += `📍 ${item.name} x${quantity}\n`;
+                        invText += `💰 Value: ${Math.floor(item.price * 0.7)} coins (sell price)\n\n`;
+                    }
+                }
+                invText += `\nUse ${config.prefix}sell <item_id> [quantity] to sell items`;
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, { text: invText });
+        } catch (error) {
+            logger.error('Error in inventory command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error accessing inventory'
             });
         }
     },
@@ -614,115 +748,6 @@ const economyCommands = {
             logger.error('Error in fish command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ ' + error.message
-            });
-        }
-    },
-    shop: async (sock, msg) => {
-        try {
-            const items = await dbStore.getShopItems();
-            let shopText = '🛍️ *ITEM SHOP*\n' + '─'.repeat(40) + '\n\n';
-
-            items.forEach(item => {
-                shopText += `📦 *${item.name}*\n`;
-                shopText += `💰 Price: $${item.price}\n`;
-                shopText += `📝 ${item.description}\n`;
-                shopText += `🔑 ID: ${item.id}\n\n`;
-            });
-
-            shopText += `\nTo buy an item: ${config.prefix}buy <item_id>`;
-
-            await sock.sendMessage(msg.key.remoteJid, { text: shopText });
-        } catch (error) {
-            logger.error('Error in shop command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error accessing shop'
-            });
-        }
-    },
-    buy: async (sock, msg, args) => {
-        try {
-            if (!args.length) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Please specify an item to buy!\nUsage: ${config.prefix}buy <item_id>`
-                });
-            }
-
-            const itemId = args[0].toLowerCase();
-            const result = await dbStore.buyItem(msg.key.participant, itemId);
-
-            if (!result.success) {
-                throw new Error(result.error);
-            }
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `✅ Successfully bought ${result.item.name} for $${result.item.price}!`
-            });
-        } catch (error) {
-            logger.error('Error in buy command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ ' + error.message
-            });
-        }
-    },
-    sell: async (sock, msg, args) => {
-        try {
-            if (args.length < 1) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Please specify what to sell!\nUsage: ${config.prefix}sell <item_id> [quantity]`
-                });
-            }
-
-            const itemId = args[0].toLowerCase();
-            const quantity = parseInt(args[1]) || 1;
-
-            if (quantity <= 0) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Please enter a valid quantity!'
-                });
-            }
-
-            const result = await dbStore.sellItem(msg.key.participant, itemId, quantity);
-
-            if (!result.success) {
-                throw new Error(result.error);
-            }
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `💰 Successfully sold item(s) for $${result.amount}!`
-            });
-        } catch (error) {
-            logger.error('Error in sell command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ ' + error.message
-            });
-        }
-    },
-    inventory: async (sock, msg) => {
-        try {
-            const userData = await dbStore.getUserData(msg.key.participant);
-            if (!userData || !userData.inventory) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '📦 Your inventory is empty!'
-                });
-            }
-
-            const items = await dbStore.getShopItems();
-            let invText = '📦 *YOUR INVENTORY*\n' + '─'.repeat(40) + '\n\n';
-
-            Object.entries(userData.inventory).forEach(([itemId, quantity]) => {
-                if (quantity > 0) {
-                    const item = items.find(i => i.id === itemId);
-                    if (item) {
-                        invText += `📍 ${item.name} x${quantity}\n`;
-                    }
-                }
-            });
-
-            await sock.sendMessage(msg.key.remoteJid, { text: invText });
-        } catch (error) {
-            logger.error('Error in inventory command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error accessing inventory'
             });
         }
     }
