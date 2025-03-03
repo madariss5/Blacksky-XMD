@@ -1,5 +1,6 @@
 const logger = require('pino')();
 const config = require('../config');
+const dbStore = require('../database/store');  // Add dbStore import
 const { formatPhoneNumber, addWhatsAppSuffix } = require('../utils/phoneNumber');
 const { restartBot } = require('../scripts/restart');
 const fs = require('node:fs/promises');
