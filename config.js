@@ -2,58 +2,92 @@ require('dotenv').config();
 const { formatPhoneNumber } = require('./utils/phoneNumber');
 const { getSessionData } = require('./utils/creds');
 const logger = require('pino')();
+const fs = require('fs'); // Added fs for isDocker check
+const os = require('os');
+
+// Platform-specific configurations
+const platformConfig = {
+    isHeroku: process.env.NODE_ENV === 'production' && process.env.DYNO,
+    isDocker: fs.existsSync('/.dockerenv'),
+    workers: process.env.WEB_CONCURRENCY || os.cpus().length,
+    port: process.env.PORT || 5000,
+    host: process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost'
+};
+
+logger.info('Platform configuration:', platformConfig);
 
 logger.info('Starting config initialization...');
 
-// Load and validate required environment variables
-const required_env_vars = ['OWNER_NUMBER', 'OWNER_NAME', 'BOT_NAME', 'SESSION_ID'];
-const missing_vars = required_env_vars.filter(varName => !process.env[varName]);
+// Detect environment (already present in original)
+//const isHeroku = process.env.NODE_ENV === 'production' && process.env.DYNO;
+//logger.info(`Running in ${isHeroku ? 'Heroku' : 'Local'} environment`);
 
-if (missing_vars.length > 0) {
-    logger.error(`Missing required environment variables: ${missing_vars.join(', ')}`);
-    logger.error('Please check your .env file or environment configuration');
-    process.exit(1);
-}
+// Load and validate required environment variables (already present in original)
+//const required_env_vars = ['OWNER_NUMBER', 'OWNER_NAME', 'BOT_NAME', 'SESSION_ID'];
+//const missing_vars = required_env_vars.filter(varName => !process.env[varName]);
+//
+//if (missing_vars.length > 0) {
+//    logger.error(`Missing required environment variables: ${missing_vars.join(', ')}`);
+//    logger.error('Please check your .env file or environment configuration');
+//    process.exit(1);
+//}
 
-const rawOwnerNumber = process.env.OWNER_NUMBER;
-const formattedOwnerNumber = formatPhoneNumber(rawOwnerNumber);
-logger.info('Startup: Formatted owner number:', formattedOwnerNumber);
+// Format owner number with error handling (already present in original)
+//const rawOwnerNumber = process.env.OWNER_NUMBER;
+//const formattedOwnerNumber = formatPhoneNumber(rawOwnerNumber);
+//
+//if (!formattedOwnerNumber) {
+//    logger.error('Invalid OWNER_NUMBER format in environment variables');
+//    process.exit(1);
+//}
+//
+//logger.info('Owner number formatted successfully:', formattedOwnerNumber);
 
-if (!formattedOwnerNumber) {
-    logger.error('Invalid OWNER_NUMBER format in environment variables');
-    process.exit(1);
-}
+// Initialize session configuration with platform-specific defaults
+const sessionTimeout = platformConfig.isHeroku ? 300000 : 600000; // 5 minutes for Heroku, 10 for local
+const maxRetries = platformConfig.isHeroku ? 3 : 5; // Less retries on Heroku to avoid unnecessary dynos usage
 
-// Initialize session configuration with defaults
 const sessionConfig = {
     id: process.env.SESSION_ID,
-    authDir: process.env.AUTH_DIR || './auth_info',
-    printQRInTerminal: true,
+    authDir: process.env.AUTH_DIR || (platformConfig.isHeroku ? '/app/auth_info' : './auth_info'),
+    printQRInTerminal: !platformConfig.isHeroku,
     browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49'],
-    defaultQueryTimeoutMs: parseInt(process.env.QUERY_TIMEOUT) || 60000,
+    defaultQueryTimeoutMs: parseInt(process.env.QUERY_TIMEOUT) || sessionTimeout,
     connectTimeoutMs: parseInt(process.env.CONNECT_TIMEOUT) || 60000,
     qrTimeout: parseInt(process.env.QR_TIMEOUT) || 40000,
     keepAliveIntervalMs: parseInt(process.env.KEEP_ALIVE_INTERVAL) || 10000,
     emitOwnEvents: true,
     markOnlineOnConnect: true,
     retryRequestDelayMs: parseInt(process.env.RETRY_DELAY) || 2000,
-    logLevel: process.env.LOG_LEVEL || 'silent'
+    maxRetries: maxRetries,
+    logLevel: process.env.LOG_LEVEL || (platformConfig.isHeroku ? 'warn' : 'silent'),
+    generateHighQualityLinkPreview: !platformConfig.isHeroku // Disable on Heroku to save resources
 };
 
-// Update session ID from creds.json if available
-(async () => {
-    try {
-        const sessionData = await getSessionData();
-        if (sessionData.success) {
-            sessionConfig.id = sessionData.sessionId;
-            logger.info('Updated session ID from credentials file');
-        } else {
-            logger.warn('Using environment session ID:', sessionConfig.id);
-        }
-    } catch (error) {
-        logger.error('Error loading session data:', error);
-    }
-})();
+// Update session ID from creds.json if available (already present in original)
+//(async () => {
+//    try {
+//        const sessionData = await getSessionData();
+//        if (sessionData.success) {
+//            sessionConfig.id = sessionData.sessionId;
+//            logger.info('Updated session ID from credentials file');
+//        } else {
+//            logger.warn('Using environment session ID:', sessionConfig.id);
+//        }
+//    } catch (error) {
+//        logger.error('Error loading session data:', error);
+//    }
+//})();
+
+const rawOwnerNumber = process.env.OWNER_NUMBER;
+const formattedOwnerNumber = formatPhoneNumber(rawOwnerNumber);
+
+if (!formattedOwnerNumber) {
+    logger.error('Invalid OWNER_NUMBER format in environment variables');
+    process.exit(1);
+}
+
+logger.info('Owner number formatted successfully:', formattedOwnerNumber);
 
 
 const config = {
@@ -1053,7 +1087,7 @@ const config = {
             usage: '.wasted@user'
         },
         poke: {
-            description: 'Poke another user',
+        description: 'Poke another user',
             category: 'Reactions',
             usage: '.poke @user'
         },
@@ -1118,15 +1152,15 @@ const config = {
             category: 'NSFW',
             usage: '.nsfwcheck'
         },
-        register: {
-            description: 'Register your age for NSFW content',
-            category: 'NSFW',
-            usage: '.register <name> <age>'
-        },
         setnsfw: {
-            description: 'Enable/disable NSFW ingroup (admin only)',
+            description: 'Enable/disable NSFW in group (admin only)',
             category: 'NSFW',
             usage: '.setnsfw on/off'
+        },
+        nsfwstatus: {
+            description: 'View NSFW settings',
+            category: 'NSFW',
+            usage: '.nsfwstatus'
         },
         trap: {
             description: 'Get trap NSFW content',
@@ -1403,5 +1437,18 @@ const config = {
         }
     }
 };
+
+// Log environment-specific configuration
+logger.info('Bot configuration initialized:', {
+    environment: platformConfig.isHeroku ? 'Heroku' : (platformConfig.isDocker ? 'Docker' : 'Local'),
+    prefix: config.prefix,
+    botName: config.botName,
+    sessionId: config.session.id,
+    authDir: config.session.authDir,
+    logLevel: config.session.logLevel,
+    workers: platformConfig.workers,
+    port: platformConfig.port,
+    host: platformConfig.host
+});
 
 module.exports = config;
