@@ -23,41 +23,40 @@ for dir in auth_info_baileys auth_info temp database; do
     log "Created directory: $dir"
 done
 
-# Production-specific checks and configurations
-if [ "$NODE_ENV" = "production" ]; then
-    log "Running in production mode (Heroku)"
-
-    # Verify critical environment variables
-    required_vars=("OWNER_NUMBER" "OWNER_NAME" "BOT_NAME" "SESSION_ID" "DATABASE_URL")
-    missing_vars=()
-
-    for var in "${required_vars[@]}"; do
-        if [ -z "${!var}" ]; then
-            missing_vars+=("$var")
-        fi
-    done
-
-    if [ ${#missing_vars[@]} -ne 0 ]; then
-        log "Error: Missing required environment variables: ${missing_vars[*]}"
-        exit 1
-    fi
-
-    # Set production-specific Node.js flags
-    export NODE_OPTIONS="--max-old-space-size=2560"
-    log "Node.js production flags set"
-
-    # Start the bot with production optimizations
-    log "Starting bot in production mode..."
-    exec node index.js
-else
-    log "Running in development mode"
-    # Set development defaults
-    : ${OWNER_NUMBER:="1234567890"}
-    : ${OWNER_NAME:="Dev User"}
-    : ${BOT_NAME:="BlackSky-MD"}
-    : ${SESSION_ID:="dev-session"}
-
-    # Start in development mode
-    log "Starting bot in development mode..."
-    exec node index.js
+# Set default environment variables if not in production
+if [ "$NODE_ENV" != "production" ]; then
+    log "Setting up development environment..."
+    export OWNER_NUMBER=${OWNER_NUMBER:-"1234567890"}
+    export OWNER_NAME=${OWNER_NAME:-"Dev User"}
+    export BOT_NAME=${BOT_NAME:-"BlackSky-MD"}
+    export SESSION_ID=${SESSION_ID:-"dev-session"}
+    export PREFIX=${PREFIX:-"."}
+    export NODE_ENV="development"
 fi
+
+# Verify critical environment variables
+required_vars=("OWNER_NUMBER" "OWNER_NAME" "BOT_NAME" "SESSION_ID" "PREFIX")
+missing_vars=()
+
+for var in "${required_vars[@]}"; do
+    if [ -z "${!var}" ]; then
+        missing_vars+=("$var")
+    fi
+done
+
+if [ ${#missing_vars[@]} -ne 0 ]; then
+    log "Error: Missing required environment variables: ${missing_vars[*]}"
+    exit 1
+fi
+
+# Set Node.js flags for better performance
+export NODE_OPTIONS="--max-old-space-size=2560"
+log "Node.js flags set"
+
+# Ensure the application uses port 5000
+export PORT=5000
+log "Port set to 5000"
+
+# Start the bot
+log "Starting bot in ${NODE_ENV} mode..."
+exec node index.js
