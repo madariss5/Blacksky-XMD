@@ -1,81 +1,27 @@
 const config = require('../config');
-const { dbStore } = require('../database/store');
+const dbStore = require('../database/store');
 const logger = require('../utils/logger');
 const { formatPhoneNumber, addWhatsAppSuffix, formatDisplayNumber } = require('../utils/phoneNumber');
 
-// Helper function for safely fetching profile pictures
+// Helper function to safely get profile picture
 async function safeProfilePicture(sock, jid) {
     try {
-        const whatsappId = addWhatsAppSuffix(formatPhoneNumber(jid));
-        const pp = await sock.profilePictureUrl(whatsappId, 'image');
-        logger.info('Profile picture fetched successfully');
+        const pp = await sock.profilePictureUrl(jid, 'image');
         return pp;
-    } catch (err) {
-        logger.warn('Failed to fetch profile picture:', err);
+    } catch (error) {
+        logger.warn('Could not fetch profile picture:', error);
         return 'https://i.imgur.com/wuxBN7M.png'; // Default profile picture
     }
 }
 
 const userCommands = {
-    profile: async (sock, msg, args) => {
-        try {
-            const targetUser = args[0] ? 
-                formatPhoneNumber(args[0]) : 
-                formatPhoneNumber(msg.key.participant || msg.key.remoteJid);
-
-            logger.info('Fetching profile for user:', targetUser);
-            const userData = await dbStore.getUserData(targetUser);
-            let pp;
-
-            try {
-                pp = await safeProfilePicture(sock, targetUser);
-            } catch (err) {
-                logger.error('Error fetching profile picture:', err);
-                pp = 'https://i.imgur.com/wuxBN7M.png';
-            }
-
-            const whatsappId = addWhatsAppSuffix(targetUser);
-
-            const info = userData ? 
-                `*User Profile*\n\n` +
-                `• Number: ${formatDisplayNumber(targetUser)}\n` +
-                `• Name: ${userData.name || 'Not set'}\n` +
-                `• Age: ${userData.age || 'Not set'}\n` +
-                `• Level: ${userData.level || 1}\n` +
-                `• XP: ${userData.xp || 0}\n` +
-                `• Bio: ${userData.bio || 'No bio set'}\n` +
-                `• Registered: ${userData.registrationTime ? new Date(userData.registrationTime).toLocaleDateString() : 'No'}`
-                :
-                `*User Profile*\n\n` +
-                `• Number: ${formatDisplayNumber(targetUser)}\n` +
-                `• Status: Not registered\n\n` +
-                `Use ${config.prefix}register <name> <age> to create a profile!`;
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                image: { url: pp },
-                caption: info,
-                mentions: [whatsappId]
-            });
-
-        } catch (error) {
-            logger.error('Error in profile command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error fetching profile. Please try again later.'
-            });
-        }
-    },
-
     me: async (sock, msg) => {
         try {
             const userId = formatPhoneNumber(msg.key.participant || msg.key.remoteJid);
             logger.info('Fetching self profile for user:', userId);
 
             const userData = await dbStore.getUserData(userId);
-            if (!userData) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `You haven't registered yet!\nUse ${config.prefix}register <name> <age> to create your profile.`
-                });
-            }
+            logger.debug('User data retrieved:', { userId, userData });
 
             let pp;
             try {
@@ -83,6 +29,12 @@ const userCommands = {
             } catch (err) {
                 logger.error('Error fetching profile picture:', err);
                 pp = 'https://i.imgur.com/wuxBN7M.png';
+            }
+
+            if (!userData || !userData.registered) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `You haven't registered yet!\nUse ${config.prefix}register <name> <age> to create your profile.`
+                });
             }
 
             const whatsappId = addWhatsAppSuffix(userId);
@@ -103,11 +55,57 @@ const userCommands = {
                 caption: info,
                 mentions: [whatsappId]
             });
-
         } catch (error) {
             logger.error('Error in me command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error showing your profile. Please try again later.'
+            });
+        }
+    },
+
+    profile: async (sock, msg, args) => {
+        try {
+            const targetUser = args[0] ? 
+                formatPhoneNumber(args[0]) : 
+                formatPhoneNumber(msg.key.participant || msg.key.remoteJid);
+
+            logger.info('Fetching profile for user:', targetUser);
+            const userData = await dbStore.getUserData(targetUser);
+            logger.debug('Target user data:', { targetUser, userData });
+
+            let pp;
+            try {
+                pp = await safeProfilePicture(sock, targetUser);
+            } catch (err) {
+                logger.error('Error fetching profile picture:', err);
+                pp = 'https://i.imgur.com/wuxBN7M.png';
+            }
+
+            const whatsappId = addWhatsAppSuffix(targetUser);
+
+            const info = userData && userData.registered ? 
+                `*User Profile*\n\n` +
+                `• Number: ${formatDisplayNumber(targetUser)}\n` +
+                `• Name: ${userData.name || 'Not set'}\n` +
+                `• Age: ${userData.age || 'Not set'}\n` +
+                `• Level: ${userData.level || 1}\n` +
+                `• XP: ${userData.xp || 0}\n` +
+                `• Bio: ${userData.bio || 'No bio set'}\n` +
+                `• Registered: ${userData.registrationTime ? new Date(userData.registrationTime).toLocaleDateString() : 'No'}`
+                :
+                `*User Profile*\n\n` +
+                `• Number: ${formatDisplayNumber(targetUser)}\n` +
+                `• Status: Not registered`;
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: { url: pp },
+                caption: info,
+                mentions: [whatsappId]
+            });
+        } catch (error) {
+            logger.error('Error in profile command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error fetching profile. Please try again later.'
             });
         }
     },
