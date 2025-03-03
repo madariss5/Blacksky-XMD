@@ -38,34 +38,46 @@ if [ -d "auth_info" ]; then
     log "Cleared auth_info/"
 fi
 
-# Verify environment variables (only in production)
+# Production-specific checks and configurations
 if [ "$NODE_ENV" = "production" ]; then
-    log "Verifying environment variables for production..."
-    required_vars=("OWNER_NUMBER" "OWNER_NAME" "BOT_NAME" "SESSION_ID")
+    log "Running in production mode (Heroku)"
+
+    # Verify critical environment variables
+    required_vars=("OWNER_NUMBER" "OWNER_NAME" "BOT_NAME" "SESSION_ID" "DATABASE_URL")
+    missing_vars=()
+
     for var in "${required_vars[@]}"; do
         if [ -z "${!var}" ]; then
-            log "Error: Required environment variable $var is not set"
-            exit 1
+            missing_vars+=("$var")
         fi
     done
+
+    if [ ${#missing_vars[@]} -ne 0 ]; then
+        log "Error: Missing required environment variables: ${missing_vars[*]}"
+        exit 1
+    fi
+
+    # Set production-specific Node.js flags
+    export NODE_OPTIONS="--max-old-space-size=2560 --optimize_for_size --gc_interval=100"
+    log "Node.js production flags set"
+
+    # Verify database connection
+    if ! pg_isready -h "${DATABASE_URL%%@*}" > /dev/null 2>&1; then
+        log "Warning: Database connection not ready, will retry in application"
+    fi
+
+    # Start the bot with production optimizations
+    log "Starting bot in production mode..."
+    exec node --optimize_for_size --max_old-space-size=2560 index.js
 else
-    log "Running in development mode, skipping strict environment checks"
-    # Set default values for development
+    log "Running in development mode"
+    # Set development defaults
     : ${OWNER_NUMBER:="1234567890"}
     : ${OWNER_NAME:="Dev User"}
     : ${BOT_NAME:="BlackSky-MD"}
     : ${SESSION_ID:="dev-session"}
-fi
 
-# Set Node.js flags for better performance
-export NODE_OPTIONS="--max-old-space-size=2560 --expose-gc"
-
-# Start the bot with optimized settings
-log "Starting bot with optimized settings..."
-if [ "$NODE_ENV" = "production" ]; then
-    log "Running in production mode"
-    exec node --optimize_for_size --max_old_space_size=2560 index.js
-else
-    log "Running in development mode"
+    # Start in development mode
+    log "Starting bot in development mode..."
     exec node index.js
 fi
