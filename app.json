@@ -1,5 +1,5 @@
 {
-  "name": "BlackSky-MD",
+  "name": "𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻",
   "description": "Advanced WhatsApp Multi-Device bot with AI capabilities",
   "repository": "https://github.com/blacksky-algorithms/blacksky-md",
   "logo": "https://raw.githubusercontent.com/blacksky-algorithms/blacksky-md/main/generated-icon.png",
@@ -11,18 +11,18 @@
       "value": ".",
       "required": true
     },
+    "OWNER_NUMBER": {
+      "description": "Your WhatsApp number (international format without +)",
+      "required": true
+    },
+    "OWNER_NAME": {
+      "description": "Your name",
+      "required": true
+    },
     "BOT_NAME": {
       "description": "Name for your bot",
       "value": "𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻",
       "required": false
-    },
-    "OWNER_NAME": {
-      "description": "Your Name",
-      "required": true
-    },
-    "OWNER_NUMBER": {
-      "description": "Your WhatsApp number (international format without +)",
-      "required": true
     },
     "SESSION_ID": {
       "description": "WhatsApp session ID",
@@ -37,29 +37,13 @@
       "value": "info",
       "required": false
     },
-    "KEEP_ALIVE_INTERVAL": {
-      "description": "Keep alive interval in milliseconds",
-      "value": "10000",
+    "NODE_ENV": {
+      "description": "Node environment",
+      "value": "production",
       "required": false
     },
-    "QUERY_TIMEOUT": {
-      "description": "Query timeout in milliseconds",
-      "value": "60000",
-      "required": false
-    },
-    "CONNECT_TIMEOUT": {
-      "description": "Connection timeout in milliseconds",
-      "value": "60000",
-      "required": false
-    },
-    "QR_TIMEOUT": {
-      "description": "QR code timeout in milliseconds",
-      "value": "40000",
-      "required": false
-    },
-    "RETRY_DELAY": {
-      "description": "Retry delay in milliseconds",
-      "value": "2000",
+    "DATABASE_URL": {
+      "description": "PostgreSQL Database URL (automatically set by Heroku)",
       "required": false
     }
   },
@@ -72,17 +56,20 @@
     },
     {
       "url": "https://github.com/clhuang/heroku-buildpack-webp-binaries.git"
+    },
+    {
+      "url": "https://github.com/DuckyTeam/heroku-buildpack-imagemagick.git"
+    }
+  ],
+  "addons": [
+    {
+      "plan": "heroku-postgresql:mini"
     }
   ],
   "formation": {
     "worker": {
       "quantity": 1,
-      "size": "standard-2x"
+      "size": "basic"
     }
-  },
-  "addons": [
-    {
-      "plan": "heroku-postgresql:mini"
-    }
-  ]
+  }
 }

@@ -20,6 +20,7 @@ function loadEnvironment() {
         'CONNECT_TIMEOUT',
         'QR_TIMEOUT',
         'RETRY_DELAY',
+        'DATABASE_URL',
         'AUTH_DIR'
     ];
 
@@ -37,6 +38,20 @@ function loadEnvironment() {
             logger.warn(`Optional environment variable ${varName} not set, using default value`);
         }
     });
+
+    // Setup Heroku-specific configurations
+    if (process.env.NODE_ENV === 'production' && process.env.DYNO) {
+        // Set optimized Node.js flags for Heroku
+        process.env.NODE_OPTIONS = '--max-old-space-size=2560';
+
+        // Use Heroku's PORT
+        process.env.PORT = process.env.PORT || 5000;
+
+        // Set production-specific configurations
+        process.env.AUTH_DIR = '/app/auth_info';
+        process.env.KEEP_ALIVE_INTERVAL = process.env.KEEP_ALIVE_INTERVAL || '300000';
+        process.env.LOG_LEVEL = process.env.LOG_LEVEL || 'warn';
+    }
 
     return {
         required: requiredVars.reduce((acc, varName) => {

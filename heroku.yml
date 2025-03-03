@@ -1,8 +1,12 @@
+setup:
+  addons:
+    - plan: heroku-postgresql:mini
+      as: DATABASE
 build:
   docker:
     worker: Dockerfile
-    web: Dockerfile
-
 run:
-  worker: node index.js
-  web: node index.js
+  worker: 
+    command:
+      - /app/start.sh
+    image: worker
