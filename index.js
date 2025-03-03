@@ -10,6 +10,10 @@ const fs = require('fs-extra');
 const path = require('path');
 const config = require('./config');
 const { compressCredsFile, getSessionData } = require('./utils/creds');
+const { loadEnvironment } = require('./utils/env'); // Added line
+
+// Load and validate environment variables
+loadEnvironment(); // Added line
 
 // Command handlers
 const commandsPath = path.join(__dirname, 'commands');

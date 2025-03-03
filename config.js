@@ -1,21 +1,32 @@
+require('dotenv').config();
 const { formatPhoneNumber } = require('./utils/phoneNumber');
 const { getSessionData } = require('./utils/creds');
 const logger = require('pino')();
 
 logger.info('Starting config initialization...');
 
-const rawOwnerNumber = process.env.OWNER_NUMBER || '4915561048015';
+// Load and validate required environment variables
+const required_env_vars = ['OWNER_NUMBER', 'OWNER_NAME', 'BOT_NAME', 'SESSION_ID'];
+const missing_vars = required_env_vars.filter(varName => !process.env[varName]);
+
+if (missing_vars.length > 0) {
+    logger.error(`Missing required environment variables: ${missing_vars.join(', ')}`);
+    logger.error('Please check your .env file or environment configuration');
+    process.exit(1);
+}
+
+const rawOwnerNumber = process.env.OWNER_NUMBER;
 const formattedOwnerNumber = formatPhoneNumber(rawOwnerNumber);
 logger.info('Startup: Formatted owner number:', formattedOwnerNumber);
 
 if (!formattedOwnerNumber) {
-    console.error('Invalid OWNER_NUMBER format in environment variables');
+    logger.error('Invalid OWNER_NUMBER format in environment variables');
     process.exit(1);
 }
 
 // Initialize session configuration with defaults
 const sessionConfig = {
-    id: process.env.SESSION_ID || '{"noiseKey":{"private":{"type":"Buffer","data":"eHflTnLDSS+D3YLtYtcnLIZPwof0c5/BPyGl0f65Zn8="},"public":{"type":"Buffer","data":"II+q3wXnz5bXXTsfXqeTVyMaBij8H1Q7ne9jdOnHIxc="}},"pairingEphemeralKeyPair":{"private":{"type":"Buffer","data":"aEVtTx+CHQlaWcFrGKhpbIGTjz0OTwA3lA/FI6a/RkE="},"public":{"type":"Buffer","data":"1RFCjLiG6t5o03RlKDVBCBRxxubMbiAn/0QZUC2qrns="}},"signedIdentityKey":{"private":{"type":"Buffer","data":"EJOfTTke658LvDHqVJFpZyNIo7lxPWYj14hqUzbRZ00="},"public":{"type":"Buffer","data":"cQ2tCxnBTL5fskySRnnaGdUDrOOU3PopRCn+YjBpfSQ="}},"signedPreKey":{"keyPair":{"private":{"type":"Buffer","data":"KO6osUcwo9TURJYjP+sjvJT2f0MQvO5fHQLQT6Y3F2s="},"public":{"type":"Buffer","data":"bVJXLczZNHa5mIQsvtVd8hzvuLSfahR+MA4XtLs1CVI="}},"signature":{"type":"Buffer","data":"+qy5g5VLf9m/3TXLR6qhGHxdnb6t7hPmgfR+ulKFNnbqnJAaYmkWrAJpDNswyDSYG5BbW1KzzqjyfRA/VjJNgA=="},"keyId":1},"registrationId":68,"advSecretKey":"gALs5ahVxo4jP+XFC/LmNkTz/ztRc9lDRZVr/SJH0GM=","processedHistoryMessages":[{"key":{"remoteJid":"4915561048015@s.whatsapp.net","fromMe":true,"id":"1A467D7956A455F68624A5C19EF41D8A"},"messageTimestamp":1740937889},{"key":{"remoteJid":"4915561048015@s.whatsapp.net","fromMe":true,"id":"15D37D6B1B25CAF0FC2945CA8AD60545"},"messageTimestamp":1740937889},{"key":{"remoteJid":"4915561048015@s.whatsapp.net","fromMe":true,"id":"BA1ABA41D895CB2FE68C3447DFD92B45"},"messageTimestamp":1740937893},{"key":{"remoteJid":"4915561048015@s.whatsapp.net","fromMe":true,"id":"AEC51FF2A9DE459A80267E3DCFBA7C01"},"messageTimestamp":1740937898},{"key":{"remoteJid":"4915561048015@s.whatsapp.net","fromMe":true,"id":"BF9CC94317A35277714022E24E0949FB"},"messageTimestamp":1740937900},{"key":{"remoteJid":"4915561048015@s.whatsapp.net","fromMe":true,"id":"96B1A185CF69E0B846D9122E96BD1621"},"messageTimestamp":1740937900}],"nextPreKeyId":211,"firstUnuploadedPreKeyId":211,"accountSyncCounter":1,"accountSettings":{"unarchiveChats":false},"registered":false,"account":{"details":"CNbylLMCEJ21kr4GGAEgACgA","accountSignatureKey":"YCtfB2jhfxkSy3mPl5ArQsQTWvYXDt78RQEoyoLVRhc=","accountSignature":"OK77a5NvP64qpCaDndMreMhE0ob2vdxNp4G762O3dPHNUcDi6h9XrII0jm2ok0YJBnCAVGdAfZ+VCvpbPiiWAA==","deviceSignature":"01vTReMA/IE6nRGTpswQX3hJyb9mhgSDFtsLFD7Xw2p0JtFcW3JlzFVKxAj35jhu7RTeeh615iy2JMWYdzM8iQ=="},"me":{"id":"4915561048015:58@s.whatsapp.net","lid":"87819666116735:58@lid","name":"Martin"},"signalIdentities":[{"identifier":{"name":"4915561048015:58@s.whatsapp.net","deviceId":0},"identifierKey":{"type":"Buffer","data":"BWArXwdo4X8ZEst5j5eQK0LEE1r2Fw7e/EUBKMqC1UYX"}}],"platform":"android","routingInfo":{"type":"Buffer","data":"CAUIAg=="},"lastAccountSyncTimestamp":1740937982,"lastPropHash":"1K4hH4","myAppStateKeyId":"AAAAAH7o"}',
+    id: process.env.SESSION_ID,
     authDir: process.env.AUTH_DIR || './auth_info',
     printQRInTerminal: true,
     browser: ['𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻', 'Chrome', '112.0.5615.49'],
@@ -37,23 +48,19 @@ const sessionConfig = {
             sessionConfig.id = sessionData.sessionId;
             logger.info('Updated session ID from credentials file');
         } else {
-            logger.warn('Using default/environment session ID:', sessionConfig.id);
+            logger.warn('Using environment session ID:', sessionConfig.id);
         }
     } catch (error) {
         logger.error('Error loading session data:', error);
     }
 })();
 
-// Validate required session configuration
-if (!process.env.SESSION_ID) {
-    logger.warn('SESSION_ID not provided in environment, using default: blacksky-md');
-}
 
 const config = {
     prefix: process.env.PREFIX || '.',
     ownerNumber: formattedOwnerNumber,
-    ownerName: process.env.OWNER_NAME || 'BLACKSKY',
-    botName: process.env.BOT_NAME || '𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻',
+    ownerName: process.env.OWNER_NAME,
+    botName: process.env.BOT_NAME,
     botNumber: '',
     session: sessionConfig,
     commands: {
@@ -776,7 +783,6 @@ const config = {
             category: 'Owner',
             usage: '.unban @user'
         },
-
         // Economy Commands
         balance: {
             description: 'Check your balance',
@@ -1118,7 +1124,7 @@ const config = {
             usage: '.register <name> <age>'
         },
         setnsfw: {
-            description: 'Enable/disable NSFW in group (admin only)',
+            description: 'Enable/disable NSFW ingroup (admin only)',
             category: 'NSFW',
             usage: '.setnsfw on/off'
         },
