@@ -208,11 +208,6 @@ const config = {
             category: 'Group',
             usage: '.viewrules'
         },
-        join: { 
-            description: 'Join group via link', 
-            category: 'Group',
-            usage: '.join <link>'
-        },
         tagall: { 
             description: 'Tag all members', 
             category: 'Group',
@@ -260,242 +255,10 @@ const config = {
             category: 'User',
             usage: '.level'
         },
-
-        // Media Commands
-        sticker: { 
-            description: 'Create sticker from media', 
-            category: 'Media',
-            usage: '.sticker [pack] [author]'
-        },
-        toimg: { 
-            description: 'Convert sticker to image', 
-            category: 'Media',
-            usage: '.toimg'
-        },
-        meme: { 
-            description: 'Get random memes', 
-            category: 'Media',
-            usage: '.meme'
-        },
-        tomp3: {
-            description: 'Convert video to MP3',
-            category: 'Media',
-            usage: '.tomp3'
-        },
-        tovn: {
-            description: 'Convert audio to voice note',
-            category: 'Media',
-            usage: '.tovn'
-        },
-        video: {
-            description: 'Download video from URL',
-            category: 'Media',
-            usage: '.video <url>'
-        },
-        togif: {
-            description: 'Convert sticker to GIF',
-            category: 'Media',
-            usage: '.togif'
-        },
-        tourl: {
-            description: 'Upload media to get URL',
-            category: 'Media',
-            usage: '.tourl'
-        },
-        cropimg: {
-            description: 'Crop an image',
-            category: 'Media',
-            usage: '.cropimg'
-        },
-        invert: {
-            description: 'Invert image colors',
-            category: 'Media',
-            usage: '.invert'
-        },
-        grayscale: {
-            description: 'Convert image to grayscale',
-            category: 'Media',
-            usage: '.grayscale'
-        },
-        pixelate: {
-            description: 'Pixelate an image',
-            category: 'Media',
-            usage: '.pixelate'
-        },
-        rotate: {
-            description: 'Rotate an image',
-            category: 'Media',
-            usage: '.rotate'
-        },
-        blur: {
-            description: 'Blur an image',
-            category: 'Media',
-            usage: '.blur'
-        },
-        circle: {
-            description: 'Make image circular',
-            category: 'Media',
-            usage: '.circle'
-        },
-        bass: {
-            description: 'Enhance audio bass',
-            category: 'Media',
-            usage: '.bass'
-        },
-        nightcore: {
-            description: 'Apply nightcore effect',
-            category: 'Media',
-            usage: '.nightcore'
-        },
-        slow: {
-            description: 'Slow down audio',
-            category: 'Media',
-            usage: '.slow'
-        },
-        fast: {
-            description: 'Speed up audio',
-            category: 'Media',
-            usage: '.fast'
-        },
-        reverse: {
-            description: 'Reverse audio',
-            category: 'Media',
-            usage: '.reverse'
-        },
-        ytmp3: { 
-            description: 'Download YouTube audio', 
-            category: 'Media',
-            usage: '.ytmp3 <url>'
-        },
-        ytmp4: { 
-            description: 'Download YouTube video', 
-            category: 'Media',
-            usage: '.ytmp4 <url>'
-        },
-        play: { 
-            description: 'Play music or audio from YouTube', 
-            category: 'Media',
-            usage: '.play <song name/URL>'
-        },
-        stop: { 
-            description: 'Stop current music playback', 
-            category: 'Media',
-            usage: '.stop'
-        },
-        skip: { 
-            description: 'Skip current song', 
-            category: 'Media',
-            usage: '.skip'
-        },
-        queue: { 
-            description: 'View music queue', 
-            category: 'Media',
-            usage: '.queue'
-        },
-        pause: { 
-            description: 'Pause music playback', 
-            category: 'Media',
-            usage: '.pause'
-        },
-        resume: { 
-            description: 'Resume music playback', 
-            category: 'Media',
-            usage: '.resume'
-        },
-        lyrics: { 
-            description: 'Show lyrics of current song', 
-            category: 'Media',
-            usage: '.lyrics'
-        },
-
-        // Game Commands
-        numguess: {
-            description: 'Play number guessing game',
-            category: 'Game',
-            usage: '.numguess <number>'
-        },
-        hangman: {
-            description: 'Play hangman word game',
-            category: 'Game',
-            usage: '.hangman <letter>'
-        },
-        leaderboard: {
-            description: 'View game leaderboard',
-            category: 'Game',
-            usage: '.leaderboard'
-        },
-        wordgame: {
-            description: 'Play word guessing game',
-            category: 'Game',
-            usage: '.wordgame'
-        },
-        guess: {
-            description: 'Make a guess in word game',
-            category: 'Game',
-            usage: '.guess <word>'
-        },
-        trivia: {
-            description: 'Play trivia quiz',
-            category: 'Game',
-            usage: '.trivia'
-        },
-        answer: {
-            description: 'Answer trivia question',
-            category: 'Game',
-            usage: '.answer <number>'
-        },
-        rps: {
-            description: 'Play Rock Paper Scissors',
-            category: 'Game',
-            usage: '.rps <rock/paper/scissors>'
-        },
-        roll: {
-            description: 'Roll a dice',
-            category: 'Game',
-            usage: '.roll [max number]'
-        },
-        coinflip: {
-            description: 'Flip a coin',
-            category: 'Game',
-            usage: '.coinflip'
-        },
-        would: {
-            description: 'Play Would You Rather game',
-            category: 'Game',
-            usage: '.would'
-        },
-        never: {
-            description: 'Play Never Have I Ever game',
-            category: 'Game',
-            usage: '.never'
-        },
-        riddle: {
-            description: 'Play riddle game',
-            category: 'Game',
-            usage: '.riddle'
-        },
-
-
-        // Education Commands
-        math: { 
-            description: 'Solve math expressions', 
-            category: 'Education',
-            usage: '.math <expression>'
-        },
-        dictionary: { 
-            description: 'Look up word definitions', 
-            category: 'Education',
-            usage: '.dictionary <word>'
-        },
-        wiki: { 
-            description: 'Search Wikipedia', 
-            category: 'Education',
-            usage: '.wiki <search term>'
-        },
-        translate: { 
-            description: 'Translate text to another language', 
-            category: 'Education',
-            usage: '.translate <lang> <text>'
+        join: { 
+            description: 'Join group via link', 
+            category: 'User',
+            usage: '.join <link>'
         },
 
         // Owner Commands
@@ -518,11 +281,6 @@ const config = {
             description: 'View list of banned users',
             category: 'Owner',
             usage: '.banlist'
-        },
-        join: { 
-            description: 'Join a group via invite link', 
-            category: 'Owner',
-            usage: '.join <link>'
         },
         leave: { 
             description: 'Leave a group', 
@@ -1018,6 +776,243 @@ const config = {
             description: 'Get ero content',
             category: 'NSFW',
             usage: '.ero'
+        },
+
+        // Media Commands
+        sticker: { 
+            description: 'Create sticker from media', 
+            category: 'Media',
+            usage: '.sticker [pack] [author]'
+        },
+        toimg: { 
+            description: 'Convert sticker to image', 
+            category: 'Media',
+            usage: '.toimg'
+        },
+        meme: { 
+            description: 'Get random memes', 
+            category: 'Media',
+            usage: '.meme'
+        },
+        tomp3: {
+            description: 'Convert video to MP3',
+            category: 'Media',
+            usage: '.tomp3'
+        },
+        tovn: {
+            description: 'Convert audio to voice note',
+            category: 'Media',
+            usage: '.tovn'
+        },
+        video: {
+            description: 'Download video from URL',
+            category: 'Media',
+            usage: '.video <url>'
+        },
+        togif: {
+            description: 'Convert sticker to GIF',
+            category: 'Media',
+            usage: '.togif'
+        },
+        tourl: {
+            description: 'Upload media to get URL',
+            category: 'Media',
+            usage: '.tourl'
+        },
+        cropimg: {
+            description: 'Crop an image',
+            category: 'Media',
+            usage: '.cropimg'
+        },
+        invert: {
+            description: 'Invert image colors',
+            category: 'Media',
+            usage: '.invert'
+        },
+        grayscale: {
+            description: 'Convert image to grayscale',
+            category: 'Media',
+            usage: '.grayscale'
+        },
+        pixelate: {
+            description: 'Pixelate an image',
+            category: 'Media',
+            usage: '.pixelate'
+        },
+        rotate: {
+            description: 'Rotate an image',
+            category: 'Media',
+            usage: '.rotate'
+        },
+        blur: {
+            description: 'Blur an image',
+            category: 'Media',
+            usage: '.blur'
+        },
+        circle: {
+            description: 'Make image circular',
+            category: 'Media',
+            usage: '.circle'
+        },
+        bass: {
+            description: 'Enhance audio bass',
+            category: 'Media',
+            usage: '.bass'
+        },
+        nightcore: {
+            description: 'Apply nightcore effect',
+            category: 'Media',
+            usage: '.nightcore'
+        },
+        slow: {
+            description: 'Slow down audio',
+            category: 'Media',
+            usage: '.slow'
+        },
+        fast: {
+            description: 'Speed up audio',
+            category: 'Media',
+            usage: '.fast'
+        },
+        reverse: {
+            description: 'Reverse audio',
+            category: 'Media',
+            usage: '.reverse'
+        },
+        ytmp3: { 
+            description: 'Download YouTube audio', 
+            category: 'Media',
+            usage: '.ytmp3 <url>'
+        },
+        ytmp4: { 
+            description: 'Download YouTube video', 
+            category: 'Media',
+            usage: '.ytmp4 <url>'
+        },
+        play: { 
+            description: 'Play music or audio from YouTube', 
+            category: 'Media',
+            usage: '.play <song name/URL>'
+        },
+        stop: { 
+            description: 'Stop current music playback', 
+            category: 'Media',
+            usage: '.stop'
+        },
+        skip: { 
+            description: 'Skip current song', 
+            category: 'Media',
+            usage: '.skip'
+        },
+        queue: { 
+            description: 'View music queue', 
+            category: 'Media',
+            usage: '.queue'
+        },
+        pause: { 
+            description: 'Pause music playback', 
+            category: 'Media',
+            usage: '.pause'
+        },
+        resume: { 
+            description: 'Resume music playback', 
+            category: 'Media',
+            usage: '.resume'
+        },
+        lyrics: { 
+            description: 'Show lyrics of current song', 
+            category: 'Media',
+            usage: '.lyrics'
+        },
+
+        // Game Commands
+        numguess: {
+            description: 'Play number guessing game',
+            category: 'Game',
+            usage: '.numguess <number>'
+        },
+        hangman: {
+            description: 'Play hangman word game',
+            category: 'Game',
+            usage: '.hangman <letter>'
+        },
+        leaderboard: {
+            description: 'View game leaderboard',
+            category: 'Game',
+            usage: '.leaderboard'
+        },
+        wordgame: {
+            description: 'Play word guessing game',
+            category: 'Game',
+            usage: '.wordgame'
+        },
+        guess: {
+            description: 'Make a guess in word game',
+            category: 'Game',
+            usage: '.guess <word>'
+        },
+        trivia: {
+            description: 'Play trivia quiz',
+            category: 'Game',
+            usage: '.trivia'
+        },
+        answer: {
+            description: 'Answer trivia question',
+            category: 'Game',
+            usage: '.answer <number>'
+        },
+        rps: {
+            description: 'Play Rock Paper Scissors',
+            category: 'Game',
+            usage: '.rps <rock/paper/scissors>'
+        },
+        roll: {
+            description: 'Roll a dice',
+            category: 'Game',
+            usage: '.roll [max number]'
+        },
+        coinflip: {
+            description: 'Flip a coin',
+            category: 'Game',
+            usage: '.coinflip'
+        },
+        would: {
+            description: 'Play Would You Rather game',
+            category: 'Game',
+            usage: '.would'
+        },
+        never: {
+            description: 'Play Never Have I Ever game',
+            category: 'Game',
+            usage: '.never'
+        },
+        riddle: {
+            description: 'Play riddle game',
+            category: 'Game',
+            usage: '.riddle'
+        },
+
+
+        // Education Commands
+        math: { 
+            description: 'Solve math expressions', 
+            category: 'Education',
+            usage: '.math <expression>'
+        },
+        dictionary: { 
+            description: 'Look up word definitions', 
+            category: 'Education',
+            usage: '.dictionary <word>'
+        },
+        wiki: { 
+            description: 'Search Wikipedia', 
+            category: 'Education',
+            usage: '.wiki <search term>'
+        },
+        translate: { 
+            description: 'Translate text to another language', 
+            category: 'Education',
+            usage: '.translate <lang> <text>'
         }
     }
 };
