@@ -1,6 +1,6 @@
 const config = require('../config');
 const logger = require('../utils/logger');
-const store = require('../database/store');
+const { dbStore } = require('../database/store');
 
 // Define cooldown periods
 const COOLDOWNS = {
@@ -15,10 +15,16 @@ const economyCommands = {
     balance: async (sock, msg) => {
         try {
             const userId = msg.key.participant || msg.key.remoteJid;
-            const balance = await store.getUserBalance(userId);
+            const userData = await dbStore.getUserData(userId);
+
+            if (!userData) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `❌ You need to register first!\nUse ${config.prefix}register <name> <age>`
+                });
+            }
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `💰 *Your Balance*\n\nCurrent balance: ${balance} coins`
+                text: `💰 *Your Balance*\n\nCurrent balance: ${userData.balance || 0} coins`
             });
         } catch (error) {
             logger.error('Error in balance command:', error);
@@ -33,8 +39,15 @@ const economyCommands = {
             const userId = msg.key.participant || msg.key.remoteJid;
             logger.info('Processing daily claim for user:', userId);
 
+            const userData = await dbStore.getUserData(userId);
+            if (!userData) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `❌ You need to register first!\nUse ${config.prefix}register <name> <age>`
+                });
+            }
+
             // Check if user can claim
-            const canClaim = await store.canClaimDaily(userId);
+            const canClaim = await dbStore.canClaimDaily(userId);
             if (!canClaim) {
                 logger.debug('Daily claim not available for user:', userId);
                 return await sock.sendMessage(msg.key.remoteJid, {
@@ -43,7 +56,7 @@ const economyCommands = {
             }
 
             // Claim daily reward
-            const result = await store.claimDaily(userId);
+            const result = await dbStore.claimDaily(userId);
             logger.info('Daily claim successful:', result);
 
             await sock.sendMessage(msg.key.remoteJid, {
@@ -57,10 +70,78 @@ const economyCommands = {
         }
     },
 
+    weekly: async (sock, msg) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const userData = await dbStore.getUserData(userId);
+
+            if (!userData) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `❌ You need to register first!\nUse ${config.prefix}register <name> <age>`
+                });
+            }
+
+            // Check if user can claim weekly reward
+            const canClaim = await dbStore.canClaimWeekly(userId);
+            if (!canClaim) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '⏰ You can claim your weekly reward once every 7 days!'
+                });
+            }
+
+            // Generate reward (1000-3000 coins)
+            const reward = Math.floor(Math.random() * 2000) + 1000;
+            const result = await dbStore.updateWeeklyReward(userId, reward);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✨ *Weekly Reward*\n\nYou received ${reward} coins!\nNew balance: ${result.newBalance} coins`
+            });
+        } catch (error) {
+            logger.error('Error in weekly command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ ' + error.message
+            });
+        }
+    },
+
+    monthly: async (sock, msg) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const userData = await dbStore.getUserData(userId);
+
+            if (!userData) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `❌ You need to register first!\nUse ${config.prefix}register <name> <age>`
+                });
+            }
+
+            // Check if user can claim monthly reward
+            const canClaim = await dbStore.canClaimMonthly(userId);
+            if (!canClaim) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '⏰ You can claim your monthly reward once every 30 days!'
+                });
+            }
+
+            // Generate reward (5000-10000 coins)
+            const reward = Math.floor(Math.random() * 5000) + 5000;
+            const result = await dbStore.updateMonthlyReward(userId, reward);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `🎉 *Monthly Reward*\n\nYou received ${reward} coins!\nNew balance: ${result.newBalance} coins`
+            });
+        } catch (error) {
+            logger.error('Error in monthly command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error claiming monthly reward: ' + error.message
+            });
+        }
+    },
+
     work: async (sock, msg) => {
         try {
             const userId = msg.key.participant || msg.key.remoteJid;
-            const userData = await store.getUser(userId);
+            const userData = await dbStore.getUserData(userId);
 
             if (!userData) {
                 return await sock.sendMessage(msg.key.remoteJid, {
@@ -80,8 +161,8 @@ const economyCommands = {
             }
 
             const earnings = Math.floor(Math.random() * 500) + 500;
-            await store.updateBalance(userId, earnings);
-            await store.setUser(userId, { lastWork: now });
+            await dbStore.updateBalance(userId, earnings);
+            await dbStore.setUser(userId, { lastWork: now });
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `💼 *Work Complete*\n\nYou earned ${earnings} coins!`
@@ -93,16 +174,87 @@ const economyCommands = {
             });
         }
     },
+
+    rob: async (sock, msg, args) => {
+        try {
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `Please mention a user to rob!\nUsage: ${config.prefix}rob @user`
+                });
+            }
+
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const userData = await dbStore.getUserData(userId);
+
+            if (!userData) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ You need to register first! Use .register'
+                });
+            }
+
+            const lastRob = userData.lastRob || 0;
+            const now = Date.now();
+            const timeLeft = lastRob + COOLDOWNS.rob - now;
+
+            if (timeLeft > 0) {
+                const minutes = Math.ceil(timeLeft / (60 * 1000));
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `⏳ You can rob again in ${minutes} minutes`
+                });
+            }
+
+            const targetId = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+            const targetData = await dbStore.getUserData(targetId);
+
+            if (!targetData || targetData.balance < 100) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ This user doesn\'t have enough coins to rob!'
+                });
+            }
+
+            // 40% chance to succeed
+            const success = Math.random() < 0.4;
+            const amount = Math.min(
+                Math.floor(Math.random() * 200) + 100,
+                Math.floor(targetData.balance * 0.3)
+            );
+
+            await dbStore.setUser(userId, { lastRob: now });
+
+            if (success) {
+                await dbStore.updateBalance(userId, amount);
+                await dbStore.updateBalance(targetId, -amount);
+
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `🦹 Successfully robbed ${args[0]} and got away with ${amount} coins!`,
+                    mentions: [targetId]
+                });
+            } else {
+                const fine = Math.floor(amount * 0.5);
+                await dbStore.updateBalance(userId, -fine);
+
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `👮 You got caught trying to rob ${args[0]} and had to pay a fine of ${fine} coins!`,
+                    mentions: [targetId]
+                });
+            }
+        } catch (error) {
+            logger.error('Error in rob command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Error while attempting to rob'
+            });
+        }
+    },
     mine: async (sock, msg) => {
         try {
-            const userData = await store.getUserData(msg.key.participant);
+            const userData = await dbStore.getUserData(msg.key.participant);
             if (!userData?.inventory?.pickaxe) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '❌ You need a pickaxe to mine! Buy one from the shop.'
                 });
             }
 
-            const status = await store.getActivityCooldown(msg.key.participant, 'Mining');
+            const status = await dbStore.getActivityCooldown(msg.key.participant, 'Mining');
             if (!status.canDo) {
                 const minutes = Math.ceil(status.timeLeft / (60 * 1000));
                 return await sock.sendMessage(msg.key.remoteJid, {
@@ -130,7 +282,7 @@ const economyCommands = {
             }
 
             const earnings = Math.floor(Math.random() * (mineral.reward[1] - mineral.reward[0])) + mineral.reward[0];
-            await store.updateActivity(msg.key.participant, 'Mining', earnings);
+            await dbStore.updateActivity(msg.key.participant, 'Mining', earnings);
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `⛏️ *Mining Complete!*\n\n` +
@@ -147,7 +299,7 @@ const economyCommands = {
     bank: async (sock, msg) => {
         try {
             const userId = msg.key.participant || msg.key.remoteJid;
-            const userData = await store.getUserData(userId);
+            const userData = await dbStore.getUserData(userId);
 
             if (!userData) {
                 return await sock.sendMessage(msg.key.remoteJid, {
@@ -189,7 +341,7 @@ const economyCommands = {
             }
 
             // Get user's current balance
-            const userData = await store.getUserData(msg.key.participant);
+            const userData = await dbStore.getUserData(msg.key.participant);
             if (!userData || userData.gold < amount) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '❌ Insufficient funds in your wallet!'
@@ -197,11 +349,11 @@ const economyCommands = {
             }
 
             // Update wallet (gold) balance
-            await store.updateUserGold(msg.key.participant, userData.gold - amount);
+            await dbStore.updateUserGold(msg.key.participant, userData.gold - amount);
 
             // Update bank balance
             userData.bank = (userData.bank || 0) + amount;
-            await store.set(`users.${msg.key.participant}.bank`, userData.bank);
+            await dbStore.set(`users.${msg.key.participant}.bank`, userData.bank);
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `💳 Successfully deposited $${amount} to your bank account!`
@@ -229,7 +381,7 @@ const economyCommands = {
             }
 
             const userId = msg.key.participant || msg.key.remoteJid;
-            const balance = await store.getUserBalance(userId);
+            const balance = await dbStore.getUserBalance(userId);
 
             if (balance < amount) {
                 return await sock.sendMessage(msg.key.remoteJid, {
@@ -243,8 +395,8 @@ const economyCommands = {
             const finalAmount = amount * multiplier;
 
             // Update balance
-            await store.updateBalance(userId, -amount + finalAmount);
-            const newBalance = await store.getUserBalance(userId);
+            await dbStore.updateBalance(userId, -amount + finalAmount);
+            const newBalance = await dbStore.getUserBalance(userId);
 
             if (win) {
                 await sock.sendMessage(msg.key.remoteJid, {
@@ -285,7 +437,7 @@ const economyCommands = {
             }
 
             const userId = msg.key.participant || msg.key.remoteJid;
-            const balance = await store.getUserBalance(userId);
+            const balance = await dbStore.getUserBalance(userId);
 
             if (balance < amount) {
                 return await sock.sendMessage(msg.key.remoteJid, {
@@ -299,8 +451,8 @@ const economyCommands = {
             const finalAmount = win ? amount : -amount;
 
             // Update balance
-            await store.updateBalance(userId, finalAmount);
-            const newBalance = await store.getUserBalance(userId);
+            await dbStore.updateBalance(userId, finalAmount);
+            const newBalance = await dbStore.getUserBalance(userId);
 
             const flipText = win ?
                 `🎯 *You won!*\nCoin landed on ${result}\nYou won $${amount}!` :
@@ -332,7 +484,7 @@ const economyCommands = {
             }
 
             const userId = msg.key.participant || msg.key.remoteJid;
-            const userData = await store.getUserData(userId);
+            const userData = await dbStore.getUserData(userId);
 
             if (!userData) {
                 return await sock.sendMessage(msg.key.remoteJid, {
@@ -348,11 +500,11 @@ const economyCommands = {
 
             // Update bank balance
             userData.bank -= amount;
-            await store.set(`users.${userId}.bank`, userData.bank);
+            await dbStore.set(`users.${userId}.bank`, userData.bank);
 
             // Update wallet (gold) balance
             const currentGold = userData.gold || 0;
-            await store.updateUserGold(userId, currentGold + amount);
+            await dbStore.updateUserGold(userId, currentGold + amount);
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `💳 Successfully withdrew $${amount} from your bank account!`
@@ -383,7 +535,7 @@ const economyCommands = {
             }
 
             // Check sender's balance
-            const senderBalance = await store.getUserBalance(senderId);
+            const senderBalance = await dbStore.getUserBalance(senderId);
             if (senderBalance < amount) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '❌ Insufficient balance!'
@@ -391,8 +543,8 @@ const economyCommands = {
             }
 
             // Transfer coins
-            await store.updateBalance(senderId, -amount);
-            await store.updateBalance(recipientId, amount);
+            await dbStore.updateBalance(senderId, -amount);
+            await dbStore.updateBalance(recipientId, amount);
 
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `💸 Successfully transferred ${amount} coins to ${args[0]}!`,
@@ -405,62 +557,69 @@ const economyCommands = {
             });
         }
     },
-    weekly: async (sock, msg) => {
+    hunt: async (sock, msg) => {
         try {
-            const userId = msg.key.participant || msg.key.remoteJid;
-
-            // Check if user can claim weekly reward
-            const canClaim = await store.canClaimWeekly(userId);
-            if (!canClaim) {
+            const userData = await dbStore.getUserData(msg.key.participant);
+            if (!userData?.inventory?.hunting_rifle) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '⏰ You can claim your weekly reward once every 7 days!'
+                    text: '❌ You need a hunting rifle to hunt! Buy one from the shop.'
                 });
             }
 
-            // Generate reward (1000-3000 coins)
-            const reward = Math.floor(Math.random() * 2000) + 1000;
-            const result = await store.updateWeeklyReward(userId, reward);
+            const status = await dbStore.getActivityCooldown(msg.key.participant, 'Hunting');
+            if (!status.canDo) {
+                const minutes = Math.ceil(status.timeLeft / (60 * 1000));
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `⏳ You can hunt again in ${minutes} minutes`
+                });
+            }
+
+            const reward = Math.floor(Math.random() * 1000) + 500; // 500-1500
+            await dbStore.updateActivity(msg.key.participant, 'Hunting', reward);
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `✨ *Weekly Reward*\n\nYou received ${reward} coins!\nNew balance: ${result.newBalance} coins`
+                text: `🏹 *Hunting Complete*\n\nYou hunted and earned: ${reward} coins`
             });
         } catch (error) {
-            logger.error('Error in weekly command:', error);
+            logger.error('Error in hunt command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ ' + error.message
             });
         }
     },
-    monthly: async (sock, msg) => {
+    fish: async (sock, msg) => {
         try {
-            const userId = msg.key.participant || msg.key.remoteJid;
-            logger.info('Processing monthly claim for user:', userId);
-
-            // Check if user can claim monthly reward
-            const canClaim = await store.canClaimMonthly(userId);
-            if (!canClaim) {
+            const userData = await dbStore.getUserData(msg.key.participant);
+            if (!userData?.inventory?.fishing_rod) {
                 return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '⏰ You can claim your monthly reward once every 30 days!'
+                    text: '❌ You need a fishing rod to fish! Buy one from the shop.'
                 });
             }
 
-            // Generate reward (5000-10000 coins)
-            const reward = Math.floor(Math.random() * 5000) + 5000;
-            const result = await store.updateMonthlyReward(userId, reward);
+            const status = await dbStore.getActivityCooldown(msg.key.participant, 'Fishing');
+            if (!status.canDo) {
+                const minutes = Math.ceil(status.timeLeft / (60 * 1000));
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `⏳ You can fish again in ${minutes} minutes`
+                });
+            }
+
+            const reward = Math.floor(Math.random() * 600) + 300; // 300-900
+            await dbStore.updateActivity(msg.key.participant, 'Fishing', reward);
 
             await sock.sendMessage(msg.key.remoteJid, {
-                text: `🎉 *Monthly Reward*\n\nYou received ${reward} coins!\nNew balance: ${result.newBalance} coins`
+                text: `🎣 *Fishing Complete*\n\nYou caught fish worth: ${reward} coins`
             });
         } catch (error) {
-            logger.error('Error in monthly command:', error);
+            logger.error('Error in fish command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error claiming monthly reward: ' + error.message
+                text: '❌ ' + error.message
             });
         }
     },
     shop: async (sock, msg) => {
         try {
-            const items = await store.getShopItems();
+            const items = await dbStore.getShopItems();
             let shopText = '🛍️ *ITEM SHOP*\n' + '─'.repeat(40) + '\n\n';
 
             items.forEach(item => {
@@ -489,7 +648,7 @@ const economyCommands = {
             }
 
             const itemId = args[0].toLowerCase();
-            const result = await store.buyItem(msg.key.participant, itemId);
+            const result = await dbStore.buyItem(msg.key.participant, itemId);
 
             if (!result.success) {
                 throw new Error(result.error);
@@ -522,7 +681,7 @@ const economyCommands = {
                 });
             }
 
-            const result = await store.sellItem(msg.key.participant, itemId, quantity);
+            const result = await dbStore.sellItem(msg.key.participant, itemId, quantity);
 
             if (!result.success) {
                 throw new Error(result.error);
@@ -540,14 +699,14 @@ const economyCommands = {
     },
     inventory: async (sock, msg) => {
         try {
-            const userData = await store.getUserData(msg.key.participant);
+            const userData = await dbStore.getUserData(msg.key.participant);
             if (!userData || !userData.inventory) {
                 return await sock.sendMessage(msg.key.remoteJid, {
                     text: '📦 Your inventory is empty!'
                 });
             }
 
-            const items = await store.getShopItems();
+            const items = await dbStore.getShopItems();
             let invText = '📦 *YOUR INVENTORY*\n' + '─'.repeat(40) + '\n\n';
 
             Object.entries(userData.inventory).forEach(([itemId, quantity]) => {
@@ -564,136 +723,6 @@ const economyCommands = {
             logger.error('Error in inventory command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error accessing inventory'
-            });
-        }
-    },
-    hunt: async (sock, msg) => {
-        try {
-            const userData = await store.getUserData(msg.key.participant);
-            if (!userData?.inventory?.hunting_rifle) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ You need a hunting rifle to hunt! Buy one from the shop.'
-                });
-            }
-
-            const status = await store.getActivityCooldown(msg.key.participant, 'Hunting');
-            if (!status.canDo) {
-                const minutes = Math.ceil(status.timeLeft / (60 * 1000));
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `⏳ You can hunt again in ${minutes} minutes`
-                });
-            }
-
-            const reward = Math.floor(Math.random() * 1000) + 500; // 500-1500
-            await store.updateActivity(msg.key.participant, 'Hunting', reward);
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `🏹 *Hunting Complete*\n\nYou hunted and earned: ${reward} coins`
-            });
-        } catch (error) {
-            logger.error('Error in hunt command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ ' + error.message
-            });
-        }
-    },
-    rob: async (sock, msg, args) => {
-        try {
-            if (!args.length) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `Please mention a user to rob!\nUsage: ${config.prefix}rob @user`
-                });
-            }
-
-            const userId = msg.key.participant || msg.key.remoteJid;
-            const userData = await store.getUser(userId);
-
-            if (!userData) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ You need to register first! Use .register'
-                });
-            }
-
-            const lastRob = userData.lastRob || 0;
-            const now = Date.now();
-            const timeLeft = lastRob + COOLDOWNS.rob - now;
-
-            if (timeLeft > 0) {
-                const minutes = Math.ceil(timeLeft / (60 * 1000));
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `⏳ You can rob again in ${minutes} minutes`
-                });
-            }
-
-            const targetId = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
-            const targetBalance = await store.getUserBalance(targetId);
-
-            if (targetBalance < 100) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ This user doesn\'t have enough coins to rob!'
-                });
-            }
-
-            // 40% chance to succeed
-            const success = Math.random() < 0.4;
-            const amount = Math.min(
-                Math.floor(Math.random() * 200) + 100,
-                Math.floor(targetBalance * 0.3)
-            );
-
-            await store.setUser(userId, { lastRob: now });
-
-            if (success) {
-                await store.updateBalance(userId, amount);
-                await store.updateBalance(targetId, -amount);
-
-                await sock.sendMessage(msg.key.remoteJid, {
-                    text: `🦹 Successfully robbed ${args[0]} and got away with ${amount} coins!`,
-                    mentions: [targetId]
-                });
-            } else {
-                const fine = Math.floor(amount * 0.5);
-                await store.updateBalance(userId, -fine);
-
-                await sock.sendMessage(msg.key.remoteJid, {
-                    text: `👮 You got caught trying to rob ${args[0]} and had to pay a fine of ${fine} coins!`,
-                    mentions: [targetId]
-                });
-            }
-        } catch (error) {
-            logger.error('Error in rob command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Error while attempting to rob'
-            });
-        }
-    },
-    fish: async (sock, msg) => {
-        try {
-            const userData = await store.getUserData(msg.key.participant);
-            if (!userData?.inventory?.fishing_rod) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ You need a fishing rod to fish! Buy one from the shop.'
-                });
-            }
-
-            const status = await store.getActivityCooldown(msg.key.participant, 'Fishing');
-            if (!status.canDo) {
-                const minutes = Math.ceil(status.timeLeft / (60 * 1000));
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: `⏳ You can fish again in ${minutes} minutes`
-                });
-            }
-
-            const reward = Math.floor(Math.random() * 600) + 300; // 300-900
-            await store.updateActivity(msg.key.participant, 'Fishing', reward);
-
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `🎣 *Fishing Complete*\n\nYou caught fish worth: ${reward} coins`
-            });
-        } catch (error) {
-            logger.error('Error in fish command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ ' + error.message
             });
         }
     }

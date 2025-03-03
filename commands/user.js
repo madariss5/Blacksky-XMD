@@ -1,5 +1,5 @@
 const config = require('../config');
-const store = require('../database/store');
+const { dbStore } = require('../database/store');
 const logger = require('../utils/logger');
 const { formatPhoneNumber, addWhatsAppSuffix, formatDisplayNumber } = require('../utils/phoneNumber');
 
@@ -19,12 +19,11 @@ async function safeProfilePicture(sock, jid) {
 const userCommands = {
     profile: async (sock, msg, args) => {
         try {
-            // Get target user (mentioned user or command sender)
             const targetUser = args[0] ? 
                 formatPhoneNumber(args[0]) : 
                 formatPhoneNumber(msg.key.participant || msg.key.remoteJid);
 
-            const userData = await store.getUserData(targetUser) || {};
+            const userData = await dbStore.getUserData(targetUser);
             const pp = await safeProfilePicture(sock, targetUser);
             const whatsappId = addWhatsAppSuffix(targetUser);
 
@@ -36,7 +35,7 @@ const userCommands = {
                 `• Level: ${userData.level || 1}\n` +
                 `• XP: ${userData.xp || 0}\n` +
                 `• Bio: ${userData.bio || 'No bio set'}\n` +
-                `• Registered: ${userData.registeredAt ? new Date(userData.registeredAt).toLocaleDateString() : 'No'}`
+                `• Registered: ${userData.registrationTime ? new Date(userData.registrationTime).toLocaleDateString() : 'No'}`
                 :
                 `*User Profile*\n\n` +
                 `• Number: ${formatDisplayNumber(targetUser)}\n` +
@@ -60,20 +59,27 @@ const userCommands = {
     me: async (sock, msg) => {
         try {
             const userId = formatPhoneNumber(msg.key.participant || msg.key.remoteJid);
-            const stats = store.getUserStats(userId);
-            const userInfo = store.getUserInfo(userId);
+            const userData = await dbStore.getUserData(userId);
             const whatsappId = addWhatsAppSuffix(userId);
 
+            if (!userData) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `You haven't registered yet!\nUse ${config.prefix}register <name> <age> to create your profile.`
+                });
+            }
+
             const pp = await safeProfilePicture(sock, userId);
+            const userStats = await dbStore.getUserStats(userId);
+            const userRank = await dbStore.getUserRank(userId);
 
             const info = `*Your Profile*\n\n` +
                         `• Number: ${formatDisplayNumber(userId)}\n` +
-                        `• Name: ${userInfo?.name || 'Not registered'}\n` +
-                        `• Age: ${userInfo?.age || 'Not registered'}\n` +
-                        `• Level: ${stats.level || 1}\n` +
-                        `• XP: ${stats.xp || 0}\n` +
-                        `• Rank: #${store.getUserRank(userId)}\n` +
-                        `• Bio: ${userInfo?.bio || 'No bio set'}`;
+                        `• Name: ${userData.name || 'Not set'}\n` +
+                        `• Age: ${userData.age || 'Not set'}\n` +
+                        `• Level: ${userStats.level}\n` +
+                        `• XP: ${userStats.xp}\n` +
+                        `• Rank: #${userRank}\n` +
+                        `• Bio: ${userData.bio || 'No bio set'}`;
 
             await sock.sendMessage(msg.key.remoteJid, {
                 image: { url: pp },
@@ -85,6 +91,86 @@ const userCommands = {
             logger.error('Error in me command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error showing your profile. Please try again later.'
+            });
+        }
+    },
+
+    register: async (sock, msg, args) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+
+            if (await dbStore.isUserRegistered(userId)) {
+                return await sock.sendMessage(msg.key.remoteJid, { 
+                    text: '❌ You are already registered!' 
+                });
+            }
+
+            if (args.length < 2) {
+                return await sock.sendMessage(msg.key.remoteJid, { 
+                    text: `❓ Please provide your name and age!\nFormat: ${config.prefix}register <name> <age>`
+                });
+            }
+
+            const age = parseInt(args[args.length - 1]);
+            const name = args.slice(0, -1).join(' ');
+
+            if (isNaN(age) || age < 13 || age > 100) {
+                return await sock.sendMessage(msg.key.remoteJid, { 
+                    text: '❌ Please provide a valid age between 13 and 100!' 
+                });
+            }
+
+            logger.info('Registering user:', { userId, name, age });
+            await dbStore.registerUser(userId, name, age);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Registration successful!\n\n` +
+                      `Name: ${name}\n` +
+                      `Age: ${age}\n\n` +
+                      `Use ${config.prefix}profile to view your profile!`
+            });
+        } catch (error) {
+            logger.error('Error in register command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Registration failed. Please try again later.'
+            });
+        }
+    },
+
+    bio: async (sock, msg, args) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+
+            if (!await dbStore.isUserRegistered(userId)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `❌ You need to register first!\nUse ${config.prefix}register <name> <age>`
+                });
+            }
+
+            if (!args.length) {
+                const userData = await dbStore.getUserData(userId);
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: userData.bio ? 
+                        `📝 *Your Bio*\n\n${userData.bio}` :
+                        `You haven't set a bio yet! Use ${config.prefix}bio <text> to set one.`
+                });
+            }
+
+            const newBio = args.join(' ');
+            if (newBio.length > 100) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Bio must be less than 100 characters!'
+                });
+            }
+
+            await dbStore.setUser(userId, { bio: newBio });
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '✅ Bio updated successfully!'
+            });
+        } catch (error) {
+            logger.error('Error in bio command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to update bio. Please try again later.'
             });
         }
     },
@@ -118,47 +204,10 @@ const userCommands = {
             });
         }
     },
-    register: async (sock, msg, args) => {
-        if (store.isUserRegistered(msg.key.participant)) {
-            return await sock.sendMessage(msg.key.remoteJid, { 
-                text: '❌ You are already registered!' 
-            });
-        }
-
-        if (args.length < 2) {
-            return await sock.sendMessage(msg.key.remoteJid, { 
-                text: `❓ Please provide your name and age!\nFormat: ${config.prefix}register <name> <age>`
-            });
-        }
-
-        const age = parseInt(args[args.length - 1]);
-        const name = args.slice(0, -1).join(' ');
-
-        if (isNaN(age) || age < 13 || age > 100) {
-            return await sock.sendMessage(msg.key.remoteJid, { 
-                text: '❌ Please provide a valid age between 13 and 100!' 
-            });
-        }
-
-        try {
-            await store.registerUser(msg.key.participant, name, age);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `✅ Registration successful!\n\n` +
-                      `Name: ${name}\n` +
-                      `Age: ${age}\n\n` +
-                      `Use ${config.prefix}profile to view your profile!`
-            });
-        } catch (error) {
-            logger.error('Error in register command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Registration failed. Please try again later.'
-            });
-        }
-    },
     level: async (sock, msg) => {
         try {
             const user = msg.key.participant || msg.key.remoteJid;
-            const stats = store.getUserStats(user);
+            const stats = await dbStore.getUserStats(user);
             const nextLevel = Math.pow((stats.level + 1) / 0.1, 2);
 
             await sock.sendMessage(msg.key.remoteJid, {
@@ -174,37 +223,6 @@ const userCommands = {
             logger.error('Error in level command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Error fetching level stats. Please try again later.'
-            });
-        }
-    },
-    bio: async (sock, msg, args) => {
-        try {
-            const user = msg.key.participant || msg.key.remoteJid;
-
-            if (!args.length) {
-                const currentBio = store.getUserBio(user);
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: currentBio ? 
-                        `📝 *Your Bio*\n\n${currentBio}` :
-                        `You haven't set a bio yet! Use ${config.prefix}bio <text> to set one.`
-                });
-            }
-
-            const newBio = args.join(' ');
-            if (newBio.length > 100) {
-                return await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Bio must be less than 100 characters!'
-                });
-            }
-
-            await store.setUserBio(user, newBio);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '✅ Bio updated successfully!'
-            });
-        } catch (error) {
-            logger.error('Error in bio command:', error);
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: '❌ Failed to update bio. Please try again later.'
             });
         }
     }
