@@ -32,27 +32,17 @@ RUN npm ci --only=production && \
 # Copy project files
 COPY . .
 
-# Create directories for session storage
+# Create directories for session storage and set permissions
 RUN mkdir -p \
     /app/auth_info_baileys \
     /app/auth_info \
     /app/temp \
-    /app/database
-
-# Create startup script
-RUN echo '#!/bin/bash\n\
-# Print system info\n\
-neofetch\n\
-\n\
-# Cleanup session directories\n\
-rm -rf /app/auth_info_baileys/* /app/auth_info/*\n\
-\n\
-# Create required directories\n\
-mkdir -p /app/auth_info_baileys /app/auth_info /app/temp /app/database\n\
-\n\
-# Start the application\n\
-exec node --max-old-space-size=2560 index.js\n\
-' > /app/start.sh && chmod +x /app/start.sh
+    /app/database \
+    && chmod -R 755 /app/auth_info_baileys \
+    && chmod -R 755 /app/auth_info \
+    && chmod -R 755 /app/temp \
+    && chmod -R 755 /app/database \
+    && chmod +x /app/start.sh
 
 # Set default port
 ENV PORT=5000

@@ -2,7 +2,7 @@ require('dotenv').config();
 const { formatPhoneNumber } = require('./utils/phoneNumber');
 const { getSessionData } = require('./utils/creds');
 const logger = require('pino')();
-const fs = require('fs'); // Added fs for isDocker check
+const fs = require('fs'); 
 const os = require('os');
 
 // Platform-specific configurations
@@ -15,33 +15,6 @@ const platformConfig = {
 };
 
 logger.info('Platform configuration:', platformConfig);
-
-logger.info('Starting config initialization...');
-
-// Detect environment (already present in original)
-//const isHeroku = process.env.NODE_ENV === 'production' && process.env.DYNO;
-//logger.info(`Running in ${isHeroku ? 'Heroku' : 'Local'} environment`);
-
-// Load and validate required environment variables (already present in original)
-//const required_env_vars = ['OWNER_NUMBER', 'OWNER_NAME', 'BOT_NAME', 'SESSION_ID'];
-//const missing_vars = required_env_vars.filter(varName => !process.env[varName]);
-//
-//if (missing_vars.length > 0) {
-//    logger.error(`Missing required environment variables: ${missing_vars.join(', ')}`);
-//    logger.error('Please check your .env file or environment configuration');
-//    process.exit(1);
-//}
-
-// Format owner number with error handling (already present in original)
-//const rawOwnerNumber = process.env.OWNER_NUMBER;
-//const formattedOwnerNumber = formatPhoneNumber(rawOwnerNumber);
-//
-//if (!formattedOwnerNumber) {
-//    logger.error('Invalid OWNER_NUMBER format in environment variables');
-//    process.exit(1);
-//}
-//
-//logger.info('Owner number formatted successfully:', formattedOwnerNumber);
 
 // Initialize session configuration with platform-specific defaults
 const sessionTimeout = platformConfig.isHeroku ? 300000 : 600000; // 5 minutes for Heroku, 10 for local
@@ -63,21 +36,6 @@ const sessionConfig = {
     logLevel: process.env.LOG_LEVEL || (platformConfig.isHeroku ? 'warn' : 'silent'),
     generateHighQualityLinkPreview: !platformConfig.isHeroku // Disable on Heroku to save resources
 };
-
-// Update session ID from creds.json if available (already present in original)
-//(async () => {
-//    try {
-//        const sessionData = await getSessionData();
-//        if (sessionData.success) {
-//            sessionConfig.id = sessionData.sessionId;
-//            logger.info('Updated session ID from credentials file');
-//        } else {
-//            logger.warn('Using environment session ID:', sessionConfig.id);
-//        }
-//    } catch (error) {
-//        logger.error('Error loading session data:', error);
-//    }
-//})();
 
 const rawOwnerNumber = process.env.OWNER_NUMBER;
 const formattedOwnerNumber = formatPhoneNumber(rawOwnerNumber);
@@ -1087,7 +1045,7 @@ const config = {
             usage: '.wasted@user'
         },
         poke: {
-        description: 'Poke another user',
+            description: 'Poke another user',
             category: 'Reactions',
             usage: '.poke @user'
         },
@@ -1438,7 +1396,7 @@ const config = {
     }
 };
 
-// Log environment-specific configuration
+// Log deployment configuration
 logger.info('Bot configuration initialized:', {
     environment: platformConfig.isHeroku ? 'Heroku' : (platformConfig.isDocker ? 'Docker' : 'Local'),
     prefix: config.prefix,
