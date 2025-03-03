@@ -38,24 +38,6 @@ const config = {
     session: sessionConfig,
 
     commands: {
-        // AI Commands
-        ai: { 
-            description: 'Chat with AI using GPT-3.5', 
-            category: 'AI',
-            usage: '.ai <your message>'
-        },
-        gpt: { 
-            description: 'Advanced chat with GPT-4', 
-            category: 'AI',
-            usage: '.gpt <your message>'
-        },
-        dalle: { 
-            description: 'Generate images with DALL-E', 
-            category: 'AI',
-            usage: '.dalle <image description>'
-        },
-
-        // Basic Commands
         ping: { 
             description: 'Check bot response time', 
             category: 'Basic',
@@ -80,6 +62,237 @@ const config = {
             description: 'Show bot creator info',
             category: 'Basic',
             usage: '.creator'
+        },
+        botinfo: {
+            description: 'Show detailed bot information',
+            category: 'Basic',
+            usage: '.botinfo'
+        },
+        serverinfo: {
+            description: 'Show server information',
+            category: 'Basic',
+            usage: '.serverinfo'
+        },
+        speed: {
+            description: 'Perform a speed test',
+            category: 'Basic',
+            usage: '.speed'
+        },
+        report: {
+            description: 'Report a bug or issue',
+            category: 'Basic',
+            usage: '.report <message>'
+        },
+        request: {
+            description: 'Request a feature',
+            category: 'Basic',
+            usage: '.request <feature>'
+        },
+        status: {
+            description: 'Check bot status and stats',
+            category: 'Basic',
+            usage: '.status'
+        },
+        changelog: {
+            description: 'View recent bot changes',
+            category: 'Basic',
+            usage: '.changelog'
+        },
+        currency: {
+            description: 'Convert currency',
+            category: 'Basic',
+            usage: '.currency <amount> <from> <to>'
+        },
+        calculate: {
+            description: 'Calculate mathematical expression',
+            category: 'Basic',
+            usage: '.calculate <expression>'
+        },
+        time: {
+            description: 'Show time in different timezone',
+            category: 'Basic',
+            usage: '.time <timezone>'
+        },
+        weather: {
+            description: 'Get weather information',
+            category: 'Basic',
+            usage: '.weather <location>'
+        },
+        translate: {
+            description: 'Translate text',
+            category: 'Basic',
+            usage: '.translate <lang> <text>'
+        },
+        covid: {
+            description: 'Get COVID-19 statistics',
+            category: 'Basic',
+            usage: '.covid <country>'
+        },
+        wiki: {
+            description: 'Search Wikipedia',
+            category: 'Basic',
+            usage: '.wiki <query>'
+        },
+        urban: {
+            description: 'Search Urban Dictionary',
+            category: 'Basic',
+            usage: '.urban <word>'
+        },
+        movie: {
+            description: 'Get movie information',
+            category: 'Basic',
+            usage: '.movie <title>'
+        },
+        crypto: {
+            description: 'Get cryptocurrency prices',
+            category: 'Basic',
+            usage: '.crypto <coin>'
+        },
+        news: {
+            description: 'Get latest news',
+            category: 'Basic',
+            usage: '.news [category]'
+        },
+        quote: {
+            description: 'Get random quote',
+            category: 'Basic',
+            usage: '.quote'
+        },
+        fact: {
+            description: 'Get random fact',
+            category: 'Basic',
+            usage: '.fact'
+        },
+        github: {
+            description: 'Get GitHub user/repo info',
+            category: 'Basic',
+            usage: '.github <username/repo>'
+        },
+        npm: {
+            description: 'Search NPM packages',
+            category: 'Basic',
+            usage: '.npm <package>'
+        },
+        lyrics: {
+            description: 'Find song lyrics',
+            category: 'Basic',
+            usage: '.lyrics <song>'
+        },
+        dictionary: {
+            description: 'Look up word definition',
+            category: 'Basic',
+            usage: '.dictionary <word>'
+        },
+        reminder: {
+            description: 'Set a reminder',
+            category: 'Basic',
+            usage: '.reminder <time> <message>'
+        },
+        poll: {
+            description: 'Create a poll',
+            category: 'Basic',
+            usage: '.poll <question> | <option1> | <option2>'
+        },
+        shorturl: {
+            description: 'Shorten a URL',
+            category: 'Basic',
+            usage: '.shorturl <url>'
+        },
+        qr: {
+            description: 'Generate QR code',
+            category: 'Basic',
+            usage: '.qr <text/url>'
+        },
+        base64: {
+            description: 'Encode/decode base64',
+            category: 'Basic',
+            usage: '.base64 <encode/decode> <text>'
+        },
+        binary: {
+            description: 'Convert text to/from binary',
+            category: 'Basic',
+            usage: '.binary <encode/decode> <text>'
+        },
+        morse: {
+            description: 'Convert text to/from morse code',
+            category: 'Basic',
+            usage: '.morse <encode/decode> <text>'
+        },
+        hex: {
+            description: 'Convert text to/from hexadecimal',
+            category: 'Basic',
+            usage: '.hex <encode/decode> <text>'
+        },
+        unit: {
+            description: 'Convert units',
+            category: 'Basic',
+            usage: '.unit <value> <from> <to>'
+        },
+        timezone: {
+            description: 'Convert between timezones',
+            category: 'Basic',
+            usage: '.timezone <time> <from> <to>'
+        },
+        worldclock: {
+            description: 'Show time in multiple cities',
+            category: 'Basic',
+            usage: '.worldclock'
+        },
+        calendar: {
+            description: 'Show calendar',
+            category: 'Basic',
+            usage: '.calendar [month] [year]'
+        },
+        countdown: {
+            description: 'Start a countdown timer',
+            category: 'Basic',
+            usage: '.countdown <minutes>'
+        },
+        stopwatch: {
+            description: 'Start/stop a stopwatch',
+            category: 'Basic',
+            usage: '.stopwatch <start/stop>'
+        },
+        random: {
+            description: 'Generate random number',
+            category: 'Basic',
+            usage: '.random <min> <max>'
+        },
+        color: {
+            description: 'Get color information',
+            category: 'Basic',
+            usage: '.color <hex/rgb>'
+        },
+        email: {
+            description: 'Validate email address',
+            category: 'Basic',
+            usage: '.email <address>'
+        },
+        password: {
+            description: 'Generate secure password',
+            category: 'Basic',
+            usage: '.password [length]'
+        },
+        uuid: {
+            description: 'Generate UUID',
+            category: 'Basic',
+            usage: '.uuid'
+        },
+        // AI Commands
+        ai: { 
+            description: 'Chat with AI using GPT-3.5', 
+            category: 'AI',
+            usage: '.ai <your message>'
+        },
+        gpt: { 
+            description: 'Advanced chat with GPT-4', 
+            category: 'AI',
+            usage: '.gpt <your message>'
+        },
+        dalle: { 
+            description: 'Generate images with DALL-E', 
+            category: 'AI',
+            usage: '.dalle <image description>'
         },
 
         // Group Commands
@@ -265,27 +478,166 @@ const config = {
             category: 'User',
             usage: '.about'
         },
-        join: { 
-            description: 'Join group via link', 
+        register: {
+            description: 'Register your profile',
             category: 'User',
-            usage: '.join <link>'
+            usage: '.register <name> <age>'
+        },
+        nickname: {
+            description: 'Set your nickname',
+            category: 'User',
+            usage: '.nickname <name>'
+        },
+        bio: {
+            description: 'Set your bio',
+            category: 'User',
+            usage: '.bio <text>'
+        },
+        status: {
+            description: 'Set your status message',
+            category: 'User',
+            usage: '.status <message>'
+        },
+        language: {
+            description: 'Set your preferred language',
+            category: 'User',
+            usage: '.language <code>'
+        },
+        timezone: {
+            description: 'Set your timezone',
+            category: 'User',
+            usage: '.timezone <timezone>'
+        },
+        birthday: {
+            description: 'Set your birthday',
+            category: 'User',
+            usage: '.birthday <date>'
+        },
+        gender: {
+            description: 'Set your gender',
+            category: 'User',
+            usage: '.gender <gender>'
+        },
+        location: {
+            description: 'Set your location',
+            category: 'User',
+            usage: '.location <place>'
+        },
+        privacy: {
+            description: 'Manage privacy settings',
+            category: 'User',
+            usage: '.privacy <setting> <value>'
+        },
+        block: {
+            description: 'Block a user',
+            category: 'User',
+            usage: '.block @user'
+        },
+        unblock: {
+            description: 'Unblock a user',
+            category: 'User',
+            usage: '.unblock @user'
+        },
+        blocklist: {
+            description: 'View blocked users',
+            category: 'User',
+            usage: '.blocklist'
+        },
+        mute: {
+            description: 'Mute notifications from a user',
+            category: 'User',
+            usage: '.mute @user'
+        },
+        unmute: {
+            description: 'Unmute notifications from a user',
+            category: 'User',
+            usage: '.unmute @user'
+        },
+        mutelist: {
+            description: 'View muted users',
+            category: 'User',
+            usage: '.mutelist'
         },
         level: {
             description: 'Check your current level and XP',
             category: 'User',
             usage: '.level'
         },
+        rank: {
+            description: 'View your ranking',
+            category: 'User',
+            usage: '.rank'
+        },
         leaderboard: {
             description: 'View global XP leaderboard',
             category: 'User',
             usage: '.leaderboard'
         },
-        rewards: {
-            description: 'View level rewards and perks',
+        daily: {
+            description: 'Claim daily rewards',
             category: 'User',
-            usage: '.rewards'
+            usage: '.daily'
         },
-
+        inventory: {
+            description: 'View your inventory',
+            category: 'User',
+            usage: '.inventory'
+        },
+        shop: {
+            description: 'View available items in shop',
+            category: 'User',
+            usage: '.shop'
+        },
+        buy: {
+            description: 'Buy items from shop',
+            category: 'User',
+            usage: '.buy <item>'
+        },
+        sell: {
+            description: 'Sell items from inventory',
+            category: 'User',
+            usage: '.sell <item>'
+        },
+        gift: {
+            description: 'Gift items to other users',
+            category: 'User',
+            usage: '.gift @user <item>'
+        },
+        transfer: {
+            description: 'Transfer coins to other users',
+            category: 'User',
+            usage: '.transfer @user <amount>'
+        },
+        achievements: {
+            description: 'View your achievements',
+            category: 'User',
+            usage: '.achievements'
+        },
+        quests: {
+            description: 'View available quests',
+            category: 'User',
+            usage: '.quests'
+        },
+        claim: {
+            description: 'Claim quest rewards',
+            category: 'User',
+            usage: '.claim <quest_id>'
+        },
+        report: {
+            description: 'Report a user',
+            category: 'User',
+            usage: '.report @user <reason>'
+        },
+        feedback: {
+            description: 'Send feedback about the bot',
+            category: 'User',
+            usage: '.feedback <message>'
+        },
+        help: {
+            description: 'Get help with user commands',
+            category: 'User',
+            usage: '.help user'
+        },
         // Owner Commands
         broadcast: { 
             description: 'Broadcast message to all users', 
@@ -930,7 +1282,7 @@ const config = {
             usage: '.skip'
         },
         queue: { 
-            description: 'View music queue', 
+            description: 'View musicqueue', 
             category: 'Media',
             usage: '.queue'
         },

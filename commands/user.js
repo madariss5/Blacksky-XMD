@@ -399,7 +399,7 @@ const userCommands = {
                 pp = 'https://i.imgur.com/wuxBN7M.png';
             }
 
-            const registrationDate = userData.registrationTime 
+            const registrationDate = userData.registrationTime
                 ? moment(userData.registrationTime).format('MMMM Do YYYY')
                 : 'Not registered';
 
@@ -422,6 +422,276 @@ const userCommands = {
             logger.error('Error in about command:', error);
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '❌ Failed to fetch user information'
+            });
+        }
+    },
+    nickname: async (sock, msg, args) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please provide a nickname!\nUsage: .nickname <name>'
+                });
+            }
+
+            const nickname = args.join(' ');
+            await dbStore.setUserPreference(userId, 'nickname', nickname);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Nickname updated to: ${nickname}`,
+                mentions: [userId]
+            });
+        } catch (error) {
+            logger.error('Error in nickname command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to update nickname'
+            });
+        }
+    },
+
+    language: async (sock, msg, args) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+
+            if (!args.length) {
+                const prefs = await dbStore.getUserPreferences(userId);
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `Current language: ${prefs.language}\n\nAvailable languages:\n• en (English)\n• es (Spanish)\n• fr (French)\n• id (Indonesian)\n• ar (Arabic)`
+                });
+            }
+
+            const language = args[0].toLowerCase();
+            const supportedLangs = ['en', 'es', 'fr', 'id', 'ar'];
+
+            if (!supportedLangs.includes(language)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Unsupported language code!'
+                });
+            }
+
+            await dbStore.setUserPreference(userId, 'language', language);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Language set to: ${language}`,
+                mentions: [userId]
+            });
+        } catch (error) {
+            logger.error('Error in language command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to update language'
+            });
+        }
+    },
+
+    timezone: async (sock, msg, args) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+
+            if (!args.length) {
+                const prefs = await dbStore.getUserPreferences(userId);
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `Current timezone: ${prefs.timezone}\n\nUse .timezone <timezone>\nExample: .timezone Asia/Tokyo`
+                });
+            }
+
+            const timezone = args[0];
+            if (!moment.tz.zone(timezone)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Invalid timezone! Please use a valid timezone name.'
+                });
+            }
+
+            await dbStore.setUserPreference(userId, 'timezone', timezone);
+            const time = moment().tz(timezone).format('LLLL');
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Timezone set to: ${timezone}\nCurrent time: ${time}`,
+                mentions: [userId]
+            });
+        } catch (error) {
+            logger.error('Error in timezone command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to update timezone'
+            });
+        }
+    },
+
+    privacy: async (sock, msg, args) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+
+            if (args.length < 2) {
+                const prefs = await dbStore.getUserPreferences(userId);
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: `*🔒 Privacy Settings*\n\n` +
+                         `• Profile: ${prefs.privacy.profile}\n` +
+                         `• Status: ${prefs.privacy.status}\n` +
+                         `• Last Seen: ${prefs.privacy.lastSeen}\n\n` +
+                         `To change: .privacy <setting> <value>\n` +
+                         `Values: public, private, contacts`
+                });
+            }
+
+            const [setting, value] = args;
+            const validSettings = ['profile', 'status', 'lastSeen'];
+            const validValues = ['public', 'private', 'contacts'];
+
+            if (!validSettings.includes(setting)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Invalid privacy setting!'
+                });
+            }
+
+            if (!validValues.includes(value)) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Invalid value! Use: public, private, or contacts'
+                });
+            }
+
+            const prefs = await dbStore.getUserPreferences(userId);
+            prefs.privacy[setting] = value;
+            await dbStore.setUserPreference(userId, 'privacy', prefs.privacy);
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `✅ Privacy setting updated!\n${setting}: ${value}`,
+                mentions: [userId]
+            });
+        } catch (error) {
+            logger.error('Error in privacy command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to update privacy settings'
+            });
+        }
+    },
+
+    blocklist: async (sock, msg) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const blockedUsers = await dbStore.getBlockedUsers(userId);
+
+            if (!blockedUsers.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: 'You have no blocked users.'
+                });
+            }
+
+            let blockText = '*📋 Blocked Users*\n\n';
+            for (const blockedId of blockedUsers) {
+                blockText += `• @${blockedId.split('@')[0]}\n`;
+            }
+            blockText += '\nUse .unblock @user to unblock';
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: blockText,
+                mentions: blockedUsers
+            });
+        } catch (error) {
+            logger.error('Error in blocklist command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to get blocked users'
+            });
+        }
+    },
+
+    block: async (sock, msg, args) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+
+            if (!args.length) {
+                return await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Please mention a user to block!'
+                });
+            }
+
+            const targetUser = formatPhoneNumber(args[0]);
+            const result = await dbStore.toggleBlockUser(userId, targetUser);
+
+            if (result === null) {
+                throw new Error('Failed to block user');
+            }
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: result ?
+                    `✅ Blocked @${targetUser.split('@')[0]}` :
+                    `✅ Unblocked @${targetUser.split('@')[0]}`,
+                mentions: [targetUser]
+            });
+        } catch (error) {
+            logger.error('Error in block command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to block/unblock user'
+            });
+        }
+    },
+    achievements: async (sock, msg) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const achievements = await dbStore.getUserAchievements(userId);
+
+            let achieveText = '*🏆 Achievements*\n\n';
+            if (achievements.completed.length === 0) {
+                achieveText += 'No achievements unlocked yet!\n\n';
+            } else {
+                achieveText += '*Completed:*\n';
+                achievements.completed.forEach(id => {
+                    achieveText += `✅ ${id}\n`;
+                });
+                achieveText += `\nTotal Points: ${achievements.points}\n`;
+            }
+
+            achieveText += '\n*In Progress:*\n';
+            Object.entries(achievements.progress).forEach(([id, progress]) => {
+                if (!achievements.completed.includes(id)) {
+                    achieveText += `• ${id}: ${progress}%\n`;
+                }
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: achieveText,
+                mentions: [userId]
+            });
+        } catch (error) {
+            logger.error('Error in achievements command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to fetch achievements'
+            });
+        }
+    },
+
+    quests: async (sock, msg) => {
+        try {
+            const userId = msg.key.participant || msg.key.remoteJid;
+            const questData = await dbStore.getAvailableQuests(userId);
+
+            let questText = '*📜 Available Quests*\n\n';
+
+            // Daily Quests
+            questText += '*Daily Quests:*\n';
+            questData.available.daily.forEach(quest => {
+                const progress = questData.progress.progress[quest.id] || 0;
+                const status = questData.progress.completed.includes(quest.id) ? '✅' : '⭐';
+                questText += `${status} ${quest.name}\n`;
+                questText += `Progress: ${progress}/${quest.requirement}\n`;
+                questText += `Reward: ${quest.reward} coins\n\n`;
+            });
+
+            // Weekly Quests
+            questText += '*Weekly Quests:*\n';
+            questData.available.weekly.forEach(quest => {
+                const progress = questData.progress.progress[quest.id] || 0;
+                const status = questData.progress.completed.includes(quest.id) ? '✅' : '⭐';
+                questText += `${status} ${quest.name}\n`;
+                questText += `Progress: ${progress}/${quest.requirement}\n`;
+                questText += `Reward: ${quest.reward} coins\n\n`;
+            });
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: questText,
+                mentions: [userId]
+            });
+        } catch (error) {
+            logger.error('Error in quests command:', error);
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '❌ Failed to fetch quests'
             });
         }
     }
