@@ -24,16 +24,25 @@ class MediaHandler {
                     '-c:v libx264',
                     '-profile:v baseline',
                     '-preset ultrafast',
-                    '-tune zerolatency',
-                    '-vf scale=w=320:h=-2',
-                    '-r 24',
+                    '-tune animation',
+                    '-vf scale=320:-2',
+                    '-r 30',
                     '-t 8',
                     '-an',
                     '-f mp4'
                 ])
-                .on('end', () => resolve(outputPath))
+                .on('start', (commandLine) => {
+                    logger.info('FFmpeg command:', commandLine);
+                })
+                .on('progress', (progress) => {
+                    logger.info('Processing: ', progress.percent, '% done');
+                })
+                .on('end', () => {
+                    logger.info('FFmpeg conversion completed');
+                    resolve(outputPath);
+                })
                 .on('error', (err) => {
-                    logger.error('Error converting GIF:', err);
+                    logger.error('FFmpeg conversion error:', err);
                     reject(err);
                 })
                 .save(outputPath);
@@ -43,59 +52,71 @@ class MediaHandler {
     async sendGifReaction(sock, msg, gifName, caption = '', mentions = []) {
         let tempFile = null;
         try {
-            // Remove 'anime-' prefix if present and ensure .gif extension
-            const cleanGifName = gifName.replace('anime-', '').replace(/\.gif$/, '') + '.gif';
+            // Clean up the gif name
+            const cleanGifName = gifName.replace(/^anime-/, '').replace(/\.gif$/, '') + '.gif';
             const gifPath = path.join(this.mediaDir, cleanGifName);
 
-            // Log the path being checked
-            logger.info(`Checking for GIF at path: ${gifPath}`);
+            logger.info(`Attempting to send GIF reaction: ${cleanGifName}`);
+            logger.info(`Full GIF path: ${gifPath}`);
 
-            // Check if GIF exists and has content
+            // Verify file exists
             if (!await fs.pathExists(gifPath)) {
-                logger.warn(`GIF not found: ${gifPath}`);
+                logger.error(`GIF not found at path: ${gifPath}`);
                 await sock.sendMessage(msg.key.remoteJid, {
-                    text: caption,
+                    text: `${caption} (GIF not available)`,
                     mentions
                 });
                 return false;
             }
 
-            // Quick file check
+            // Read and verify file content
             const buffer = await fs.readFile(gifPath);
-            if (!buffer.length) {
-                logger.error('Invalid GIF file - zero length');
+            if (!buffer || buffer.length === 0) {
+                logger.error(`Invalid GIF file (zero length) at: ${gifPath}`);
                 throw new Error('Invalid GIF file');
             }
 
-            // Create temp file with timestamp to avoid conflicts
-            tempFile = path.join(this.tempDir, `${Date.now()}.mp4`);
+            logger.info(`Successfully read GIF file: ${gifPath} (${buffer.length} bytes)`);
+
+            // Create temp file with unique name
+            tempFile = path.join(this.tempDir, `reaction_${Date.now()}.mp4`);
             await this.convertGifToVideo(gifPath, tempFile);
 
-            // Log success of conversion
             logger.info(`Successfully converted GIF to video: ${tempFile}`);
 
-            // Send message
+            // Read the converted video
+            const videoBuffer = await fs.readFile(tempFile);
+            logger.info(`Video buffer size: ${videoBuffer.length} bytes`);
+
+            // Send the message
             await sock.sendMessage(msg.key.remoteJid, {
-                video: await fs.readFile(tempFile),
+                video: videoBuffer,
                 caption,
                 gifPlayback: true,
                 mentions,
                 mimetype: 'video/mp4'
             });
 
+            logger.info('Successfully sent GIF reaction message');
             return true;
+
         } catch (error) {
             logger.error('Error in sendGifReaction:', error);
-            // Improved error handling - always send the caption
-            if (tempFile) await fs.remove(tempFile).catch(() => {});
             await sock.sendMessage(msg.key.remoteJid, {
-                text: caption,
+                text: `${caption} (Error sending GIF: ${error.message})`,
                 mentions
             });
             return false;
         } finally {
             // Cleanup temp file
-            if (tempFile) await fs.remove(tempFile).catch(() => {});
+            if (tempFile) {
+                try {
+                    await fs.remove(tempFile);
+                    logger.info(`Cleaned up temp file: ${tempFile}`);
+                } catch (error) {
+                    logger.error('Error cleaning up temp file:', error);
+                }
+            }
         }
     }
 }
