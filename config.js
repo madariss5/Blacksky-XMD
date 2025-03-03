@@ -29,6 +29,11 @@ const sessionConfig = {
     logLevel: process.env.LOG_LEVEL || 'silent'
 };
 
+// Validate required session configuration
+if (!process.env.SESSION_ID) {
+    logger.warn('SESSION_ID not provided in environment, using default: blacksky-md');
+}
+
 const config = {
     prefix: process.env.PREFIX || '.',
     ownerNumber: formattedOwnerNumber,
@@ -36,7 +41,6 @@ const config = {
     botName: process.env.BOT_NAME || '𝔹𝕃𝔸ℂ𝕂𝕊𝕂𝕐-𝕄𝔻',
     botNumber: '',
     session: sessionConfig,
-
     commands: {
         ping: { 
             description: 'Check bot response time', 
@@ -304,7 +308,6 @@ const config = {
             category: 'AI',
             usage: '.clearchat'
         },
-
         // Group Commands
         kick: { 
             description: 'Kick member from group', 
@@ -466,7 +469,6 @@ const config = {
             category: 'Group',
             usage: '.grouplb'
         },
-
         // User Commands
         profile: {
             description: 'View user profile',
@@ -860,7 +862,6 @@ const config = {
             usage: '.unban @user'
         },
 
-
         // Economy Commands
         balance: {
             description: 'Check your balance',
@@ -998,7 +999,6 @@ const config = {
             category: 'Fun',
             usage: '.darkjoke'
         },
-
         // Anime Commands
         manga: { 
             description: 'Search manga information', 
@@ -1095,7 +1095,6 @@ const config = {
             category: 'Anime',
             usage: '.fanart'
         },
-
         // Reaction Commands
         slap: {
             description: 'Slap another user',
@@ -1130,7 +1129,7 @@ const config = {
         wasted: {
             description: 'Mark someone as wasted',
             category: 'Reactions',
-            usage: '.wasted @user'
+            usage: '.wasted@user'
         },
         poke: {
             description: 'Poke another user',
@@ -1192,7 +1191,6 @@ const config = {
             category: 'Reactions',
             usage: '.thumbsdown'
         },
-
         // NSFW Commands
         nsfwcheck: {
             description: 'Check NSFW access status',
@@ -1249,7 +1247,6 @@ const config = {
             category: 'NSFW',
             usage: '.ero'
         },
-
         // Media Commands
         sticker: { 
             description: 'Create sticker from media', 
@@ -1396,7 +1393,6 @@ const config = {
             category: 'Media',
             usage: '.lyrics'
         },
-
         // Game Commands
         numguess: {
             description: 'Play number guessing game',
@@ -1463,8 +1459,6 @@ const config = {
             category: 'Game',
             usage: '.riddle'
         },
-
-
         // Education Commands
         math: { 
             description: 'Solve math expressions', 
