@@ -1,7 +1,7 @@
 build:
   docker:
-    worker: Dockerfile
+    web: Dockerfile
 run:
-  worker:
+  web:
     command:
-      - bash start.sh
+      - node index.js
